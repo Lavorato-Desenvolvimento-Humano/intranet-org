@@ -3,9 +3,13 @@ name: Frontend CI/CD
 on:
   push:
     branches:
+      - develop
+      - staging
       - main
   pull_request:
     branches:
+      - develop
+      - staging
       - main
 
 jobs:
@@ -21,6 +25,11 @@ jobs:
           cd apps/frontend
           npm install
 
+      - name: Rodar Testes Frontend
+        run: |
+          cd apps/frontend
+          npm run test
+
       - name: Construir o Frontend
         run: |
           cd apps/frontend
@@ -29,18 +38,43 @@ jobs:
       - name: Criar e publicar Docker Image
         run: |
           cd apps/frontend
-          docker build -t meuusuario/frontend:latest .
+          IMAGE_TAG=${{ github.ref_name }}
+          docker build -t meuusuario/frontend:$IMAGE_TAG .
           echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
-          docker push meuusuario/frontend:latest
+          docker push meuusuario/frontend:$IMAGE_TAG
 
-      - name: Deploy no servidor
+      - name: Definir variáveis de ambiente
+        run: |
+          if [ "${{ github.ref_name }}" == "develop" ]; then
+            echo "SERVER_HOST=${{ secrets.SERVER_HOST_DEVELOP }}" >> $GITHUB_ENV
+            echo "SERVER_USER=${{ secrets.SERVER_USER_DEVELOP }}" >> $GITHUB_ENV
+            echo "SERVER_KEY=${{ secrets.SERVER_KEY_DEVELOP }}" >> $GITHUB_ENV
+          elif [ "${{ github.ref_name }}" == "staging" ]; then
+            echo "SERVER_HOST=${{ secrets.SERVER_HOST_STAGING }}" >> $GITHUB_ENV
+            echo "SERVER_USER=${{ secrets.SERVER_USER_STAGING }}" >> $GITHUB_ENV
+            echo "SERVER_KEY=${{ secrets.SERVER_KEY_STAGING }}" >> $GITHUB_ENV
+          elif [ "${{ github.ref_name }}" == "main" ]; then
+            echo "SERVER_HOST=${{ secrets.SERVER_HOST_MAIN }}" >> $GITHUB_ENV
+            echo "SERVER_USER=${{ secrets.SERVER_USER_MAIN }}" >> $GITHUB_ENV
+            echo "SERVER_KEY=${{ secrets.SERVER_KEY_MAIN }}" >> $GITHUB_ENV
+          fi
+
+  deploy:
+    name: Deploy Frontend
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: ${{ github.ref_name }}
+
+    steps:
+      - name: Deploy no Servidor via SSH
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_KEY }}
+          host: ${{ env.SERVER_HOST }}
+          username: ${{ env.SERVER_USER }}
+          key: ${{ env.SERVER_KEY }}
           script: |
-            docker pull meuusuario/frontend:latest
-            docker stop frontend || true
-            docker rm frontend || true
-            docker run -d -p 3000:3000 --name frontend meuusuario/frontend:latest
+            cd /caminho/para/deploy/${{ github.ref_name }}
+            docker-compose down
+            docker pull meuusuario/frontend:${{ github.ref_name }}
+            docker-compose up -d
