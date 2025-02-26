@@ -1,0 +1,46 @@
+name: Frontend CI/CD
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v3
+
+      - name: Instalar dependências
+        run: |
+          cd apps/frontend
+          npm install
+
+      - name: Construir o Frontend
+        run: |
+          cd apps/frontend
+          npm run build
+
+      - name: Criar e publicar Docker Image
+        run: |
+          cd apps/frontend
+          docker build -t meuusuario/frontend:latest .
+          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+          docker push meuusuario/frontend:latest
+
+      - name: Deploy no servidor
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_KEY }}
+          script: |
+            docker pull meuusuario/frontend:latest
+            docker stop frontend || true
+            docker rm frontend || true
+            docker run -d -p 3000:3000 --name frontend meuusuario/frontend:latest
