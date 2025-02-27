@@ -1,6 +1,8 @@
 services:
   backend:
     image: ghcr.io/viniciusg03/intranet-org/backend:latest
+    volumes:
+      - ./apps/backend:/app
     depends_on:
       postgres:
         condition: service_healthy
@@ -15,6 +17,8 @@ services:
 
   frontend:
     image: ghcr.io/viniciusg03/intranet-org/frontend:latest
+    volumes:
+      - ./apps/frontend:/app
     depends_on:
       - backend
     ports:
