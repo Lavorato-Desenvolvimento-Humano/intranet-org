@@ -10,25 +10,16 @@ RUN npm install --frozen-lockfile
 COPY . .
 RUN npm run build
 
-# Etapa de execução no Node.js
-FROM node:18-alpine
+# Etapa de produção (imagem final ultra leve)
+FROM gcr.io/distroless/nodejs18 AS runtime
 WORKDIR /app
 
-# Copia apenas os arquivos necessários da etapa de build
-COPY --from=build /app/package.json /app/package-lock.json ./
-RUN npm install --production
+# Copia apenas os arquivos essenciais para rodar o app
+COPY --from=build /app/.next /app/.next
+COPY --from=build /app/public /app/public
+COPY --from=build /app/package.json /app/package-lock.json /app/
+COPY --from=build /app/node_modules /app/node_modules
 
-COPY --from=build /app /app
-
-# Define a porta que o Next.js rodará
+# Define a porta e inicia o servidor Next.js
 EXPOSE 3000
-
-# Comando para iniciar o servidor Next.js
-CMD ["npm", "run", "start"]
-
-
-FROM nginx:alpine
-COPY --from=build /app/out /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/nginx.conf
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["node_modules/.bin/next", "start"]
