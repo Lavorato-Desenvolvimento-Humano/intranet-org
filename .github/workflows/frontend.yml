@@ -35,29 +35,16 @@ jobs:
           cd apps/frontend
           npm run build
 
+      - name: Autenticar no GitHub Container Registry (GHCR)
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
+
       - name: Criar e publicar Docker Image
         run: |
           cd apps/frontend
           IMAGE_TAG=${{ github.ref_name }}
-          docker build -t meuusuario/frontend:$IMAGE_TAG .
-          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
-          docker push meuusuario/frontend:$IMAGE_TAG
-
-      - name: Definir variáveis de ambiente
-        run: |
-          if [ "${{ github.ref_name }}" == "develop" ]; then
-            echo "SERVER_HOST=${{ secrets.SERVER_HOST_DEVELOP }}" >> $GITHUB_ENV
-            echo "SERVER_USER=${{ secrets.SERVER_USER_DEVELOP }}" >> $GITHUB_ENV
-            echo "SERVER_KEY=${{ secrets.SERVER_KEY_DEVELOP }}" >> $GITHUB_ENV
-          elif [ "${{ github.ref_name }}" == "staging" ]; then
-            echo "SERVER_HOST=${{ secrets.SERVER_HOST_STAGING }}" >> $GITHUB_ENV
-            echo "SERVER_USER=${{ secrets.SERVER_USER_STAGING }}" >> $GITHUB_ENV
-            echo "SERVER_KEY=${{ secrets.SERVER_KEY_STAGING }}" >> $GITHUB_ENV
-          elif [ "${{ github.ref_name }}" == "main" ]; then
-            echo "SERVER_HOST=${{ secrets.SERVER_HOST_MAIN }}" >> $GITHUB_ENV
-            echo "SERVER_USER=${{ secrets.SERVER_USER_MAIN }}" >> $GITHUB_ENV
-            echo "SERVER_KEY=${{ secrets.SERVER_KEY_MAIN }}" >> $GITHUB_ENV
-          fi
+          docker build -t ghcr.io/${{ github.repository }}/frontend:$IMAGE_TAG .
+          docker push ghcr.io/${{ github.repository }}/frontend:$IMAGE_TAG
 
   deploy:
     name: Deploy Frontend
@@ -76,5 +63,5 @@ jobs:
           script: |
             cd /caminho/para/deploy/${{ github.ref_name }}
             docker-compose down
-            docker pull meuusuario/frontend:${{ github.ref_name }}
+            docker pull ghcr.io/${{ github.repository }}/frontend:${{ github.ref_name }}
             docker-compose up -d
