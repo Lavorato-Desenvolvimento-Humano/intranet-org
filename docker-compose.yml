@@ -1,30 +1,46 @@
+version: "3.8"
+
 services:
   backend:
-    image: ghcr.io/viniciusg03/intranet-org/backend:latest
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile.dev
     volumes:
       - ./apps/backend:/app
+      - backend_maven_cache:/root/.m2
     depends_on:
       postgres:
         condition: service_healthy
     ports:
       - "8080:8080"
+      - "5005:5005" # Porta para debug
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/tiratec
       SPRING_DATASOURCE_USERNAME: ${DB_USER}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASS}
+      SPRING_PROFILES_ACTIVE: development
     networks:
       - backend-network
 
   frontend:
-    image: ghcr.io/viniciusg03/intranet-org/frontend:latest
+    build:
+      context: ./apps/frontend
+      dockerfile: Dockerfile.dev
     volumes:
       - ./apps/frontend:/app
+      - /app/node_modules
     depends_on:
       - backend
     ports:
       - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://localhost:8080
+      - WATCHPACK_POLLING=true # Habilita polling para hot reload no Windows/Docker
     networks:
       - backend-network
+    stdin_open: true # docker run -i
+    tty: true # docker run -t
 
   postgres:
     image: postgres:15-alpine
@@ -50,3 +66,4 @@ networks:
 
 volumes:
   postgres_data:
+  backend_maven_cache:
