@@ -6,11 +6,16 @@ on:
       - develop
       - staging
       - main
+    paths:
+      - 'apps/backend/**'
+      - '.github/workflows/backend-ci-cd.yml'
   pull_request:
     branches:
       - develop
       - staging
       - main
+    paths:
+      - 'apps/backend/**'
 
 jobs:
   build:
@@ -25,6 +30,7 @@ jobs:
         with:
           java-version: "17"
           distribution: "temurin"
+          cache: 'maven'
 
       - name: Construir e Testar Backend
         run: |
@@ -32,10 +38,12 @@ jobs:
           mvn clean verify
 
       - name: Autenticar no GitHub Container Registry (GHCR)
+        if: github.event_name != 'pull_request'
         run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
       - name: Criar e publicar Docker Image
+        if: github.event_name != 'pull_request'
         run: |
           cd apps/backend
           IMAGE_TAG=${{ github.ref_name }}
@@ -46,18 +54,40 @@ jobs:
     name: Deploy Backend
     runs-on: ubuntu-latest
     needs: build
+    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/main')
+    
     environment:
       name: ${{ github.ref_name }}
 
     steps:
+      - name: Checkout código
+        uses: actions/checkout@v3
+        
+      - name: Copiar arquivos de configuração para VPS
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "docker-compose.prod.yml,nginx/conf.d/app.conf"
+          target: "/opt/deploy/${{ github.ref_name }}"
+          overwrite: true
+
       - name: Deploy no Servidor via SSH
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ env.SERVER_HOST }}
-          username: ${{ env.SERVER_USER }}
-          key: ${{ env.SERVER_KEY }}
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd /caminho/para/deploy/${{ github.ref_name }}
-            docker-compose down
-            docker pull ghcr.io/${{ github.repository }}/backend:${{ github.ref_name }}
-            docker-compose up -d
+            cd /opt/deploy/${{ github.ref_name }}
+            mv docker-compose.prod.yml docker-compose.yml
+            
+            # Substituir variáveis no nginx conf
+            export DOMAIN_NAME=$(grep DOMAIN_NAME .env | cut -d '=' -f2)
+            envsubst '${DOMAIN_NAME}' < nginx/conf.d/app.conf > nginx/conf.d/app.conf.tmp
+            mv nginx/conf.d/app.conf.tmp nginx/conf.d/app.conf
+            
+            # Atualizar apenas o serviço de backend
+            docker-compose pull backend
+            docker-compose up -d backend
