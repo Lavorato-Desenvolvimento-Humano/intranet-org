@@ -8,6 +8,7 @@ RUN chmod +x mvnw  # Garante permissão para executar o wrapper do Maven
 RUN ./mvnw dependency:go-offline  # Faz cache das dependências
 
 COPY . .
+RUN chmod +x mvnw  # Adiciona permissão novamente após a segunda cópia
 RUN ./mvnw clean package -DskipTests
 
 # Segunda etapa: Mantém o JDK para rodar o Spring Boot corretamente
