@@ -17,6 +17,10 @@ on:
     paths:
       - "apps/backend/**"
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
