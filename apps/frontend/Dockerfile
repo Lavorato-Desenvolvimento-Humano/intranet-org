@@ -1,26 +1,21 @@
 FROM node:18-slim
 WORKDIR /app
 
-# Copiamos apenas os arquivos de pacotes primeiro
 COPY package.json package-lock.json ./
+COPY apps/frontend/package.json ./apps/frontend/
 
-# Instala as dependências incluindo next
-RUN npm install --legacy-peer-deps
-RUN npm install next tailwindcss postcss autoprefixer --save
+# Instalamos dependências do monorepo
+RUN npm install
 
 COPY . .
 
-RUN mkdir -p public
+WORKDIR /app/apps/frontend
 
-RUN ls -la .next || echo "Pasta .next não encontrada!"
+# Garantimos que o Tailwind e outras dependências de build estão instaladas
+RUN npm install tailwindcss postcss autoprefixer --save
+
 RUN npx next build
-
-RUN echo "Path:" && echo $PATH
-RUN echo "Which next:" && which next || echo "Next not in path"
-RUN echo "NPX next:" && npx next --version || echo "Next not found with npx"
-RUN echo "Verificando node_modules:" && ls -la node_modules/.bin/
-RUN echo "Verificando .next:" && ls -la .next || echo ".next não encontrado"
 
 EXPOSE 3000
 
-CMD ["npm", "run", "start"]
+CMD ["npx", "next", "start"]
