@@ -3,7 +3,7 @@
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import Input from "@/components/Input";
+import Input from "@components/Input";
 
 const loginSchema = z.object({
   email: z.string().email("E-mail inválido"),
@@ -48,7 +48,7 @@ export default function LoginPage() {
           type="submit"
           disabled={isSubmitting}
           className="w-full bg-blue-500 text-white py-2 rounded mt-2">
-          {isSubmitting ? "Entrando..." : "EntrarOI"}
+          {isSubmitting ? "Entrando..." : "Entrar"}
         </button>
       </form>
     </div>
