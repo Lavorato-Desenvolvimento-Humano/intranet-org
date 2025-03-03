@@ -26,11 +26,6 @@ services:
       - NODE_ENV=production
       # Usando o hostname real para produção em vez de localhost
       - NEXT_PUBLIC_API_URL=https://${DOMAIN_NAME}/api
-    command: >
-      sh -c "
-        npm install &&
-        npx next build &&
-        npx next start"
     depends_on:
       - backend
     networks:
