@@ -72,22 +72,24 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Copiar arquivos de configuração
-        run: |
-          scp -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa docker-compose.prod.yml ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/deploy/${{ github.ref_name }}/docker-compose.yml
-          scp -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa -r nginx/conf.d/app.conf ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/deploy/${{ github.ref_name }}/nginx/conf.d/
-
+      # Deploy com resolução do problema da caixa alta vs baixa
       - name: Deploy no Servidor
         run: |
-          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
             cd /opt/deploy/${{ github.ref_name }}
             
-            # Substituir variáveis no nginx conf
-            export DOMAIN_NAME=$(grep DOMAIN_NAME .env | cut -d '=' -f2)
-            envsubst '${DOMAIN_NAME}' < nginx/conf.d/app.conf > nginx/conf.d/app.conf.tmp
-            mv nginx/conf.d/app.conf.tmp nginx/conf.d/app.conf
+            # Atualizar o arquivo .env para usar o nome do repositório em minúsculas
+            REPO_LOWERCASE=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+            sed -i "s|GITHUB_REPOSITORY=.*|GITHUB_REPOSITORY=$REPO_LOWERCASE|" .env
             
-            # Atualizar apenas o serviço de backend
-            docker-compose pull backend
+            # Verificar a imagem correta
+            echo "Usando repositório: $REPO_LOWERCASE e ambiente: ${{ github.ref_name }}"
+            
+            # Pull da imagem
+            docker pull ghcr.io/$REPO_LOWERCASE/backend:${{ github.ref_name }}
+            
+            # Restartar apenas o serviço de backend
+            docker-compose stop backend || true
+            docker-compose rm -f backend || true
             docker-compose up -d backend
-          EOF
+          ENDSSH
