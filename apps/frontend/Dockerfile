@@ -1,36 +1,27 @@
 # Usa uma versão mais estável para o Node.js
-FROM node:18-slim AS build
+FROM node:18-slim
 WORKDIR /app
 
-# Debug - mostrar diretório atual
-RUN pwd && ls -la
+# Copiamos apenas os arquivos de pacotes primeiro
+COPY package.json package-lock.json ./
 
-# Primeiro, copiamos apenas os arquivos de pacotes para aproveitar o cache
-COPY package.json ./
-COPY package-lock.json ./
-
-# Debug - mostrar arquivos copiados
-RUN ls -la
-
-# Instala as dependências com --legacy-peer-deps para evitar conflitos
+# Instala as dependências incluindo next
 RUN npm install --frozen-lockfile --legacy-peer-deps
+RUN npm install next
 
-# Copiamos todos os arquivos do projeto frontend EXCETO node_modules
-COPY .next ./.next
-COPY src ./src
-COPY next.config.ts ./
-COPY tsconfig.json ./
-COPY tailwind.config.js ./
-COPY postcss.config.js ./
-COPY next-env.d.ts ./
-COPY eslint.config.mjs ./
+# Copiamos todo o resto
+COPY . .
 
-# Debug - mostrar arquivos após cópia completa
-RUN ls -la
-RUN echo "Verificando .next:" && ls -la .next || echo ".next não encontrado"
-
-# Etapa de produção - sem multi-stage para simplificar
+# Cria a pasta public se não existir
 RUN mkdir -p public
 
+# Verificação de binários
+RUN echo "Path:" && echo $PATH
+RUN echo "Which next:" && which next || echo "Next not in path"
+RUN echo "NPX next:" && npx next --version || echo "Next not found with npx"
+RUN echo "Verificando node_modules:" && ls -la node_modules/.bin/
+
 EXPOSE 3000
-CMD ["npm", "start"]
+
+# Usa npx para encontrar o next no node_modules
+CMD ["npx", "next", "start"]
