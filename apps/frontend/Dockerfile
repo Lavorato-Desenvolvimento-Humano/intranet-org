@@ -1,21 +1,23 @@
-FROM node:18-slim
+FROM node:20-slim
 
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-COPY . .
 
 RUN npm install
-RUN npm install -D tailwindcss postcss autoprefixer
 
-RUN echo "Diretório de trabalho:" && pwd
-RUN echo "Conteúdo:" && ls -la
-RUN echo "Node.js version:" && node -v
-RUN echo "NPM version:" && npm -v
-RUN echo "Tailwind version:" && npx tailwindcss --version
+RUN npm install tailwindcss postcss autoprefixer --save-dev
 
-RUN echo "Next config:" && cat next.config.ts
+COPY . .
 
-RUN NODE_OPTIONS="--max-old-space-size=4096" npx next build || echo "Build falhou"
+RUN echo "Diretório atual:" && pwd
+RUN echo "Conteúdo do diretório:" && ls -la
 
-CMD ["npm", "run", "dev"]
+RUN npm run build
+
+RUN echo "Conteúdo após o build:" && ls -la
+RUN echo "Verificando diretório .next:" && ls -la .next || echo ".next não encontrado"
+
+EXPOSE 3000
+
+CMD ["npm", "run", "start"]

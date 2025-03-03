@@ -20,6 +20,9 @@ services:
   frontend:
     image: ghcr.io/${GITHUB_REPOSITORY}/frontend:${DEPLOY_ENV}
     restart: always
+    build:
+      context: ./apps/frontend
+      dockerfile: Dockerfile
     ports:
       - "3000:3000"
     environment:
