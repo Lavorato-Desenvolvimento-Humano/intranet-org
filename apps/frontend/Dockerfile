@@ -15,11 +15,15 @@ COPY . .
 # Cria a pasta public se não existir
 RUN mkdir -p public
 
-# Verificação de binários
+# Build do aplicativo Next.js - ESTA É A ETAPA CRUCIAL QUE ESTAVA FALTANDO
+RUN npx next build
+
+# Verificação de binários (opcional, pode ser removido em produção)
 RUN echo "Path:" && echo $PATH
 RUN echo "Which next:" && which next || echo "Next not in path"
 RUN echo "NPX next:" && npx next --version || echo "Next not found with npx"
 RUN echo "Verificando node_modules:" && ls -la node_modules/.bin/
+RUN echo "Verificando .next:" && ls -la .next || echo ".next não encontrado"
 
 EXPOSE 3000
 
