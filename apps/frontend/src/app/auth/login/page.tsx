@@ -48,7 +48,7 @@ export default function LoginPage() {
           type="submit"
           disabled={isSubmitting}
           className="w-full bg-blue-500 text-white py-2 rounded mt-2">
-          {isSubmitting ? "Entrando..." : "Entrar"}
+          {isSubmitting ? "Entrando..." : "Entrar S2"}
         </button>
       </form>
     </div>
