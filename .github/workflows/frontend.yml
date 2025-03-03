@@ -62,8 +62,9 @@ jobs:
         run: |
           cd apps/frontend
           IMAGE_TAG=${{ github.ref_name }}
-          docker build -t ghcr.io/${{ github.repository }}/frontend:$IMAGE_TAG .
-          docker push ghcr.io/${{ github.repository }}/frontend:$IMAGE_TAG
+          REPO_LOWERCASE=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          docker build -t ghcr.io/$REPO_LOWERCASE/frontend:$IMAGE_TAG .
+          docker push ghcr.io/$REPO_LOWERCASE/frontend:$IMAGE_TAG
 
   deploy:
     name: Deploy Frontend
