@@ -30,19 +30,9 @@ export default function LoginPage() {
         className="bg-white p-6 rounded-lg shadow-md w-96">
         <h2 className="text-2xl font-bold mb-4">Login</h2>
 
-        <Input
-          label="E-mail"
-          type="email"
-          {...register("email")}
-          error={errors.email?.message}
-        />
+        <Input label="E-mail" type="email" {...register("email")} />
 
-        <Input
-          label="Senha"
-          type="password"
-          {...register("password")}
-          error={errors.password?.message}
-        />
+        <Input label="Senha" type="password" {...register("password")} />
 
         <button
           type="submit"
