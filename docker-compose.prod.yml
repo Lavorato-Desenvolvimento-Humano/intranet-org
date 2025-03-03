@@ -28,11 +28,9 @@ services:
       - NEXT_PUBLIC_API_URL=https://${DOMAIN_NAME}/api
     command: >
       sh -c "
-        npm install && 
+        npm install &&
         npx next build &&
-        npx next start || 
-        echo 'Não foi possível iniciar o Next.js' &&
-        tail -f /dev/null"
+        npx next start"
     depends_on:
       - backend
     networks:

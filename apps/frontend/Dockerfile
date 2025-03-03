@@ -6,7 +6,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 
 # Instala as dependências incluindo next
-RUN npm install --frozen-lockfile --legacy-peer-deps
+RUN npm install --legacy-peer-deps
 RUN npm install next
 
 # Copiamos todo o resto
@@ -16,6 +16,7 @@ COPY . .
 RUN mkdir -p public
 
 # Build do aplicativo Next.js - ESTA É A ETAPA CRUCIAL QUE ESTAVA FALTANDO
+RUN ls -la .next || echo "Pasta .next não encontrada!"
 RUN npx next build
 
 # Verificação de binários (opcional, pode ser removido em produção)
@@ -28,4 +29,4 @@ RUN echo "Verificando .next:" && ls -la .next || echo ".next não encontrado"
 EXPOSE 3000
 
 # Usa npx para encontrar o next no node_modules
-CMD ["npx", "next", "start"]
+CMD ["npm", "run", "start"]
