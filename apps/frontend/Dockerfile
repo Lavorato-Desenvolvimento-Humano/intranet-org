@@ -1,18 +1,19 @@
 FROM node:18-slim
-WORKDIR /app
 
-COPY apps/frontend/package.json apps/frontend/package-lock.json ./apps/frontend/
+WORKDIR /app/frontend
 
-WORKDIR /app/apps/frontend/src
+COPY apps/frontend/package.json apps/frontend/package-lock.json ./
 
 RUN npm install
-
-COPY apps/frontend/ .
 RUN npm install tailwindcss postcss autoprefixer --save
+
+COPY apps/frontend/ ./
+
+RUN ls -la
 
 RUN npx next build
 
-RUN ls -la
+RUN ls -la .next || echo ".next directory not found"
 
 EXPOSE 3000
 
