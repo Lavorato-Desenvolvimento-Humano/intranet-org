@@ -61,7 +61,7 @@ jobs:
         if: github.event_name != 'pull_request'
         run: |
           cd apps/frontend
-          IMAGE_TAG=lavorato-desenvolvimento-humano
+          IMAGE_TAG=${{ github.ref_name }}
           docker build -t ghcr.io/${{ github.repository }}/frontend:$IMAGE_TAG .
           docker push ghcr.io/${{ github.repository }}/frontend:$IMAGE_TAG
 
