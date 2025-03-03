@@ -24,7 +24,6 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=production
-      # Usando o hostname real para produção em vez de localhost
       - NEXT_PUBLIC_API_URL=https://${DOMAIN_NAME}/api
     depends_on:
       - backend
