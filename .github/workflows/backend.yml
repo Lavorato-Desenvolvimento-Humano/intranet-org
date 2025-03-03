@@ -65,31 +65,29 @@ jobs:
       - name: Checkout código
         uses: actions/checkout@v3
 
-      - name: Copiar arquivos de configuração para VPS
-        uses: appleboy/scp-action@master
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "docker-compose.prod.yml,nginx/conf.d/app.conf"
-          target: "/opt/deploy/${{ github.ref_name }}"
-          overwrite: true
+      - name: Configurar chave SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Deploy no Servidor via SSH
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
+      - name: Copiar arquivos de configuração
+        run: |
+          scp -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa docker-compose.prod.yml ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/deploy/${{ github.ref_name }}/docker-compose.yml
+          scp -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa -r nginx/conf.d/app.conf ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/deploy/${{ github.ref_name }}/nginx/conf.d/
+
+      - name: Deploy no Servidor
+        run: |
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
             cd /opt/deploy/${{ github.ref_name }}
-            mv docker-compose.prod.yml docker-compose.yml
-
+            
             # Substituir variáveis no nginx conf
             export DOMAIN_NAME=$(grep DOMAIN_NAME .env | cut -d '=' -f2)
             envsubst '${DOMAIN_NAME}' < nginx/conf.d/app.conf > nginx/conf.d/app.conf.tmp
             mv nginx/conf.d/app.conf.tmp nginx/conf.d/app.conf
-
+            
             # Atualizar apenas o serviço de backend
             docker-compose pull backend
             docker-compose up -d backend
+          EOF
