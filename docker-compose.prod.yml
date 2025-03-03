@@ -11,6 +11,7 @@ services:
       SPRING_DATASOURCE_USERNAME: ${DB_USER}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASS}
       SPRING_PROFILES_ACTIVE: production
+    volumes: []
     depends_on:
       postgres:
         condition: service_healthy
