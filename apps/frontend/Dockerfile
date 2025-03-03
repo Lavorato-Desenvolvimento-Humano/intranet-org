@@ -2,36 +2,35 @@
 FROM node:18-slim AS build
 WORKDIR /app
 
+# Debug - mostrar diretório atual
+RUN pwd && ls -la
+
 # Primeiro, copiamos apenas os arquivos de pacotes para aproveitar o cache
-COPY package.json package-lock.json ./
+COPY package.json ./
+COPY package-lock.json ./
+
+# Debug - mostrar arquivos copiados
+RUN ls -la
 
 # Instala as dependências com --legacy-peer-deps para evitar conflitos
 RUN npm install --frozen-lockfile --legacy-peer-deps
 
-# Copiamos todos os arquivos do projeto frontend
-COPY . .
+# Copiamos todos os arquivos do projeto frontend EXCETO node_modules
+COPY .next ./.next
+COPY src ./src
+COPY next.config.ts ./
+COPY tsconfig.json ./
+COPY tailwind.config.js ./
+COPY postcss.config.js ./
+COPY next-env.d.ts ./
+COPY eslint.config.mjs ./
 
-# Cria pastas que podem não existir
+# Debug - mostrar arquivos após cópia completa
+RUN ls -la
+RUN echo "Verificando .next:" && ls -la .next || echo ".next não encontrado"
+
+# Etapa de produção - sem multi-stage para simplificar
 RUN mkdir -p public
-
-# Executa o build
-RUN npm run build
-
-# Etapa de produção
-FROM node:18-slim AS runtime
-WORKDIR /app
-
-# Cria todas as pastas necessárias
-RUN mkdir -p .next public
-
-# Copia os arquivos necessários para a execução (com tratamento de erro)
-COPY --from=build /app/.next/ /app/.next/ || true
-COPY --from=build /app/public/ /app/public/ || true
-COPY --from=build /app/package.json /app/
-COPY --from=build /app/node_modules/ /app/node_modules/
-
-# Tenta copiar o arquivo de configuração do Next.js se existir
-COPY --from=build /app/next.config.* /app/ 2>/dev/null || true
 
 EXPOSE 3000
 CMD ["npm", "start"]
