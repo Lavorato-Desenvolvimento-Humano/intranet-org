@@ -12,10 +12,16 @@ RUN npm install --include=dev
 # Copiamos todo o resto
 COPY . .
 
-# Build do aplicativo Next.js - Precisamos estar no diretório frontend
-RUN cd apps/frontend && npm run build
+# Debug: verificar se o next está instalado e onde está
+RUN echo "Verificando next no diretório raiz:" && \
+    ls -la ./node_modules/.bin/ | grep next || echo "next não encontrado na raiz" && \
+    echo "Verificando next no diretório frontend:" && \
+    ls -la ./apps/frontend/node_modules/.bin/ | grep next || echo "next não encontrado no frontend"
+
+# Build do aplicativo Next.js - usando npx para garantir que o next seja encontrado
+RUN cd apps/frontend && npx next build
 
 EXPOSE 3000
 
-# Executa a aplicação também a partir do diretório frontend
-CMD ["sh", "-c", "cd apps/frontend && npm run start"]
+# Usar npx para garantir que next seja encontrado
+CMD ["sh", "-c", "cd apps/frontend && npx next start"]
