@@ -7,7 +7,7 @@ COPY package.json package-lock.json ./
 
 # Instala as dependências incluindo next
 RUN npm install --legacy-peer-deps
-RUN npm install next
+RUN npm install next && npm install --include=dev
 
 # Copiamos todo o resto
 COPY . .
