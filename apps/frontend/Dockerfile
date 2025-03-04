@@ -12,10 +12,10 @@ RUN npm install --include=dev
 # Copiamos todo o resto
 COPY . .
 
-# Build do aplicativo Next.js
-RUN npm run build
+# Build do aplicativo Next.js - Precisamos estar no diretório frontend
+RUN cd apps/frontend && npm run build
 
 EXPOSE 3000
 
-# Executa a aplicação
-CMD ["npm", "run", "start"]
+# Executa a aplicação também a partir do diretório frontend
+CMD ["sh", "-c", "cd apps/frontend && npm run start"]
