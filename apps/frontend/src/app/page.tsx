@@ -5,7 +5,7 @@ export default function Home() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    fetch("http://localhost:8080/api/hello")
+    fetch("http://backend:8080/api/hello")
       .then((res) => res.text())
       .then((data) => setMessage(data));
   }, []);
