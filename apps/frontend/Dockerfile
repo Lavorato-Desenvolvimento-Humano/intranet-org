@@ -4,13 +4,16 @@ WORKDIR /app
 
 # Copiamos apenas os arquivos de pacotes primeiro
 COPY package.json package-lock.json ./
+COPY apps/frontend/package.json ./apps/frontend/
+COPY packages/*/package.json ./packages/*/
 
 # Instala as dependências incluindo next
-RUN npm install --legacy-peer-deps
-RUN npm install next && npm install --include=dev
+RUN npm install --include=dev
 
 # Copiamos todo o resto
 COPY . .
+
+RUN echo "Verificando Tailwind:" && npm list tailwindcss || npm install -D tailwindcss postcss autoprefixer
 
 # Cria a pasta public se não existir
 RUN mkdir -p public
