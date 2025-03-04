@@ -9,7 +9,6 @@ COPY packages/*/package.json ./packages/*/
 # Instala as dependências incluindo dev
 RUN npm install --include=dev
 
-# Copiamos todo o resto
 COPY . .
 
 # Build do aplicativo Next.js usando npx
