@@ -65,31 +65,12 @@ jobs:
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-      - name: Criar Docker Build Manual
-        if: github.event_name != 'pull_request'
-        run: |
-          cd apps/frontend
-
-          # Criar Dockerfile ultrasimples
-          echo 'FROM node:18-slim' > Dockerfile
-          echo 'WORKDIR /app' >> Dockerfile
-          echo 'COPY . .' >> Dockerfile
-          echo 'RUN mkdir -p public' >> Dockerfile
-          echo 'EXPOSE 3000' >> Dockerfile
-          echo 'CMD ["npm", "start"]' >> Dockerfile
-
-          # Mostrar Dockerfile criado
-          cat Dockerfile
-
-          # Debug - listar arquivos
-          ls -la
-
       - name: Criar e publicar Docker Image
         if: github.event_name != 'pull_request'
         run: |
-          cd apps/frontend
           IMAGE_TAG=${{ github.ref_name }}
           REPO_LOWERCASE=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          # Construir a partir da raiz do projeto
           docker build -t ghcr.io/$REPO_LOWERCASE/frontend:$IMAGE_TAG .
           docker push ghcr.io/$REPO_LOWERCASE/frontend:$IMAGE_TAG
 
