@@ -12,6 +12,8 @@ services:
       SPRING_DATASOURCE_USERNAME: ${DB_USER}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASS}
       SPRING_PROFILES_ACTIVE: production
+    volumes:
+      - /opt/deploy/develop/certbot/conf/live/dev.lavorato.app.br/:/certs
     depends_on:
       postgres:
         condition: service_healthy
