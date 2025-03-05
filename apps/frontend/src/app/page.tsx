@@ -5,7 +5,7 @@ export default function Home() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    fetch("https://dev.lavorato.app.br:8080/api/hello")
+    fetch("https://dev.lavorato.app.br/api/hello")
       .then((res) => res.text())
       .then((data) => setMessage(data));
   }, []);
