@@ -7,6 +7,7 @@ COPY packages/*/package.json ./packages/*/
 
 # Instala as dependências incluindo dev
 RUN npm install --include=dev
+RUN npm install lucide-react
 
 COPY . .
 
