@@ -1,23 +1,19 @@
-FROM node:20-slim
-
+FROM node:18-slim
 WORKDIR /app
 
 COPY package.json package-lock.json ./
+COPY apps/frontend/package.json ./apps/frontend/
+COPY packages/*/package.json ./packages/*/
 
-RUN npm install
-
-RUN npm install tailwindcss postcss autoprefixer --save-dev
+# Instala as dependências incluindo dev
+RUN npm install --include=dev
 
 COPY . .
 
-RUN echo "Diretório atual:" && pwd
-RUN echo "Conteúdo do diretório:" && ls -la
-
-RUN npm run build
-
-RUN echo "Conteúdo após o build:" && ls -la
-RUN echo "Verificando diretório .next:" && ls -la .next || echo ".next não encontrado"
+# Build do aplicativo Next.js usando npx
+RUN cd apps/frontend && npx next build
 
 EXPOSE 3000
 
-CMD ["npm", "run", "start"]
+# Usar npx para executar o next
+CMD ["sh", "-c", "cd apps/frontend && npx next start"]

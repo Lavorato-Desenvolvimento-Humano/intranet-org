@@ -6,12 +6,14 @@ services:
     restart: always
     ports:
       - "8080:8080"
+      - "8443:8443"
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/tiratec
       SPRING_DATASOURCE_USERNAME: ${DB_USER}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASS}
       SPRING_PROFILES_ACTIVE: production
-    volumes: []
+    volumes:
+      - /opt/deploy/develop/certbot/conf/live/dev.lavorato.app.br/:/certs
     depends_on:
       postgres:
         condition: service_healthy
