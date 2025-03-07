@@ -7,6 +7,7 @@ interface BaseLoginButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "primary" | "icon";
   className?: string;
+  size?: "default" | "small" | "large";
 }
 
 interface PrimaryLoginButtonProps extends BaseLoginButtonProps {
@@ -25,8 +26,18 @@ interface IconLoginButtonProps extends BaseLoginButtonProps {
 type LoginButtonProps = PrimaryLoginButtonProps | IconLoginButtonProps;
 
 export default function LoginButton(props: LoginButtonProps) {
+  // Valor de tamanho padrão
+  const size = props.size || "default";
+
+  // Mapeia os tamanhos para dimensões concretas
+  const sizeMap = {
+    small: { width: "8rem", height: "2.5rem" },
+    default: { width: "11rem", height: "2.75rem" },
+    large: { width: "14rem", height: "3rem" },
+  };
+
   if (props.variant === "icon") {
-    const { icon: Icon, className = "", ...restProps } = props;
+    const { icon: Icon, className = "", size, ...restProps } = props;
     return (
       <button
         className={`flex items-center justify-center bg-white rounded-full shadow-md hover:bg-gray-50 transition-colors ${className}`}
@@ -37,18 +48,22 @@ export default function LoginButton(props: LoginButtonProps) {
     );
   }
 
-  const { children, className = "", ...restProps } = props;
+  const { children, className = "", size: sizeKey, ...restProps } = props;
+
+  // Obtém as dimensões baseadas no tamanho selecionado
+  const dimensions = sizeMap[size];
+
   return (
     <button
       className={`flex items-center justify-center bg-white text-black font-bold text-base hover:bg-gray-50 transition-colors ${className}`}
-      style={{ width: "11rem", height: "2.75rem", borderRadius: "0.5rem" }}
+      style={{ ...dimensions, borderRadius: "0.5rem" }}
       {...restProps}>
       {children}
     </button>
   );
 }
 
-// src/components/ui/login-divider.tsx
+// A componente LoginDivider permanece igual
 interface LoginDividerProps {
   text: string;
   className?: string;

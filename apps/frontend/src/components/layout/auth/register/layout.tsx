@@ -10,21 +10,32 @@ import {
   LockKeyholeIcon,
   LockKeyholeOpenIcon,
   Github,
+  User,
 } from "lucide-react";
 
 // Props compartilhadas para os componentes de layout
-interface LoginLayoutProps {
+interface RegisterLayoutProps {
   showPassword: boolean;
   setShowPassword: (show: boolean) => void;
 }
 
-// Componente de login para Mobile
-export const MobileLoginLayout = ({
+// Componente de registro para Mobile
+export const MobileRegisterLayout = ({
   showPassword,
   setShowPassword,
-}: LoginLayoutProps) => (
+}: RegisterLayoutProps) => (
   <div className="w-full max-w-md mt-8">
-    <h1 className="font-inter font-bold text-3xl text-white mb-8">ENTRE</h1>
+    <h1 className="font-inter font-bold text-3xl text-white mb-8">
+      REGISTRE-SE
+    </h1>
+
+    <Input
+      icon={User}
+      type="name"
+      placeholder="Nome completo"
+      className="mb-6 bg-transparent border-2 border-white text-white placeholder:text-white placeholder:text-lg"
+    />
+
     <Input
       icon={Mail}
       type="email"
@@ -40,8 +51,16 @@ export const MobileLoginLayout = ({
       className="mb-6 bg-transparent border-2 border-white text-white placeholder:text-white placeholder:text-lg"
     />
 
+    <Input
+      icon={showPassword ? LockKeyholeOpenIcon : LockKeyholeIcon}
+      type={showPassword ? "text" : "password"}
+      placeholder="Confirme sua senha"
+      onIconClick={() => setShowPassword(!showPassword)}
+      className="mb-6 bg-transparent border-2 border-white text-white placeholder:text-white placeholder:text-lg"
+    />
+
     <div className="flex items-center justify-center mt-10">
-      <LoginButton>ENTRAR</LoginButton>
+      <LoginButton>REGISTRE-SE</LoginButton>
       <LoginDivider text="ou" />
       <LoginButton
         variant="icon"
@@ -57,38 +76,29 @@ export const MobileLoginLayout = ({
         <span
           className="font-inter font-normal text-white"
           style={{ fontSize: "0.75rem" }}>
-          Não tem uma conta?
+          Já tem uma conta?
         </span>
         <span className="mx-1"></span>
         <Link
           href="../auth/register"
           className="font-inter font-normal text-black underline hover:text-gray-200 transition-colors"
           style={{ fontSize: "0.75rem" }}>
-          Registre-se aqui
-        </Link>
-      </div>
-
-      <div className="mt-4">
-        <Link
-          href="/forgot-password"
-          className="font-inter font-normal text-white underline hover:text-gray-200 transition-colors text-xs">
-          Esqueceu sua senha?
+          Entre aqui
         </Link>
       </div>
     </div>
   </div>
 );
 
-// Componente de login para Desktop
-export const DesktopLoginLayout = ({
+// Componente de registro para Desktop (apenas h1 alinhado à esquerda)
+export const DesktopRegisterLayout = ({
   showPassword,
   setShowPassword,
-}: LoginLayoutProps) => (
+}: RegisterLayoutProps) => (
   <div className="flex w-full h-screen">
     {/* Lado esquerdo - logo em fundo branco */}
     <div className="w-1/2 bg-white flex items-center justify-center">
       <div className="w-[27.75rem] h-[16.875rem]">
-        {" "}
         <Image
           src={Logo}
           alt="Lavorato Saúde Integrada"
@@ -103,11 +113,19 @@ export const DesktopLoginLayout = ({
     {/* Lado direito - formulário de login em fundo azul */}
     <div className="w-1/2 bg-primary-light flex flex-col items-center justify-center p-8">
       <div className="w-full max-w-md">
+        {/* Apenas o título foi alterado para ficar à esquerda */}
         <h1
           className="font-inter font-bold text-4xl text-white mb-10 text-left"
-          style={{ paddingLeft: "0.1rem" }}>
-          ENTRE
+          style={{ paddingLeft: "0.10rem" }}>
+          REGISTRE-SE
         </h1>
+
+        <Input
+          icon={User}
+          type="name"
+          placeholder="Nome completo"
+          className="mb-6 bg-transparent border-2 border-white text-white placeholder:text-white placeholder:text-lg"
+        />
 
         <Input
           icon={Mail}
@@ -124,8 +142,16 @@ export const DesktopLoginLayout = ({
           className="mb-6 bg-transparent border-2 border-white text-white placeholder:text-white placeholder:text-lg"
         />
 
+        <Input
+          icon={showPassword ? LockKeyholeOpenIcon : LockKeyholeIcon}
+          type={showPassword ? "text" : "password"}
+          placeholder="Confirme sua senha"
+          onIconClick={() => setShowPassword(!showPassword)}
+          className="mb-6 bg-transparent border-2 border-white text-white placeholder:text-white placeholder:text-lg"
+        />
+
         <div className="flex items-center justify-center gap-1 mt-8">
-          <LoginButton size="default">ENTRAR</LoginButton>
+          <LoginButton size="default">REGISTRAR</LoginButton>
           <LoginDivider text="ou" />
           <LoginButton
             variant="icon"
@@ -137,21 +163,15 @@ export const DesktopLoginLayout = ({
         <div className="mt-8 text-center">
           <div className="mb-3">
             <span className="font-inter font-normal text-white text-xs">
-              Não tem uma conta?
+              Já tem uma conta?
             </span>
             <span className="mx-1"></span>
             <Link
-              href="../auth/register"
+              href="../auth/login"
               className="font-inter font-normal text-black underline hover:text-gray-700 transition-colors text-xs">
-              Registre-se aqui
+              Entre aqui
             </Link>
           </div>
-
-          <Link
-            href="/forgot-password"
-            className="font-inter font-normal text-white underline hover:text-gray-200 transition-colors text-xs">
-            Esqueceu sua senha?
-          </Link>
         </div>
       </div>
     </div>
