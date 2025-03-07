@@ -42,6 +42,7 @@ jobs:
           cd apps/frontend
           npm install --package-lock-only
           npm ci
+          npm install lucide-react
 
       - name: Verificar Linting (com tratamento de erro)
         run: |
