@@ -23,7 +23,7 @@ export const MobileResetPasswordLayout = ({
         width={181}
         height={110}
         priority
-        className="w-[11.3125rem] h-[6.875rem]"
+        className="w-[11.3125rem] h-auto"
       />
     </div>
 
