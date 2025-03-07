@@ -12,7 +12,7 @@ RUN npm install
 # Copiar todo o código fonte
 COPY . .
 
-# Build do aplicativo Next.js (já configurado para standalone)
+# Build do aplicativo Next.js com configuração standalone
 RUN cd apps/frontend && npm run build
 
 # Estágio de produção
@@ -23,13 +23,20 @@ ENV NODE_ENV production
 ENV PORT 3000
 
 # Adicionar um usuário não-root para segurança
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
 
-# Copiar apenas os arquivos necessários da build standalone
+# Instalar Next.js explicitamente para garantir que esteja disponível
+COPY --from=builder /app/apps/frontend/package.json ./package.json
+RUN npm install next --production --no-save
+
+# Copiar arquivos necessários do build standalone
 COPY --from=builder --chown=nextjs:nodejs /app/apps/frontend/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/apps/frontend/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/frontend/.next/static ./.next/static
+
+# Garantir permissões corretas
+RUN chown -R nextjs:nodejs /app
 
 # Definir usuário correto para aplicação
 USER nextjs
