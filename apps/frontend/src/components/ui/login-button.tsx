@@ -51,11 +51,12 @@ export default function LoginButton(props: LoginButtonProps) {
 // src/components/ui/login-divider.tsx
 interface LoginDividerProps {
   text: string;
+  className?: string;
 }
 
-export function LoginDivider({ text }: LoginDividerProps) {
+export function LoginDivider({ text, className = "" }: LoginDividerProps) {
   return (
-    <div className="mx-4">
+    <div className={`mx-4 ${className}`}>
       <span className="font-inter font-normal text-base text-white">
         {text}
       </span>
