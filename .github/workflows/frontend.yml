@@ -97,17 +97,28 @@ jobs:
       - name: Deploy no Servidor
         run: |
           ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
-            cd /opt/deploy/${{ github.ref_name }}
-            
-            # Atualizar o arquivo .env para usar o nome do repositório em minúsculas
-            REPO_LOWERCASE=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-            sed -i "s|GITHUB_REPOSITORY=.*|GITHUB_REPOSITORY=$REPO_LOWERCASE|" .env
-            
-            # Pull da imagem
-            docker pull ghcr.io/$REPO_LOWERCASE/frontend:${{ github.ref_name }}
-            
-            # Restartar apenas o serviço de frontend
-            docker-compose stop frontend || true
-            docker-compose rm -f frontend || true
-            docker-compose up -d frontend
+          # Garantir que a estrutura de diretórios existe
+          mkdir -p /opt/deploy/${{ github.ref_name }}
+          mkdir -p /opt/deploy/${{ github.ref_name }}/apps/frontend
+
+          # Garantir que o arquivo .env existe
+          if [ ! -f "/opt/deploy/${{ github.ref_name }}/.env" ]; then
+          # Pode copiar do develop ou criar um novo
+          cp /opt/deploy/develop/.env /opt/deploy/${{ github.ref_name }}/ 2>/dev/null || echo "GITHUB_REPOSITORY=${{ github.repository }}" > /opt/deploy/${{ github.ref_name }}/.env
+          echo "DEPLOY_ENV=${{ github.ref_name }}" >> /opt/deploy/${{ github.ref_name }}/.env
+          fi
+
+          cd /opt/deploy/${{ github.ref_name }}
+
+          # Atualizar o arquivo .env para usar o nome do repositório em minúsculas
+          REPO_LOWERCASE=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          sed -i "s|GITHUB_REPOSITORY=.*|GITHUB_REPOSITORY=$REPO_LOWERCASE|" .env
+
+          # Pull da imagem
+          docker pull ghcr.io/$REPO_LOWERCASE/frontend:${{ github.ref_name }}
+
+          # Restartar apenas o serviço de frontend
+          docker-compose stop frontend || true
+          docker-compose rm -f frontend || true
+          docker-compose up -d frontend
           ENDSSH

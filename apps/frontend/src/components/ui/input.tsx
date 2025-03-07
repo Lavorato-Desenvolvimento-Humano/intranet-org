@@ -24,7 +24,7 @@ export default function Input({
 
       <div className="relative flex items-center">
         <input
-          className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent
+          className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent
           ${error ? "border-red-500" : "border-neutral-light"}
           ${Icon ? "pr-12" : ""} ${className}`}
           {...props}

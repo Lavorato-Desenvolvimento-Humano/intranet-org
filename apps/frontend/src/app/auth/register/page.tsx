@@ -1,14 +1,14 @@
-// app/auth/login/page.tsx
+// app/auth/register/page.tsx
 "use client";
 import Header from "@/components/layout/header";
 import { useState } from "react";
 import { useViewport } from "@/hooks/useViewport";
 import {
-  MobileLoginLayout,
-  DesktopLoginLayout,
-} from "@/components/layout/auth/login/layout";
+  MobileRegisterLayout,
+  DesktopRegisterLayout,
+} from "@/components/layout/auth/register/layout";
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const viewport = useViewport();
   const isMobile = viewport === "mobile";
@@ -21,13 +21,13 @@ export default function LoginPage() {
       {/* Estrutura principal - tela cheia no desktop, centralizado no mobile */}
       {isMobile ? (
         <main className="flex-1 flex items-center justify-center px-4 py-8">
-          <MobileLoginLayout
+          <MobileRegisterLayout
             showPassword={showPassword}
             setShowPassword={setShowPassword}
           />
         </main>
       ) : (
-        <DesktopLoginLayout
+        <DesktopRegisterLayout
           showPassword={showPassword}
           setShowPassword={setShowPassword}
         />

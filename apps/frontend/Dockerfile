@@ -1,19 +1,39 @@
-FROM node:18-slim
+# Estágio de build
+FROM node:18-alpine AS builder
 WORKDIR /app
 
+# Copiar arquivos de package.json para instalação eficiente de dependências
 COPY package.json package-lock.json ./
 COPY apps/frontend/package.json ./apps/frontend/
-COPY packages/*/package.json ./packages/*/
 
-# Instala as dependências incluindo dev
-RUN npm install --include=dev
+# Instalar dependências
+RUN npm install
 
 COPY . .
 
-# Build do aplicativo Next.js usando npx
-RUN cd apps/frontend && npx next build
+# Build do aplicativo Next.js
+RUN cd apps/frontend && npm run build
+
+# Estágio de produção
+FROM node:18-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV production
+
+# Adicionar um usuário não-root para segurança
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+# Copiar apenas os arquivos necessários para produção
+COPY --from=builder /app/apps/frontend/package.json ./package.json
+COPY --from=builder /app/apps/frontend/public ./public
+COPY --from=builder /app/apps/frontend/.next ./.next
+RUN npm install --omit=dev
+
+# Definir usuário correto para aplicação
+USER nextjs
 
 EXPOSE 3000
 
-# Usar npx para executar o next
-CMD ["sh", "-c", "cd apps/frontend && npx next start"]
+# Comando para iniciar a aplicação
+CMD ["npm", "start"]
