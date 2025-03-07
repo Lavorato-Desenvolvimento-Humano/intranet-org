@@ -9,10 +9,9 @@ COPY apps/frontend/package.json ./apps/frontend/
 # Instalar dependências
 RUN npm install
 
-# Copiar todo o código fonte
 COPY . .
 
-# Build do aplicativo Next.js com configuração standalone
+# Build do aplicativo Next.js
 RUN cd apps/frontend && npm run build
 
 # Estágio de produção
@@ -20,28 +19,21 @@ FROM node:18-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV production
-ENV PORT 3000
 
 # Adicionar um usuário não-root para segurança
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
 
-# Instalar Next.js explicitamente para garantir que esteja disponível
+# Copiar apenas os arquivos necessários para produção
 COPY --from=builder /app/apps/frontend/package.json ./package.json
-RUN npm install next --production --no-save
-
-# Copiar arquivos necessários do build standalone
-COPY --from=builder --chown=nextjs:nodejs /app/apps/frontend/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/apps/frontend/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/apps/frontend/.next/static ./.next/static
-
-# Garantir permissões corretas
-RUN chown -R nextjs:nodejs /app
+COPY --from=builder /app/apps/frontend/public ./public
+COPY --from=builder /app/apps/frontend/.next ./.next
+RUN npm install --omit=dev
 
 # Definir usuário correto para aplicação
 USER nextjs
 
 EXPOSE 3000
 
-# Comando para iniciar a aplicação standalone
-CMD ["node", "server.js"]
+# Comando para iniciar a aplicação
+CMD ["npm", "start"]
