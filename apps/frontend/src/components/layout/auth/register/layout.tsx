@@ -80,7 +80,7 @@ export const MobileRegisterLayout = ({
         </span>
         <span className="mx-1"></span>
         <Link
-          href="../auth/register"
+          href="../auth/login"
           className="font-inter font-normal text-black underline hover:text-gray-200 transition-colors"
           style={{ fontSize: "0.75rem" }}>
           Entre aqui
