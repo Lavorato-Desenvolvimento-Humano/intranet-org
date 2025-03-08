@@ -124,14 +124,14 @@ export const DesktopRegisterLayout = ({
           icon={User}
           type="name"
           placeholder="Nome completo"
-          className="mb-6 bg-transparent border-2 border-white text-white placeholder:text-white placeholder:text-lg"
+          className="mb-6 bg-transparent border-2 border-white text-white placeholder:text-white placeholder:text-lg focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent"
         />
 
         <Input
           icon={Mail}
           type="email"
           placeholder="E-mail"
-          className="mb-6 bg-transparent border-2 border-white text-white placeholder:text-white placeholder:text-lg"
+          className="mb-6 bg-transparent border-2 border-white text-white placeholder:text-white placeholder:text-lg focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent"
         />
 
         <Input
@@ -139,7 +139,7 @@ export const DesktopRegisterLayout = ({
           type={showPassword ? "text" : "password"}
           placeholder="Senha"
           onIconClick={() => setShowPassword(!showPassword)}
-          className="mb-6 bg-transparent border-2 border-white text-white placeholder:text-white placeholder:text-lg"
+          className="mb-6 bg-transparent border-2 border-white text-white placeholder:text-white placeholder:text-lg focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent"
         />
 
         <Input
@@ -147,7 +147,7 @@ export const DesktopRegisterLayout = ({
           type={showPassword ? "text" : "password"}
           placeholder="Confirme sua senha"
           onIconClick={() => setShowPassword(!showPassword)}
-          className="mb-6 bg-transparent border-2 border-white text-white placeholder:text-white placeholder:text-lg"
+          className="mb-6 bg-transparent border-2 border-white text-white placeholder:text-white placeholder:text-lg focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent"
         />
 
         <div className="flex items-center justify-center gap-1 mt-8">
