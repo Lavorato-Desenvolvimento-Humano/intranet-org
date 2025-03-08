@@ -39,7 +39,7 @@ export const MobileResetPasswordCodeLayout = ({
       <p className="text-gray-600 text-base mb-8">
         Insira abaixo o código que enviamos para o e-mail:
         <br />
-        exemplo********@gmail.com para confirmar sua identidade.
+        exemplo********@gmail.com para confirmar a sua identidade.
       </p>
 
       <form onSubmit={onSubmit} className="w-full flex flex-col items-center">
@@ -107,7 +107,7 @@ export const DesktopResetPasswordCodeLayout = ({
         <p className="text-gray-600 text-base mb-8">
           Insira abaixo o código que enviamos para o e-mail:
           <br />
-          exemplo********@gmail.com para confirmar sua identidade.
+          exemplo********@gmail.com para confirmar a sua identidade.
         </p>
 
         <form onSubmit={onSubmit}>
