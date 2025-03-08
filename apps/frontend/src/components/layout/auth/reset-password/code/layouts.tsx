@@ -39,7 +39,7 @@ export const MobileResetPasswordCodeLayout = ({
       <p className="text-gray-600 text-base mb-8">
         Insira abaixo o código que enviamos para o e-mail:
         <br />
-        exemplo********@gmail.com para confirmar sua identidade
+        exemplo********@gmail.com para confirmar sua identidade.
       </p>
 
       <form onSubmit={onSubmit} className="w-full flex flex-col items-center">
@@ -66,9 +66,9 @@ export const MobileResetPasswordCodeLayout = ({
         </span>
         <span className="mx-1"></span>
         <Link
-          href="../reset-password"
+          href="/reset-password"
           className="font-inter font-normal text-black underline hover:text-gray-700 transition-colors text-xs">
-          Revisar E-mail
+          Revisar e-mail
         </Link>
       </div>
     </div>
@@ -107,7 +107,7 @@ export const DesktopResetPasswordCodeLayout = ({
         <p className="text-gray-600 text-base mb-8">
           Insira abaixo o código que enviamos para o e-mail:
           <br />
-          exemplo********@gmail.com para confirmar sua identidade
+          exemplo********@gmail.com para confirmar sua identidade.
         </p>
 
         <form onSubmit={onSubmit}>
@@ -129,9 +129,9 @@ export const DesktopResetPasswordCodeLayout = ({
           </span>
           <span className="mx-1"></span>
           <Link
-            href="../reset-password"
+            href="/reset-password"
             className="font-inter font-normal text-black underline hover:text-gray-700 transition-colors text-xs">
-            Revisar E-mail
+            Revisar e-mail
           </Link>
         </div>
       </div>
