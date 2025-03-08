@@ -66,7 +66,7 @@ export const MobileResetPasswordCodeLayout = ({
         </span>
         <span className="mx-1"></span>
         <Link
-          href="auth/reset-password"
+          href="../reset-password"
           className="font-inter font-normal text-black underline hover:text-gray-700 transition-colors text-xs">
           Revisar E-mail
         </Link>
@@ -129,7 +129,7 @@ export const DesktopResetPasswordCodeLayout = ({
           </span>
           <span className="mx-1"></span>
           <Link
-            href="auth/reset-password"
+            href="../reset-password"
             className="font-inter font-normal text-black underline hover:text-gray-700 transition-colors text-xs">
             Revisar E-mail
           </Link>

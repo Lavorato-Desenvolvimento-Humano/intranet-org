@@ -13,7 +13,6 @@ const VerificationInput: React.FC<VerificationInputProps> = ({
   length = 6,
   onChange,
   onComplete,
-  // Default values for customization props
   containerClassName = "flex gap-2",
   inputClassName = "mb-8 w-12 h-12 border border-gray-700 rounded-lg text-center text-xl font-semibold",
   inputStyle = {
