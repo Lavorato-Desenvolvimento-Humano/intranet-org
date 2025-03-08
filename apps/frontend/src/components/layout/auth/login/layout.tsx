@@ -29,7 +29,7 @@ export const MobileLoginLayout = ({
       icon={Mail}
       type="email"
       placeholder="E-mail"
-      className="mb-6 bg-transparent border-2 border-white text-white placeholder:text-white placeholder:text-lg"
+      className="mb-6 bg-transparent border-2 border-white text-white placeholder:text-white placeholder:text-lg focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent"
     />
 
     <Input
@@ -37,7 +37,7 @@ export const MobileLoginLayout = ({
       type={showPassword ? "text" : "password"}
       placeholder="Senha"
       onIconClick={() => setShowPassword(!showPassword)}
-      className="mb-6 bg-transparent border-2 border-white text-white placeholder:text-white placeholder:text-lg"
+      className="mb-6 bg-transparent border-2 border-white text-white placeholder:text-white placeholder:text-lg focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent"
     />
 
     <div className="flex items-center justify-center mt-10">
@@ -70,7 +70,7 @@ export const MobileLoginLayout = ({
 
       <div className="mt-4">
         <Link
-          href="/forgot-password"
+          href="./reset-password"
           className="font-inter font-normal text-white underline hover:text-gray-200 transition-colors text-xs">
           Esqueceu sua senha?
         </Link>
@@ -113,7 +113,7 @@ export const DesktopLoginLayout = ({
           icon={Mail}
           type="email"
           placeholder="E-mail"
-          className="mb-6 bg-transparent border-2 border-white text-white placeholder:text-white placeholder:text-lg"
+          className="mb-6 bg-transparent border-2 border-white text-white placeholder:text-white placeholder:text-lg focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent"
         />
 
         <Input
@@ -121,7 +121,7 @@ export const DesktopLoginLayout = ({
           type={showPassword ? "text" : "password"}
           placeholder="Senha"
           onIconClick={() => setShowPassword(!showPassword)}
-          className="mb-6 bg-transparent border-2 border-white text-white placeholder:text-white placeholder:text-lg"
+          className="mb-6 bg-transparent border-2 border-white text-white placeholder:text-white placeholder:text-lg focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent"
         />
 
         <div className="flex items-center justify-center gap-1 mt-8">
@@ -148,7 +148,7 @@ export const DesktopLoginLayout = ({
           </div>
 
           <Link
-            href="/forgot-password"
+            href="./reset-password"
             className="font-inter font-normal text-white underline hover:text-gray-200 transition-colors text-xs">
             Esqueceu sua senha?
           </Link>
