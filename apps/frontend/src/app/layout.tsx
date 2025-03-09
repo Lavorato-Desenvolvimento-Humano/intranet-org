@@ -1,10 +1,14 @@
 import "../styles/globals.css";
+import { Inter } from "next/font/google";
 import { ReactNode } from "react";
 import { Metadata } from "next";
 
+const inter = Inter({ subsets: ["latin"] });
+
 export const metadata: Metadata = {
   title: "Lavorato",
-  description: "Sistema de gestão empresarial",
+  description:
+    "Portal organizacional para profissionais da clínica multidisciplinar",
   icons: {
     icon: "/icon.png",
     apple: "/icon.png",
@@ -15,7 +19,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="pt-BR">
-      <body>{children}</body>
+      <body className={inter.className}>{children}</body>
     </html>
   );
 }
