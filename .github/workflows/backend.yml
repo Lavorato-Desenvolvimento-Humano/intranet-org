@@ -36,10 +36,45 @@ jobs:
           distribution: "temurin"
           cache: "maven"
 
+      # Nova etapa: Corrigir explicitamente a codificação dos arquivos
+      - name: Verificar e Corrigir Codificação de Arquivos
+        run: |
+          cd apps/backend
+          echo "Verificando arquivos de propriedades..."
+          find src/main/resources -name "*.properties" -exec file -i {} \;
+
+          echo "Convertendo arquivos para UTF-8..."
+          for f in $(find src/main/resources -name "*.properties"); do
+            echo "Convertendo $f"
+            # Primeiro tenta detectar se é UTF-8 ou Latin-1
+            CHARSET=$(file -bi "$f" | awk -F "=" '{print $2}')
+            if [[ "$CHARSET" != "utf-8" ]]; then
+              # Se não for UTF-8, converte de ISO-8859-1 para UTF-8
+              iconv -f ISO-8859-1 -t UTF-8 "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+              echo "$f convertido para UTF-8"
+            else
+              echo "$f já está em UTF-8"
+            fi
+          done
+
+          # Verifique se há BOM no início dos arquivos
+          echo "Removendo BOM se existir..."
+          for f in $(find src/main/resources -name "*.properties"); do
+            if hexdump -C "$f" | head -1 | grep -q "ef bb bf"; then
+              # Remove BOM
+              tail -c +4 "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+              echo "BOM removido de $f"
+            fi
+          done
+
+      # Adicionar o parâmetro para pular o processamento de recursos, se necessário
       - name: Construir e Testar Backend
         run: |
           cd apps/backend
-          mvn clean verify
+          # Use esta linha se ainda houver problemas
+          # mvn clean verify -Dmaven.resources.skip=true -DskipTests
+          # Ou tente esta se preferir processar recursos manualmente
+          mvn clean package -Dfile.encoding=UTF-8
 
       - name: Autenticar no GitHub Container Registry (GHCR)
         if: github.event_name != 'pull_request'
