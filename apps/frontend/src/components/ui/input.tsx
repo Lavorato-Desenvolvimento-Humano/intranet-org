@@ -7,6 +7,7 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   error?: string;
   iconColor?: string;
   iconClassName?: string;
+  className?: string;
   onIconClick?: () => void;
 }
 

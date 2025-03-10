@@ -1,18 +1,24 @@
-// components/auth/reset-password/layouts.tsx
+// components/layout/auth/reset-password/layouts.tsx
 import Input from "@/components/ui/input";
 import Image from "next/image";
 import Logo from "../../../../../public/logo.svg";
 import { CustomButton } from "@/components/ui/custom-button";
-import { Mail } from "lucide-react";
+import { Mail, Loader2 } from "lucide-react";
 
 // Interface para os props compartilhados
 interface ResetPasswordLayoutProps {
   onSubmit: (e: React.FormEvent) => void;
+  email: string;
+  setEmail: (email: string) => void;
+  isSubmitting: boolean;
 }
 
 // Componente mobile para redefinição de senha
 export const MobileResetPasswordLayout = ({
   onSubmit,
+  email,
+  setEmail,
+  isSubmitting,
 }: ResetPasswordLayoutProps) => (
   <div className="w-full flex flex-col items-center bg-white min-h-screen p-4">
     {/* Logo no topo */}
@@ -47,15 +53,25 @@ export const MobileResetPasswordLayout = ({
           icon={Mail}
           type="email"
           placeholder="Digite seu email"
-          className="mb-8 bg-transparent border-2 border-gray-800 text-gray-800 placeholder:text-gray-800 placeholder:text-lg focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-transparent"
+          className="mb-4 bg-transparent border-2 border-gray-800 text-gray-800 placeholder:text-gray-800 placeholder:text-lg focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-transparent"
           required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
         />
 
         <CustomButton
           type="submit"
           className="w-52 py-3 bg-primary hover:bg-primary-dark text-white font-bold rounded-lg transition-colors mx-auto"
-          size="default">
-          ENVIAR CÓDIGO
+          size="default"
+          disabled={isSubmitting}>
+          {isSubmitting ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ENVIANDO...
+            </>
+          ) : (
+            "ENVIAR CÓDIGO"
+          )}
         </CustomButton>
       </form>
     </div>
@@ -65,6 +81,9 @@ export const MobileResetPasswordLayout = ({
 // Componente desktop para redefinição de senha
 export const DesktopResetPasswordLayout = ({
   onSubmit,
+  email,
+  setEmail,
+  isSubmitting,
 }: ResetPasswordLayoutProps) => (
   <div className="flex w-full h-screen relative">
     {/* Linha vertical separadora */}
@@ -102,15 +121,25 @@ export const DesktopResetPasswordLayout = ({
             icon={Mail}
             type="email"
             placeholder="Digite seu email"
-            className="mb-8 bg-transparent border-2 border-gray-800 text-gray-800 placeholder:text-gray-800 placeholder:text-lg focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-transparent"
+            className="mb-4 bg-transparent border-2 border-gray-800 text-gray-800 placeholder:text-gray-800 placeholder:text-lg focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-transparent"
             required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
           />
 
           <CustomButton
             type="submit"
             className="w-full max-w-52 mx-0 block py-3 bg-primary hover:bg-primary-dark text-white font-bold rounded-s-xl transition-colors"
-            size="default">
-            ENVIAR CÓDIGO
+            size="default"
+            disabled={isSubmitting}>
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ENVIANDO...
+              </>
+            ) : (
+              "ENVIAR CÓDIGO"
+            )}
           </CustomButton>
         </form>
       </div>

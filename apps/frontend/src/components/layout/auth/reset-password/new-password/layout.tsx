@@ -1,24 +1,32 @@
-// components/auth/reset-password/new-password/layouts.tsx
-"use client";
-
+// components/layout/auth/reset-password/new-password/layout.tsx
 import Input from "@/components/ui/input";
 import Image from "next/image";
 import Logo from "../../../../../../public/logo.svg";
 import { CustomButton } from "@/components/ui/custom-button";
-import { Mail, LockKeyholeIcon, LockKeyholeOpenIcon } from "lucide-react";
+import { LockKeyholeIcon, LockKeyholeOpenIcon, Loader2 } from "lucide-react";
 
 // Interface para os props compartilhados
 interface NewPasswordLayoutProps {
+  onSubmit: (e: React.FormEvent) => void;
   showPassword: boolean;
   setShowPassword: (show: boolean) => void;
-  onSubmit: (e: React.FormEvent) => void;
+  newPassword: string;
+  setNewPassword: (password: string) => void;
+  confirmPassword: string;
+  setConfirmPassword: (password: string) => void;
+  isSubmitting: boolean;
 }
 
-// Componente mobile para redefinição de senha
+// Componente mobile para nova senha
 export const MobileNewPasswordLayout = ({
+  onSubmit,
   showPassword,
   setShowPassword,
-  onSubmit,
+  newPassword,
+  setNewPassword,
+  confirmPassword,
+  setConfirmPassword,
+  isSubmitting,
 }: NewPasswordLayoutProps) => (
   <div className="w-full flex flex-col items-center bg-white min-h-screen p-4">
     {/* Logo no topo */}
@@ -39,52 +47,68 @@ export const MobileNewPasswordLayout = ({
     {/* Conteúdo do formulário */}
     <div className="w-full max-w-md flex flex-col items-center mt-28">
       <h1 className="font-inter font-bold text-3xl text-gray-800 mb-6 text-center">
-        CRIAR NOVA SENHA
+        NOVA SENHA
       </h1>
 
       <p className="text-gray-600 text-base mb-6 text-center">
-        Insira a sua nova senha
+        Crie uma nova senha para sua conta.
+        <br />
+        Sua senha deve ter pelo menos 8 caracteres.
       </p>
 
       <form onSubmit={onSubmit} className="w-full flex justify-center flex-col">
         <Input
           icon={showPassword ? LockKeyholeOpenIcon : LockKeyholeIcon}
-          iconColor="text-gray-800"
-          iconClassName="-top-0"
           type={showPassword ? "text" : "password"}
-          placeholder="Digite sua nova senha"
+          placeholder="Nova senha"
           onIconClick={() => setShowPassword(!showPassword)}
           className="bg-transparent border-2 border-gray-800 text-gray-800 placeholder:text-gray-800 placeholder:text-lg focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-transparent"
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
           required
+          minLength={8}
         />
 
         <Input
           icon={showPassword ? LockKeyholeOpenIcon : LockKeyholeIcon}
-          iconColor="text-gray-800"
-          iconClassName="-top-2.5"
           type={showPassword ? "text" : "password"}
-          placeholder="Confirme sua nova senha"
+          placeholder="Confirmar nova senha"
           onIconClick={() => setShowPassword(!showPassword)}
           className="mb-4 bg-transparent border-2 border-gray-800 text-gray-800 placeholder:text-gray-800 placeholder:text-lg focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-transparent"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
           required
         />
 
         <CustomButton
           type="submit"
           className="w-52 py-3 bg-primary hover:bg-primary-dark text-white font-bold rounded-lg transition-colors mx-auto"
-          size="default">
-          REDEFINIR SENHA
+          size="default"
+          disabled={isSubmitting}>
+          {isSubmitting ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              REDEFININDO...
+            </>
+          ) : (
+            "REDEFINIR SENHA"
+          )}
         </CustomButton>
       </form>
     </div>
   </div>
 );
 
-// Componente desktop para redefinição de senha
+// Componente desktop para nova senha
 export const DesktopNewPasswordLayout = ({
+  onSubmit,
   showPassword,
   setShowPassword,
-  onSubmit,
+  newPassword,
+  setNewPassword,
+  confirmPassword,
+  setConfirmPassword,
+  isSubmitting,
 }: NewPasswordLayoutProps) => (
   <div className="flex w-full h-screen relative">
     {/* Linha vertical separadora */}
@@ -104,43 +128,56 @@ export const DesktopNewPasswordLayout = ({
       </div>
     </div>
 
-    {/* Lado direito - formulário de redefinição de senha */}
+    {/* Lado direito - formulário de nova senha */}
     <div className="w-1/2 bg-white flex flex-col items-center justify-center p-8">
       <div className="w-full max-w-md">
         <h1 className="font-inter font-bold text-4xl text-gray-800 mb-6 text-left">
-          CRIAR NOVA SENHA
+          NOVA SENHA
         </h1>
 
-        <p className="text-gray-600 text-base mb-8">Insira a sua nova senha</p>
+        <p className="text-gray-600 text-base mb-8">
+          Crie uma nova senha para sua conta.
+          <br />
+          Sua senha deve ter pelo menos 8 caracteres.
+        </p>
 
         <form onSubmit={onSubmit}>
           <Input
             icon={showPassword ? LockKeyholeOpenIcon : LockKeyholeIcon}
-            iconColor="text-gray-800"
-            iconClassName="top-0"
             type={showPassword ? "text" : "password"}
-            placeholder="Digite sua nova senha"
+            placeholder="Nova senha"
             onIconClick={() => setShowPassword(!showPassword)}
             className="bg-transparent border-2 border-gray-800 text-gray-800 placeholder:text-gray-800 placeholder:text-lg focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-transparent"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
             required
+            minLength={8}
           />
 
           <Input
             icon={showPassword ? LockKeyholeOpenIcon : LockKeyholeIcon}
-            iconColor="text-gray-800"
-            iconClassName="-top-2.5"
             type={showPassword ? "text" : "password"}
-            placeholder="Confirme sua nova senha"
+            placeholder="Confirmar nova senha"
             onIconClick={() => setShowPassword(!showPassword)}
             className="mb-4 bg-transparent border-2 border-gray-800 text-gray-800 placeholder:text-gray-800 placeholder:text-lg focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-transparent"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
             required
           />
 
           <CustomButton
             type="submit"
             className="w-full max-w-52 mx-0 block py-3 bg-primary hover:bg-primary-dark text-white font-bold rounded-s-xl transition-colors"
-            size="default">
-            REDEFINIR SENHA
+            size="default"
+            disabled={isSubmitting}>
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                REDEFININDO...
+              </>
+            ) : (
+              "REDEFINIR SENHA"
+            )}
           </CustomButton>
         </form>
       </div>

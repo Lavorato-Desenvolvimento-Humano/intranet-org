@@ -11,63 +11,127 @@ import {
   LockKeyholeOpenIcon,
   Github,
   User,
+  Loader2,
 } from "lucide-react";
 
 // Props compartilhadas para os componentes de layout
 interface RegisterLayoutProps {
   showPassword: boolean;
   setShowPassword: (show: boolean) => void;
+  fullName: string;
+  setFullName: (fullName: string) => void;
+  email: string;
+  setEmail: (email: string) => void;
+  password: string;
+  setPassword: (password: string) => void;
+  confirmPassword: string;
+  setConfirmPassword: (confirmPassword: string) => void;
+  handleSubmit: (e: React.FormEvent) => void;
+  isSubmitting: boolean;
+  onInputChange?: () => void; // Agora é opcional
 }
 
 // Componente de registro para Mobile
 export const MobileRegisterLayout = ({
   showPassword,
   setShowPassword,
+  fullName,
+  setFullName,
+  email,
+  setEmail,
+  password,
+  setPassword,
+  confirmPassword,
+  setConfirmPassword,
+  handleSubmit,
+  isSubmitting,
+  onInputChange = () => {}, // Valor padrão para quando não for fornecido
 }: RegisterLayoutProps) => (
   <div className="w-full max-w-md mt-8">
     <h1 className="font-inter font-bold text-3xl text-white mb-8">
       REGISTRE-SE
     </h1>
 
-    <Input
-      icon={User}
-      type="name"
-      placeholder="Nome completo"
-      className="mb-6 bg-transparent border-2 border-white text-white placeholder:text-white placeholder:text-lg"
-    />
-
-    <Input
-      icon={Mail}
-      type="email"
-      placeholder="E-mail"
-      className="mb-6 bg-transparent border-2 border-white text-white placeholder:text-white placeholder:text-lg"
-    />
-
-    <Input
-      icon={showPassword ? LockKeyholeOpenIcon : LockKeyholeIcon}
-      type={showPassword ? "text" : "password"}
-      placeholder="Senha"
-      onIconClick={() => setShowPassword(!showPassword)}
-      className="mb-6 bg-transparent border-2 border-white text-white placeholder:text-white placeholder:text-lg"
-    />
-
-    <Input
-      icon={showPassword ? LockKeyholeOpenIcon : LockKeyholeIcon}
-      type={showPassword ? "text" : "password"}
-      placeholder="Confirme sua senha"
-      onIconClick={() => setShowPassword(!showPassword)}
-      className="mb-6 bg-transparent border-2 border-white text-white placeholder:text-white placeholder:text-lg"
-    />
-
-    <div className="flex items-center justify-center mt-10">
-      <LoginButton>REGISTRE-SE</LoginButton>
-      <LoginDivider text="ou" />
-      <LoginButton
-        variant="icon"
-        icon={Github}
-        aria-label="Entrar com GitHub"
+    <form onSubmit={handleSubmit}>
+      <Input
+        icon={User}
+        type="text"
+        placeholder="Nome completo"
+        className="mb-6 bg-transparent border-2 border-white text-white placeholder:text-white placeholder:text-lg"
+        value={fullName}
+        onChange={(e) => {
+          setFullName(e.target.value);
+          onInputChange?.();
+        }}
+        required
       />
-    </div>
+
+      <Input
+        icon={Mail}
+        type="email"
+        placeholder="E-mail"
+        className="mb-6 bg-transparent border-2 border-white text-white placeholder:text-white placeholder:text-lg"
+        value={email}
+        onChange={(e) => {
+          setEmail(e.target.value);
+          onInputChange?.();
+        }}
+        required
+      />
+
+      <Input
+        icon={showPassword ? LockKeyholeOpenIcon : LockKeyholeIcon}
+        type={showPassword ? "text" : "password"}
+        placeholder="Senha"
+        onIconClick={() => setShowPassword(!showPassword)}
+        className="mb-6 bg-transparent border-2 border-white text-white placeholder:text-white placeholder:text-lg"
+        value={password}
+        onChange={(e) => {
+          setPassword(e.target.value);
+          onInputChange?.();
+        }}
+        required
+      />
+
+      <Input
+        icon={showPassword ? LockKeyholeOpenIcon : LockKeyholeIcon}
+        type={showPassword ? "text" : "password"}
+        placeholder="Confirme sua senha"
+        onIconClick={() => setShowPassword(!showPassword)}
+        className="mb-6 bg-transparent border-2 border-white text-white placeholder:text-white placeholder:text-lg"
+        value={confirmPassword}
+        onChange={(e) => {
+          setConfirmPassword(e.target.value);
+          onInputChange?.();
+        }}
+        required
+      />
+
+      <div className="flex items-center justify-center mt-10">
+        <LoginButton type="submit" disabled={isSubmitting}>
+          {isSubmitting ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              REGISTRANDO...
+            </>
+          ) : (
+            "REGISTRE-SE"
+          )}
+        </LoginButton>
+        <LoginDivider text="ou" />
+        <LoginButton
+          variant="icon"
+          icon={Github}
+          aria-label="Entrar com GitHub"
+          type="button"
+          onClick={() => {
+            // Redirecionar para o endpoint de autenticação do GitHub
+            window.location.href = `${process.env.NEXT_PUBLIC_API_URL || ""}/auth/github-callback`;
+          }}
+          disabled={isSubmitting}
+        />
+      </div>
+    </form>
 
     <div className="flex flex-col items-center justify-center mt-6">
       <div
@@ -90,10 +154,21 @@ export const MobileRegisterLayout = ({
   </div>
 );
 
-// Componente de registro para Desktop (apenas h1 alinhado à esquerda)
+// Componente de registro para Desktop
 export const DesktopRegisterLayout = ({
   showPassword,
   setShowPassword,
+  fullName,
+  setFullName,
+  email,
+  setEmail,
+  password,
+  setPassword,
+  confirmPassword,
+  setConfirmPassword,
+  handleSubmit,
+  isSubmitting,
+  onInputChange = () => {}, // Valor padrão para quando não for fornecido
 }: RegisterLayoutProps) => (
   <div className="flex w-full h-screen">
     {/* Lado esquerdo - logo em fundo branco */}
@@ -120,45 +195,86 @@ export const DesktopRegisterLayout = ({
           REGISTRE-SE
         </h1>
 
-        <Input
-          icon={User}
-          type="name"
-          placeholder="Nome completo"
-          className="mb-6 bg-transparent border-2 border-white text-white placeholder:text-white placeholder:text-lg focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent"
-        />
-
-        <Input
-          icon={Mail}
-          type="email"
-          placeholder="E-mail"
-          className="mb-6 bg-transparent border-2 border-white text-white placeholder:text-white placeholder:text-lg focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent"
-        />
-
-        <Input
-          icon={showPassword ? LockKeyholeOpenIcon : LockKeyholeIcon}
-          type={showPassword ? "text" : "password"}
-          placeholder="Senha"
-          onIconClick={() => setShowPassword(!showPassword)}
-          className="mb-6 bg-transparent border-2 border-white text-white placeholder:text-white placeholder:text-lg focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent"
-        />
-
-        <Input
-          icon={showPassword ? LockKeyholeOpenIcon : LockKeyholeIcon}
-          type={showPassword ? "text" : "password"}
-          placeholder="Confirme sua senha"
-          onIconClick={() => setShowPassword(!showPassword)}
-          className="mb-6 bg-transparent border-2 border-white text-white placeholder:text-white placeholder:text-lg focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent"
-        />
-
-        <div className="flex items-center justify-center gap-1 mt-8">
-          <LoginButton size="default">REGISTRAR</LoginButton>
-          <LoginDivider text="ou" />
-          <LoginButton
-            variant="icon"
-            icon={Github}
-            aria-label="Entrar com GitHub"
+        <form onSubmit={handleSubmit}>
+          <Input
+            icon={User}
+            type="text"
+            placeholder="Nome completo"
+            className="mb-6 bg-transparent border-2 border-white text-white placeholder:text-white placeholder:text-lg focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent"
+            value={fullName}
+            onChange={(e) => {
+              setFullName(e.target.value);
+              onInputChange?.();
+            }}
+            required
           />
-        </div>
+
+          <Input
+            icon={Mail}
+            type="email"
+            placeholder="E-mail"
+            className="mb-6 bg-transparent border-2 border-white text-white placeholder:text-white placeholder:text-lg focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              onInputChange?.();
+            }}
+            required
+          />
+
+          <Input
+            icon={showPassword ? LockKeyholeOpenIcon : LockKeyholeIcon}
+            type={showPassword ? "text" : "password"}
+            placeholder="Senha"
+            onIconClick={() => setShowPassword(!showPassword)}
+            className="mb-6 bg-transparent border-2 border-white text-white placeholder:text-white placeholder:text-lg focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent"
+            value={password}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              onInputChange?.();
+            }}
+            required
+          />
+
+          <Input
+            icon={showPassword ? LockKeyholeOpenIcon : LockKeyholeIcon}
+            type={showPassword ? "text" : "password"}
+            placeholder="Confirme sua senha"
+            onIconClick={() => setShowPassword(!showPassword)}
+            className="mb-6 bg-transparent border-2 border-white text-white placeholder:text-white placeholder:text-lg focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent"
+            value={confirmPassword}
+            onChange={(e) => {
+              setConfirmPassword(e.target.value);
+              onInputChange?.();
+            }}
+            required
+          />
+
+          <div className="flex items-center justify-center gap-1 mt-8">
+            <LoginButton size="default" type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  REGISTRANDO...
+                </>
+              ) : (
+                "REGISTRAR"
+              )}
+            </LoginButton>
+            <LoginDivider text="ou" />
+            <LoginButton
+              variant="icon"
+              icon={Github}
+              aria-label="Entrar com GitHub"
+              type="button"
+              onClick={() => {
+                // Redirecionar para o endpoint de autenticação do GitHub
+                window.location.href = `${process.env.NEXT_PUBLIC_API_URL || ""}/auth/github-callback`;
+              }}
+              disabled={isSubmitting}
+            />
+          </div>
+        </form>
 
         <div className="mt-8 text-center">
           <div className="mb-3">
