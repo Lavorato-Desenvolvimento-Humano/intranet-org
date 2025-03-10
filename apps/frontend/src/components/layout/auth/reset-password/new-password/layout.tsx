@@ -117,7 +117,7 @@ export const DesktopNewPasswordLayout = ({
           <Input
             icon={showPassword ? LockKeyholeOpenIcon : LockKeyholeIcon}
             iconColor="text-gray-800"
-            iconClassName="-top-0"
+            iconClassName="-top-2.5"
             type={showPassword ? "text" : "password"}
             placeholder="Digite sua nova senha"
             onIconClick={() => setShowPassword(!showPassword)}
