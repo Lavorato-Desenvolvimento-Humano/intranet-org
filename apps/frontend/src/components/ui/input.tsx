@@ -5,6 +5,8 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   icon?: LucideIcon;
   label?: string;
   error?: string;
+  iconColor?: string;
+  iconClassName?: string;
   onIconClick?: () => void;
 }
 
@@ -13,6 +15,8 @@ export default function Input({
   label,
   error,
   className = "",
+  iconColor,
+  iconClassName,
   onIconClick,
   ...props
 }: InputProps) {
@@ -34,9 +38,10 @@ export default function Input({
         {Icon && (
           <div
             className={`absolute right-3 -top-2.5 flex items-center justify-center h-full pointer-events-none
-                      ${onIconClick ? "cursor-pointer hover:text-primary transition-colors pointer-events-auto" : ""}`}
+              ${onIconClick ? "cursor-pointer hover:text-primary transition-colors pointer-events-auto" : ""}
+              ${iconClassName || ""}`}
             onClick={onIconClick}>
-            <Icon size={20} className="text-white" />
+            <Icon size={20} className={iconColor || "text-white"} />
           </div>
         )}
       </div>
