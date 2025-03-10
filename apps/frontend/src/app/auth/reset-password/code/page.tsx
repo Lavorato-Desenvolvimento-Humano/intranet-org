@@ -1,4 +1,4 @@
-// app/auth/reset-password/page.tsx
+// app/auth/reset-password/code/page.tsx
 "use client";
 
 import { useViewport } from "@/hooks/useViewport";

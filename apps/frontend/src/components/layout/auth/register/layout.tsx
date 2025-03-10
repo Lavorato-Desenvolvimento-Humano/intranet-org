@@ -1,4 +1,4 @@
-// components/auth/login/layouts.tsx
+// components/auth/register/layouts.tsx
 import Input from "@/components/ui/input";
 import LoginButton from "@/components/ui/login-button";
 import { LoginDivider } from "@/components/ui/login-button";

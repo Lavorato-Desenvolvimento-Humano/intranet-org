@@ -53,7 +53,7 @@ export const MobileResetPasswordLayout = ({
 
         <CustomButton
           type="submit"
-          className="w-44 py-3 bg-primary hover:bg-primary-dark text-white font-bold rounded-lg transition-colors mx-auto"
+          className="w-52 py-3 bg-primary hover:bg-primary-dark text-white font-bold rounded-lg transition-colors mx-auto"
           size="default">
           ENVIAR CÓDIGO
         </CustomButton>
@@ -108,7 +108,7 @@ export const DesktopResetPasswordLayout = ({
 
           <CustomButton
             type="submit"
-            className="w-full max-w-44 mx-0 block py-3 bg-primary hover:bg-primary-dark text-white font-bold rounded-s-xl transition-colors"
+            className="w-full max-w-52 mx-0 block py-3 bg-primary hover:bg-primary-dark text-white font-bold rounded-s-xl transition-colors"
             size="default">
             ENVIAR CÓDIGO
           </CustomButton>
