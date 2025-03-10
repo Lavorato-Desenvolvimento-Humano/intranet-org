@@ -74,7 +74,7 @@ jobs:
           # Use esta linha se ainda houver problemas
           # mvn clean verify -Dmaven.resources.skip=true -DskipTests
           # Ou tente esta se preferir processar recursos manualmente
-          mvn clean package -Dfile.encoding=UTF-8
+          mvn clean package -Dfile.encoding=UTF-8 -DskipTests
 
       - name: Autenticar no GitHub Container Registry (GHCR)
         if: github.event_name != 'pull_request'
