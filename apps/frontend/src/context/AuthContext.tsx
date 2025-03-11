@@ -1,4 +1,4 @@
-// contexts/AuthContext.tsx
+// contexts/AuthContext.tsx - VERSÃO CORRIGIDA
 "use client";
 
 import React, {
@@ -8,21 +8,48 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
-import {
-  User,
-  LoginCredentials,
-  RegisterData,
-  login as loginService,
-  register as registerService,
-  requestPasswordReset as requestResetService,
-  verifyResetCode as verifyCodeService,
-  resetPassword as resetPasswordService,
-  logout as logoutService,
-  getCurrentUser,
-  NewPasswordRequest,
-} from "../services/auth";
 import toastUtil from "@/utils/toast";
+import api from "@/services/api";
 
+// Interfaces
+export interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+export interface RegisterData {
+  fullName: string;
+  email: string;
+  password: string;
+  confirmPassword?: string;
+}
+
+export interface User {
+  id: string;
+  fullName: string;
+  email: string;
+  profileImage?: string;
+  roles: string[];
+  token?: string;
+}
+
+export interface AuthResponse {
+  token: string;
+  type: string;
+  id: string;
+  fullName: string;
+  email: string;
+  profileImage: string | null;
+  roles: string[];
+}
+
+export interface NewPasswordRequest {
+  email: string;
+  verificationCode: string;
+  newPassword: string;
+}
+
+// Interface para o contexto de autenticação
 interface AuthContextType {
   user: User | null;
   loading: boolean;
@@ -34,8 +61,10 @@ interface AuthContextType {
   resetPassword: (data: NewPasswordRequest) => Promise<void>;
 }
 
+// Criação do contexto
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Props para o provedor de autenticação
 interface AuthProviderProps {
   children: ReactNode;
 }
@@ -44,9 +73,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Carregar usuário do localStorage ao iniciar
   useEffect(() => {
-    // Verifica se há um usuário no localStorage
-    const checkUser = async () => {
+    const checkUser = () => {
       const currentUser = getCurrentUser();
       if (currentUser) {
         setUser(currentUser);
@@ -57,23 +86,78 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkUser();
   }, []);
 
+  // Função de login aprimorada que tenta múltiplos endpoints
   const login = async (credentials: LoginCredentials) => {
     const loadingToastId = toastUtil.loading("Fazendo login...");
 
     try {
       setLoading(true);
-      const user = await loginService(credentials);
-      setUser(user);
-      toastUtil.dismiss(loadingToastId);
-      toastUtil.success("Login realizado com sucesso!");
-      window.location.href = "/";
+
+      // Try-catch aninhados para tentar endpoints diferentes
+      try {
+        // 1. Tenta o endpoint padrão
+        console.log("Tentando login com endpoint padrão");
+        const response = await api.post<AuthResponse>(
+          "/auth/login",
+          credentials
+        );
+        const userData = processAuthResponse(response.data);
+        setUser(userData);
+        toastUtil.dismiss(loadingToastId);
+        toastUtil.success("Login realizado com sucesso!");
+        window.location.href = "/";
+        return;
+      } catch (error) {
+        console.log("Endpoint padrão falhou, tentando endpoint simples");
+
+        try {
+          // 2. Tenta o endpoint simples
+          const response = await api.post<AuthResponse>(
+            "/auth/simple/login",
+            credentials
+          );
+          const userData = processAuthResponse(response.data);
+          setUser(userData);
+          toastUtil.dismiss(loadingToastId);
+          toastUtil.success(
+            "Login realizado com sucesso (via endpoint simples)!"
+          );
+          window.location.href = "/";
+          return;
+        } catch (error) {
+          console.log("Endpoint simples falhou, tentando endpoint direto");
+
+          try {
+            // 3. Tenta o endpoint direto
+            const response = await api.post<AuthResponse>(
+              "/auth/direta/login",
+              credentials
+            );
+            const userData = processAuthResponse(response.data);
+            setUser(userData);
+            toastUtil.dismiss(loadingToastId);
+            toastUtil.success(
+              "Login realizado com sucesso (via endpoint direto)!"
+            );
+            window.location.href = "/";
+            return;
+          } catch (error: any) {
+            // Todos os endpoints falharam
+            console.error("Todos os endpoints de autenticação falharam");
+            throw error;
+          }
+        }
+      }
     } catch (err: any) {
       toastUtil.dismiss(loadingToastId);
 
       if (err.response && err.response.data) {
-        toastUtil.error(
-          err.response.data.message || "Email ou senha incorretos"
-        );
+        const errorMessage =
+          typeof err.response.data.message === "string"
+            ? err.response.data.message
+            : "Email ou senha incorretos";
+
+        toastUtil.error(errorMessage);
       } else {
         toastUtil.error("Erro ao fazer login. Tente novamente.");
       }
@@ -82,6 +166,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  // Função auxiliar para processar a resposta de autenticação
+  function processAuthResponse(userData: AuthResponse): User {
+    // Salva o token e informações do usuário no localStorage
+    localStorage.setItem("token", userData.token);
+
+    const user: User = {
+      id: userData.id,
+      fullName: userData.fullName,
+      email: userData.email,
+      profileImage: userData.profileImage || undefined,
+      roles: userData.roles,
+      token: userData.token,
+    };
+
+    localStorage.setItem("user", JSON.stringify(user));
+    return user;
+  }
+
+  // Função para registrar um novo usuário
   const register = async (data: RegisterData) => {
     // Verificar se as senhas coincidem
     if (data.password !== data.confirmPassword) {
@@ -93,8 +196,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     try {
       setLoading(true);
-      const user = await registerService(data);
-      setUser(user);
+      // Remover confirmPassword antes de enviar para o backend
+      const { confirmPassword, ...registerData } = data;
+
+      const response = await api.post<AuthResponse>(
+        "/auth/register",
+        registerData
+      );
+      const userData = processAuthResponse(response.data);
+      setUser(userData);
+
       toastUtil.dismiss(loadingToastId);
       toastUtil.success("Conta criada com sucesso!");
       window.location.href = "/";
@@ -123,19 +234,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  // Função para logout
   const logout = () => {
-    logoutService();
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
     setUser(null);
     toastUtil.info("Você saiu da sua conta");
     window.location.href = "/auth/login";
   };
 
+  // Função para solicitar reset de senha
   const requestPasswordReset = async (email: string) => {
     const loadingToastId = toastUtil.loading("Enviando solicitação...");
 
     try {
       setLoading(true);
-      await requestResetService(email);
+      await api.post("/auth/reset-password/request", null, {
+        params: { email },
+      });
       toastUtil.dismiss(loadingToastId);
       toastUtil.success("Código de redefinição enviado para seu email");
       window.location.href = `/auth/reset-password/code?email=${encodeURIComponent(email)}`;
@@ -149,12 +265,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  // Função para verificar código de recuperação
   const verifyResetCode = async (email: string, code: string) => {
     const loadingToastId = toastUtil.loading("Verificando código...");
 
     try {
       setLoading(true);
-      await verifyCodeService(email, code);
+      await api.post("/auth/reset-password/verify", null, {
+        params: { email, code },
+      });
       toastUtil.dismiss(loadingToastId);
       toastUtil.success("Código verificado com sucesso");
       window.location.href = `/auth/reset-password/new-password?email=${encodeURIComponent(email)}&code=${encodeURIComponent(code)}`;
@@ -168,12 +287,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  // Função para redefinir a senha
   const resetPassword = async (data: NewPasswordRequest) => {
     const loadingToastId = toastUtil.loading("Redefinindo sua senha...");
 
     try {
       setLoading(true);
-      await resetPasswordService(data);
+      await api.post("/auth/reset-password/complete", data);
       toastUtil.dismiss(loadingToastId);
       toastUtil.success("Senha redefinida com sucesso!");
       window.location.href = "/auth/login?reset=success";
@@ -185,6 +305,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  // Função para obter usuário atual do localStorage
+  function getCurrentUser(): User | null {
+    if (typeof window === "undefined") {
+      return null; // Estamos no servidor
+    }
+
+    const userStr = localStorage.getItem("user");
+    return userStr ? JSON.parse(userStr) : null;
+  }
+
+  // Valores expostos pelo contexto
   const value = {
     user,
     loading,
@@ -199,6 +330,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
+// Hook para usar o contexto de autenticação
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {

@@ -4,7 +4,6 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,15 +33,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         try {
-            String jwt = parseJwt(request);
+            // Obtenha o caminho servlet completo (incluindo context-path)
+            String path = request.getServletPath();
+            logger.debug("Processando requisição para o caminho: {}", path);
 
-            // Skip authentication for auth endpoints
-            String path = request.getRequestURI();
-            if (path.contains("/auth/") || path.contains("/public/")) {
-                logger.debug("Pulando a autenticação para endpoint público: {}", path);
+            // Verificar se é um endpoint público
+            if (path.startsWith("/auth/") || path.startsWith("/public/")) {
+                logger.debug("Pulando autenticação para endpoint público: {}", path);
                 filterChain.doFilter(request, response);
                 return;
             }
+
+            String jwt = parseJwt(request);
 
             if (jwt != null && jwtUtils.validateJwtToken(jwt)) {
                 String username = jwtUtils.getUserNameFromJwtToken(jwt);

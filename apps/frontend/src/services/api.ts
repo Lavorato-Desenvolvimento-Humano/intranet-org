@@ -1,9 +1,18 @@
-// services/api.ts
+//service/api.ts
 import axios from "axios";
 
-// Cria uma instância do axios com configurações padrão
+// Detecção automática do ambiente
+const isDevelopment =
+  typeof window !== "undefined" && window.location.hostname === "localhost";
+const baseURL = isDevelopment
+  ? "http://localhost:8443/api" // URL local
+  : "https://dev.lavorato.app.br/api"; // URL de produção
+
+console.log(`Usando API baseURL: ${baseURL}`);
+
+//Cria uma instância do axios com configurações padrão
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "https://dev.lavorato.app.br/api",
+  baseURL: baseURL,
   headers: {
     "Content-Type": "application/json",
   },
@@ -11,15 +20,12 @@ const api = axios.create({
   timeout: 10000,
 });
 
-// Log para debug - remova em produção
-console.log(
-  "API URL:",
-  process.env.NEXT_PUBLIC_API_URL || "https://dev.lavorato.app.br/api"
-);
-
 // Interceptor para incluir o token JWT em todas as requisições
 api.interceptors.request.use(
   (config) => {
+    // Log para debug
+    console.log(`Enviando requisição para: ${config.url}`, config);
+
     const token = localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -34,17 +40,18 @@ api.interceptors.request.use(
 
 // Interceptor para tratar erros de resposta
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log(`Resposta recebida de: ${response.config.url}`, response.data);
+    return response;
+  },
   (error) => {
     console.error("Erro na resposta da API:", error);
 
     // Melhorar log para depuração
     if (error.response) {
-      // A requisição foi feita e o servidor respondeu com um status
-      // fora do intervalo 2xx
+      console.error("URL da requisição:", error.config.url);
       console.error("Dados da resposta:", error.response.data);
       console.error("Status:", error.response.status);
-      console.error("Headers:", error.response.headers);
 
       if (error.response.status === 401) {
         // Token expirado ou inválido

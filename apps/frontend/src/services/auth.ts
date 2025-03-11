@@ -1,4 +1,5 @@
 // services/auth.ts
+// services/auth-fixed.ts
 import api from "./api";
 
 export interface LoginCredentials {
@@ -11,21 +12,6 @@ export interface RegisterData {
   email: string;
   password: string;
   confirmPassword?: string; // Apenas no frontend, não enviado ao backend
-}
-
-export interface ResetPasswordRequest {
-  email: string;
-}
-
-export interface VerifyCodeRequest {
-  email: string;
-  code: string;
-}
-
-export interface NewPasswordRequest {
-  email: string;
-  verificationCode: string;
-  newPassword: string;
 }
 
 export interface User {
@@ -47,37 +33,38 @@ export interface AuthResponse {
   roles: string[];
 }
 
-// Função para fazer login
+// Função para fazer login - implementação corrigida
 export const login = async (credentials: LoginCredentials): Promise<User> => {
   try {
-    console.log(
-      "Tentando fazer login com:",
-      JSON.stringify(credentials, null, 2)
-    );
-    const endpoint = "/auth/login";
-    console.log("Endpoint de login:", endpoint);
+    console.log("Tentando login com endpoint padrão:", credentials.email);
 
-    const response = await api.post<AuthResponse>(endpoint, credentials);
-    console.log("Resposta de login:", response.data);
+    // Tenta primeiro o endpoint padrão
+    try {
+      const response = await api.post<AuthResponse>("/auth/login", credentials);
+      return processAuthResponse(response.data);
+    } catch (error: any) {
+      console.log("Falha no endpoint padrão, tentando endpoint simples");
 
-    const userData = response.data;
+      // Se falhar, tenta o endpoint simples
+      try {
+        const response = await api.post<AuthResponse>(
+          "/auth/simple/login",
+          credentials
+        );
+        return processAuthResponse(response.data);
+      } catch (simpleError: any) {
+        console.log("Falha no endpoint simples, tentando endpoint direto");
 
-    // Salva o token e informações do usuário no localStorage
-    localStorage.setItem("token", userData.token);
-
-    const user: User = {
-      id: userData.id,
-      fullName: userData.fullName,
-      email: userData.email,
-      profileImage: userData.profileImage || undefined,
-      roles: userData.roles,
-      token: userData.token,
-    };
-
-    localStorage.setItem("user", JSON.stringify(user));
-    return user;
+        // Se falhar novamente, tenta o endpoint direto
+        const response = await api.post<AuthResponse>(
+          "/auth/direta/login",
+          credentials
+        );
+        return processAuthResponse(response.data);
+      }
+    }
   } catch (error: any) {
-    console.error("Erro ao fazer login:", error);
+    console.error("Todos os endpoints de login falharam:", error);
     if (error.response) {
       console.error("Detalhes do erro:", {
         status: error.response.status,
@@ -88,52 +75,44 @@ export const login = async (credentials: LoginCredentials): Promise<User> => {
   }
 };
 
+// Função auxiliar para processar a resposta de autenticação
+function processAuthResponse(userData: AuthResponse): User {
+  console.log("Processando resposta de autenticação:", userData);
+
+  // Salva o token e informações do usuário no localStorage
+  localStorage.setItem("token", userData.token);
+
+  const user: User = {
+    id: userData.id,
+    fullName: userData.fullName,
+    email: userData.email,
+    profileImage: userData.profileImage || undefined,
+    roles: userData.roles,
+    token: userData.token,
+  };
+
+  localStorage.setItem("user", JSON.stringify(user));
+  return user;
+}
+
 // Função para registrar um novo usuário
 export const register = async (data: RegisterData): Promise<User> => {
   // Remover confirmPassword, pois o backend não espera esse campo
   const { confirmPassword, ...registerData } = data;
 
   try {
-    console.log(
-      "Tentando registrar usuário com:",
-      JSON.stringify(registerData, null, 2)
+    const response = await api.post<AuthResponse>(
+      "/auth/register",
+      registerData
     );
-    // Verificar qual é o endpoint completo
-    const endpoint = "/auth/register";
-    console.log("Endpoint de registro:", endpoint);
-    console.log("URL completa:", api.defaults.baseURL + endpoint);
-
-    const response = await api.post<AuthResponse>(endpoint, registerData);
-    console.log("Resposta de registro:", response.data);
-
-    const userData = response.data;
-
-    // Salva o token e informações do usuário no localStorage
-    localStorage.setItem("token", userData.token);
-
-    const user: User = {
-      id: userData.id,
-      fullName: userData.fullName,
-      email: userData.email,
-      profileImage: userData.profileImage || undefined,
-      roles: userData.roles,
-      token: userData.token,
-    };
-
-    localStorage.setItem("user", JSON.stringify(user));
-    return user;
+    return processAuthResponse(response.data);
   } catch (error: any) {
     console.error("Erro ao registrar usuário:", error);
-    // Adicionar mais informações detalhadas do erro
     if (error.response) {
       console.error("Detalhes do erro:", {
         status: error.response.status,
         data: error.response.data,
       });
-    } else if (error.request) {
-      console.error("Nenhuma resposta recebida:", error.request);
-    } else {
-      console.error("Erro de configuração:", error.message);
     }
     throw error;
   }
@@ -178,12 +157,19 @@ export const resetPassword = async (
   }
 };
 
+// Interface para a requisição de nova senha
+export interface NewPasswordRequest {
+  email: string;
+  verificationCode: string;
+  newPassword: string;
+}
+
 // Função para fazer logout
 export const logout = (): void => {
   localStorage.removeItem("token");
   localStorage.removeItem("user");
 
-  // Redirecionar para a página de login (opcional)
+  // Redirecionar para a página de login
   if (typeof window !== "undefined") {
     window.location.href = "/auth/login";
   }
@@ -203,21 +189,5 @@ export const getCurrentUser = (): User | null => {
 export const githubLogin = (code: string): Promise<User> => {
   return api
     .get<AuthResponse>(`/auth/github/callback?code=${code}`)
-    .then((response) => {
-      const userData = response.data;
-
-      localStorage.setItem("token", userData.token);
-
-      const user: User = {
-        id: userData.id,
-        fullName: userData.fullName,
-        email: userData.email,
-        profileImage: userData.profileImage || undefined,
-        roles: userData.roles,
-        token: userData.token,
-      };
-
-      localStorage.setItem("user", JSON.stringify(user));
-      return user;
-    });
+    .then((response) => processAuthResponse(response.data));
 };
