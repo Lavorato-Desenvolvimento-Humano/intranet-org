@@ -7,11 +7,28 @@ import {
   MobileRegisterLayout,
   DesktopRegisterLayout,
 } from "@/components/layout/auth/register/layout";
+import { useAuth } from "@/context/AuthContext";
 
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const viewport = useViewport();
   const isMobile = viewport === "mobile";
+  const { register } = useAuth(); // Removido error e clearError
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      await register({ fullName, email, password, confirmPassword });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-primary-light">
@@ -24,12 +41,32 @@ export default function RegisterPage() {
           <MobileRegisterLayout
             showPassword={showPassword}
             setShowPassword={setShowPassword}
+            fullName={fullName}
+            setFullName={setFullName}
+            email={email}
+            setEmail={setEmail}
+            password={password}
+            setPassword={setPassword}
+            confirmPassword={confirmPassword}
+            setConfirmPassword={setConfirmPassword}
+            handleSubmit={handleSubmit}
+            isSubmitting={isSubmitting}
           />
         </main>
       ) : (
         <DesktopRegisterLayout
           showPassword={showPassword}
           setShowPassword={setShowPassword}
+          fullName={fullName}
+          setFullName={setFullName}
+          email={email}
+          setEmail={setEmail}
+          password={password}
+          setPassword={setPassword}
+          confirmPassword={confirmPassword}
+          setConfirmPassword={setConfirmPassword}
+          handleSubmit={handleSubmit}
+          isSubmitting={isSubmitting}
         />
       )}
     </div>

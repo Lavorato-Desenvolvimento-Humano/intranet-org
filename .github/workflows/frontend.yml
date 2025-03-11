@@ -42,7 +42,7 @@ jobs:
           cd apps/frontend
           npm install --package-lock-only
           npm ci
-          npm install lucide-react
+          npm install lucide-react react-hot-toast axios
 
       - name: Verificar Linting (com tratamento de erro)
         run: |

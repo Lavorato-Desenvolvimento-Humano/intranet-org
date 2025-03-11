@@ -1,17 +1,58 @@
-// app/auth/login/page.tsx
 "use client";
 import Header from "@/components/layout/header";
-import { useState } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useViewport } from "@/hooks/useViewport";
 import {
   MobileLoginLayout,
   DesktopLoginLayout,
 } from "@/components/layout/auth/login/layout";
+import { useAuth } from "@/context/AuthContext";
+import { useSearchParams } from "next/navigation";
+import toastUtil from "@/utils/toast";
 
-export default function LoginPage() {
+// Componente que usa useSearchParams
+function LoginContent() {
   const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const viewport = useViewport();
   const isMobile = viewport === "mobile";
+  const { login } = useAuth();
+  const searchParams = useSearchParams();
+  const resetSuccess = searchParams.get("reset") === "success";
+
+  // Mostrar toast de sucesso se o usuário acabou de redefinir a senha
+  useEffect(() => {
+    if (resetSuccess) {
+      toastUtil.success(
+        "Senha redefinida com sucesso! Faça login com sua nova senha."
+      );
+    }
+  }, [resetSuccess]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      // Importar a função loginSimple a partir do novo arquivo
+      const { login } = await import("@/services/auth");
+
+      // Tenta o login simples diretamente
+      await login({ email, password });
+
+      // O redirecionamento é feito dentro de loginSimple após o sucesso
+    } catch (error) {
+      console.error("Falha ao fazer login:", error);
+      // Tratamento de erro já é feito dentro de loginSimple
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Função vazia para satisfazer a propriedade onInputChange
+  const onInputChange = () => {};
 
   return (
     <div className="min-h-screen flex flex-col bg-primary-light">
@@ -24,14 +65,42 @@ export default function LoginPage() {
           <MobileLoginLayout
             showPassword={showPassword}
             setShowPassword={setShowPassword}
+            email={email}
+            setEmail={setEmail}
+            password={password}
+            setPassword={setPassword}
+            handleSubmit={handleSubmit}
+            isSubmitting={isSubmitting}
+            onInputChange={onInputChange}
           />
         </main>
       ) : (
         <DesktopLoginLayout
           showPassword={showPassword}
           setShowPassword={setShowPassword}
+          email={email}
+          setEmail={setEmail}
+          password={password}
+          setPassword={setPassword}
+          handleSubmit={handleSubmit}
+          isSubmitting={isSubmitting}
+          onInputChange={onInputChange}
         />
       )}
     </div>
+  );
+}
+
+// Componente principal envolto com Suspense
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          Carregando...
+        </div>
+      }>
+      <LoginContent />
+    </Suspense>
   );
 }
