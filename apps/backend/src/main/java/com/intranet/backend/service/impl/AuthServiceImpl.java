@@ -50,45 +50,28 @@ public class AuthServiceImpl implements AuthService {
     public JwtResponse login(LoginRequest loginRequest) {
         logger.info("Tentando autenticar usuário: {}", loginRequest.getEmail());
 
-        try {
-            // Criando token de autenticação
-            UsernamePasswordAuthenticationToken authToken =
-                    new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword());
+        User user = userRepository.findByEmail(loginRequest.getEmail())
+                .orElseThrow(() -> new RuntimeException("Erro: Usuário não encontrado."));
 
-            logger.debug("Token de autenticação criado para: {}", loginRequest.getEmail());
-
-            // Tentando autenticar
-            Authentication authentication = authenticationManager.authenticate(authToken);
-
-            logger.info("Autenticação bem-sucedida para: {}", loginRequest.getEmail());
-
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-            String jwt = jwtUtils.generateJwtToken(authentication);
-
-            UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-            List<String> roles = userDetails.getAuthorities().stream()
-                    .map(GrantedAuthority::getAuthority)
-                    .collect(Collectors.toList());
-
-            logger.debug("Papéis do usuário: {}", roles);
-
-            User user = userRepository.findByEmail(userDetails.getUsername())
-                    .orElseThrow(() -> new RuntimeException("Erro: Usuário não encontrado."));
-
-            logger.info("Login concluído com sucesso para: {}", loginRequest.getEmail());
-
-            return new JwtResponse(
-                    jwt,
-                    user.getId(),
-                    user.getFullName(),
-                    user.getEmail(),
-                    user.getProfileImage(),
-                    roles
-            );
-        } catch (AuthenticationException e) {
-            logger.error("Falha na autenticação para: {}, causa: {}", loginRequest.getEmail(), e.getMessage());
-            throw e;
+        if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPasswordHash())) {
+            logger.warn("Falha na autenticação: senha incorreta para {}", loginRequest.getEmail());
+            throw new RuntimeException("Erro: Email ou senha incorretos.");
         }
+
+        logger.info("Usuário autenticado com sucesso: {}", loginRequest.getEmail());
+
+        UsernamePasswordAuthenticationToken authToken =
+                new UsernamePasswordAuthenticationToken(user.getEmail(), user.getPasswordHash());
+        Authentication authentication = authenticationManager.authenticate(authToken);
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        String jwt = jwtUtils.generateJwtToken(authentication);
+
+        List<String> roles = user.getUserRoles().stream()
+                .map(role -> "ROLE_" + role.getRole().getName())
+                .collect(Collectors.toList());
+
+        return new JwtResponse(jwt, user.getId(), user.getFullName(), user.getEmail(), user.getProfileImage(), roles);
     }
 
     @Override

@@ -37,10 +37,10 @@ function LoginContent() {
 
     try {
       // Importar a função loginSimple a partir do novo arquivo
-      const { loginSimple } = await import("@/services/auth-simple");
+      const { login } = await import("@/services/auth");
 
       // Tenta o login simples diretamente
-      await loginSimple({ email, password });
+      await login({ email, password });
 
       // O redirecionamento é feito dentro de loginSimple após o sucesso
     } catch (error) {
