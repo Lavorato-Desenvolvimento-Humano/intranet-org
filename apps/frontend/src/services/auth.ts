@@ -50,7 +50,16 @@ export interface AuthResponse {
 // Função para fazer login
 export const login = async (credentials: LoginCredentials): Promise<User> => {
   try {
-    const response = await api.post<AuthResponse>("/auth/login", credentials);
+    console.log(
+      "Tentando fazer login com:",
+      JSON.stringify(credentials, null, 2)
+    );
+    const endpoint = "/auth/login";
+    console.log("Endpoint de login:", endpoint);
+
+    const response = await api.post<AuthResponse>(endpoint, credentials);
+    console.log("Resposta de login:", response.data);
+
     const userData = response.data;
 
     // Salva o token e informações do usuário no localStorage
@@ -67,8 +76,14 @@ export const login = async (credentials: LoginCredentials): Promise<User> => {
 
     localStorage.setItem("user", JSON.stringify(user));
     return user;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Erro ao fazer login:", error);
+    if (error.response) {
+      console.error("Detalhes do erro:", {
+        status: error.response.status,
+        data: error.response.data,
+      });
+    }
     throw error;
   }
 };
@@ -79,10 +94,18 @@ export const register = async (data: RegisterData): Promise<User> => {
   const { confirmPassword, ...registerData } = data;
 
   try {
-    const response = await api.post<AuthResponse>(
-      "/auth/register",
-      registerData
+    console.log(
+      "Tentando registrar usuário com:",
+      JSON.stringify(registerData, null, 2)
     );
+    // Verificar qual é o endpoint completo
+    const endpoint = "/auth/register";
+    console.log("Endpoint de registro:", endpoint);
+    console.log("URL completa:", api.defaults.baseURL + endpoint);
+
+    const response = await api.post<AuthResponse>(endpoint, registerData);
+    console.log("Resposta de registro:", response.data);
+
     const userData = response.data;
 
     // Salva o token e informações do usuário no localStorage
@@ -99,8 +122,19 @@ export const register = async (data: RegisterData): Promise<User> => {
 
     localStorage.setItem("user", JSON.stringify(user));
     return user;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Erro ao registrar usuário:", error);
+    // Adicionar mais informações detalhadas do erro
+    if (error.response) {
+      console.error("Detalhes do erro:", {
+        status: error.response.status,
+        data: error.response.data,
+      });
+    } else if (error.request) {
+      console.error("Nenhuma resposta recebida:", error.request);
+    } else {
+      console.error("Erro de configuração:", error.message);
+    }
     throw error;
   }
 };

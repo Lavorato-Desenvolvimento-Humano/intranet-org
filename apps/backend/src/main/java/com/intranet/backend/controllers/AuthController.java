@@ -7,6 +7,8 @@ import com.intranet.backend.dto.ResetPasswordRequest;
 import com.intranet.backend.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -21,17 +23,25 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AuthController {
 
+    private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
     private final AuthService authService;
 
     @PostMapping("/login")
     public ResponseEntity<JwtResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
+        logger.info("Solicitação de login recebida para o email: {}", loginRequest.getEmail());
         JwtResponse jwtResponse = authService.login(loginRequest);
+        logger.info("Login bem-sucedido para o email: {}", loginRequest.getEmail());
         return ResponseEntity.ok(jwtResponse);
     }
 
     @PostMapping("/register")
     public ResponseEntity<JwtResponse> register(@Valid @RequestBody RegisterRequest registerRequest) {
+        logger.info("Solicitação de registro recebida para o email: {}", registerRequest.getEmail());
+        logger.debug("Dados de registro: {}", registerRequest);
+
         JwtResponse jwtResponse = authService.register(registerRequest);
+
+        logger.info("Registro bem-sucedido para o email: {}", registerRequest.getEmail());
         return ResponseEntity.status(HttpStatus.CREATED).body(jwtResponse);
     }
 
@@ -43,7 +53,9 @@ public class AuthController {
             @RequestParam(value = "githubId", required = false) String githubId,
             @RequestParam(value = "profileImage", required = false) MultipartFile profileImage) {
 
+        logger.info("Solicitação de registro com imagem recebida para o email: {}", email);
         JwtResponse jwtResponse = authService.registerWithImage(fullName, email, password, githubId, profileImage);
+        logger.info("Registro com imagem bem-sucedido para o email: {}", email);
         return ResponseEntity.status(HttpStatus.CREATED).body(jwtResponse);
     }
 

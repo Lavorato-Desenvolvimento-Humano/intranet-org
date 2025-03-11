@@ -7,11 +7,13 @@ import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 import org.springframework.web.multipart.MultipartFile;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@ToString // Para facilitar o debug
 public class RegisterRequest {
 
     @NotBlank(message = "O nome completo é obrigatório")
@@ -32,5 +34,7 @@ public class RegisterRequest {
 
     private String githubId;
 
-    private MultipartFile profileImage;
+    // Esta anotação permite ignorar este campo durante a serialização/desserialização JSON
+    // quando não for enviado
+    private transient MultipartFile profileImage;
 }
