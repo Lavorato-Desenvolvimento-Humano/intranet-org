@@ -10,25 +10,42 @@ import { useState } from "react";
 
 export default function NewPasswordPage() {
   const [showPassword, setShowPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   // Hook para verificar o tipo de viewport
   const viewport = useViewport();
 
   // Função para lidar com o envio do formulário
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     // Lógica para enviar o código de recuperação
-    console.log("Enviar código de recuperação");
+    console.log("Enviando nova senha");
+
+    // Simulando o término do envio (você substituiria isso por seu código real)
+    setTimeout(() => {
+      setIsSubmitting(false);
+    }, 2000);
+  };
+
+  // Propriedades compartilhadas para ambos os layouts
+  const layoutProps = {
+    onSubmit: handleSubmit,
+    showPassword,
+    setShowPassword,
+    newPassword,
+    setNewPassword,
+    confirmPassword,
+    setConfirmPassword,
+    isSubmitting,
   };
 
   // Renderização condicional com base no tipo de dispositivo
   if (viewport === "mobile") {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center">
-        <MobileNewPasswordLayout
-          onSubmit={handleSubmit}
-          showPassword={showPassword}
-          setShowPassword={setShowPassword}
-        />
+        <MobileNewPasswordLayout {...layoutProps} />
       </div>
     );
   } else if (viewport === "tablet") {
@@ -36,21 +53,11 @@ export default function NewPasswordPage() {
     // Por enquanto, usaremos o desktop com algumas adaptações
     return (
       <div className="min-h-screen">
-        <DesktopNewPasswordLayout
-          onSubmit={handleSubmit}
-          showPassword={showPassword}
-          setShowPassword={setShowPassword}
-        />
+        <DesktopNewPasswordLayout {...layoutProps} />
       </div>
     );
   } else {
     // Desktop
-    return (
-      <DesktopNewPasswordLayout
-        onSubmit={handleSubmit}
-        showPassword={showPassword}
-        setShowPassword={setShowPassword}
-      />
-    );
+    return <DesktopNewPasswordLayout {...layoutProps} />;
   }
 }

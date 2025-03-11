@@ -47,7 +47,7 @@ export const MobileNewPasswordLayout = ({
     {/* Conteúdo do formulário */}
     <div className="w-full max-w-md flex flex-col items-center mt-28">
       <h1 className="font-inter font-bold text-3xl text-gray-800 mb-6 text-center">
-        NOVA SENHA
+        CRIAR NOVA SENHA
       </h1>
 
       <p className="text-gray-600 text-base mb-6 text-center">
@@ -60,6 +60,8 @@ export const MobileNewPasswordLayout = ({
         <Input
           icon={showPassword ? LockKeyholeOpenIcon : LockKeyholeIcon}
           type={showPassword ? "text" : "password"}
+          iconColor="text-gray-800"
+          iconClassName="top-0"
           placeholder="Nova senha"
           onIconClick={() => setShowPassword(!showPassword)}
           className="bg-transparent border-2 border-gray-800 text-gray-800 placeholder:text-gray-800 placeholder:text-lg focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-transparent"
@@ -72,6 +74,8 @@ export const MobileNewPasswordLayout = ({
         <Input
           icon={showPassword ? LockKeyholeOpenIcon : LockKeyholeIcon}
           type={showPassword ? "text" : "password"}
+          iconColor="text-gray-800"
+          iconClassName="-top-2"
           placeholder="Confirmar nova senha"
           onIconClick={() => setShowPassword(!showPassword)}
           className="mb-4 bg-transparent border-2 border-gray-800 text-gray-800 placeholder:text-gray-800 placeholder:text-lg focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-transparent"
@@ -132,7 +136,7 @@ export const DesktopNewPasswordLayout = ({
     <div className="w-1/2 bg-white flex flex-col items-center justify-center p-8">
       <div className="w-full max-w-md">
         <h1 className="font-inter font-bold text-4xl text-gray-800 mb-6 text-left">
-          NOVA SENHA
+          CRIAR NOVA SENHA
         </h1>
 
         <p className="text-gray-600 text-base mb-8">
@@ -145,6 +149,8 @@ export const DesktopNewPasswordLayout = ({
           <Input
             icon={showPassword ? LockKeyholeOpenIcon : LockKeyholeIcon}
             type={showPassword ? "text" : "password"}
+            iconColor="text-gray-800"
+            iconClassName="top-0"
             placeholder="Nova senha"
             onIconClick={() => setShowPassword(!showPassword)}
             className="bg-transparent border-2 border-gray-800 text-gray-800 placeholder:text-gray-800 placeholder:text-lg focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-transparent"
@@ -157,6 +163,7 @@ export const DesktopNewPasswordLayout = ({
           <Input
             icon={showPassword ? LockKeyholeOpenIcon : LockKeyholeIcon}
             type={showPassword ? "text" : "password"}
+            iconColor="text-gray-800"
             placeholder="Confirmar nova senha"
             onIconClick={() => setShowPassword(!showPassword)}
             className="mb-4 bg-transparent border-2 border-gray-800 text-gray-800 placeholder:text-gray-800 placeholder:text-lg focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-transparent"
