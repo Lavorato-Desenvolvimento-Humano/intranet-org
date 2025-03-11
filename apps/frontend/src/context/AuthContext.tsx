@@ -93,63 +93,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true);
 
-      // Try-catch aninhados para tentar endpoints diferentes
-      try {
-        // 1. Tenta o endpoint padrão
-        console.log("Tentando login com endpoint padrão");
-        const response = await api.post<AuthResponse>(
-          "/auth/login",
-          credentials
-        );
-        const userData = processAuthResponse(response.data);
-        setUser(userData);
-        toastUtil.dismiss(loadingToastId);
-        toastUtil.success("Login realizado com sucesso!");
-        window.location.href = "/";
-        return;
-      } catch (error) {
-        console.log("Endpoint padrão falhou, tentando endpoint simples");
-
-        try {
-          // 2. Tenta o endpoint simples
-          const response = await api.post<AuthResponse>(
-            "/auth/simple/login",
-            credentials
-          );
-          const userData = processAuthResponse(response.data);
-          setUser(userData);
-          toastUtil.dismiss(loadingToastId);
-          toastUtil.success(
-            "Login realizado com sucesso (via endpoint simples)!"
-          );
-          window.location.href = "/";
-          return;
-        } catch (error) {
-          console.log("Endpoint simples falhou, tentando endpoint direto");
-
-          try {
-            // 3. Tenta o endpoint direto
-            const response = await api.post<AuthResponse>(
-              "/auth/direta/login",
-              credentials
-            );
-            const userData = processAuthResponse(response.data);
-            setUser(userData);
-            toastUtil.dismiss(loadingToastId);
-            toastUtil.success(
-              "Login realizado com sucesso (via endpoint direto)!"
-            );
-            window.location.href = "/";
-            return;
-          } catch (error: any) {
-            // Todos os endpoints falharam
-            console.error("Todos os endpoints de autenticação falharam");
-            throw error;
-          }
-        }
-      }
+      // Usar apenas o endpoint padrão
+      console.log("Tentando login com endpoint padrão");
+      const response = await api.post<AuthResponse>("/auth/login", credentials);
+      const userData = processAuthResponse(response.data);
+      setUser(userData);
+      toastUtil.dismiss(loadingToastId);
+      toastUtil.success("Login realizado com sucesso!");
+      window.location.href = "/";
     } catch (err: any) {
       toastUtil.dismiss(loadingToastId);
+      console.error("Erro no login:", err);
 
       if (err.response && err.response.data) {
         const errorMessage =
