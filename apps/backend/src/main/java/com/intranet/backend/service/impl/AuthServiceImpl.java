@@ -15,9 +15,12 @@ import com.intranet.backend.service.AuthService;
 import com.intranet.backend.service.FileStorageService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -33,6 +36,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
 
+    private static final Logger logger = LoggerFactory.getLogger(AuthServiceImpl.class);
+
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
@@ -43,47 +48,70 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public JwtResponse login(LoginRequest loginRequest) {
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword())
-        );
+        logger.info("Tentando autenticar usuário: {}", loginRequest.getEmail());
 
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        String jwt = jwtUtils.generateJwtToken(authentication);
+        try {
+            // Criando token de autenticação
+            UsernamePasswordAuthenticationToken authToken =
+                    new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword());
 
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        List<String> roles = userDetails.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .collect(Collectors.toList());
+            logger.debug("Token de autenticação criado para: {}", loginRequest.getEmail());
 
-        User user = userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("Erro: Usuário não encontrado."));
+            // Tentando autenticar
+            Authentication authentication = authenticationManager.authenticate(authToken);
 
-        return new JwtResponse(
-                jwt,
-                user.getId(),
-                user.getFullName(),
-                user.getEmail(),
-                user.getProfileImage(),
-                roles
-        );
+            logger.info("Autenticação bem-sucedida para: {}", loginRequest.getEmail());
+
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+            String jwt = jwtUtils.generateJwtToken(authentication);
+
+            UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+            List<String> roles = userDetails.getAuthorities().stream()
+                    .map(GrantedAuthority::getAuthority)
+                    .collect(Collectors.toList());
+
+            logger.debug("Papéis do usuário: {}", roles);
+
+            User user = userRepository.findByEmail(userDetails.getUsername())
+                    .orElseThrow(() -> new RuntimeException("Erro: Usuário não encontrado."));
+
+            logger.info("Login concluído com sucesso para: {}", loginRequest.getEmail());
+
+            return new JwtResponse(
+                    jwt,
+                    user.getId(),
+                    user.getFullName(),
+                    user.getEmail(),
+                    user.getProfileImage(),
+                    roles
+            );
+        } catch (AuthenticationException e) {
+            logger.error("Falha na autenticação para: {}, causa: {}", loginRequest.getEmail(), e.getMessage());
+            throw e;
+        }
     }
 
     @Override
     @Transactional
     public JwtResponse register(RegisterRequest registerRequest) {
+        logger.info("Processando solicitação de registro para: {}", registerRequest.getEmail());
+
         if (userRepository.existsByEmail(registerRequest.getEmail())) {
+            logger.warn("Email já está em uso: {}", registerRequest.getEmail());
             throw new RuntimeException("Erro: Email já está em uso!");
         }
 
         if (registerRequest.getGithubId() != null &&
                 !registerRequest.getGithubId().isEmpty() &&
                 userRepository.existsByGithubId(registerRequest.getGithubId())) {
+            logger.warn("ID do GitHub já está em uso: {}", registerRequest.getGithubId());
             throw new RuntimeException("Erro: ID do GitHub já está em uso!");
         }
 
         // Processa a imagem de perfil
         String profileImagePath = null;
         if (registerRequest.getProfileImage() != null && !registerRequest.getProfileImage().isEmpty()) {
+            logger.debug("Processando imagem de perfil");
             profileImagePath = fileStorageService.storeFile(registerRequest.getProfileImage());
         }
 
@@ -91,11 +119,17 @@ public class AuthServiceImpl implements AuthService {
         User user = new User();
         user.setFullName(registerRequest.getFullName());
         user.setEmail(registerRequest.getEmail());
-        user.setPasswordHash(passwordEncoder.encode(registerRequest.getPassword()));
+
+        // Codifica a senha
+        String encodedPassword = passwordEncoder.encode(registerRequest.getPassword());
+        logger.debug("Senha codificada para usuário: {}", registerRequest.getEmail());
+        user.setPasswordHash(encodedPassword);
+
         user.setGithubId(registerRequest.getGithubId());
         user.setProfileImage(profileImagePath);
 
         User savedUser = userRepository.save(user);
+        logger.info("Usuário salvo no banco de dados: {} (ID: {})", savedUser.getEmail(), savedUser.getId());
 
         // Atribui o papel de usuário padrão
         Role userRole = roleRepository.findByName("USER")
@@ -105,27 +139,38 @@ public class AuthServiceImpl implements AuthService {
         newUserRole.setUser(savedUser);
         newUserRole.setRole(userRole);
         userRoleRepository.save(newUserRole);
+        logger.debug("Papel USER atribuído ao usuário: {}", savedUser.getEmail());
 
         // Gera o token JWT para o novo usuário
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(registerRequest.getEmail(), registerRequest.getPassword())
-        );
+        try {
+            logger.debug("Tentando autenticar o novo usuário: {}", savedUser.getEmail());
 
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        String jwt = jwtUtils.generateJwtToken(authentication);
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(registerRequest.getEmail(), registerRequest.getPassword())
+            );
 
-        List<String> roles = List.of("ROLE_USER");
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+            String jwt = jwtUtils.generateJwtToken(authentication);
 
-        return new JwtResponse(
-                jwt,
-                savedUser.getId(),
-                savedUser.getFullName(),
-                savedUser.getEmail(),
-                savedUser.getProfileImage(),
-                roles
-        );
+            List<String> roles = List.of("ROLE_USER");
+
+            logger.info("Registro concluído com sucesso para: {}", savedUser.getEmail());
+
+            return new JwtResponse(
+                    jwt,
+                    savedUser.getId(),
+                    savedUser.getFullName(),
+                    savedUser.getEmail(),
+                    savedUser.getProfileImage(),
+                    roles
+            );
+        } catch (AuthenticationException e) {
+            logger.error("Falha ao autenticar novo usuário: {}, causa: {}", savedUser.getEmail(), e.getMessage());
+            throw new RuntimeException("Erro ao autenticar o novo usuário: " + e.getMessage());
+        }
     }
 
+    // Restante dos métodos permanece o mesmo...
     @Override
     @Transactional
     public JwtResponse registerWithImage(String fullName, String email, String password, String githubId, MultipartFile profileImage) {
@@ -148,7 +193,7 @@ public class AuthServiceImpl implements AuthService {
 
         // Simulação: em uma implementação real, você geraria um código, salvaria no banco
         // e enviaria por email para o usuário
-        System.out.println("Código de redefinição de senha gerado para " + email);
+        logger.info("Código de redefinição de senha gerado para {}", email);
     }
 
     @Override
@@ -160,7 +205,7 @@ public class AuthServiceImpl implements AuthService {
 
         // Simulação: em uma implementação real, verificaria se o código é válido
         // Se o código fosse inválido, lançaria uma exceção
-        System.out.println("Código verificado para " + email);
+        logger.info("Código verificado para {}", email);
     }
 
     @Override
@@ -175,7 +220,7 @@ public class AuthServiceImpl implements AuthService {
         user.setPasswordHash(passwordEncoder.encode(resetPasswordRequest.getNewPassword()));
         userRepository.save(user);
 
-        System.out.println("Senha redefinida para " + resetPasswordRequest.getEmail());
+        logger.info("Senha redefinida para {}", resetPasswordRequest.getEmail());
     }
 
     @Override
