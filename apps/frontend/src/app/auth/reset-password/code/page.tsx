@@ -1,7 +1,6 @@
-// app/auth/reset-password/code/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useViewport } from "@/hooks/useViewport";
 import { useSearchParams } from "next/navigation";
 import {
@@ -11,7 +10,8 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import toastUtil from "@/utils/toast";
 
-export default function ResetPasswordCodePage() {
+// Componente que usa useSearchParams
+function ResetPasswordCodeContent() {
   // Hook para verificar o tipo de viewport
   const viewport = useViewport();
   const searchParams = useSearchParams();
@@ -90,4 +90,18 @@ export default function ResetPasswordCodePage() {
       />
     );
   }
+}
+
+// Componente principal envolto com Suspense
+export default function ResetPasswordCodePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          Carregando...
+        </div>
+      }>
+      <ResetPasswordCodeContent />
+    </Suspense>
+  );
 }

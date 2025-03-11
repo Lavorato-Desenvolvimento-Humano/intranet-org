@@ -1,7 +1,6 @@
-// app/auth/login/page.tsx
 "use client";
 import Header from "@/components/layout/header";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useViewport } from "@/hooks/useViewport";
 import {
   MobileLoginLayout,
@@ -11,7 +10,8 @@ import { useAuth } from "@/context/AuthContext";
 import { useSearchParams } from "next/navigation";
 import toastUtil from "@/utils/toast";
 
-export default function LoginPage() {
+// Componente que usa useSearchParams
+function LoginContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -78,5 +78,19 @@ export default function LoginPage() {
         />
       )}
     </div>
+  );
+}
+
+// Componente principal envolto com Suspense
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          Carregando...
+        </div>
+      }>
+      <LoginContent />
+    </Suspense>
   );
 }
