@@ -46,8 +46,6 @@ export default function ResetPasswordPage() {
       </div>
     );
   } else if (viewport === "tablet") {
-    // Para tablets, podemos usar o layout desktop ou criar um específico
-    // Por enquanto, usaremos o desktop com algumas adaptações
     return (
       <div className="min-h-screen">
         <DesktopResetPasswordLayout
