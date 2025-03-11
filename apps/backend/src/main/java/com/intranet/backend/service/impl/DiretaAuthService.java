@@ -138,19 +138,3 @@ public class DiretaAuthService {
         return hash.substring(0, 5) + "..." + hash.substring(hash.length() - 5);
     }
 }
-
-/**
- * Controlador para autenticação direta - endpoint alternativo para login
- */
-@RestController
-@RequestMapping("/auth/direta")
-@RequiredArgsConstructor
-class DiretaAuthController {
-
-    private final DiretaAuthService diretaAuthService;
-
-    @PostMapping("/login")
-    public JwtResponse login(@RequestBody LoginRequest loginRequest) {
-        return diretaAuthService.autenticarDiretamente(loginRequest);
-    }
-}
