@@ -9,7 +9,6 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { useSearchParams } from "next/navigation";
 import toastUtil from "@/utils/toast";
-import api from "@/services/api";
 
 // Componente que usa useSearchParams
 function LoginContent() {
@@ -32,56 +31,11 @@ function LoginContent() {
     }
   }, [resetSuccess]);
 
-  // Função para tentar login direto, mas mantida dentro do componente
-  async function tentarLoginDireto() {
-    try {
-      console.log("Tentando login direto com:", email);
-      const response = await api.post("/auth/direta/login", {
-        email,
-        password,
-      });
-
-      // Processar resposta
-      const userData = response.data;
-      localStorage.setItem("token", userData.token);
-
-      const user = {
-        id: userData.id,
-        fullName: userData.fullName,
-        email: userData.email,
-        profileImage: userData.profileImage || undefined,
-        roles: userData.roles,
-        token: userData.token,
-      };
-
-      localStorage.setItem("user", JSON.stringify(user));
-
-      toastUtil.success("Login realizado com sucesso!");
-      window.location.href = "/";
-      return true;
-    } catch (error: any) {
-      console.error("Erro no login direto:", error);
-      if (error.response && error.response.data) {
-        toastUtil.error(error.response.data.message || "Erro ao fazer login");
-      } else {
-        toastUtil.error("Erro ao fazer login. Servidor indisponível.");
-      }
-      return false;
-    }
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-
     try {
-      // Tenta o método de login normal primeiro
       await login({ email, password });
-    } catch (error) {
-      console.log("Login normal falhou, tentando método alternativo...");
-
-      // Se falhar, tenta o método alternativo
-      await tentarLoginDireto();
     } finally {
       setIsSubmitting(false);
     }
