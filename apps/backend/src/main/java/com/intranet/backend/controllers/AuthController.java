@@ -68,35 +68,58 @@ public class AuthController {
 
     @PostMapping("/reset-password/request")
     public ResponseEntity<Map<String, String>> requestPasswordReset(@RequestParam("email") String email) {
-        authService.requestPasswordReset(email);
+        try {
+            authService.requestPasswordReset(email);
 
-        Map<String, String> response = new HashMap<>();
-        response.put("message", "Se o e-mail existir em nosso sistema, um código de redefinição será enviado.");
-
-        return ResponseEntity.ok(response);
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Se o e-mail existir em nosso sistema, um código de redefinição será enviado.");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            // Mesmo se houver erro, retornamos a mesma resposta para não expor informações sensíveis
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Se o e-mail existir em nosso sistema, um código de redefinição será enviado.");
+            return ResponseEntity.ok(response);
+        }
     }
 
     @PostMapping("/reset-password/verify")
     public ResponseEntity<Map<String, String>> verifyResetCode(
             @RequestParam("email") String email,
             @RequestParam("code") String code) {
+        try {
+            authService.verifyResetCode(email, code);
 
-        authService.verifyResetCode(email, code);
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Código verificado com sucesso.");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            // Log do erro para debug interno
+            logger.error("Erro ao verificar código de redefinição: {}", e.getMessage());
 
-        Map<String, String> response = new HashMap<>();
-        response.put("message", "Código verificado com sucesso.");
-
-        return ResponseEntity.ok(response);
+            // Retornar mensagem de erro específica
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+        }
     }
 
     @PostMapping("/reset-password/complete")
     public ResponseEntity<Map<String, String>> resetPassword(@Valid @RequestBody ResetPasswordRequest resetPasswordRequest) {
-        authService.resetPassword(resetPasswordRequest);
+        try {
+            authService.resetPassword(resetPasswordRequest);
 
-        Map<String, String> response = new HashMap<>();
-        response.put("message", "Senha redefinida com sucesso.");
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Senha redefinida com sucesso.");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            // Log do erro para debug interno
+            logger.error("Erro ao redefinir senha: {}", e.getMessage());
 
-        return ResponseEntity.ok(response);
+            // Retornar mensagem de erro específica
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+        }
     }
 
     @GetMapping("/github/callback")

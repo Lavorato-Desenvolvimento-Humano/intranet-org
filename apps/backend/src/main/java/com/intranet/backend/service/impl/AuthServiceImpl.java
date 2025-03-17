@@ -4,33 +4,37 @@ import com.intranet.backend.dto.JwtResponse;
 import com.intranet.backend.dto.LoginRequest;
 import com.intranet.backend.dto.RegisterRequest;
 import com.intranet.backend.dto.ResetPasswordRequest;
+import com.intranet.backend.exception.ResourceNotFoundException;
+import com.intranet.backend.model.PasswordResetToken;
 import com.intranet.backend.model.Role;
 import com.intranet.backend.model.User;
 import com.intranet.backend.model.UserRole;
+import com.intranet.backend.repository.PasswordResetTokenRepository;
 import com.intranet.backend.repository.RoleRepository;
 import com.intranet.backend.repository.UserRepository;
 import com.intranet.backend.repository.UserRoleRepository;
 import com.intranet.backend.security.JwtUtils;
 import com.intranet.backend.service.AuthService;
+import com.intranet.backend.service.EmailService;
 import com.intranet.backend.service.FileStorageService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -40,11 +44,18 @@ public class AuthServiceImpl implements AuthService {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthServiceImpl.class);
 
+    @Autowired
+    private PasswordResetTokenRepository passwordResetTokenRepository;
+
+    @Autowired
+    private EmailService emailService;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final UserRoleRepository userRoleRepository;
-    private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
     private final FileStorageService fileStorageService;
 
@@ -268,42 +279,102 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    @Transactional
     public void requestPasswordReset(String email) {
-        // Implementação para gerar e enviar código de redefinição de senha
-        // Normalmente enviaria um email com o código, mas aqui apenas simulamos
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Usuário não encontrado com o email: " + email));
+        logger.info("Processando solicitação de redefinição de senha para: {}", email);
 
-        // Simulação: em uma implementação real, você geraria um código, salvaria no banco
-        // e enviaria por email para o usuário
-        logger.info("Código de redefinição de senha gerado para {}", email);
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> {
+                    logger.warn("Tentativa de redefinição de senha para email inexistente: {}", email);
+                    return new ResourceNotFoundException("Usuário não encontrado com o email: " + email);
+                });
+
+        // Verifica se já existe um token ativo
+        Optional<PasswordResetToken> existingToken = passwordResetTokenRepository.findByUserAndUsedFalse(user);
+        PasswordResetToken resetToken;
+
+        if (existingToken.isPresent() && !existingToken.get().isExpired()) {
+            // Reutiliza o token existente se ainda for válido
+            resetToken = existingToken.get();
+            logger.info("Reutilizando token existente para: {}", email);
+        } else {
+            // Cria um novo token
+            resetToken = new PasswordResetToken(user);
+            passwordResetTokenRepository.save(resetToken);
+            logger.info("Novo token de redefinição criado para: {}", email);
+        }
+
+        // Envia o email com o token
+        emailService.sendPasswordResetEmail(user.getEmail(), resetToken.getToken(), user.getFullName());
     }
 
     @Override
+    @Transactional
     public void verifyResetCode(String email, String code) {
-        // Implementação para verificar o código de redefinição
-        // Em uma aplicação real, verificaria o código no banco de dados
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Usuário não encontrado com o email: " + email));
+        logger.info("Verificando código de redefinição para: {}", email);
 
-        // Simulação: em uma implementação real, verificaria se o código é válido
-        // Se o código fosse inválido, lançaria uma exceção
-        logger.info("Código verificado para {}", email);
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado com o email: " + email));
+
+        PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(code)
+                .orElseThrow(() -> {
+                    logger.warn("Código de verificação inválido para: {}", email);
+                    return new RuntimeException("Código de verificação inválido");
+                });
+
+        if (!resetToken.getUser().getId().equals(user.getId())) {
+            logger.warn("Tentativa de usar token de outro usuário: {}", email);
+            throw new RuntimeException("Código de verificação inválido");
+        }
+
+        if (resetToken.isUsed()) {
+            logger.warn("Tentativa de usar token já utilizado: {}", email);
+            throw new RuntimeException("Este código já foi utilizado");
+        }
+
+        if (resetToken.isExpired()) {
+            logger.warn("Tentativa de usar token expirado: {}", email);
+            throw new RuntimeException("O código de verificação expirou");
+        }
+
+        logger.info("Código de redefinição verificado com sucesso para: {}", email);
     }
 
     @Override
     @Transactional
     public void resetPassword(ResetPasswordRequest resetPasswordRequest) {
-        // Implementação para redefinir a senha
-        User user = userRepository.findByEmail(resetPasswordRequest.getEmail())
-                .orElseThrow(() -> new RuntimeException("Usuário não encontrado com o email: " + resetPasswordRequest.getEmail()));
+        logger.info("Redefinindo senha para: {}", resetPasswordRequest.getEmail());
 
-        // Em uma aplicação real, verificaria o código antes de prosseguir
-        // Atualizando a senha
+        User user = userRepository.findByEmail(resetPasswordRequest.getEmail())
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado com o email: " + resetPasswordRequest.getEmail()));
+
+        PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(resetPasswordRequest.getVerificationCode())
+                .orElseThrow(() -> new RuntimeException("Código de verificação inválido"));
+
+        if (!resetToken.getUser().getId().equals(user.getId())) {
+            throw new RuntimeException("Código de verificação inválido");
+        }
+
+        if (resetToken.isUsed()) {
+            throw new RuntimeException("Este código já foi utilizado");
+        }
+
+        if (resetToken.isExpired()) {
+            throw new RuntimeException("O código de verificação expirou");
+        }
+
+        // Atualizar a senha
         user.setPasswordHash(passwordEncoder.encode(resetPasswordRequest.getNewPassword()));
         userRepository.save(user);
 
-        logger.info("Senha redefinida para {}", resetPasswordRequest.getEmail());
+        // Marcar o token como usado
+        resetToken.setUsed(true);
+        passwordResetTokenRepository.save(resetToken);
+
+        // Enviar email de confirmação
+        emailService.sendPasswordResetConfirmationEmail(user.getEmail(), user.getFullName());
+
+        logger.info("Senha redefinida com sucesso para: {}", resetPasswordRequest.getEmail());
     }
 
     @Override

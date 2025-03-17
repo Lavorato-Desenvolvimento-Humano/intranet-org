@@ -32,6 +32,12 @@ export interface AuthResponse {
   roles: string[];
 }
 
+export interface NewPasswordRequest {
+  email: string;
+  verificationCode: string;
+  newPassword: string;
+}
+
 // Função de login usando apenas o endpoint /auth/login
 export const login = async (credentials: LoginCredentials): Promise<User> => {
   try {
@@ -79,30 +85,39 @@ export const register = async (data: RegisterData): Promise<User> => {
 };
 
 export const requestPasswordReset = async (email: string): Promise<void> => {
-  await api.post("/auth/reset-password/request", null, {
-    params: { email },
-  });
+  try {
+    await api.post("/auth/reset-password/request", null, {
+      params: { email },
+    });
+  } catch (error) {
+    console.error("Erro ao solicitar reset de senha:", error);
+    throw error;
+  }
 };
 
 export const verifyResetCode = async (
   email: string,
   code: string
 ): Promise<void> => {
-  await api.post("/auth/reset-password/verify", null, {
-    params: { email, code },
-  });
+  try {
+    await api.post("/auth/reset-password/verify", null, {
+      params: { email, code },
+    });
+  } catch (error) {
+    console.error("Erro ao verificar código:", error);
+    throw error;
+  }
 };
-
-export interface NewPasswordRequest {
-  email: string;
-  verificationCode: string;
-  newPassword: string;
-}
 
 export const resetPassword = async (
   data: NewPasswordRequest
 ): Promise<void> => {
-  await api.post("/auth/reset-password/complete", data);
+  try {
+    await api.post("/auth/reset-password/complete", data);
+  } catch (error) {
+    console.error("Erro ao redefinir senha:", error);
+    throw error;
+  }
 };
 
 export const logout = (): void => {
