@@ -18,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
@@ -28,6 +29,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -48,30 +50,123 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public JwtResponse login(LoginRequest loginRequest) {
-        logger.info("Tentando autenticar usuário: {}", loginRequest.getEmail());
+        // ID de log único para acompanhar toda a requisição
+        String requestId = UUID.randomUUID().toString().substring(0, 8);
+        logger.info("[{}] Iniciando processo de login para email: {}", requestId, loginRequest.getEmail());
 
-        User user = userRepository.findByEmail(loginRequest.getEmail())
-                .orElseThrow(() -> new RuntimeException("Erro: Usuário não encontrado."));
+        try {
+            // Passo 1: Verificar se o usuário existe
+            logger.debug("[{}] Buscando usuário no banco de dados", requestId);
+            User user = null;
+            try {
+                user = userRepository.findByEmail(loginRequest.getEmail())
+                        .orElseThrow(() -> {
+                            logger.warn("[{}] Usuário não encontrado com email: {}", requestId, loginRequest.getEmail());
+                            return new BadCredentialsException("Email ou senha incorretos");
+                        });
+                logger.debug("[{}] Usuário encontrado: {} (ID: {})", requestId, user.getEmail(), user.getId());
+            } catch (Exception e) {
+                logger.error("[{}] Erro ao buscar usuário: {}", requestId, e.getMessage(), e);
+                if (e instanceof BadCredentialsException) {
+                    throw e;
+                }
+                throw new RuntimeException("Erro ao verificar credenciais: " + e.getMessage(), e);
+            }
 
-        if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPasswordHash())) {
-            logger.warn("Falha na autenticação: senha incorreta para {}", loginRequest.getEmail());
-            throw new RuntimeException("Erro: Email ou senha incorretos.");
+            // Passo 2: Tentar autenticar com AuthenticationManager
+            logger.debug("[{}] Tentando autenticar com AuthenticationManager", requestId);
+            Authentication authentication = null;
+            try {
+                authentication = authenticationManager.authenticate(
+                        new UsernamePasswordAuthenticationToken(
+                                loginRequest.getEmail(),
+                                loginRequest.getPassword()  // Senha em texto puro
+                        )
+                );
+
+                // Se chegou aqui, a autenticação foi bem-sucedida
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+                logger.info("[{}] Autenticação bem-sucedida para: {}", requestId, loginRequest.getEmail());
+
+            } catch (BadCredentialsException e) {
+                // Erro específico de credenciais inválidas
+                logger.warn("[{}] Credenciais inválidas para usuário: {}", requestId, loginRequest.getEmail());
+                throw new BadCredentialsException("Email ou senha incorretos");
+            } catch (AuthenticationException e) {
+                // Outros erros de autenticação
+                logger.error("[{}] Erro de autenticação: {}", requestId, e.getMessage(), e);
+                throw new RuntimeException("Falha na autenticação: " + e.getMessage(), e);
+            } catch (Exception e) {
+                // Erros inesperados
+                logger.error("[{}] Erro inesperado durante autenticação: {}", requestId, e.getMessage(), e);
+                throw new RuntimeException("Erro inesperado durante autenticação", e);
+            }
+
+            // Passo 3: Gerar token JWT
+            logger.debug("[{}] Gerando token JWT", requestId);
+            String jwt = null;
+            try {
+                jwt = jwtUtils.generateJwtToken(authentication);
+                logger.debug("[{}] Token JWT gerado com sucesso", requestId);
+            } catch (Exception e) {
+                logger.error("[{}] Erro ao gerar token JWT: {}", requestId, e.getMessage(), e);
+                throw new RuntimeException("Erro ao gerar token de autenticação: " + e.getMessage(), e);
+            }
+
+            // Passo 4: Obter papéis do usuário
+            logger.debug("[{}] Obtendo papéis do usuário", requestId);
+            List<String> roles = new ArrayList<>();
+            try {
+                roles = user.getUserRoles().stream()
+                        .map(role -> {
+                            try {
+                                return "ROLE_" + role.getRole().getName();
+                            } catch (Exception e) {
+                                logger.warn("[{}] Erro ao processar papel: {}", requestId, e.getMessage());
+                                return "ROLE_UNKNOWN";
+                            }
+                        })
+                        .collect(Collectors.toList());
+
+                if (roles.isEmpty()) {
+                    logger.warn("[{}] Usuário não possui papéis atribuídos", requestId);
+                    roles.add("ROLE_USER"); // Papel padrão
+                }
+
+                logger.debug("[{}] Papéis do usuário: {}", requestId, roles);
+            } catch (Exception e) {
+                logger.error("[{}] Erro ao processar papéis do usuário: {}", requestId, e.getMessage(), e);
+                // Mesmo com erro, não impede o login
+                roles.add("ROLE_USER"); // Papel padrão em caso de erro
+            }
+
+            // Passo 5: Criar e retornar resposta JWT
+            try {
+                JwtResponse response = new JwtResponse(
+                        jwt,
+                        user.getId(),
+                        user.getFullName(),
+                        user.getEmail(),
+                        user.getProfileImage(),
+                        roles
+                );
+
+                logger.info("[{}] Login concluído com sucesso para: {}", requestId, loginRequest.getEmail());
+                return response;
+            } catch (Exception e) {
+                logger.error("[{}] Erro ao criar resposta JWT: {}", requestId, e.getMessage(), e);
+                throw new RuntimeException("Erro ao processar resposta de login: " + e.getMessage(), e);
+            }
+
+        } catch (BadCredentialsException e) {
+            // Erros de credenciais - retorna 401
+            logger.warn("[{}] Falha de autenticação: {}", requestId, e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            // Todos os outros erros - registra detalhes completos e retorna mensagem genérica
+            logger.error("[{}] Erro fatal durante o processo de login: {}", requestId, e.getMessage(), e);
+            throw new RuntimeException("Ocorreu um erro durante o processo de login. Por favor, tente novamente.", e);
         }
-
-        logger.info("Usuário autenticado com sucesso: {}", loginRequest.getEmail());
-
-        UsernamePasswordAuthenticationToken authToken =
-                new UsernamePasswordAuthenticationToken(user.getEmail(), user.getPasswordHash());
-        Authentication authentication = authenticationManager.authenticate(authToken);
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-
-        String jwt = jwtUtils.generateJwtToken(authentication);
-
-        List<String> roles = user.getUserRoles().stream()
-                .map(role -> "ROLE_" + role.getRole().getName())
-                .collect(Collectors.toList());
-
-        return new JwtResponse(jwt, user.getId(), user.getFullName(), user.getEmail(), user.getProfileImage(), roles);
     }
 
     @Override
