@@ -1,13 +1,14 @@
-// app/auth/register/page.tsx
+// apps/frontend/src/app/auth/register/page.tsx
 "use client";
 import Header from "@/components/layout/header";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useViewport } from "@/hooks/useViewport";
 import {
   MobileRegisterLayout,
   DesktopRegisterLayout,
 } from "@/components/layout/auth/register/layout";
 import { useAuth } from "@/context/AuthContext";
+import toastUtil from "@/utils/toast";
 
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -16,18 +17,59 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [emailError, setEmailError] = useState("");
   const viewport = useViewport();
   const isMobile = viewport === "mobile";
-  const { register } = useAuth(); // Removido error e clearError
+  const { register } = useAuth();
+
+  // Validar domínio de e-mail sempre que o e-mail mudar
+  useEffect(() => {
+    if (email && !email.endsWith("@lavorato.com.br")) {
+      setEmailError(
+        "Apenas emails com domínio @lavorato.com.br são permitidos"
+      );
+    } else {
+      setEmailError("");
+    }
+  }, [email]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validação adicional antes do envio
+    if (emailError) {
+      toastUtil.error(emailError);
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      toastUtil.error("As senhas não coincidem");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await register({ fullName, email, password, confirmPassword });
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Passar emailError para os componentes de layout
+  const layoutProps = {
+    showPassword,
+    setShowPassword,
+    fullName,
+    setFullName,
+    email,
+    setEmail,
+    password,
+    setPassword,
+    confirmPassword,
+    setConfirmPassword,
+    handleSubmit,
+    isSubmitting,
+    emailError,
   };
 
   return (
@@ -38,36 +80,10 @@ export default function RegisterPage() {
       {/* Estrutura principal - tela cheia no desktop, centralizado no mobile */}
       {isMobile ? (
         <main className="flex-1 flex items-center justify-center px-4 py-8">
-          <MobileRegisterLayout
-            showPassword={showPassword}
-            setShowPassword={setShowPassword}
-            fullName={fullName}
-            setFullName={setFullName}
-            email={email}
-            setEmail={setEmail}
-            password={password}
-            setPassword={setPassword}
-            confirmPassword={confirmPassword}
-            setConfirmPassword={setConfirmPassword}
-            handleSubmit={handleSubmit}
-            isSubmitting={isSubmitting}
-          />
+          <MobileRegisterLayout {...layoutProps} />
         </main>
       ) : (
-        <DesktopRegisterLayout
-          showPassword={showPassword}
-          setShowPassword={setShowPassword}
-          fullName={fullName}
-          setFullName={setFullName}
-          email={email}
-          setEmail={setEmail}
-          password={password}
-          setPassword={setPassword}
-          confirmPassword={confirmPassword}
-          setConfirmPassword={setConfirmPassword}
-          handleSubmit={handleSubmit}
-          isSubmitting={isSubmitting}
-        />
+        <DesktopRegisterLayout {...layoutProps} />
       )}
     </div>
   );

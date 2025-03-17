@@ -28,7 +28,8 @@ interface RegisterLayoutProps {
   setConfirmPassword: (confirmPassword: string) => void;
   handleSubmit: (e: React.FormEvent) => void;
   isSubmitting: boolean;
-  onInputChange?: () => void; // Agora é opcional
+  emailError?: string;
+  onInputChange?: () => void;
 }
 
 // Componente de registro para Mobile
@@ -45,6 +46,7 @@ export const MobileRegisterLayout = ({
   setConfirmPassword,
   handleSubmit,
   isSubmitting,
+  emailError,
   onInputChange = () => {}, // Valor padrão para quando não for fornecido
 }: RegisterLayoutProps) => (
   <div className="w-full max-w-md mt-8">
@@ -76,6 +78,7 @@ export const MobileRegisterLayout = ({
           setEmail(e.target.value);
           onInputChange?.();
         }}
+        error={emailError}
         required
       />
 
@@ -168,6 +171,7 @@ export const DesktopRegisterLayout = ({
   setConfirmPassword,
   handleSubmit,
   isSubmitting,
+  emailError,
   onInputChange = () => {}, // Valor padrão para quando não for fornecido
 }: RegisterLayoutProps) => (
   <div className="flex w-full h-screen">
@@ -219,6 +223,7 @@ export const DesktopRegisterLayout = ({
               setEmail(e.target.value);
               onInputChange?.();
             }}
+            error={emailError}
             required
           />
 

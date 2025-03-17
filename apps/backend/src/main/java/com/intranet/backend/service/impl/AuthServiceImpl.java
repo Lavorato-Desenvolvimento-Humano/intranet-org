@@ -174,6 +174,11 @@ public class AuthServiceImpl implements AuthService {
     public JwtResponse register(RegisterRequest registerRequest) {
         logger.info("Processando solicitação de registro para: {}", registerRequest.getEmail());
 
+        if (!registerRequest.getEmail().endsWith("@lavorato.com.br")) {
+            logger.warn("Tentativa de registro com domínio de email não permitido {}", registerRequest.getEmail());
+            throw new RuntimeException("Erro: Apenas emails com domínio @lavorato.com.br são permitidos!");
+        }
+
         if (userRepository.existsByEmail(registerRequest.getEmail())) {
             logger.warn("Email já está em uso: {}", registerRequest.getEmail());
             throw new RuntimeException("Erro: Email já está em uso!");

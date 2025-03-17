@@ -95,11 +95,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // As outras funções permanecem semelhantes às anteriores, com tratamento de erros aprimorado
   const register = async (data: RegisterData) => {
     // Verificar se as senhas coincidem
     if (data.password !== data.confirmPassword) {
       toastUtil.error("As senhas não coincidem.");
+      return;
+    }
+
+    if (!data.email.endsWith("@lavorato.com.br")) {
+      toastUtil.error(
+        "Apenas email com domínio @lavorato.com.br são permitidos"
+      );
       return;
     }
 

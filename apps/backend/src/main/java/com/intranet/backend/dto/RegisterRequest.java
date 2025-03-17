@@ -1,5 +1,6 @@
 package com.intranet.backend.dto;
 
+import com.intranet.backend.validation.LavoratoEmail;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -22,6 +23,7 @@ public class RegisterRequest {
 
     @NotBlank(message = "O email é obrigatório")
     @Email(message = "Formato de email inválido")
+    @LavoratoEmail(message = "Apenas emails com domínio @lavorato.com.br são permitidos")
     private String email;
 
     @NotBlank(message = "A senha é obrigatória")

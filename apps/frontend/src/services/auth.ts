@@ -63,8 +63,14 @@ function processAuthResponse(userData: AuthResponse): User {
   return user;
 }
 
-// Outras funções permanecem as mesmas
 export const register = async (data: RegisterData): Promise<User> => {
+  //Validar domínio do e-mail antes de enviar a requisição
+  if (!data.email.endsWith("@lavorato.com.br")) {
+    throw new Error(
+      "Apenas emails com domínio @lavorato.com.br são permitidos"
+    );
+  }
+
   // Remover confirmPassword antes de enviar para o backend
   const { confirmPassword, ...registerData } = data;
 
