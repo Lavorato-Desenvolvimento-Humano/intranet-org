@@ -1,4 +1,4 @@
-// src/context/AuthContext.tsx - Versão corrigida
+// src/context/AuthContext.tsx
 "use client";
 
 import React, {
@@ -17,7 +17,7 @@ import {
   NewPasswordRequest,
 } from "@/services/auth";
 
-// Interface para o contexto de autenticação
+// Interface do contexto de autenticação
 interface AuthContextType {
   user: User | null;
   loading: boolean;
@@ -29,7 +29,7 @@ interface AuthContextType {
   resetPassword: (data: NewPasswordRequest) => Promise<void>;
 }
 
-// Criação do contexto
+// Criar contexto
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Props para o provedor de autenticação
@@ -54,7 +54,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkUser();
   }, []);
 
-  // Função de login melhorada
+  // Função de login aprimorada com melhor tratamento de erros
   const login = async (credentials: LoginCredentials) => {
     const loadingToastId = toastUtil.loading("Fazendo login...");
 
@@ -62,28 +62,40 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setLoading(true);
       const userData = await authService.login(credentials);
       setUser(userData);
+
       toastUtil.dismiss(loadingToastId);
       toastUtil.success("Login realizado com sucesso!");
+
+      // Redirecionar para página inicial
       window.location.href = "/";
     } catch (err: any) {
       toastUtil.dismiss(loadingToastId);
 
+      // Mostrar mensagem de erro detalhada quando disponível
       if (err.response && err.response.data) {
-        const errorMessage =
-          typeof err.response.data.message === "string"
-            ? err.response.data.message
-            : "Email ou senha incorretos";
-
-        toastUtil.error(errorMessage);
+        // Verificar diferentes formatos de resposta de erro
+        if (typeof err.response.data === "string") {
+          toastUtil.error(err.response.data);
+        } else if (err.response.data.message) {
+          toastUtil.error(err.response.data.message);
+        } else if (err.response.data.error) {
+          toastUtil.error(err.response.data.error);
+        } else {
+          toastUtil.error("Email ou senha incorretos");
+        }
+      } else if (err.message && err.message.includes("timeout")) {
+        toastUtil.error(
+          "Tempo limite excedido. Verifique sua conexão e tente novamente."
+        );
       } else {
-        toastUtil.error("Erro ao fazer login. Tente novamente.");
+        toastUtil.error("Falha no login. Por favor, tente novamente.");
       }
     } finally {
       setLoading(false);
     }
   };
 
-  // Função para registrar um novo usuário
+  // As outras funções permanecem semelhantes às anteriores, com tratamento de erros aprimorado
   const register = async (data: RegisterData) => {
     // Verificar se as senhas coincidem
     if (data.password !== data.confirmPassword) {
@@ -104,19 +116,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (err: any) {
       toastUtil.dismiss(loadingToastId);
 
+      // Tratamento detalhado de erros
       if (err.response && err.response.data) {
-        // O backend pode retornar múltiplos erros de validação
         if (
           typeof err.response.data === "object" &&
           !Array.isArray(err.response.data)
         ) {
           const errorMessages = Object.values(err.response.data).join(", ");
           toastUtil.error(errorMessages);
+        } else if (err.response.data.message) {
+          toastUtil.error(err.response.data.message);
         } else {
-          toastUtil.error(
-            err.response.data.message ||
-              "Erro ao registrar. Verifique seus dados."
-          );
+          toastUtil.error("Erro ao registrar. Verifique seus dados.");
         }
       } else {
         toastUtil.error("Erro ao registrar. Tente novamente.");
@@ -126,14 +137,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Função para logout
+  // Função de logout simplificada
   const logout = () => {
     authService.logout();
     setUser(null);
     toastUtil.info("Você saiu da sua conta");
   };
 
-  // Função para solicitar reset de senha
+  // Função para solicitar redefinição de senha
   const requestPasswordReset = async (email: string) => {
     const loadingToastId = toastUtil.loading("Enviando solicitação...");
 
@@ -145,15 +156,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       window.location.href = `/auth/reset-password/code?email=${encodeURIComponent(email)}`;
     } catch (err: any) {
       toastUtil.dismiss(loadingToastId);
-      toastUtil.error(
-        "Erro ao solicitar redefinição de senha. Tente novamente."
-      );
+
+      if (err.response && err.response.data && err.response.data.message) {
+        toastUtil.error(err.response.data.message);
+      } else {
+        toastUtil.error(
+          "Erro ao solicitar redefinição de senha. Tente novamente."
+        );
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  // Função para verificar código de recuperação
+  // Função para verificar código de redefinição
   const verifyResetCode = async (email: string, code: string) => {
     const loadingToastId = toastUtil.loading("Verificando código...");
 
@@ -165,15 +181,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       window.location.href = `/auth/reset-password/new-password?email=${encodeURIComponent(email)}&code=${encodeURIComponent(code)}`;
     } catch (err: any) {
       toastUtil.dismiss(loadingToastId);
-      toastUtil.error(
-        "Código inválido. Por favor, verifique e tente novamente."
-      );
+
+      if (err.response && err.response.data && err.response.data.message) {
+        toastUtil.error(err.response.data.message);
+      } else {
+        toastUtil.error(
+          "Código inválido. Por favor, verifique e tente novamente."
+        );
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  // Função para redefinir a senha
+  // Função para redefinir senha
   const resetPassword = async (data: NewPasswordRequest) => {
     const loadingToastId = toastUtil.loading("Redefinindo sua senha...");
 
@@ -185,7 +206,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       window.location.href = "/auth/login?reset=success";
     } catch (err: any) {
       toastUtil.dismiss(loadingToastId);
-      toastUtil.error("Erro ao redefinir senha. Tente novamente.");
+
+      if (err.response && err.response.data && err.response.data.message) {
+        toastUtil.error(err.response.data.message);
+      } else {
+        toastUtil.error("Erro ao redefinir senha. Tente novamente.");
+      }
     } finally {
       setLoading(false);
     }
@@ -210,7 +236,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    throw new Error("useAuth deve ser usado dentro de um AuthProvider");
   }
   return context;
 };

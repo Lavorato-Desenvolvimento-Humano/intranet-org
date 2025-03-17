@@ -28,10 +28,17 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<JwtResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
-        logger.info("Solicitação de login recebida para o email: {}", loginRequest.getEmail());
-        JwtResponse jwtResponse = authService.login(loginRequest);
-        logger.info("Login bem-sucedido para o email: {}", loginRequest.getEmail());
-        return ResponseEntity.ok(jwtResponse);
+        try {
+            logger.info("Solicitação de login recebida para o email: {}", loginRequest.getEmail());
+
+            JwtResponse jwtResponse = authService.login(loginRequest);
+
+            logger.info("Login bem-sucedido para o email: {}", loginRequest.getEmail());
+            return ResponseEntity.ok(jwtResponse);
+        } catch (Exception e) {
+            logger.error("Login falhou para {}: {}", loginRequest.getEmail(), e.getMessage());
+            throw e; // Deixe o manipulador global de exceções lidar com isso
+        }
     }
 
     @PostMapping("/register")
