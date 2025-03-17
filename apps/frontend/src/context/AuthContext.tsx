@@ -1,4 +1,4 @@
-// contexts/AuthContext.tsx - VERSÃO CORRIGIDA
+// src/context/AuthContext.tsx - Versão corrigida
 "use client";
 
 import React, {
@@ -9,45 +9,13 @@ import React, {
   ReactNode,
 } from "react";
 import toastUtil from "@/utils/toast";
-import api from "@/services/api";
-
-// Interfaces
-export interface LoginCredentials {
-  email: string;
-  password: string;
-}
-
-export interface RegisterData {
-  fullName: string;
-  email: string;
-  password: string;
-  confirmPassword?: string;
-}
-
-export interface User {
-  id: string;
-  fullName: string;
-  email: string;
-  profileImage?: string;
-  roles: string[];
-  token?: string;
-}
-
-export interface AuthResponse {
-  token: string;
-  type: string;
-  id: string;
-  fullName: string;
-  email: string;
-  profileImage: string | null;
-  roles: string[];
-}
-
-export interface NewPasswordRequest {
-  email: string;
-  verificationCode: string;
-  newPassword: string;
-}
+import * as authService from "@/services/auth";
+import {
+  User,
+  LoginCredentials,
+  RegisterData,
+  NewPasswordRequest,
+} from "@/services/auth";
 
 // Interface para o contexto de autenticação
 interface AuthContextType {
@@ -76,7 +44,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Carregar usuário do localStorage ao iniciar
   useEffect(() => {
     const checkUser = () => {
-      const currentUser = getCurrentUser();
+      const currentUser = authService.getCurrentUser();
       if (currentUser) {
         setUser(currentUser);
       }
@@ -86,24 +54,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkUser();
   }, []);
 
-  // Função de login aprimorada que tenta múltiplos endpoints
+  // Função de login melhorada
   const login = async (credentials: LoginCredentials) => {
     const loadingToastId = toastUtil.loading("Fazendo login...");
 
     try {
       setLoading(true);
-
-      // Usar apenas o endpoint padrão
-      console.log("Tentando login com endpoint padrão");
-      const response = await api.post<AuthResponse>("/auth/login", credentials);
-      const userData = processAuthResponse(response.data);
+      const userData = await authService.login(credentials);
       setUser(userData);
       toastUtil.dismiss(loadingToastId);
       toastUtil.success("Login realizado com sucesso!");
       window.location.href = "/";
     } catch (err: any) {
       toastUtil.dismiss(loadingToastId);
-      console.error("Erro no login:", err);
 
       if (err.response && err.response.data) {
         const errorMessage =
@@ -120,24 +83,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Função auxiliar para processar a resposta de autenticação
-  function processAuthResponse(userData: AuthResponse): User {
-    // Salva o token e informações do usuário no localStorage
-    localStorage.setItem("token", userData.token);
-
-    const user: User = {
-      id: userData.id,
-      fullName: userData.fullName,
-      email: userData.email,
-      profileImage: userData.profileImage || undefined,
-      roles: userData.roles,
-      token: userData.token,
-    };
-
-    localStorage.setItem("user", JSON.stringify(user));
-    return user;
-  }
-
   // Função para registrar um novo usuário
   const register = async (data: RegisterData) => {
     // Verificar se as senhas coincidem
@@ -150,14 +95,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     try {
       setLoading(true);
-      // Remover confirmPassword antes de enviar para o backend
-      const { confirmPassword, ...registerData } = data;
-
-      const response = await api.post<AuthResponse>(
-        "/auth/register",
-        registerData
-      );
-      const userData = processAuthResponse(response.data);
+      const userData = await authService.register(data);
       setUser(userData);
 
       toastUtil.dismiss(loadingToastId);
@@ -190,11 +128,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Função para logout
   const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    authService.logout();
     setUser(null);
     toastUtil.info("Você saiu da sua conta");
-    window.location.href = "/auth/login";
   };
 
   // Função para solicitar reset de senha
@@ -203,9 +139,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     try {
       setLoading(true);
-      await api.post("/auth/reset-password/request", null, {
-        params: { email },
-      });
+      await authService.requestPasswordReset(email);
       toastUtil.dismiss(loadingToastId);
       toastUtil.success("Código de redefinição enviado para seu email");
       window.location.href = `/auth/reset-password/code?email=${encodeURIComponent(email)}`;
@@ -225,9 +159,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     try {
       setLoading(true);
-      await api.post("/auth/reset-password/verify", null, {
-        params: { email, code },
-      });
+      await authService.verifyResetCode(email, code);
       toastUtil.dismiss(loadingToastId);
       toastUtil.success("Código verificado com sucesso");
       window.location.href = `/auth/reset-password/new-password?email=${encodeURIComponent(email)}&code=${encodeURIComponent(code)}`;
@@ -247,7 +179,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     try {
       setLoading(true);
-      await api.post("/auth/reset-password/complete", data);
+      await authService.resetPassword(data);
       toastUtil.dismiss(loadingToastId);
       toastUtil.success("Senha redefinida com sucesso!");
       window.location.href = "/auth/login?reset=success";
@@ -258,16 +190,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setLoading(false);
     }
   };
-
-  // Função para obter usuário atual do localStorage
-  function getCurrentUser(): User | null {
-    if (typeof window === "undefined") {
-      return null; // Estamos no servidor
-    }
-
-    const userStr = localStorage.getItem("user");
-    return userStr ? JSON.parse(userStr) : null;
-  }
 
   // Valores expostos pelo contexto
   const value = {

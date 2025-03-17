@@ -1,5 +1,4 @@
 // services/auth.ts
-// services/auth-fixed.ts
 import api from "./api";
 
 export interface LoginCredentials {
@@ -36,41 +35,10 @@ export interface AuthResponse {
 // Função para fazer login - implementação corrigida
 export const login = async (credentials: LoginCredentials): Promise<User> => {
   try {
-    console.log("Tentando login com endpoint padrão:", credentials.email);
-
-    // Tenta primeiro o endpoint padrão
-    try {
-      const response = await api.post<AuthResponse>("/auth/login", credentials);
-      return processAuthResponse(response.data);
-    } catch (error: any) {
-      console.log("Falha no endpoint padrão, tentando endpoint simples");
-
-      // Se falhar, tenta o endpoint simples
-      try {
-        const response = await api.post<AuthResponse>(
-          "/auth/simple/login",
-          credentials
-        );
-        return processAuthResponse(response.data);
-      } catch (simpleError: any) {
-        console.log("Falha no endpoint simples, tentando endpoint direto");
-
-        // Se falhar novamente, tenta o endpoint direto
-        const response = await api.post<AuthResponse>(
-          "/auth/direta/login",
-          credentials
-        );
-        return processAuthResponse(response.data);
-      }
-    }
-  } catch (error: any) {
-    console.error("Todos os endpoints de login falharam:", error);
-    if (error.response) {
-      console.error("Detalhes do erro:", {
-        status: error.response.status,
-        data: error.response.data,
-      });
-    }
+    const response = await api.post<AuthResponse>("/auth/login", credentials);
+    return processAuthResponse(response.data);
+  } catch (error) {
+    console.error("Erro no login:", error);
     throw error;
   }
 };

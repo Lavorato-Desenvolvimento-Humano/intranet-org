@@ -34,17 +34,8 @@ const LoginDebugger = () => {
     setResult(null);
     setError(null);
 
-    let url = "";
-    switch (method) {
-      case "simple":
-        url = `${baseUrl}/auth/simple/login`;
-        break;
-      case "direta":
-        url = `${baseUrl}/auth/direta/login`;
-        break;
-      default:
-        url = `${baseUrl}/auth/login`;
-    }
+    // Usar apenas o endpoint padrão
+    const url = `${baseUrl}/auth/login`;
 
     try {
       const response = await fetch(url, {
