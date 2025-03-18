@@ -1,4 +1,4 @@
--- apps/backend/src/main/resources/db/migration/V3__add_email_verification.sql
+-- apps/backend/src/main/resources/db/migration/V4__add_email_verification.sql
 
 -- Adicionar coluna para status de verificação na tabela users
 ALTER TABLE users ADD COLUMN email_verified BOOLEAN NOT NULL DEFAULT FALSE;
