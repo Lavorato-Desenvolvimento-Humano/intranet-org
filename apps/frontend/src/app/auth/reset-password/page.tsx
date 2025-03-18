@@ -17,19 +17,40 @@ export default function ResetPasswordPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { requestPasswordReset } = useAuth();
 
-  // Exibir mensagem adicional de ajuda quando a página é carregada após uma solicitação
-  if (status === "requested") {
-    toastUtil.info(
-      "Verifique sua caixa de entrada e spam. Se o e-mail estiver cadastrado, você receberá um código em breve."
-    );
-  }
-}, [email, status]);
+  // Função para validar email
+  const validateEmail = (email: string) => {
+    // Verificar se o email está vazio
+    if (!email) {
+      toastUtil.error("Por favor, informe seu email");
+      return false;
+    }
+
+    // Verificar o formato básico do email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toastUtil.error(
+        "Email inválido. Por favor, verifique e tente novamente."
+      );
+      return false;
+    }
+
+    // Verificar se o domínio é permitido
+    if (!email.endsWith("@lavorato.com.br")) {
+      toastUtil.error(
+        "Apenas emails com domínio @lavorato.com.br são permitidos"
+      );
+      return false;
+    }
+
+    return true;
+  };
 
   // Função para lidar com o envio do formulário
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) {
-      toastUtil.error("Por favor, informe seu email");
+
+    // Validar o email antes de prosseguir
+    if (!validateEmail(email)) {
       return;
     }
 

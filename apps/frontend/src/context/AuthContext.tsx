@@ -180,7 +180,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           "Se o e-mail existir em nosso sistema, um código de redefinição será enviado."
       );
 
-      window.location.href = `/auth/reset-password/code?email=${encodeURIComponent(email)}`;
+      window.location.href = `/auth/reset-password/code?email=${encodeURIComponent(email)}&status=requested`;
     } catch (err: any) {
       toastUtil.dismiss(loadingToastId);
 
