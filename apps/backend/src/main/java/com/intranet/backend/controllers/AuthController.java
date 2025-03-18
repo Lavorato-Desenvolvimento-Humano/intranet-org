@@ -9,10 +9,12 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.core.env.Environment;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashMap;
@@ -25,6 +27,9 @@ public class AuthController {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
     private final AuthService authService;
+
+    @Autowired
+    private Environment environment;
 
     @PostMapping("/login")
     public ResponseEntity<JwtResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
@@ -126,5 +131,24 @@ public class AuthController {
     public ResponseEntity<JwtResponse> githubCallback(@RequestParam("code") String code) {
         JwtResponse jwtResponse = authService.authenticateWithGithub(code);
         return ResponseEntity.ok(jwtResponse);
+    }
+
+    @GetMapping("/github/login")
+    public ResponseEntity<Map<String, String>> githubLogin() {
+        logger.info("Iniciando fluxo de autenticação GitHub");
+
+        String clientId = environment.getProperty("github.client.id");
+        String redirectUri = environment.getProperty("github.redirect.uri");
+
+        String authUrl = String.format(
+                "https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s&scope=user",
+                clientId,
+                redirectUri
+        );
+
+        Map<String, String> response = new HashMap<>();
+        response.put("authUrl", authUrl);
+
+        return ResponseEntity.ok(response);
     }
 }

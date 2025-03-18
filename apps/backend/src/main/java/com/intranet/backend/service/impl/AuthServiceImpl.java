@@ -1,5 +1,6 @@
 package com.intranet.backend.service.impl;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.intranet.backend.dto.JwtResponse;
 import com.intranet.backend.dto.LoginRequest;
 import com.intranet.backend.dto.RegisterRequest;
@@ -17,6 +18,7 @@ import com.intranet.backend.security.JwtUtils;
 import com.intranet.backend.service.AuthService;
 import com.intranet.backend.service.EmailService;
 import com.intranet.backend.service.FileStorageService;
+import com.intranet.backend.service.GitHubService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -27,7 +29,9 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -52,6 +56,10 @@ public class AuthServiceImpl implements AuthService {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private GitHubService gitHubService;
+
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
@@ -379,18 +387,135 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public JwtResponse authenticateWithGithub(String code) {
-        // Implementação para autenticação com GitHub
-        // Em uma aplicação real, trocaria o código por um token de acesso,
-        // obteria as informações do usuário da API do GitHub e autenticaria ou registraria o usuário
+        String requestId = UUID.randomUUID().toString().substring(0, 8);
+        logger.info("[{}] Iniciando autenticação com GitHub para código: {}", requestId, code);
 
-        // Simulação: apenas retornamos uma resposta mock
-        return new JwtResponse(
-                "github_mock_token",
-                UUID.randomUUID(),
-                "Usuário GitHub",
-                "github@example.com",
-                null,
-                List.of("ROLE_USER")
-        );
+        try {
+            // 1. Trocar o código por um token de acesso
+            String accessToken = gitHubService.exchangeCodeForToken(code);
+
+            // 2. Obter informações do usuário
+            JsonNode userInfo = gitHubService.getUserInfo(accessToken);
+
+            String githubId = userInfo.get("id").asText();
+            String githubLogin = userInfo.get("login").asText();
+            String email = userInfo.has("email") && !userInfo.get("email").isNull()
+                    ? userInfo.get("email").asText()
+                    : githubLogin + "@github.user";
+            String name = userInfo.has("name") && !userInfo.get("name").isNull()
+                    ? userInfo.get("name").asText()
+                    : githubLogin;
+            String avatarUrl = userInfo.has("avatar_url") ? userInfo.get("avatar_url").asText() : null;
+
+            logger.info("[{}] Informações do usuário GitHub obtidas: login={}, name={}, email={}",
+                    requestId, githubLogin, name, email);
+
+            // 3. Verificar se o usuário está na lista de permitidos
+            if (!gitHubService.isUserAllowed(githubLogin)) {
+                logger.warn("[{}] Usuário GitHub não autorizado: {}", requestId, githubLogin);
+                throw new RuntimeException("Usuário GitHub não autorizado. Apenas usuários específicos podem acessar.");
+            }
+
+            // 4. Verificar se o usuário já existe pelo githubId
+            Optional<User> existingUserByGithub = userRepository.findByGithubId(githubId);
+            User user;
+
+            if (existingUserByGithub.isPresent()) {
+                // Usuário já existe, atualizar informações se necessário
+                user = existingUserByGithub.get();
+                logger.info("[{}] Usuário GitHub encontrado: {}", requestId, user.getEmail());
+
+                // Atualizar informações se necessário
+                boolean needsUpdate = false;
+
+                if (!user.getFullName().equals(name)) {
+                    user.setFullName(name);
+                    needsUpdate = true;
+                }
+
+                if (avatarUrl != null && !avatarUrl.equals(user.getProfileImage())) {
+                    user.setProfileImage(avatarUrl);
+                    needsUpdate = true;
+                }
+
+                if (needsUpdate) {
+                    logger.info("[{}] Atualizando informações do usuário GitHub", requestId);
+                    user = userRepository.save(user);
+                }
+            } else {
+                // Verificar se existe usuário com o mesmo email
+                Optional<User> existingUserByEmail = userRepository.findByEmail(email);
+
+                if (existingUserByEmail.isPresent()) {
+                    // Vincular conta GitHub a usuário existente
+                    user = existingUserByEmail.get();
+                    user.setGithubId(githubId);
+                    logger.info("[{}] Vinculando conta GitHub ao usuário existente: {}", requestId, email);
+                    user = userRepository.save(user);
+                } else {
+                    // Criar novo usuário
+                    logger.info("[{}] Criando novo usuário a partir da conta GitHub: {}", requestId, email);
+                    user = new User();
+                    user.setEmail(email);
+                    user.setFullName(name);
+                    user.setGithubId(githubId);
+                    user.setProfileImage(avatarUrl);
+
+                    // Gerar uma senha aleatória, já que o login será via GitHub
+                    String randomPassword = UUID.randomUUID().toString();
+                    user.setPasswordHash(passwordEncoder.encode(randomPassword));
+
+                    user = userRepository.save(user);
+
+                    // Atribuir o papel de usuário padrão
+                    Role userRole = roleRepository.findByName("USER")
+                            .orElseThrow(() -> new RuntimeException("Erro: Papel 'USER' não encontrado."));
+
+                    UserRole newUserRole = new UserRole();
+                    newUserRole.setUser(user);
+                    newUserRole.setRole(userRole);
+                    userRoleRepository.save(newUserRole);
+                    logger.info("[{}] Papel USER atribuído ao novo usuário GitHub: {}", requestId, email);
+                }
+            }
+
+            // 5. Criar autenticação e gerar token JWT
+            List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+            authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+
+            UserDetails userDetails = new org.springframework.security.core.userdetails.User(
+                    user.getEmail(),
+                    user.getPasswordHash(),
+                    authorities);
+
+            Authentication authentication = new UsernamePasswordAuthenticationToken(
+                    userDetails, null, userDetails.getAuthorities());
+
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+            String jwt = jwtUtils.generateJwtToken(authentication);
+
+            // 6. Obter papéis do usuário
+            List<String> roles = user.getUserRoles().stream()
+                    .map(ur -> "ROLE_" + ur.getRole().getName())
+                    .collect(Collectors.toList());
+
+            if (roles.isEmpty()) {
+                roles.add("ROLE_USER");
+            }
+
+            logger.info("[{}] Autenticação GitHub concluída com sucesso para: {}", requestId, user.getEmail());
+
+            return new JwtResponse(
+                    jwt,
+                    user.getId(),
+                    user.getFullName(),
+                    user.getEmail(),
+                    user.getProfileImage(),
+                    roles
+            );
+        } catch (Exception e) {
+            logger.error("[{}] Erro durante autenticação GitHub: {}", requestId, e.getMessage(), e);
+            throw new RuntimeException("Falha na autenticação com GitHub: " + e.getMessage(), e);
+        }
     }
 }

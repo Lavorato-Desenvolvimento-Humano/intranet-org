@@ -1,21 +1,25 @@
-// app/auth/github-callback/page.tsx
+// apps/frontend/src/app/auth/github-callback/page.tsx
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { githubLogin } from "@/services/auth";
 import toastUtil from "@/utils/toast";
+import { AlertCircle } from "lucide-react";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import Link from "next/link";
 
 export default function GitHubCallbackPage() {
+  const [error, setError] = useState<string | null>(null);
+  const [processing, setProcessing] = useState(true);
+
   useEffect(() => {
     // Extrair o código da URL usando window.location
     const urlParams = new URLSearchParams(window.location.search);
     const authCode = urlParams.get("code");
 
     if (!authCode) {
-      toastUtil.error("Código de autorização não encontrado");
-      setTimeout(() => {
-        window.location.href = "/auth/login";
-      }, 2000);
+      setError("Código de autorização não encontrado");
+      setProcessing(false);
       return;
     }
 
@@ -31,18 +35,20 @@ export default function GitHubCallbackPage() {
         console.error("Erro na autenticação com GitHub:", err);
         toastUtil.dismiss(loadingToastId);
 
-        if (err.response && err.response.data) {
-          toastUtil.error(
+        // Capturar erro específico de usuário não autorizado
+        if (err.message && err.message.includes("não autorizado")) {
+          setError(
+            "Acesso restrito: Apenas os usuários GitHub 'ViniciusG03' e 'JooWilliams' podem entrar por este método."
+          );
+        } else if (err.response && err.response.data) {
+          setError(
             err.response.data.message || "Erro na autenticação com GitHub"
           );
         } else {
-          toastUtil.error("Erro na autenticação com GitHub. Tente novamente.");
+          setError("Erro na autenticação com GitHub. Tente novamente.");
         }
 
-        // Adiciona um pequeno atraso antes de redirecionar
-        setTimeout(() => {
-          window.location.href = "/auth/login";
-        }, 3000);
+        setProcessing(false);
       }
     };
 
@@ -56,14 +62,34 @@ export default function GitHubCallbackPage() {
           Autenticação com GitHub
         </h1>
 
-        <div className="text-center">
-          <div className="mb-4">
-            <div className="w-16 h-16 border-t-4 border-primary border-solid rounded-full animate-spin mx-auto"></div>
+        {processing ? (
+          <div className="text-center">
+            <div className="mb-4">
+              <div className="w-16 h-16 border-t-4 border-primary border-solid rounded-full animate-spin mx-auto"></div>
+            </div>
+            <p className="text-gray-600">
+              Processando sua autenticação com GitHub...
+            </p>
           </div>
-          <p className="text-gray-600">
-            Processando sua autenticação com GitHub...
-          </p>
-        </div>
+        ) : error ? (
+          <div className="text-center">
+            <Alert variant="error" className="mb-4">
+              <AlertCircle className="h-4 w-4 mr-2" />
+              <AlertTitle>Erro de Autenticação</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+
+            <p className="text-gray-600 mb-4">
+              Desculpe, não foi possível completar a autenticação.
+            </p>
+
+            <Link
+              href="/auth/login"
+              className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-dark transition-colors">
+              Voltar para o Login
+            </Link>
+          </div>
+        ) : null}
       </div>
     </div>
   );

@@ -142,9 +142,39 @@ export const getCurrentUser = (): User | null => {
   return userStr ? JSON.parse(userStr) : null;
 };
 
+// Função para autenticar com GitHub após redirect
 export const githubLogin = async (code: string): Promise<User> => {
-  const response = await api.get<AuthResponse>(
-    `/auth/github/callback?code=${code}`
-  );
-  return processAuthResponse(response.data);
+  try {
+    console.log("Autenticando com GitHub, código:", code);
+    const response = await api.get<AuthResponse>(
+      `/auth/github/callback?code=${code}`
+    );
+    return processAuthResponse(response.data);
+  } catch (error: any) {
+    // Tratar especificamente o erro de usuário não autorizado
+    if (
+      error.response &&
+      error.response.data &&
+      error.response.data.message &&
+      error.response.data.message.includes("não autorizado")
+    ) {
+      throw new Error(
+        "Apenas os usuários GitHub 'ViniciusG03' e 'JooWilliams' estão autorizados a usar este método de login."
+      );
+    }
+    console.error("Erro na autenticação com GitHub:", error);
+    throw error;
+  }
+};
+
+// Função para iniciar fluxo de login GitHub
+export const initiateGithubLogin = async (): Promise<string> => {
+  try {
+    // Obter URL de autorização do GitHub do backend
+    const response = await api.get<{ authUrl: string }>("/auth/github/login");
+    return response.data.authUrl;
+  } catch (error) {
+    console.error("Erro ao iniciar login GitHub:", error);
+    throw error;
+  }
 };
