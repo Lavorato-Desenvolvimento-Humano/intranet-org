@@ -5,6 +5,7 @@ import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
@@ -26,6 +27,8 @@ public class EmailService {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.addInline("logo", new ClassPathResource("static/images/logo.png"));
 
             helper.setFrom("desenvolvimento@lavorato.com.br");
             helper.setTo(to);
@@ -51,6 +54,8 @@ public class EmailService {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.addInline("logo", new ClassPathResource("static/images/logo.png"));
 
             helper.setFrom("desenvolvimento@lavorato.com.br");
             helper.setTo(to);
