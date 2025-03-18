@@ -35,6 +35,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -59,6 +61,9 @@ public class AuthServiceImpl implements AuthService {
 
     @Autowired
     private GitHubService gitHubService;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
@@ -386,6 +391,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    @Transactional
     public JwtResponse authenticateWithGithub(String code) {
         String requestId = UUID.randomUUID().toString().substring(0, 8);
         logger.info("[{}] Iniciando autenticação com GitHub para código: {}", requestId, code);
@@ -416,72 +422,30 @@ public class AuthServiceImpl implements AuthService {
                 throw new RuntimeException("Usuário GitHub não autorizado. Apenas usuários específicos podem acessar.");
             }
 
-            // 4. Verificar se o usuário já existe pelo githubId
-            Optional<User> existingUserByGithub = userRepository.findByGithubId(githubId);
-            User user;
+            // 4. Gerenciar usuário - criando um novo método separado e mais simples
+            User user = manageGithubUser(githubId, email, name, avatarUrl, requestId);
 
-            if (existingUserByGithub.isPresent()) {
-                // Usuário já existe, atualizar informações se necessário
-                user = existingUserByGithub.get();
-                logger.info("[{}] Usuário GitHub encontrado: {}", requestId, user.getEmail());
+            // 5. Buscar papéis do usuário diretamente do banco de dados
+            List<String> roleNames = userRepository.findRoleNamesByUserId(user.getId());
+            List<String> roles = new ArrayList<>();
 
-                // Atualizar informações se necessário
-                boolean needsUpdate = false;
-
-                if (!user.getFullName().equals(name)) {
-                    user.setFullName(name);
-                    needsUpdate = true;
-                }
-
-                if (avatarUrl != null && !avatarUrl.equals(user.getProfileImage())) {
-                    user.setProfileImage(avatarUrl);
-                    needsUpdate = true;
-                }
-
-                if (needsUpdate) {
-                    logger.info("[{}] Atualizando informações do usuário GitHub", requestId);
-                    user = userRepository.save(user);
-                }
-            } else {
-                // Verificar se existe usuário com o mesmo email
-                Optional<User> existingUserByEmail = userRepository.findByEmail(email);
-
-                if (existingUserByEmail.isPresent()) {
-                    // Vincular conta GitHub a usuário existente
-                    user = existingUserByEmail.get();
-                    user.setGithubId(githubId);
-                    logger.info("[{}] Vinculando conta GitHub ao usuário existente: {}", requestId, email);
-                    user = userRepository.save(user);
-                } else {
-                    // Criar novo usuário
-                    logger.info("[{}] Criando novo usuário a partir da conta GitHub: {}", requestId, email);
-                    user = new User();
-                    user.setEmail(email);
-                    user.setFullName(name);
-                    user.setGithubId(githubId);
-                    user.setProfileImage(avatarUrl);
-
-                    // Gerar uma senha aleatória, já que o login será via GitHub
-                    String randomPassword = UUID.randomUUID().toString();
-                    user.setPasswordHash(passwordEncoder.encode(randomPassword));
-
-                    user = userRepository.save(user);
-
-                    // Atribuir o papel de usuário padrão
-                    Role userRole = roleRepository.findByName("USER")
-                            .orElseThrow(() -> new RuntimeException("Erro: Papel 'USER' não encontrado."));
-
-                    UserRole newUserRole = new UserRole();
-                    newUserRole.setUser(user);
-                    newUserRole.setRole(userRole);
-                    userRoleRepository.save(newUserRole);
-                    logger.info("[{}] Papel USER atribuído ao novo usuário GitHub: {}", requestId, email);
+            // Adicionar prefixo ROLE_ a cada papel encontrado
+            if (roleNames != null && !roleNames.isEmpty()) {
+                for (String roleName : roleNames) {
+                    roles.add("ROLE_" + roleName);
                 }
             }
 
-            // 5. Criar autenticação e gerar token JWT
+            // Se não tiver papéis, adicionar o papel USER padrão
+            if (roles.isEmpty()) {
+                roles.add("ROLE_USER");
+            }
+
+            // 6. Criar autenticação e gerar token JWT
             List<SimpleGrantedAuthority> authorities = new ArrayList<>();
-            authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+            for (String role : roles) {
+                authorities.add(new SimpleGrantedAuthority(role));
+            }
 
             UserDetails userDetails = new org.springframework.security.core.userdetails.User(
                     user.getEmail(),
@@ -489,19 +453,10 @@ public class AuthServiceImpl implements AuthService {
                     authorities);
 
             Authentication authentication = new UsernamePasswordAuthenticationToken(
-                    userDetails, null, userDetails.getAuthorities());
+                    userDetails, null, authorities);
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
             String jwt = jwtUtils.generateJwtToken(authentication);
-
-            // 6. Obter papéis do usuário
-            List<String> roles = user.getUserRoles().stream()
-                    .map(ur -> "ROLE_" + ur.getRole().getName())
-                    .collect(Collectors.toList());
-
-            if (roles.isEmpty()) {
-                roles.add("ROLE_USER");
-            }
 
             logger.info("[{}] Autenticação GitHub concluída com sucesso para: {}", requestId, user.getEmail());
 
@@ -517,5 +472,70 @@ public class AuthServiceImpl implements AuthService {
             logger.error("[{}] Erro durante autenticação GitHub: {}", requestId, e.getMessage(), e);
             throw new RuntimeException("Falha na autenticação com GitHub: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Método separado para gerenciar o usuário GitHub
+     */
+    private User manageGithubUser(String githubId, String email, String name, String avatarUrl, String requestId) {
+        // Verificar se o usuário já existe pelo githubId
+        Optional<User> existingUserByGithub = userRepository.findByGithubId(githubId);
+        User user;
+
+        if (existingUserByGithub.isPresent()) {
+            // Usuário já existe, atualizar informações se necessário
+            user = existingUserByGithub.get();
+            logger.info("[{}] Usuário GitHub encontrado: {}", requestId, user.getEmail());
+
+            // Atualizar informações básicas
+            user.setFullName(name);
+            if (avatarUrl != null) {
+                user.setProfileImage(avatarUrl);
+            }
+
+            user = userRepository.saveAndFlush(user);
+        } else {
+            // Verificar se existe usuário com o mesmo email
+            Optional<User> existingUserByEmail = userRepository.findByEmail(email);
+
+            if (existingUserByEmail.isPresent()) {
+                // Vincular conta GitHub a usuário existente
+                user = existingUserByEmail.get();
+                user.setGithubId(githubId);
+                logger.info("[{}] Vinculando conta GitHub ao usuário existente: {}", requestId, email);
+                user = userRepository.saveAndFlush(user);
+            } else {
+                // Criar novo usuário
+                logger.info("[{}] Criando novo usuário a partir da conta GitHub: {}", requestId, email);
+                user = new User();
+                user.setEmail(email);
+                user.setFullName(name);
+                user.setGithubId(githubId);
+                user.setProfileImage(avatarUrl);
+
+                // Gerar uma senha aleatória
+                String randomPassword = UUID.randomUUID().toString();
+                user.setPasswordHash(passwordEncoder.encode(randomPassword));
+
+                user = userRepository.saveAndFlush(user);
+
+                // Atribuir o papel de usuário padrão
+                try {
+                    Role userRole = roleRepository.findByName("USER")
+                            .orElseThrow(() -> new RuntimeException("Erro: Papel 'USER' não encontrado."));
+
+                    UserRole newUserRole = new UserRole();
+                    newUserRole.setUser(user);
+                    newUserRole.setRole(userRole);
+                    userRoleRepository.saveAndFlush(newUserRole);
+                    logger.info("[{}] Papel USER atribuído ao novo usuário GitHub: {}", requestId, email);
+                } catch (Exception e) {
+                    logger.error("[{}] Erro ao atribuir papel USER: {}", requestId, e.getMessage());
+                    // Continuar mesmo sem atribuir papel
+                }
+            }
+        }
+
+        return user;
     }
 }
