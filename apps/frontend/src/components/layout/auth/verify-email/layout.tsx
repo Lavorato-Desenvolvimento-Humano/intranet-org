@@ -83,6 +83,22 @@ export const MobileEmailVerificationLayout = ({
           />
         </div>
 
+        {/* Links agora ficam acima do botão e na mesma linha */}
+        <div className="flex items-center justify-center w-full mb-6 gap-3">
+          <button
+            type="button"
+            onClick={onResendCode}
+            className="font-inter font-normal text-gray-700 hover:text-black hover:underline text-xs">
+            Não recebeu o código?
+          </button>
+          <span className="text-gray-400">|</span>
+          <Link
+            href="/auth/login"
+            className="font-inter font-normal text-primary hover:text-primary-dark hover:underline text-xs">
+            Voltar para login
+          </Link>
+        </div>
+
         <CustomButton
           type="submit"
           className="w-44 py-3 bg-primary hover:bg-primary-dark text-white font-bold rounded-lg transition-colors"
@@ -98,27 +114,6 @@ export const MobileEmailVerificationLayout = ({
           )}
         </CustomButton>
       </form>
-    </div>
-
-    <div className="mt-8 text-center">
-      <div className="mb-3">
-        <span className="font-inter font-normal text-gray-700 text-xs">
-          Não recebeu o código?
-        </span>
-        <span className="mx-1"></span>
-        <button
-          onClick={onResendCode}
-          className="font-inter font-normal text-black underline hover:text-gray-700 transition-colors text-xs">
-          Reenviar código
-        </button>
-      </div>
-      <div>
-        <Link
-          href="/auth/login"
-          className="font-inter font-normal text-primary underline hover:text-primary-dark transition-colors text-xs">
-          Voltar para login
-        </Link>
-      </div>
     </div>
   </div>
 );
@@ -175,6 +170,22 @@ export const DesktopEmailVerificationLayout = ({
             />
           </div>
 
+          {/* Links agora ficam entre o input e o botão, e na mesma linha */}
+          <div className="flex items-center mb-6 gap-3">
+            <button
+              type="button"
+              onClick={onResendCode}
+              className="font-inter font-normal text-gray-700 hover:text-black hover:underline text-xs">
+              Não recebeu o código?
+            </button>
+            <span className="text-gray-400">|</span>
+            <Link
+              href="/auth/login"
+              className="font-inter font-normal text-primary hover:text-primary-dark hover:underline text-xs">
+              Voltar para login
+            </Link>
+          </div>
+
           <CustomButton
             type="submit"
             className="w-full max-w-44 mx-0 block py-3 bg-primary hover:bg-primary-dark text-white font-bold rounded-s-xl transition-colors"
@@ -190,27 +201,6 @@ export const DesktopEmailVerificationLayout = ({
             )}
           </CustomButton>
         </form>
-      </div>
-
-      <div className="mt-8 self-start ml-8">
-        <div className="mb-3">
-          <span className="font-inter font-normal text-gray-700 text-xs">
-            Não recebeu o código?
-          </span>
-          <span className="mx-1"></span>
-          <button
-            onClick={onResendCode}
-            className="font-inter font-normal text-black underline hover:text-gray-700 transition-colors text-xs">
-            Reenviar código
-          </button>
-        </div>
-        <div>
-          <Link
-            href="/auth/login"
-            className="font-inter font-normal text-primary underline hover:text-primary-dark transition-colors text-xs">
-            Voltar para login
-          </Link>
-        </div>
       </div>
     </div>
   </div>
