@@ -106,6 +106,21 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorDetails, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
+    @ExceptionHandler(EmailNotVerifiedException.class)
+    public ResponseEntity<ErrorDetails> handleEmailNotVerifiedException(
+            EmailNotVerifiedException exception, WebRequest request) {
+
+        ErrorDetails errorDetails = new ErrorDetails(
+                LocalDateTime.now(),
+                HttpStatus.FORBIDDEN.value(),
+                "Email não verificado",
+                exception.getMessage(),
+                request.getDescription(false)
+        );
+
+        return new ResponseEntity<>(errorDetails, HttpStatus.FORBIDDEN);
+    }
+
     // Classe interna para detalhes de erro
     public static class ErrorDetails {
         private LocalDateTime timestamp;

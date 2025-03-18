@@ -31,7 +31,14 @@ function LoginContent() {
         "Senha redefinida com sucesso! Faça login com sua nova senha."
       );
     }
-  }, [resetSuccess]);
+
+    const emailVerified = searchParams.get("verified") === "true";
+    if (emailVerified) {
+      toastUtil.success(
+        "Email verificado com sucesso! Agora você pode fazer login."
+      );
+    }
+  }, [resetSuccess, searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

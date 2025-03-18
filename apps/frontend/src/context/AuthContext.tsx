@@ -27,6 +27,8 @@ interface AuthContextType {
   requestPasswordReset: (email: string) => Promise<void>;
   verifyResetCode: (email: string, code: string) => Promise<void>;
   resetPassword: (data: NewPasswordRequest) => Promise<void>;
+  verifyEmail: (email: string, code: string) => Promise<void>;
+  resendVerificationEmail: (email: string) => Promise<void>;
 }
 
 // Criar contexto
@@ -70,6 +72,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       window.location.href = "/";
     } catch (err: any) {
       toastUtil.dismiss(loadingToastId);
+
+      if (
+        err.response &&
+        err.response.status === 403 &&
+        err.response.data &&
+        err.response.data.error === "Email não verificado"
+      ) {
+        toastUtil.error(
+          "Email não verificado. Por favor, verifique seu email."
+        );
+        // Redirecionar para página de verificação
+        window.location.href = `/auth/verify-email?email=${encodeURIComponent(credentials.email)}`;
+        return;
+      }
 
       // Mostrar mensagem de erro detalhada quando disponível
       if (err.response && err.response.data) {
@@ -244,6 +260,60 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const verifyEmailHandler = async (email: string, code: string) => {
+    const loadingToastId = toastUtil.loading("Verificando email...");
+
+    try {
+      setLoading(true);
+      await authService.verifyEmail(email, code);
+
+      // Atualizar o status de verificação do usuário se estiver logado
+      if (user && user.email === email) {
+        const updatedUser = { ...user, emailVerified: true };
+        setUser(updatedUser);
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+      }
+
+      toastUtil.dismiss(loadingToastId);
+      toastUtil.success("Email verificado com sucesso!");
+      window.location.href = "/auth/login?verified=true";
+    } catch (err: any) {
+      toastUtil.dismiss(loadingToastId);
+
+      if (err.response && err.response.data && err.response.data.error) {
+        toastUtil.error(err.response.data.error);
+      } else {
+        toastUtil.error("Erro ao verificar email. Tente novamente.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Função para reenviar email de verificação
+  const resendVerificationEmailHandler = async (email: string) => {
+    const loadingToastId = toastUtil.loading(
+      "Enviando email de verificação..."
+    );
+
+    try {
+      setLoading(true);
+      const message = await authService.resendVerificationEmail(email);
+      toastUtil.dismiss(loadingToastId);
+      toastUtil.info(
+        message ||
+          "Se o e-mail existir em nosso sistema, um código de verificação será enviado."
+      );
+    } catch (err: any) {
+      toastUtil.dismiss(loadingToastId);
+      toastUtil.error(
+        "Erro ao reenviar email de verificação. Tente novamente."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Valores expostos pelo contexto
   const value = {
     user,
@@ -254,6 +324,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     requestPasswordReset,
     verifyResetCode,
     resetPassword,
+    verifyEmail: verifyEmailHandler,
+    resendVerificationEmail: resendVerificationEmailHandler,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

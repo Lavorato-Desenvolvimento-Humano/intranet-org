@@ -43,6 +43,9 @@ public class User {
     @Column(name = "profile_image")
     private String profileImage;
 
+    @Column(name = "email_verified", nullable = false)
+    private boolean emailVerified = false;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

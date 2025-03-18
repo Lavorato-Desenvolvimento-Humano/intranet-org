@@ -74,4 +74,31 @@ public class EmailService {
             throw new RuntimeException("Erro ao enviar email de confirmação", e);
         }
     }
+
+    @Async
+    public void sendEmailVerification(String to, String token, String name) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.addInline("logo", new ClassPathResource("static/images/logo.png"));
+
+            helper.setFrom("desenvolvimento@lavorato.com.br");
+            helper.setTo(to);
+            helper.setSubject("Verifique seu Email - Lavorato Saúde Integrada");
+
+            Context context = new Context();
+            context.setVariable("token", token);
+            context.setVariable("name", name);
+
+            String htmlContent = templateEngine.process("email/email-verification", context);
+            helper.setText(htmlContent, true);
+
+            mailSender.send(message);
+            logger.info("Email de verificação enviado para: {}", to);
+        } catch (MessagingException e) {
+            logger.error("Erro ao enviar email de verificação para: {}", to, e);
+            throw new RuntimeException("Erro ao enviar email de verificação", e);
+        }
+    }
 }

@@ -20,6 +20,7 @@ export interface User {
   profileImage?: string;
   roles: string[];
   token?: string;
+  emailVerified: boolean;
 }
 
 export interface AuthResponse {
@@ -30,6 +31,7 @@ export interface AuthResponse {
   email: string;
   profileImage: string | null;
   roles: string[];
+  emailVerified: boolean;
 }
 
 export interface NewPasswordRequest {
@@ -62,6 +64,7 @@ function processAuthResponse(userData: AuthResponse): User {
     profileImage: userData.profileImage || undefined,
     roles: userData.roles,
     token: userData.token,
+    emailVerified: userData.emailVerified,
   };
 
   // Salvar dados do usuário no localStorage
@@ -175,6 +178,36 @@ export const initiateGithubLogin = async (): Promise<string> => {
     return response.data.authUrl;
   } catch (error) {
     console.error("Erro ao iniciar login GitHub:", error);
+    throw error;
+  }
+};
+
+// Função para verificar email
+export const verifyEmail = async (
+  email: string,
+  code: string
+): Promise<void> => {
+  try {
+    await api.post("/auth/verify-email/confirm", null, {
+      params: { email, code },
+    });
+  } catch (error) {
+    console.error("Erro ao verificar email:", error);
+    throw error;
+  }
+};
+
+// Função para reenviar email de verificação
+export const resendVerificationEmail = async (
+  email: string
+): Promise<string | undefined> => {
+  try {
+    const response = await api.post("/auth/verify-email/resend", null, {
+      params: { email },
+    });
+    return response.data.message;
+  } catch (error) {
+    console.error("Erro ao reenviar email de verificação:", error);
     throw error;
   }
 };

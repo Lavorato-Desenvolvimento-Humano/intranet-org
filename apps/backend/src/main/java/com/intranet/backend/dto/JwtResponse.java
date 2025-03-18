@@ -19,6 +19,7 @@ public class JwtResponse {
     private String email;
     private String profileImage;
     private List<String> roles;
+    private boolean emailVerified;
 
     public JwtResponse(String token, UUID id, String fullName, String email, String profileImage, List<String> roles) {
         this.token = token;

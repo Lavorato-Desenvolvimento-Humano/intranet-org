@@ -5,6 +5,7 @@ import com.intranet.backend.dto.JwtResponse;
 import com.intranet.backend.dto.LoginRequest;
 import com.intranet.backend.dto.RegisterRequest;
 import com.intranet.backend.dto.ResetPasswordRequest;
+import com.intranet.backend.exception.EmailNotVerifiedException;
 import com.intranet.backend.exception.ResourceNotFoundException;
 import com.intranet.backend.model.PasswordResetToken;
 import com.intranet.backend.model.Role;
@@ -15,10 +16,7 @@ import com.intranet.backend.repository.RoleRepository;
 import com.intranet.backend.repository.UserRepository;
 import com.intranet.backend.repository.UserRoleRepository;
 import com.intranet.backend.security.JwtUtils;
-import com.intranet.backend.service.AuthService;
-import com.intranet.backend.service.EmailService;
-import com.intranet.backend.service.FileStorageService;
-import com.intranet.backend.service.GitHubService;
+import com.intranet.backend.service.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -65,6 +63,9 @@ public class AuthServiceImpl implements AuthService {
     @PersistenceContext
     private EntityManager entityManager;
 
+    @Autowired
+    private EmailVerificationService emailVerificationService;
+
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
@@ -89,9 +90,16 @@ public class AuthServiceImpl implements AuthService {
                             return new BadCredentialsException("Email ou senha incorretos");
                         });
                 logger.debug("[{}] Usuário encontrado: {} (ID: {})", requestId, user.getEmail(), user.getId());
+
+                // Verificar se o email foi verificado
+                if (!user.isEmailVerified()) {
+                    logger.warn("[{}] Tentativa de login com email não verificado: {}", requestId, loginRequest.getEmail());
+                    throw new EmailNotVerifiedException("Por favor, verifique seu email antes de fazer login.");
+                }
+
             } catch (Exception e) {
                 logger.error("[{}] Erro ao buscar usuário: {}", requestId, e.getMessage(), e);
-                if (e instanceof BadCredentialsException) {
+                if (e instanceof BadCredentialsException || e instanceof EmailNotVerifiedException) {
                     throw e;
                 }
                 throw new RuntimeException("Erro ao verificar credenciais: " + e.getMessage(), e);
@@ -175,6 +183,9 @@ public class AuthServiceImpl implements AuthService {
                         roles
                 );
 
+                // Definir o status de verificação do email
+                response.setEmailVerified(user.isEmailVerified());
+
                 logger.info("[{}] Login concluído com sucesso para: {}", requestId, loginRequest.getEmail());
                 return response;
             } catch (Exception e) {
@@ -185,6 +196,10 @@ public class AuthServiceImpl implements AuthService {
         } catch (BadCredentialsException e) {
             // Erros de credenciais - retorna 401
             logger.warn("[{}] Falha de autenticação: {}", requestId, e.getMessage());
+            throw e;
+        } catch (EmailNotVerifiedException e) {
+            // Email não verificado - retorna 403
+            logger.warn("[{}] Email não verificado: {}", requestId, loginRequest.getEmail());
             throw e;
         } catch (Exception e) {
             // Todos os outros erros - registra detalhes completos e retorna mensagem genérica
@@ -226,6 +241,7 @@ public class AuthServiceImpl implements AuthService {
         User user = new User();
         user.setFullName(registerRequest.getFullName());
         user.setEmail(registerRequest.getEmail());
+        user.setEmailVerified(false); // Definir como não verificado inicialmente
 
         // Codifica a senha
         String encodedPassword = passwordEncoder.encode(registerRequest.getPassword());
@@ -248,6 +264,10 @@ public class AuthServiceImpl implements AuthService {
         userRoleRepository.save(newUserRole);
         logger.debug("Papel USER atribuído ao usuário: {}", savedUser.getEmail());
 
+        // Enviar email de verificação
+        emailVerificationService.createVerificationTokenAndSendEmail(savedUser);
+        logger.info("Email de verificação enviado para: {}", savedUser.getEmail());
+
         // Gera o token JWT para o novo usuário
         try {
             logger.debug("Tentando autenticar o novo usuário: {}", savedUser.getEmail());
@@ -263,7 +283,7 @@ public class AuthServiceImpl implements AuthService {
 
             logger.info("Registro concluído com sucesso para: {}", savedUser.getEmail());
 
-            return new JwtResponse(
+            JwtResponse response = new JwtResponse(
                     jwt,
                     savedUser.getId(),
                     savedUser.getFullName(),
@@ -271,13 +291,17 @@ public class AuthServiceImpl implements AuthService {
                     savedUser.getProfileImage(),
                     roles
             );
+
+            // Definir o status de verificação do email
+            response.setEmailVerified(false);
+
+            return response;
         } catch (AuthenticationException e) {
             logger.error("Falha ao autenticar novo usuário: {}, causa: {}", savedUser.getEmail(), e.getMessage());
             throw new RuntimeException("Erro ao autenticar o novo usuário: " + e.getMessage());
         }
     }
 
-    // Restante dos métodos permanece o mesmo...
     @Override
     @Transactional
     public JwtResponse registerWithImage(String fullName, String email, String password, String githubId, MultipartFile profileImage) {
