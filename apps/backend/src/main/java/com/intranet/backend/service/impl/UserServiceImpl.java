@@ -11,6 +11,8 @@ import com.intranet.backend.repository.UserRoleRepository;
 import com.intranet.backend.service.FileStorageService;
 import com.intranet.backend.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -18,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -27,6 +30,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
+    private static final Logger logger = LoggerFactory.getLogger(UserServiceImpl.class);
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final UserRoleRepository userRoleRepository;
@@ -35,26 +39,78 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<UserDto> getAllUsers() {
-        return userRepository.findAll().stream()
-                .map(this::convertToDto)
-                .collect(Collectors.toList());
+        List<User> users = userRepository.findAll();
+        List<UserDto> userDtos = new ArrayList<>();
+
+        for (User user : users) {
+            List<String> roles = userRepository.findRoleNamesByUserId(user.getId());
+            userDtos.add(new UserDto(
+                    user.getId(),
+                    user.getFullName(),
+                    user.getEmail(),
+                    user.getProfileImage(),
+                    roles,
+                    user.getCreatedAt(),
+                    user.getUpdatedAt()
+            ));
+        }
+
+        return userDtos;
     }
 
     @Override
     public UserDto getUserById(UUID id) {
-        User user = userRepository.findByIdWithRoles(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado com o ID: " + id));
+        try {
+            // Obtenha o usuário sem carregar as coleções relacionadas
+            User user = userRepository.findById(id)
+                    .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado com o ID: " + id));
 
-        return convertToDto(user);
+            // Buscar papéis do usuário de forma segura usando consulta direta
+            List<String> roles = userRepository.findRoleNamesByUserId(id);
+
+            // Converter para DTO sem acessar coleções LazyLoaded
+            return new UserDto(
+                    user.getId(),
+                    user.getFullName(),
+                    user.getEmail(),
+                    user.getProfileImage(),
+                    roles,
+                    user.getCreatedAt(),
+                    user.getUpdatedAt()
+            );
+        } catch (Exception e) {
+            logger.error("Erro ao buscar usuário por ID: {}", e.getMessage(), e);
+            throw e;
+        }
     }
 
     @Override
     public UserDto getCurrentUser() {
-        UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        User user = userRepository.findByEmailWithRoles(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("Usuário atual não encontrado"));
+        try {
+            UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            String email = userDetails.getUsername();
 
-        return convertToDto(user);
+            // Obtenha o usuário sem carregar as coleções relacionadas
+            User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("Usuário atual não encontrado"));
+
+            // Buscar papéis do usuário de forma segura usando consulta direta
+            List<String> roles = userRepository.findRoleNamesByUserId(user.getId());
+
+            // Converter para DTO sem acessar coleções LazyLoaded
+            return new UserDto(
+                    user.getId(),
+                    user.getFullName(),
+                    user.getEmail(),
+                    user.getProfileImage(),
+                    roles,
+                    user.getCreatedAt(),
+                    user.getUpdatedAt()
+            );
+        } catch (Exception e) {
+            logger.error("Erro ao buscar usuário atual: {}", e.getMessage(), e);
+            throw e;
+        }
     }
 
     @Override
@@ -93,7 +149,19 @@ public class UserServiceImpl implements UserService {
         }
 
         User updatedUser = userRepository.save(user);
-        return convertToDto(updatedUser);
+
+        // Buscar papéis do usuário de forma segura
+        List<String> roles = userRepository.findRoleNamesByUserId(updatedUser.getId());
+
+        return new UserDto(
+                updatedUser.getId(),
+                updatedUser.getFullName(),
+                updatedUser.getEmail(),
+                updatedUser.getProfileImage(),
+                roles,
+                updatedUser.getCreatedAt(),
+                updatedUser.getUpdatedAt()
+        );
     }
 
     @Override
@@ -112,7 +180,19 @@ public class UserServiceImpl implements UserService {
         user.setProfileImage(newImagePath);
 
         User updatedUser = userRepository.save(user);
-        return convertToDto(updatedUser);
+
+        // Buscar papéis do usuário de forma segura
+        List<String> roles = userRepository.findRoleNamesByUserId(updatedUser.getId());
+
+        return new UserDto(
+                updatedUser.getId(),
+                updatedUser.getFullName(),
+                updatedUser.getEmail(),
+                updatedUser.getProfileImage(),
+                roles,
+                updatedUser.getCreatedAt(),
+                updatedUser.getUpdatedAt()
+        );
     }
 
     @Override
@@ -132,53 +212,50 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserDto addRole(UUID id, String roleName) {
-        User user = userRepository.findByIdWithRoles(id)
+        User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado com o ID: " + id));
 
         Role role = roleRepository.findByName(roleName.toUpperCase())
                 .orElseThrow(() -> new ResourceNotFoundException("Papel não encontrado com o nome: " + roleName));
 
-        // Verifica se o usuário já possui o papel
-        boolean hasRole = user.getUserRoles().stream()
-                .anyMatch(ur -> ur.getRole().getName().equals(role.getName()));
+        // Verifica se o usuário já possui o papel usando o repositório
+        boolean hasRole = userRoleRepository.existsByUserIdAndRoleId(id, role.getId());
 
         if (!hasRole) {
             UserRole userRole = new UserRole();
             userRole.setUser(user);
             userRole.setRole(role);
             userRoleRepository.save(userRole);
-
-            // Atualiza o usuário para a resposta
-            user = userRepository.findByIdWithRoles(id)
-                    .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado com o ID: " + id));
         }
 
-        return convertToDto(user);
+        // Buscar papéis atualizados usando consulta direta
+        List<String> roles = userRepository.findRoleNamesByUserId(id);
+
+        return new UserDto(
+                user.getId(),
+                user.getFullName(),
+                user.getEmail(),
+                user.getProfileImage(),
+                roles,
+                user.getCreatedAt(),
+                user.getUpdatedAt()
+        );
     }
 
     @Override
     @Transactional
     public UserDto removeRole(UUID id, String roleName) {
-        User user = userRepository.findByIdWithRoles(id)
+        User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado com o ID: " + id));
 
         Role role = roleRepository.findByName(roleName.toUpperCase())
                 .orElseThrow(() -> new ResourceNotFoundException("Papel não encontrado com o nome: " + roleName));
 
-        // Encontra e remove o papel do usuário
-        user.getUserRoles().removeIf(ur -> ur.getRole().getName().equals(role.getName()));
+        // Remover papel diretamente usando o repositório
+        userRoleRepository.deleteByUserIdAndRoleId(id, role.getId());
 
-        // Salva o usuário atualizado
-        User updatedUser = userRepository.save(user);
-
-        return convertToDto(updatedUser);
-    }
-
-    // Método auxiliar para converter User para UserDto
-    private UserDto convertToDto(User user) {
-        List<String> roles = user.getUserRoles().stream()
-                .map(ur -> "ROLE_" + ur.getRole().getName())
-                .collect(Collectors.toList());
+        // Buscar papéis atualizados usando consulta direta
+        List<String> roles = userRepository.findRoleNamesByUserId(id);
 
         return new UserDto(
                 user.getId(),
