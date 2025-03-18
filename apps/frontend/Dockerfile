@@ -30,6 +30,11 @@ COPY --from=builder /app/apps/frontend/public ./public
 COPY --from=builder /app/apps/frontend/.next ./.next
 RUN npm install --omit=dev
 
+# Configurar permissões APÓS copiar os arquivos
+RUN mkdir -p /app/.next/cache/images && \
+    chown -R nextjs:nodejs /app/.next && \
+    chmod -R 755 /app/.next/cache
+
 # Definir usuário correto para aplicação
 USER nextjs
 

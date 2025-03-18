@@ -1,5 +1,4 @@
 import React, { useState, useRef } from "react";
-import Image from "next/image";
 import { Camera, Loader2 } from "lucide-react";
 import { User } from "@/services/auth";
 import profileService from "@/services/profile";
@@ -16,9 +15,38 @@ export const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
 }) => {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [imageError, setImageError] = useState(false);
 
   const handleImageClick = () => {
     fileInputRef.current?.click();
+  };
+
+  // Função para renderizar a imagem de perfil com fallback
+  const renderProfileImage = () => {
+    if (!user.profileImage || imageError) {
+      // Se não há imagem ou ocorreu um erro, mostrar a inicial do nome
+      return (
+        <div className="w-full h-full flex items-center justify-center text-2xl font-bold text-gray-600">
+          {user.fullName.charAt(0).toUpperCase()}
+        </div>
+      );
+    }
+
+    // Se há uma imagem, tentar carregá-la
+    const imageUrl = user.profileImage.startsWith("http")
+      ? user.profileImage
+      : `${process.env.NEXT_PUBLIC_API_URL || ""}/uploads/images/${user.profileImage}`;
+
+    return (
+      <div className="w-full h-full relative">
+        <img
+          src={imageUrl}
+          alt={user.fullName}
+          className="w-full h-full object-cover rounded-full"
+          onError={() => setImageError(true)}
+        />
+      </div>
+    );
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -47,6 +75,7 @@ export const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
         user.id,
         file
       );
+      setImageError(false); // Resetar flag de erro
       onImageUpdate(updatedUser);
       toastUtil.success("Imagem de perfil atualizada com sucesso!");
     } catch (error) {
@@ -61,20 +90,8 @@ export const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
       <div
         onClick={handleImageClick}
         className="w-24 h-24 bg-gray-300 rounded-full flex items-center justify-center text-2xl font-bold text-gray-600 relative cursor-pointer overflow-hidden hover:opacity-80 transition-opacity">
-        {user.profileImage ? (
-          <Image
-            src={
-              user.profileImage.startsWith("http")
-                ? user.profileImage
-                : `${process.env.NEXT_PUBLIC_API_URL || ""}/uploads/images/${user.profileImage}`
-            }
-            alt={user.fullName}
-            layout="fill"
-            objectFit="cover"
-          />
-        ) : (
-          <span>{user.fullName.charAt(0)}</span>
-        )}
+        {renderProfileImage()}
+
         <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-30 transition-opacity flex items-center justify-center">
           <Camera
             className="text-white opacity-0 hover:opacity-100"

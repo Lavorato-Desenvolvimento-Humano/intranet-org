@@ -145,19 +145,16 @@ public class AuthServiceImpl implements AuthService {
                 throw new RuntimeException("Erro ao gerar token de autenticação: " + e.getMessage(), e);
             }
 
-            // Passo 4: Obter papéis do usuário
+            // Passo 4: Obter papéis do usuário - CORREÇÃO AQUI
             logger.debug("[{}] Obtendo papéis do usuário", requestId);
             List<String> roles = new ArrayList<>();
             try {
-                roles = user.getUserRoles().stream()
-                        .map(role -> {
-                            try {
-                                return "ROLE_" + role.getRole().getName();
-                            } catch (Exception e) {
-                                logger.warn("[{}] Erro ao processar papel: {}", requestId, e.getMessage());
-                                return "ROLE_UNKNOWN";
-                            }
-                        })
+                // Em vez de iterar nas coleções de entidades, usamos uma consulta direta
+                roles = userRepository.findRoleNamesByUserId(user.getId());
+
+                // Adicionar o prefixo ROLE_ se não existir
+                roles = roles.stream()
+                        .map(role -> role.startsWith("ROLE_") ? role : "ROLE_" + role)
                         .collect(Collectors.toList());
 
                 if (roles.isEmpty()) {
@@ -192,7 +189,6 @@ public class AuthServiceImpl implements AuthService {
                 logger.error("[{}] Erro ao criar resposta JWT: {}", requestId, e.getMessage(), e);
                 throw new RuntimeException("Erro ao processar resposta de login: " + e.getMessage(), e);
             }
-
         } catch (BadCredentialsException e) {
             // Erros de credenciais - retorna 401
             logger.warn("[{}] Falha de autenticação: {}", requestId, e.getMessage());
