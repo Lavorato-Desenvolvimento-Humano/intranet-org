@@ -84,11 +84,15 @@ export const register = async (data: RegisterData): Promise<User> => {
   return processAuthResponse(response.data);
 };
 
-export const requestPasswordReset = async (email: string): Promise<void> => {
+export const requestPasswordReset = async (
+  email: string
+): Promise<string | undefined> => {
   try {
-    await api.post("/auth/reset-password/request", null, {
+    const response = await api.post("/auth/reset-password/request", null, {
       params: { email },
     });
+
+    return response.data.message;
   } catch (error) {
     console.error("Erro ao solicitar reset de senha:", error);
     throw error;

@@ -16,6 +16,7 @@ function ResetPasswordCodeContent() {
   const viewport = useViewport();
   const searchParams = useSearchParams();
   const email = searchParams.get("email") || "";
+  const status = searchParams.get("status") || "";
   const [code, setCode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { verifyResetCode } = useAuth();
@@ -28,7 +29,14 @@ function ResetPasswordCodeContent() {
         window.location.href = "/auth/reset-password";
       }, 2000);
     }
-  }, [email]);
+
+    // Exibir mensagem adicional de ajuda quando a página é carregada após uma solicitação
+    if (status === "requested") {
+      toastUtil.info(
+        "Verifique sua caixa de entrada e spam. Se o e-mail estiver cadastrado, você receberá um código em breve."
+      );
+    }
+  }, [email, status]);
 
   // Função para lidar com o envio do formulário
   const handleSubmit = async (e: React.FormEvent) => {

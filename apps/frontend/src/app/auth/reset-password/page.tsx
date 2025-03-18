@@ -17,6 +17,14 @@ export default function ResetPasswordPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { requestPasswordReset } = useAuth();
 
+  // Exibir mensagem adicional de ajuda quando a página é carregada após uma solicitação
+  if (status === "requested") {
+    toastUtil.info(
+      "Verifique sua caixa de entrada e spam. Se o e-mail estiver cadastrado, você receberá um código em breve."
+    );
+  }
+}, [email, status]);
+
   // Função para lidar com o envio do formulário
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

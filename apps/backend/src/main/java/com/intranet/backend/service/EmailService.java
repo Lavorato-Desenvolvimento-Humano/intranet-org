@@ -14,7 +14,7 @@ import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
 @Service
-@RequiredArgsConstructor
+@RequiredArgsConstructor 
 public class EmailService {
 
     private static final Logger logger = LoggerFactory.getLogger(EmailService.class);

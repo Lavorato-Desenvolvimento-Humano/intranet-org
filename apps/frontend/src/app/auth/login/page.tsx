@@ -61,15 +61,6 @@ function LoginContent() {
       {/* Header só aparece no modo mobile */}
       {isMobile && <Header />}
 
-      {/* Botão de debug - apenas para desenvolvimento */}
-      <div className="absolute top-2 right-2 z-10">
-        <button
-          onClick={toggleDebugger}
-          className="bg-gray-800 text-white px-3 py-1 text-xs rounded-md opacity-50 hover:opacity-100">
-          {showDebugger ? "Ocultar Debug" : "Debug"}
-        </button>
-      </div>
-
       {/* Estrutura principal - tela cheia no desktop, centralizado no mobile */}
       {isMobile ? (
         <main className="flex-1 flex items-center justify-center px-4 py-8 flex-col">
@@ -105,13 +96,6 @@ function LoginContent() {
             isSubmitting={isSubmitting}
             onInputChange={onInputChange}
           />
-
-          {/* Ferramenta de debug no desktop */}
-          {showDebugger && (
-            <div className="fixed bottom-4 right-4 w-96 max-h-[80vh] overflow-auto">
-              <LoginDebugger />
-            </div>
-          )}
         </div>
       )}
     </div>

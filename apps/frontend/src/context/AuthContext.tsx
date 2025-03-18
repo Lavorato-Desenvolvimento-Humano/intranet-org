@@ -152,13 +152,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Função para solicitar redefinição de senha
   const requestPasswordReset = async (email: string) => {
+    //Validação básica de formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toastUtil.error(
+        "Email inválido. Por favor, verifique e tente novamente."
+      );
+      return;
+    }
+
+    if (!email.endsWith("@lavorato.com.br")) {
+      toastUtil.error(
+        "Apenas emails com domínio @lavorato.com.br são permitidos"
+      );
+      return;
+    }
+
     const loadingToastId = toastUtil.loading("Enviando solicitação...");
 
     try {
       setLoading(true);
-      await authService.requestPasswordReset(email);
+      const message = await authService.requestPasswordReset(email);
       toastUtil.dismiss(loadingToastId);
-      toastUtil.success("Código de redefinição enviado para seu email");
+
+      toastUtil.info(
+        message ||
+          "Se o e-mail existir em nosso sistema, um código de redefinição será enviado."
+      );
+
       window.location.href = `/auth/reset-password/code?email=${encodeURIComponent(email)}`;
     } catch (err: any) {
       toastUtil.dismiss(loadingToastId);
