@@ -2,9 +2,7 @@ package com.intranet.backend.service.impl;
 
 import com.intranet.backend.dto.UserDto;
 import com.intranet.backend.exception.ResourceNotFoundException;
-import com.intranet.backend.model.Role;
-import com.intranet.backend.model.User;
-import com.intranet.backend.model.UserRole;
+import com.intranet.backend.model.*;
 import com.intranet.backend.repository.EmailVerificationTokenRepository;
 import com.intranet.backend.repository.PasswordResetTokenRepository;
 import com.intranet.backend.repository.RoleRepository;
@@ -210,19 +208,19 @@ public class UserServiceImpl implements UserService {
                 });
 
         try {
-            // Primeiro, remover todas as associações de papéis
-            logger.debug("Removendo associações de papéis para o usuário: {}", id);
-            userRoleRepository.deleteByUserId(id);
-
             // Remover tokens de verificação de email
             logger.debug("Removendo tokens de verificação de email para o usuário: {}", id);
-            emailVerificationTokenRepository.findAllByUserId(user)
-                    .forEach(emailVerificationTokenRepository::delete);
+            List<EmailVerificationToken> emailTokens = emailVerificationTokenRepository.findAllByUserId(id);
+            emailVerificationTokenRepository.deleteAll(emailTokens);
 
             // Remover tokens de redefinição de senha
             logger.debug("Removendo tokens de redefinição de senha para o usuário: {}", id);
-            passwordResetTokenRepository.findAllByUserId(user)
-                    .forEach(passwordResetTokenRepository::delete);
+            List<PasswordResetToken> passwordTokens = passwordResetTokenRepository.findAllByUserId(id);
+            passwordResetTokenRepository.deleteAll(passwordTokens);
+
+            // Remover as associações de papéis
+            logger.debug("Removendo associações de papéis para o usuário: {}", id);
+            userRoleRepository.deleteByUserId(id);
 
             // Remover a imagem de perfil do sistema de arquivos, se existir
             if (user.getProfileImage() != null && !user.getProfileImage().isEmpty()
@@ -242,7 +240,7 @@ public class UserServiceImpl implements UserService {
             logger.info("Usuário excluído com sucesso: {}", id);
         } catch (Exception e) {
             logger.error("Erro ao excluir usuário: {}", id, e);
-            throw e; // Relançar a exceção para ser tratada pelo controlador
+            throw e;
         }
     }
 

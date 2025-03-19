@@ -31,12 +31,7 @@ export const buildProfileImageUrl = (
     return imageIdentifier;
   }
 
-  // Se começar com barra, é um caminho relativo à raiz do domínio
-  if (imageIdentifier.startsWith("/")) {
-    return `${apiBaseUrl}${imageIdentifier}`;
-  }
-
-  // Tentativa principal - caminho que deve funcionar com a configuração padrão
+  // Construir URL completa com o caminho mais provável de funcionar
   return `${apiBaseUrl}/api/uploads/images/${imageIdentifier}`;
 };
 

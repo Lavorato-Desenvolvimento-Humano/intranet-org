@@ -161,10 +161,10 @@ export const PasswordChange: React.FC<PasswordChangeProps> = ({ user }) => {
 
       <CustomButton
         type="submit"
-        variant="secondary"
+        variant="primary"
         icon={isSubmitting ? Loader2 : undefined}
         disabled={isSubmitting}
-        className="w-full mt-4 bg-gray-700 hover:bg-gray-800 text-primary">
+        className="w-full mt-4">
         {isSubmitting ? "Atualizando..." : "Atualizar senha"}
       </CustomButton>
     </form>

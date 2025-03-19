@@ -52,8 +52,6 @@ export const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
       const nextIndex = currentAttemptIndex + 1;
       setCurrentAttemptIndex(nextIndex);
       setImageUrl(urlAttempts[nextIndex]);
-      setImageError(false); // Resetar o estado de erro para a nova tentativa
-
       console.log(
         `Tentando URL alternativa ${nextIndex + 1}/${urlAttempts.length}: ${urlAttempts[nextIndex]}`
       );
