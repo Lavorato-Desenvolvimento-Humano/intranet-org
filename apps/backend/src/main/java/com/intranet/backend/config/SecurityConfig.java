@@ -66,7 +66,19 @@ public class SecurityConfig {
                 .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth ->
-                        auth.requestMatchers("/auth/**", "/public/**").permitAll()
+                        auth
+                                // Public endpoints for authentication
+                                .requestMatchers("/auth/**", "/public/**").permitAll()
+
+                                // Public access to image resources
+                                .requestMatchers("/api/uploads/images/**").permitAll()
+                                .requestMatchers("/uploads/images/**").permitAll()
+                                .requestMatchers("/images/**").permitAll()
+                                .requestMatchers("/api/files/check/**").permitAll()
+                                .requestMatchers("/api/profile-images/**").permitAll()
+                                .requestMatchers("/profile-images/**").permitAll()
+
+                                // All other requests need authentication
                                 .anyRequest().authenticated()
                 );
 
