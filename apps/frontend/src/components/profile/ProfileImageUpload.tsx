@@ -1,8 +1,12 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Camera, Loader2 } from "lucide-react";
 import { User } from "@/services/auth";
 import profileService from "@/services/profile";
 import toastUtil from "@/utils/toast";
+import {
+  buildProfileImageUrl,
+  getAlternativeImageUrls,
+} from "@/utils/imageUtils";
 
 interface ProfileImageUploadProps {
   user: User;
@@ -16,40 +20,59 @@ export const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imageError, setImageError] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string>("");
+  const [urlAttempts, setUrlAttempts] = useState<string[]>([]);
+  const [currentAttemptIndex, setCurrentAttemptIndex] = useState(0);
+
+  // Efeito para construir a URL da imagem quando o usuário muda
+  useEffect(() => {
+    if (user.profileImage && !imageError) {
+      // Primeiro, define a URL principal usando o utilitário
+      const mainUrl = buildProfileImageUrl(user.profileImage);
+      setImageUrl(mainUrl);
+
+      // Também obtém uma lista de URLs alternativas para tentar se a principal falhar
+      const alternativeUrls = getAlternativeImageUrls(user.profileImage);
+      setUrlAttempts(alternativeUrls);
+      setCurrentAttemptIndex(0);
+    }
+  }, [user.profileImage, imageError]);
 
   const handleImageClick = () => {
     fileInputRef.current?.click();
   };
 
-  // Função aprimorada para renderizar a imagem de perfil com fallback
+  // Função para tentar a próxima URL alternativa quando uma falha
+  const tryNextImageUrl = () => {
+    if (
+      urlAttempts.length > 0 &&
+      currentAttemptIndex < urlAttempts.length - 1
+    ) {
+      // Ainda há mais URLs para tentar
+      const nextIndex = currentAttemptIndex + 1;
+      setCurrentAttemptIndex(nextIndex);
+      setImageUrl(urlAttempts[nextIndex]);
+      setImageError(false); // Resetar o estado de erro para a nova tentativa
+
+      console.log(
+        `Tentando URL alternativa ${nextIndex + 1}/${urlAttempts.length}: ${urlAttempts[nextIndex]}`
+      );
+    } else {
+      // Já tentamos todas as URLs, mantém o estado de erro
+      console.log("Todas as URLs alternativas falharam. Mostrando fallback.");
+      setImageError(true);
+    }
+  };
+
+  // Função para renderizar a imagem de perfil
   const renderProfileImage = () => {
-    if (!user.profileImage || imageError) {
-      // Se não há imagem ou ocorreu um erro, mostrar a inicial do nome
+    if (!user.profileImage || imageError || !imageUrl) {
+      // Se não há imagem, ocorreu um erro ou não há URL, mostrar a inicial do nome
       return (
         <div className="w-full h-full flex items-center justify-center text-2xl font-bold text-gray-600">
           {user.fullName.charAt(0).toUpperCase()}
         </div>
       );
-    }
-
-    // Determina a URL da imagem com base no seu formato
-    const baseApiUrl =
-      process.env.NEXT_PUBLIC_API_URL || "https://dev.lavorato.app.br";
-
-    // Lógica aprimorada para determinar a URL
-    let imageUrl;
-    if (
-      user.profileImage.startsWith("http") ||
-      user.profileImage.startsWith("data:")
-    ) {
-      // URL completa ou data URL
-      imageUrl = user.profileImage;
-    } else if (user.profileImage.startsWith("/")) {
-      // Caminho relativo começando com '/'
-      imageUrl = `${baseApiUrl}${user.profileImage}`;
-    } else {
-      // Assume que é um nome de arquivo na pasta de uploads
-      imageUrl = `${baseApiUrl}/uploads/images/${user.profileImage}`;
     }
 
     return (
@@ -58,9 +81,10 @@ export const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
           src={imageUrl}
           alt={user.fullName}
           className="w-full h-full object-cover rounded-full"
-          onError={() => {
-            console.log("Erro ao carregar imagem:", imageUrl);
-            setImageError(true);
+          onError={(e) => {
+            console.error(`Erro ao carregar imagem: ${imageUrl}`);
+            // Tentar a próxima URL alternativa
+            tryNextImageUrl();
           }}
         />
       </div>
@@ -101,6 +125,15 @@ export const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
 
       toastUtil.dismiss(loadingToastId);
       toastUtil.success("Imagem de perfil atualizada com sucesso!");
+
+      // Resetar as tentativas de URL para a nova imagem
+      const newMainUrl = buildProfileImageUrl(updatedUser.profileImage);
+      setImageUrl(newMainUrl);
+      const newAlternativeUrls = getAlternativeImageUrls(
+        updatedUser.profileImage
+      );
+      setUrlAttempts(newAlternativeUrls);
+      setCurrentAttemptIndex(0);
     } catch (error: any) {
       toastUtil.dismiss(loadingToastId);
 

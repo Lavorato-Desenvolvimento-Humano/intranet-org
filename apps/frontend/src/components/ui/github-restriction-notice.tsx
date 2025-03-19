@@ -9,10 +9,8 @@ export const GitHubRestrictionNotice: React.FC = () => {
       <div className="text-xs text-blue-800">
         <p className="font-medium mb-1">Nota sobre acesso GitHub:</p>
         <p>
-          O login via GitHub está disponível apenas para os usuários
-          específicos:
-          <span className="font-semibold"> ViniciusG03</span> e
-          <span className="font-semibold"> JooWilliams</span>.
+          O login via GitHub está disponível apenas para os
+          <span className="font-semibold"> Desenvolvedores</span>
         </p>
       </div>
     </div>

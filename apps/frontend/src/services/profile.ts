@@ -1,6 +1,7 @@
 // src/services/profile.ts
 import api from "./api";
 import { User } from "./auth";
+import { buildProfileImageUrl } from "@/utils/imageUtils";
 
 export interface ProfileUpdateData {
   fullName?: string;
@@ -100,14 +101,35 @@ const profileService = {
         }
       );
 
-      // Atualizar o usuário no localStorage com a nova imagem
-      const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
-      if (currentUser && currentUser.id === userId) {
-        currentUser.profileImage = response.data.profileImage;
-        localStorage.setItem("user", JSON.stringify(currentUser));
+      // Construir a URL completa da imagem para garantir que seja acessível
+      let profileImageUrl = response.data.profileImage;
+      if (
+        profileImageUrl &&
+        !profileImageUrl.startsWith("http") &&
+        !profileImageUrl.startsWith("data:")
+      ) {
+        profileImageUrl = buildProfileImageUrl(profileImageUrl);
       }
 
-      return response.data;
+      // Criar um objeto de usuário atualizado com a URL completa
+      const updatedUser = {
+        ...response.data,
+        profileImage: response.data.profileImage, // Manter a referência original do backend
+      };
+
+      // Atualizar o usuário no localStorage
+      const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+      if (currentUser && currentUser.id === userId) {
+        Object.assign(currentUser, updatedUser);
+        localStorage.setItem("user", JSON.stringify(currentUser));
+
+        console.log(
+          "Usuário atualizado no localStorage após upload de imagem:",
+          currentUser
+        );
+      }
+
+      return updatedUser;
     } catch (error) {
       console.error("Erro ao atualizar imagem de perfil:", error);
       throw error;
