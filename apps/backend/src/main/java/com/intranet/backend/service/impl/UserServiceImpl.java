@@ -5,6 +5,8 @@ import com.intranet.backend.exception.ResourceNotFoundException;
 import com.intranet.backend.model.Role;
 import com.intranet.backend.model.User;
 import com.intranet.backend.model.UserRole;
+import com.intranet.backend.repository.EmailVerificationTokenRepository;
+import com.intranet.backend.repository.PasswordResetTokenRepository;
 import com.intranet.backend.repository.RoleRepository;
 import com.intranet.backend.repository.UserRepository;
 import com.intranet.backend.repository.UserRoleRepository;
@@ -24,7 +26,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -36,6 +37,8 @@ public class UserServiceImpl implements UserService {
     private final UserRoleRepository userRoleRepository;
     private final FileStorageService fileStorageService;
     private final PasswordEncoder passwordEncoder;
+    private final EmailVerificationTokenRepository emailVerificationTokenRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
 
     @Override
     public List<UserDto> getAllUsers() {
@@ -198,15 +201,49 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void deleteUser(UUID id) {
+        logger.info("Iniciando processo de exclusão do usuário: {}", id);
+
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado com o ID: " + id));
+                .orElseThrow(() -> {
+                    logger.error("Tentativa de excluir usuário inexistente: {}", id);
+                    return new ResourceNotFoundException("Usuário não encontrado com o ID: " + id);
+                });
 
-        // Remove a imagem de perfil se existir
-        if (user.getProfileImage() != null && !user.getProfileImage().isEmpty()) {
-            fileStorageService.deleteFile(user.getProfileImage());
+        try {
+            // Primeiro, remover todas as associações de papéis
+            logger.debug("Removendo associações de papéis para o usuário: {}", id);
+            userRoleRepository.deleteByUserId(id);
+
+            // Remover tokens de verificação de email
+            logger.debug("Removendo tokens de verificação de email para o usuário: {}", id);
+            emailVerificationTokenRepository.findAllByUserId(user)
+                    .forEach(emailVerificationTokenRepository::delete);
+
+            // Remover tokens de redefinição de senha
+            logger.debug("Removendo tokens de redefinição de senha para o usuário: {}", id);
+            passwordResetTokenRepository.findAllByUserId(user)
+                    .forEach(passwordResetTokenRepository::delete);
+
+            // Remover a imagem de perfil do sistema de arquivos, se existir
+            if (user.getProfileImage() != null && !user.getProfileImage().isEmpty()
+                    && !user.getProfileImage().startsWith("http")) {
+                logger.debug("Removendo imagem de perfil: {}", user.getProfileImage());
+                try {
+                    fileStorageService.deleteFile(user.getProfileImage());
+                } catch (Exception e) {
+                    // Apenas logamos o erro mas continuamos o processo de exclusão
+                    logger.warn("Erro ao excluir imagem de perfil: {}", e.getMessage());
+                }
+            }
+
+            // Por fim, remover o próprio usuário
+            logger.debug("Removendo o usuário: {}", id);
+            userRepository.delete(user);
+            logger.info("Usuário excluído com sucesso: {}", id);
+        } catch (Exception e) {
+            logger.error("Erro ao excluir usuário: {}", id, e);
+            throw e; // Relançar a exceção para ser tratada pelo controlador
         }
-
-        userRepository.delete(user);
     }
 
     @Override

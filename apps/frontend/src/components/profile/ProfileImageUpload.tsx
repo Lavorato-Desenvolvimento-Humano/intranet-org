@@ -21,7 +21,7 @@ export const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
     fileInputRef.current?.click();
   };
 
-  // Função para renderizar a imagem de perfil com fallback
+  // Função aprimorada para renderizar a imagem de perfil com fallback
   const renderProfileImage = () => {
     if (!user.profileImage || imageError) {
       // Se não há imagem ou ocorreu um erro, mostrar a inicial do nome
@@ -32,10 +32,25 @@ export const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
       );
     }
 
-    // Se há uma imagem, tentar carregá-la
-    const imageUrl = user.profileImage.startsWith("http")
-      ? user.profileImage
-      : `${process.env.NEXT_PUBLIC_API_URL || ""}/uploads/images/${user.profileImage}`;
+    // Determina a URL da imagem com base no seu formato
+    const baseApiUrl =
+      process.env.NEXT_PUBLIC_API_URL || "https://dev.lavorato.app.br";
+
+    // Lógica aprimorada para determinar a URL
+    let imageUrl;
+    if (
+      user.profileImage.startsWith("http") ||
+      user.profileImage.startsWith("data:")
+    ) {
+      // URL completa ou data URL
+      imageUrl = user.profileImage;
+    } else if (user.profileImage.startsWith("/")) {
+      // Caminho relativo começando com '/'
+      imageUrl = `${baseApiUrl}${user.profileImage}`;
+    } else {
+      // Assume que é um nome de arquivo na pasta de uploads
+      imageUrl = `${baseApiUrl}/uploads/images/${user.profileImage}`;
+    }
 
     return (
       <div className="w-full h-full relative">
@@ -43,7 +58,10 @@ export const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
           src={imageUrl}
           alt={user.fullName}
           className="w-full h-full object-cover rounded-full"
-          onError={() => setImageError(true)}
+          onError={() => {
+            console.log("Erro ao carregar imagem:", imageUrl);
+            setImageError(true);
+          }}
         />
       </div>
     );
@@ -53,11 +71,11 @@ export const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validar tipo de arquivo
-    const validTypes = ["image/jpeg", "image/png", "image/gif"];
+    // Validação melhorada do tipo de arquivo
+    const validTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
     if (!validTypes.includes(file.type)) {
       toastUtil.error(
-        "Por favor, selecione uma imagem válida (JPEG, PNG ou GIF)"
+        "Por favor, selecione uma imagem válida (JPEG, PNG, GIF ou WebP)"
       );
       return;
     }
@@ -70,18 +88,40 @@ export const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
     }
 
     setIsUploading(true);
+    const loadingToastId = toastUtil.loading("Enviando imagem...");
+
     try {
       const updatedUser = await profileService.updateProfileImage(
         user.id,
         file
       );
+
       setImageError(false); // Resetar flag de erro
       onImageUpdate(updatedUser);
+
+      toastUtil.dismiss(loadingToastId);
       toastUtil.success("Imagem de perfil atualizada com sucesso!");
-    } catch (error) {
-      toastUtil.error("Erro ao atualizar imagem de perfil");
+    } catch (error: any) {
+      toastUtil.dismiss(loadingToastId);
+
+      if (error.response?.status === 413) {
+        toastUtil.error("Imagem muito grande. O tamanho máximo é 5MB.");
+      } else if (error.response?.data?.message) {
+        toastUtil.error(error.response.data.message);
+      } else if (error.message && error.message.includes("timeout")) {
+        toastUtil.error("Tempo limite excedido. Tente com uma imagem menor.");
+      } else {
+        toastUtil.error("Erro ao atualizar imagem de perfil. Tente novamente.");
+      }
+
+      console.error("Detalhes do erro:", error);
     } finally {
       setIsUploading(false);
+
+      // Limpar o input de arquivo para permitir o reenvio do mesmo arquivo
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   };
 
@@ -110,7 +150,7 @@ export const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
         type="file"
         ref={fileInputRef}
         className="hidden"
-        accept="image/jpeg,image/png,image/gif"
+        accept="image/jpeg,image/png,image/gif,image/webp"
         onChange={handleFileChange}
       />
     </div>

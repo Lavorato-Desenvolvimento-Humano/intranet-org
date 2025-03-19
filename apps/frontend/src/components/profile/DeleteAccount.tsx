@@ -35,13 +35,41 @@ export const DeleteAccount: React.FC<DeleteAccountProps> = ({ user }) => {
     }
 
     setIsSubmitting(true);
+    const loadingToastId = toastUtil.loading(
+      "Processando exclusão da conta..."
+    );
+
     try {
       await profileService.deleteAccount(user.id);
+      toastUtil.dismiss(loadingToastId);
       toastUtil.success("Conta excluída com sucesso");
-      logout(); // Redireciona para a página de login
-    } catch (error) {
-      toastUtil.error("Erro ao excluir conta");
-    } finally {
+
+      // Usar setTimeout para garantir que o toast seja visto antes do redirecionamento
+      setTimeout(() => {
+        // Usar o método logout do AuthContext para garantir limpeza adequada
+        logout();
+        // Garantir redirecionamento para a página de login
+        window.location.href = "/auth/login";
+      }, 1500);
+    } catch (error: any) {
+      toastUtil.dismiss(loadingToastId);
+
+      if (error.response?.status === 403) {
+        toastUtil.error("Você não tem permissão para excluir esta conta");
+      } else if (error.response?.status === 401) {
+        toastUtil.error("Sua sessão expirou. Faça login novamente.");
+        setTimeout(() => {
+          logout();
+        }, 1500);
+      } else if (error.response?.data?.message) {
+        toastUtil.error(error.response.data.message);
+      } else if (error.message && error.message.includes("timeout")) {
+        toastUtil.error("Tempo limite excedido. Tente novamente mais tarde.");
+      } else {
+        toastUtil.error("Erro ao excluir conta. Tente novamente.");
+      }
+
+      console.error("Detalhes do erro:", error);
       setIsSubmitting(false);
     }
   };
@@ -74,9 +102,11 @@ export const DeleteAccount: React.FC<DeleteAccountProps> = ({ user }) => {
               type="email"
               value={confirmEmail}
               onChange={(e) => setConfirmEmail(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md"
+              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent"
               placeholder={user.email}
               required
+              disabled={isSubmitting}
+              autoComplete="off"
             />
           </div>
 
@@ -85,7 +115,8 @@ export const DeleteAccount: React.FC<DeleteAccountProps> = ({ user }) => {
               type="button"
               variant="secondary"
               onClick={handleCancel}
-              className="flex-1">
+              className="flex-1"
+              disabled={isSubmitting}>
               Cancelar
             </CustomButton>
             <CustomButton
