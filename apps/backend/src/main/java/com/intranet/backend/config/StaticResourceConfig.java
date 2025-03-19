@@ -30,8 +30,5 @@ public class StaticResourceConfig implements WebMvcConfigurer {
         // Opção 3: Servir imagens em /images/**
         registry.addResourceHandler("/images/**")
                 .addResourceLocations("file:" + uploadDir + "/");
-
-        // Note que podemos adicionar vários mapeamentos para a mesma pasta física,
-        // permitindo que o frontend acesse as imagens por qualquer um dos caminhos acima
     }
 }

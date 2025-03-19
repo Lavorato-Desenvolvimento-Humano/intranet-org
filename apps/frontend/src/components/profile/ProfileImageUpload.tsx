@@ -6,6 +6,8 @@ import toastUtil from "@/utils/toast";
 import {
   buildProfileImageUrl,
   getAlternativeImageUrls,
+  findWorkingImageUrl,
+  checkFileExists,
 } from "@/utils/imageUtils";
 
 interface ProfileImageUploadProps {
@@ -18,52 +20,102 @@ export const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
   onImageUpdate,
 }) => {
   const [isUploading, setIsUploading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imageError, setImageError] = useState(false);
   const [imageUrl, setImageUrl] = useState<string>("");
-  const [urlAttempts, setUrlAttempts] = useState<string[]>([]);
-  const [currentAttemptIndex, setCurrentAttemptIndex] = useState(0);
+  const [cachedImageUrl, setCachedImageUrl] = useState<string | null>(null);
 
   // Efeito para construir a URL da imagem quando o usuário muda
   useEffect(() => {
-    if (user.profileImage && !imageError) {
-      // Primeiro, define a URL principal usando o utilitário
-      const mainUrl = buildProfileImageUrl(user.profileImage);
-      setImageUrl(mainUrl);
-
-      // Também obtém uma lista de URLs alternativas para tentar se a principal falhar
-      const alternativeUrls = getAlternativeImageUrls(user.profileImage);
-      setUrlAttempts(alternativeUrls);
-      setCurrentAttemptIndex(0);
+    if (!user.profileImage) {
+      setImageError(true);
+      setIsLoading(false);
+      return;
     }
-  }, [user.profileImage, imageError]);
+
+    const loadProfileImage = async () => {
+      // Se já tivermos uma URL em cache para este usuário e imagem, use-a
+      const profileImage = user.profileImage || "";
+      const cacheKey = `${user.id}-${profileImage}`;
+      const cachedUrl = localStorage.getItem(`profile-image-${cacheKey}`);
+
+      if (cachedUrl) {
+        console.log("Usando URL em cache:", cachedUrl);
+        setImageUrl(cachedUrl);
+        setCachedImageUrl(cachedUrl);
+        setImageError(false);
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        // Verifica primeiro se o arquivo existe usando a API
+        const filename = profileImage.split("/").pop() || profileImage;
+        const fileExists = await checkFileExists(filename);
+
+        if (fileExists) {
+          const mainUrl = buildProfileImageUrl(profileImage);
+          console.log("Arquivo existe, usando URL principal:", mainUrl);
+          setImageUrl(mainUrl);
+          setImageError(false);
+
+          // Salvar URL no cache do localStorage
+          localStorage.setItem(`profile-image-${cacheKey}`, mainUrl);
+          setCachedImageUrl(mainUrl);
+        } else {
+          // Se o arquivo não existir pelo endpoint de verificação,
+          // tenta uma última tentativa com várias URLs
+          console.log(
+            "Arquivo não existe pelo endpoint de verificação, tentando URLs alternativas"
+          );
+          const alternativeUrls = getAlternativeImageUrls(profileImage, user);
+          const workingUrl = await findWorkingImageUrl(alternativeUrls);
+
+          if (workingUrl) {
+            console.log("URL alternativa encontrada:", workingUrl);
+            setImageUrl(workingUrl);
+            setImageError(false);
+
+            // Salvar URL no cache do localStorage
+            localStorage.setItem(`profile-image-${cacheKey}`, workingUrl);
+            setCachedImageUrl(workingUrl);
+          } else {
+            console.log("Nenhuma URL alternativa funcionou");
+            setImageError(true);
+          }
+        }
+      } catch (error) {
+        console.error("Erro ao carregar imagem de perfil:", error);
+        setImageError(true);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadProfileImage();
+  }, [user.id, user.profileImage]);
 
   const handleImageClick = () => {
     fileInputRef.current?.click();
   };
 
-  // Função para tentar a próxima URL alternativa quando uma falha
-  const tryNextImageUrl = () => {
-    if (
-      urlAttempts.length > 0 &&
-      currentAttemptIndex < urlAttempts.length - 1
-    ) {
-      // Ainda há mais URLs para tentar
-      const nextIndex = currentAttemptIndex + 1;
-      setCurrentAttemptIndex(nextIndex);
-      setImageUrl(urlAttempts[nextIndex]);
-      console.log(
-        `Tentando URL alternativa ${nextIndex + 1}/${urlAttempts.length}: ${urlAttempts[nextIndex]}`
-      );
-    } else {
-      // Já tentamos todas as URLs, mantém o estado de erro
-      console.log("Todas as URLs alternativas falharam. Mostrando fallback.");
-      setImageError(true);
-    }
+  const handleImageError = () => {
+    console.error(`Erro ao carregar imagem: ${imageUrl}`);
+    setImageError(true);
   };
 
   // Função para renderizar a imagem de perfil
   const renderProfileImage = () => {
+    if (isLoading) {
+      return (
+        <div className="w-full h-full flex items-center justify-center">
+          <Loader2 className="animate-spin text-gray-600" size={24} />
+        </div>
+      );
+    }
+
     if (!user.profileImage || imageError || !imageUrl) {
       // Se não há imagem, ocorreu um erro ou não há URL, mostrar a inicial do nome
       return (
@@ -79,11 +131,7 @@ export const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
           src={imageUrl}
           alt={user.fullName}
           className="w-full h-full object-cover rounded-full"
-          onError={(e) => {
-            console.error(`Erro ao carregar imagem: ${imageUrl}`);
-            // Tentar a próxima URL alternativa
-            tryNextImageUrl();
-          }}
+          onError={handleImageError}
         />
       </div>
     );
@@ -118,20 +166,21 @@ export const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
         file
       );
 
-      setImageError(false); // Resetar flag de erro
+      // Limpar cache de URL antiga
+      if (user.profileImage) {
+        const oldCacheKey = `${user.id}-${user.profileImage}`;
+        localStorage.removeItem(`profile-image-${oldCacheKey}`);
+      }
+
+      // Resetar estados
+      setImageError(false);
+      setImageUrl("");
+      setCachedImageUrl(null);
+
       onImageUpdate(updatedUser);
 
       toastUtil.dismiss(loadingToastId);
       toastUtil.success("Imagem de perfil atualizada com sucesso!");
-
-      // Resetar as tentativas de URL para a nova imagem
-      const newMainUrl = buildProfileImageUrl(updatedUser.profileImage);
-      setImageUrl(newMainUrl);
-      const newAlternativeUrls = getAlternativeImageUrls(
-        updatedUser.profileImage
-      );
-      setUrlAttempts(newAlternativeUrls);
-      setCurrentAttemptIndex(0);
     } catch (error: any) {
       toastUtil.dismiss(loadingToastId);
 

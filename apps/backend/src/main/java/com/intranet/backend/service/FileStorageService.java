@@ -30,7 +30,20 @@ public class FileStorageService {
                 .toAbsolutePath().normalize();
 
         try {
-            Files.createDirectories(this.fileStorageLocation);
+            // Criar diretório se não existir
+            if (!Files.exists(fileStorageLocation)) {
+                Files.createDirectories(this.fileStorageLocation);
+                logger.info("Diretório de armazenamento de arquivos criado: {}", this.fileStorageLocation);
+            } else {
+                logger.info("Diretório de armazenamento de arquivos já existe: {}", this.fileStorageLocation);
+            }
+
+            // Verificar permissões no diretório
+            if (!Files.isWritable(this.fileStorageLocation)) {
+                logger.error("Diretório de armazenamento de arquivos sem permissão de escrita: {}", this.fileStorageLocation);
+                throw new FileStorageException("Diretório sem permissão de escrita: " + this.fileStorageLocation);
+            }
+
             logger.info("Diretório de armazenamento de arquivos inicializado: {}", this.fileStorageLocation);
         } catch (Exception ex) {
             logger.error("Não foi possível criar o diretório para armazenar os arquivos: {}", this.fileStorageLocation, ex);
@@ -82,6 +95,16 @@ public class FileStorageService {
             Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
             logger.info("Arquivo armazenado com sucesso: {}", newFilename);
 
+            // Verifica se o arquivo foi realmente escrito com sucesso
+            if (!Files.exists(targetLocation)) {
+                throw new FileStorageException("Falha ao escrever o arquivo no disco: " + newFilename);
+            }
+
+            // Verifica se podemos ler o arquivo (confirma permissões)
+            if (!Files.isReadable(targetLocation)) {
+                throw new FileStorageException("Arquivo foi criado, mas não pode ser lido: " + newFilename);
+            }
+
             return newFilename;
         } catch (IOException ex) {
             logger.error("Não foi possível armazenar o arquivo: {}", originalFilename, ex);
@@ -117,5 +140,35 @@ public class FileStorageService {
                 contentType.equals("image/png") ||
                 contentType.equals("image/gif") ||
                 contentType.equals("image/webp");
+    }
+
+    // Adicionar método para verificar se um arquivo existe
+    public boolean fileExists(String filename) {
+        if (filename == null || filename.isEmpty()) {
+            return false;
+        }
+
+        try {
+            Path filePath = this.fileStorageLocation.resolve(filename).normalize();
+            return Files.exists(filePath);
+        } catch (Exception ex) {
+            logger.error("Erro ao verificar existência do arquivo: {}", filename, ex);
+            return false;
+        }
+    }
+
+    // Método para obter o caminho absoluto de um arquivo
+    public String getAbsoluteFilePath(String filename) {
+        if (filename == null || filename.isEmpty()) {
+            return null;
+        }
+
+        try {
+            Path filePath = this.fileStorageLocation.resolve(filename).normalize();
+            return filePath.toString();
+        } catch (Exception ex) {
+            logger.error("Erro ao obter caminho absoluto do arquivo: {}", filename, ex);
+            return null;
+        }
     }
 }
