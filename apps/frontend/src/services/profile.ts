@@ -152,7 +152,6 @@ const profileService = {
     } catch (error: any) {
       console.error("Erro ao excluir conta:", error);
 
-      // Registro mais detalhado do erro
       if (error.response) {
         console.error("Resposta do servidor:", {
           status: error.response.status,
