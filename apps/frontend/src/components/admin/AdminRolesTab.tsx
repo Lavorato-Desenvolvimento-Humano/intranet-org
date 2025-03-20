@@ -12,6 +12,7 @@ import {
   X,
   Check,
   Info,
+  AlertTriangle,
 } from "lucide-react";
 import toastUtil from "@/utils/toast";
 import { CustomButton } from "@/components/ui/custom-button";
@@ -36,16 +37,40 @@ export default function AdminRolesTab() {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
+      setError(null);
       try {
-        const [rolesData, permissionsData] = await Promise.all([
+        const [rolesData, permissionsData] = await Promise.allSettled([
           roleService.getAllRoles(),
           permissionService.getAllPermissions(),
         ]);
-        setRoles(rolesData);
-        setPermissions(permissionsData);
+
+        // Verificar e processar os resultados
+        if (rolesData.status === "fulfilled") {
+          setRoles(rolesData.value);
+        } else {
+          setError(
+            "Erro ao carregar cargos. Alguns recursos podem estar indisponíveis."
+          );
+          setRoles([]);
+        }
+
+        if (permissionsData.status === "fulfilled") {
+          setPermissions(permissionsData.value);
+        } else {
+          if (!error)
+            setError(
+              "Erro ao carregar permissões. Alguns recursos podem estar indisponíveis."
+            );
+          setPermissions([]);
+        }
       } catch (error) {
         console.error("Erro ao carregar dados:", error);
-        toastUtil.error("Erro ao carregar lista de cargos ou permissões.");
+        setError(
+          "Não foi possível carregar os dados. Por favor, tente novamente mais tarde."
+        );
+        // Definir valores padrão para permitir renderização parcial
+        setRoles([]);
+        setPermissions([]);
       } finally {
         setLoading(false);
       }
@@ -221,6 +246,15 @@ export default function AdminRolesTab() {
 
   return (
     <div>
+      {error && (
+        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-300 rounded-md">
+          <div className="flex items-start">
+            <AlertTriangle className="text-yellow-500 mr-2 mt-0.5" size={18} />
+            <p className="text-yellow-700 text-sm">{error}</p>
+          </div>
+        </div>
+      )}
+
       {/* Barra de pesquisa e botão de criar */}
       <div className="mb-6 flex items-center justify-between">
         <div className="relative w-64">

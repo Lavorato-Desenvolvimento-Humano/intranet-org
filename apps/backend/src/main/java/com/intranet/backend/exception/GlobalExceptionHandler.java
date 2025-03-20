@@ -1,5 +1,9 @@
 package com.intranet.backend.exception;
 
+import org.hibernate.HibernateException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -16,6 +20,8 @@ import java.util.Map;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ErrorDetails> handleResourceNotFoundException(
@@ -119,6 +125,40 @@ public class GlobalExceptionHandler {
         );
 
         return new ResponseEntity<>(errorDetails, HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler(DataAccessException.class)
+    public ResponseEntity<ErrorDetails> handleDataAccessException(
+            DataAccessException exception, WebRequest request) {
+
+        logger.error("Erro de acesso a dados: {}", exception.getMessage(), exception);
+
+        ErrorDetails errorDetails = new ErrorDetails(
+                LocalDateTime.now(),
+                HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                "Erro ao acessar dados",
+                "Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente mais tarde.",
+                request.getDescription(false)
+        );
+
+        return new ResponseEntity<>(errorDetails, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @ExceptionHandler(HibernateException.class)
+    public ResponseEntity<ErrorDetails> handleHibernateException(
+            HibernateException exception, WebRequest request) {
+
+        logger.error("Erro de Hibernate: {}", exception.getMessage(), exception);
+
+        ErrorDetails errorDetails = new ErrorDetails(
+                LocalDateTime.now(),
+                HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                "Erro de processamento",
+                "Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente mais tarde.",
+                request.getDescription(false)
+        );
+
+        return new ResponseEntity<>(errorDetails, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     // Classe interna para detalhes de erro

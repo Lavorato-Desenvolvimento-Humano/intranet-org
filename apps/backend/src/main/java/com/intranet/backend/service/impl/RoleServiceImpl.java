@@ -36,10 +36,38 @@ public class RoleServiceImpl implements RoleService {
 
     @Override
     public List<RoleDto> getAllRoles() {
-        List<Role> roles = roleRepository.findAll();
-        return roles.stream()
-                .map(this::convertToDto)
-                .collect(Collectors.toList());
+        try {
+            List<Role> roles = roleRepository.findAll();
+
+            // Converter e retornar com tratamento de erro explícito
+            return roles.stream()
+                    .map(role -> {
+                        try {
+                            // Carregar explicitamente as permissões se necessário
+                            Role roleWithPermissions = roleRepository.findByIdWithPermissions(role.getId())
+                                    .orElse(role);
+
+                            // Converter para DTO
+                            return convertToDto(roleWithPermissions);
+                        } catch (Exception e) {
+                            // Log do erro específico
+                            logger.error("Erro ao processar role {}: {}", role.getId(), e.getMessage());
+
+                            // Retornar DTO sem permissões em caso de erro
+                            return new RoleDto(
+                                    role.getId(),
+                                    role.getName(),
+                                    role.getDescription(),
+                                    new ArrayList<>(), // Lista vazia de permissões
+                                    userRoleRepository.countByRoleId(role.getId())
+                            );
+                        }
+                    })
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            logger.error("Erro ao buscar todas as roles: {}", e.getMessage(), e);
+            throw e;
+        }
     }
 
     @Override

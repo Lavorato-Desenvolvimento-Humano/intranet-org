@@ -27,10 +27,15 @@ public class PermissionServiceImpl implements PermissionService {
 
     @Override
     public List<PermissionDto> getAllPermissions() {
-        List<Permission> permissions = permissionRepository.findAll();
-        return permissions.stream()
-                .map(this::convertToDto)
-                .collect(Collectors.toList());
+        try {
+            List<Permission> permissions = permissionRepository.findAll();
+            return permissions.stream()
+                    .map(this::convertToDto)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            logger.error("Erro ao buscar todas as permissões: {}", e.getMessage(), e);
+            throw e;
+        }
     }
 
     @Override

@@ -39,7 +39,7 @@ const roleService = {
       return response.data;
     } catch (error) {
       console.error("Erro ao buscar roles:", error);
-      throw error;
+      return [];
     }
   },
 

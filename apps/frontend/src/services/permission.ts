@@ -20,7 +20,7 @@ const permissionService = {
       return response.data;
     } catch (error) {
       console.error("Erro ao buscar permissões:", error);
-      throw error;
+      return [];
     }
   },
 
