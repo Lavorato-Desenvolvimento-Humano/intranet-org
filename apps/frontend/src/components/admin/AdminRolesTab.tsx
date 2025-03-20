@@ -13,6 +13,7 @@ import {
   Check,
   Info,
   AlertTriangle,
+  RefreshCw,
 } from "lucide-react";
 import toastUtil from "@/utils/toast";
 import { CustomButton } from "@/components/ui/custom-button";
@@ -21,6 +22,7 @@ export default function AdminRolesTab() {
   const [roles, setRoles] = useState<Role[]>([]);
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingError, setLoadingError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreatingRole, setIsCreatingRole] = useState(false);
   const [isEditingRole, setIsEditingRole] = useState(false);
@@ -37,40 +39,59 @@ export default function AdminRolesTab() {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
+      setLoadingError(null);
       setError(null);
+
       try {
-        const [rolesData, permissionsData] = await Promise.allSettled([
+        // Usar Promise.allSettled para processar ambas as requisições separadamente
+        const results = await Promise.allSettled([
           roleService.getAllRoles(),
           permissionService.getAllPermissions(),
         ]);
 
-        // Verificar e processar os resultados
-        if (rolesData.status === "fulfilled") {
-          setRoles(rolesData.value);
+        // Processar resultados das roles
+        if (results[0].status === "fulfilled") {
+          setRoles(results[0].value);
         } else {
-          setError(
-            "Erro ao carregar cargos. Alguns recursos podem estar indisponíveis."
+          console.error("Erro ao carregar roles:", results[0].reason);
+          setLoadingError(
+            "Não foi possível carregar os cargos. O servidor pode estar indisponível ou você não tem permissões suficientes."
           );
-          setRoles([]);
         }
 
-        if (permissionsData.status === "fulfilled") {
-          setPermissions(permissionsData.value);
+        // Processar resultados das permissões
+        if (results[1].status === "fulfilled") {
+          setPermissions(results[1].value);
         } else {
-          if (!error)
-            setError(
-              "Erro ao carregar permissões. Alguns recursos podem estar indisponíveis."
+          console.error("Erro ao carregar permissões:", results[1].reason);
+          if (!loadingError) {
+            setLoadingError(
+              "Não foi possível carregar as permissões. O servidor pode estar indisponível ou você não tem permissões suficientes."
             );
-          setPermissions([]);
+          }
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("Erro ao carregar dados:", error);
-        setError(
-          "Não foi possível carregar os dados. Por favor, tente novamente mais tarde."
-        );
-        // Definir valores padrão para permitir renderização parcial
-        setRoles([]);
-        setPermissions([]);
+
+        // Mensagens de erro detalhadas baseadas no tipo de erro
+        if (error.response?.status === 403) {
+          setLoadingError(
+            "Acesso negado. Você não tem permissões suficientes para visualizar cargos e permissões."
+          );
+        } else if (error.response?.status === 401) {
+          setLoadingError(
+            "Sua sessão expirou. Por favor, faça login novamente."
+          );
+          // Poderia redirecionar para página de login aqui
+        } else if (error.message === "Network Error") {
+          setLoadingError(
+            "Erro de conexão com o servidor. Verifique sua internet e tente novamente."
+          );
+        } else {
+          setLoadingError(
+            "Ocorreu um erro ao carregar os dados. Por favor, tente novamente mais tarde."
+          );
+        }
       } finally {
         setLoading(false);
       }
@@ -78,6 +99,45 @@ export default function AdminRolesTab() {
 
     fetchData();
   }, []);
+
+  // Tentar carregar os dados novamente
+  const handleRetry = () => {
+    // Simular um novo carregamento ao incrementar a contagem de tentativas
+    setRoles([]);
+    setPermissions([]);
+
+    const fetchData = async () => {
+      setLoading(true);
+      setLoadingError(null);
+
+      try {
+        const [rolesData, permissionsData] = await Promise.all([
+          roleService.getAllRoles(),
+          permissionService.getAllPermissions(),
+        ]);
+
+        setRoles(rolesData);
+        setPermissions(permissionsData);
+        toastUtil.success("Dados carregados com sucesso!");
+      } catch (error: any) {
+        console.error("Erro ao recarregar dados:", error);
+        if (error.response?.status === 403) {
+          setLoadingError(
+            "Acesso negado. Você não tem permissões suficientes."
+          );
+        } else {
+          setLoadingError(
+            "Não foi possível carregar os dados. Tente novamente mais tarde."
+          );
+        }
+        toastUtil.error("Falha ao recarregar dados");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  };
 
   // Filtrar roles com base no termo de pesquisa
   const filteredRoles = roles.filter(
@@ -202,6 +262,7 @@ export default function AdminRolesTab() {
       toastUtil.success(`Cargo ${updatedRole.name} atualizado com sucesso.`);
       handleCloseModal();
 
+      // Recarregar roles para garantir dados atualizados
       const refreshedRoles = await roleService.getAllRoles();
       setRoles(refreshedRoles);
     } catch (error: any) {
@@ -248,11 +309,55 @@ export default function AdminRolesTab() {
     }
   };
 
-  // Renderizar o conteúdo principal
+  // Renderizar estado de erro ou carregamento
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
         <Loader2 size={36} className="animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (loadingError) {
+    return (
+      <div className="p-6 bg-red-50 border border-red-200 rounded-lg text-center">
+        <AlertTriangle className="mx-auto text-red-500 mb-4" size={36} />
+        <h3 className="text-lg font-semibold text-red-800 mb-2">
+          Erro ao carregar dados
+        </h3>
+        <p className="text-red-700 mb-6">{loadingError}</p>
+        <CustomButton
+          onClick={handleRetry}
+          icon={RefreshCw}
+          className="mx-auto">
+          Tentar novamente
+        </CustomButton>
+      </div>
+    );
+  }
+
+  if (roles.length === 0 && !loadingError) {
+    return (
+      <div className="p-6 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
+        <Info className="mx-auto text-yellow-500 mb-4" size={36} />
+        <h3 className="text-lg font-semibold text-yellow-800 mb-2">
+          Nenhum cargo encontrado
+        </h3>
+        <p className="text-yellow-700 mb-6">
+          Não há cargos cadastrados no sistema ou houve um problema ao carregar
+          os dados.
+        </p>
+        <div className="flex justify-center gap-4">
+          <CustomButton onClick={handleRetry} icon={RefreshCw}>
+            Recarregar
+          </CustomButton>
+          <CustomButton
+            onClick={handleOpenCreateModal}
+            icon={Plus}
+            variant="primary">
+            Criar primeiro cargo
+          </CustomButton>
+        </div>
       </div>
     );
   }

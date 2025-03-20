@@ -1,5 +1,6 @@
 // src/services/role.ts
 import api from "./api";
+import toastUtil from "@/utils/toast";
 
 export interface Permission {
   id: number;
@@ -37,8 +38,24 @@ const roleService = {
     try {
       const response = await api.get<Role[]>("/roles");
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao buscar roles:", error);
+
+      // Mensagens específicas baseadas no tipo de erro
+      if (error.response) {
+        if (error.response.status === 403) {
+          throw new Error("Você não tem permissão para visualizar cargos");
+        } else if (error.response.status === 401) {
+          throw new Error("Sessão expirada. Faça login novamente");
+        } else if (error.response.data?.message) {
+          throw new Error(error.response.data.message);
+        }
+      }
+
+      // Se não for tratado acima, retornar array vazio e mostrar toast
+      toastUtil.error(
+        "Falha ao carregar cargos. Verifique o console para detalhes."
+      );
       return [];
     }
   },
@@ -50,8 +67,13 @@ const roleService = {
     try {
       const response = await api.get<Role>(`/roles/${id}`);
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Erro ao buscar role ${id}:`, error);
+
+      if (error.response?.status === 404) {
+        throw new Error(`Cargo com ID ${id} não encontrado`);
+      }
+
       throw error;
     }
   },
@@ -63,9 +85,18 @@ const roleService = {
     try {
       const response = await api.post<Role>("/roles", role);
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao criar role:", error);
-      throw error;
+
+      if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      } else if (error.response?.status === 409) {
+        throw new Error(`O cargo ${role.name} já existe`);
+      } else if (error.response?.status === 400) {
+        throw new Error("Dados inválidos para criação de cargo");
+      }
+
+      throw new Error("Erro ao criar cargo. Tente novamente.");
     }
   },
 
@@ -76,9 +107,18 @@ const roleService = {
     try {
       const response = await api.put<Role>(`/roles/${id}`, role);
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Erro ao atualizar role ${id}:`, error);
-      throw error;
+
+      if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      } else if (error.response?.status === 404) {
+        throw new Error(`Cargo com ID ${id} não encontrado`);
+      } else if (error.response?.status === 400) {
+        throw new Error("Dados inválidos para atualização de cargo");
+      }
+
+      throw new Error(`Erro ao atualizar cargo ${id}. Tente novamente.`);
     }
   },
 
@@ -88,8 +128,23 @@ const roleService = {
   deleteRole: async (id: number): Promise<void> => {
     try {
       await api.delete(`/roles/${id}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Erro ao excluir role ${id}:`, error);
+
+      if (error.response?.status === 404) {
+        throw new Error(`Cargo com ID ${id} não encontrado`);
+      } else if (error.response?.status === 400) {
+        if (error.response.data?.message?.includes("usuários")) {
+          throw new Error(
+            "Não é possível excluir cargo com usuários vinculados"
+          );
+        } else {
+          throw new Error(
+            error.response.data?.message || "Erro ao excluir cargo"
+          );
+        }
+      }
+
       throw error;
     }
   },
@@ -106,11 +161,18 @@ const roleService = {
         `/roles/${roleId}/permissions/${permissionId}`
       );
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error(
         `Erro ao adicionar permissão ${permissionId} à role ${roleId}:`,
         error
       );
+
+      if (error.response?.status === 404) {
+        throw new Error("Cargo ou permissão não encontrada");
+      } else if (error.response?.status === 409) {
+        throw new Error("Esta permissão já está associada a este cargo");
+      }
+
       throw error;
     }
   },
@@ -127,11 +189,16 @@ const roleService = {
         `/roles/${roleId}/permissions/${permissionId}`
       );
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error(
         `Erro ao remover permissão ${permissionId} da role ${roleId}:`,
         error
       );
+
+      if (error.response?.status === 404) {
+        throw new Error("Cargo ou permissão não encontrada");
+      }
+
       throw error;
     }
   },

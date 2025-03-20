@@ -69,8 +69,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
                 if (userDetails instanceof org.springframework.security.core.userdetails.User) {
-                    // O usuário está ativo se não estiver desabilitado
-                    boolean isActive = !userDetails.isAccountNonLocked();
+                    // CORREÇÃO: O usuário está ativo se NÃO estiver bloqueado
+                    boolean isActive = userDetails.isAccountNonLocked();
                     if (!isActive) {
                         logger.warn("Usuário desativado tentando acessar: {}", username);
                         response.setStatus(HttpServletResponse.SC_FORBIDDEN);

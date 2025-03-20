@@ -154,7 +154,7 @@ public class UserServiceImpl implements UserService {
             }
             user.setGithubId(newGithubId);
         }
-        
+
         User updatedUser = userRepository.save(user);
 
         // Buscar papéis do usuário de forma segura
