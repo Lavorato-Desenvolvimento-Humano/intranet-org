@@ -21,6 +21,8 @@ export interface User {
   roles: string[];
   token?: string;
   emailVerified: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface AuthResponse {

@@ -1,0 +1,62 @@
+// src/services/admin.ts
+import api from "./api";
+import { User } from "./auth";
+
+/**
+ * Serviço para operações administrativas
+ */
+const adminService = {
+  /**
+   * Obtém todos os usuários do sistema
+   */
+  getAllUsers: async (): Promise<User[]> => {
+    try {
+      const response = await api.get<User[]>("/users");
+      return response.data;
+    } catch (error) {
+      console.error("Erro ao buscar todos os usuários:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Adiciona um papel a um usuário
+   */
+  addRoleToUser: async (userId: string, roleName: string): Promise<User> => {
+    try {
+      const response = await api.post<User>(
+        `/users/${userId}/roles?roleName=${roleName}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Erro ao adicionar role ${roleName} ao usuário ${userId}:`,
+        error
+      );
+      throw error;
+    }
+  },
+
+  /**
+   * Remove um papel de um usuário
+   */
+  removeRoleFromUser: async (
+    userId: string,
+    roleName: string
+  ): Promise<User> => {
+    try {
+      const response = await api.delete<User>(
+        `/users/${userId}/roles/${roleName}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Erro ao remover role ${roleName} do usuário ${userId}:`,
+        error
+      );
+      throw error;
+    }
+  },
+};
+
+export default adminService;

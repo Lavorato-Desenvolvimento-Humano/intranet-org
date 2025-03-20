@@ -69,4 +69,9 @@ public interface UserRoleRepository extends JpaRepository<UserRole, Integer> {
     @Modifying
     @Query("DELETE FROM UserRole ur WHERE ur.user.id = :userId AND ur.role.id = :roleId")
     int deleteByUserIdAndRoleId(UUID userId, Integer roleId);
+
+    boolean existsByRoleId(Integer roleId);
+
+    int countByRoleId(Integer roleId);
+
 }
