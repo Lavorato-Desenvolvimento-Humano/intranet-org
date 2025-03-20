@@ -6,7 +6,7 @@ import { useEffect, ReactNode } from "react";
 
 interface ProtectedRouteProps {
   children: ReactNode;
-  requiredRoles?: string[]; // Opcional: roles requeridas para acessar a rota
+  requiredRoles?: string[];
 }
 
 export default function ProtectedRoute({
@@ -18,7 +18,6 @@ export default function ProtectedRoute({
   useEffect(() => {
     // Verificar se o usuário está carregando
     if (!loading) {
-      // Verificar se o usuário está autenticado
       if (!user) {
         // Redirecionar para login com callback URL
         const pathname = window.location.pathname;
