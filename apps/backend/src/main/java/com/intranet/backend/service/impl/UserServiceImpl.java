@@ -122,7 +122,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public UserDto updateUser(UUID id, Map<String, String> updates, boolean active) {
+    public UserDto updateUser(UUID id, Map<String, String> updates) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado com o ID: " + id));
 
@@ -154,6 +154,30 @@ public class UserServiceImpl implements UserService {
             }
             user.setGithubId(newGithubId);
         }
+        
+        User updatedUser = userRepository.save(user);
+
+        // Buscar papéis do usuário de forma segura
+        List<String> roles = userRepository.findRoleNamesByUserId(updatedUser.getId());
+
+        return new UserDto(
+                updatedUser.getId(),
+                updatedUser.getFullName(),
+                updatedUser.getEmail(),
+                updatedUser.getProfileImage(),
+                roles,
+                updatedUser.getCreatedAt(),
+                updatedUser.getUpdatedAt(),
+                updatedUser.isEmailVerified(),
+                updatedUser.isActive()
+        );
+    }
+
+    @Override
+    @Transactional
+    public UserDto updateUserStatus(UUID id, boolean active) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado com o ID: " + id));
 
         user.setActive(active);
         User updatedUser = userRepository.save(user);
