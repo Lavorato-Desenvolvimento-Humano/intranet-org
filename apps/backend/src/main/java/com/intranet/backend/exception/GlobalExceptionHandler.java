@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.WebRequest;
 
 import java.time.LocalDateTime;
+import java.util.ConcurrentModificationException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -155,6 +156,23 @@ public class GlobalExceptionHandler {
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "Erro de processamento",
                 "Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente mais tarde.",
+                request.getDescription(false)
+        );
+
+        return new ResponseEntity<>(errorDetails, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @ExceptionHandler(ConcurrentModificationException.class)
+    public ResponseEntity<ErrorDetails> handleConcurrentModificationException(
+            ConcurrentModificationException exception, WebRequest request) {
+
+        logger.error("Erro de modificação concorrente: {}", exception.getMessage(), exception);
+
+        ErrorDetails errorDetails = new ErrorDetails(
+                LocalDateTime.now(),
+                HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                "Erro de processamento",
+                "Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.",
                 request.getDescription(false)
         );
 

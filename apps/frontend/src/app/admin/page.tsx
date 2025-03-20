@@ -42,7 +42,7 @@ export default function AdminDashboardPage() {
                       ? "bg-primary text-white"
                       : "hover:bg-gray-200"
                   }`}>
-                  Cargos (Roles)
+                  Cargos
                 </TabsTrigger>
                 <TabsTrigger
                   value="permissions"

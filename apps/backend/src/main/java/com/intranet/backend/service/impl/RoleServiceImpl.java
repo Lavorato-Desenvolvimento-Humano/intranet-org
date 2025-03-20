@@ -42,10 +42,32 @@ public class RoleServiceImpl implements RoleService {
     @Override
     public List<RoleDto> getAllRoles() {
         try {
-            List<Role> roles = roleRepository.findAllWithPermissions();
+            List<Role> roles = roleRepository.findAllRoles();
 
+            // Converter para DTOs, buscando as permissões individualmente
             return roles.stream()
-                    .map(this::convertToDto)
+                    .map(role -> {
+                        try {
+                            // Buscar a role com permissões usando findByIdWithPermissions
+                            Role roleWithPermissions = roleRepository.findByIdWithPermissions(role.getId())
+                                    .orElse(role);
+
+                            // Converter para DTO
+                            return convertToDto(roleWithPermissions);
+                        } catch (Exception e) {
+                            logger.warn("Erro ao carregar permissões para role {}: {}", role.getId(), e.getMessage());
+
+                            // Retornar DTO básico sem permissões em caso de erro
+                            int userCount = userRoleRepository.countByRoleId(role.getId());
+                            return new RoleDto(
+                                    role.getId(),
+                                    role.getName(),
+                                    role.getDescription(),
+                                    new ArrayList<>(),
+                                    userCount
+                            );
+                        }
+                    })
                     .collect(Collectors.toList());
         } catch (Exception e) {
             logger.error("Erro ao buscar todas as roles: {}", e.getMessage(), e);
@@ -56,10 +78,35 @@ public class RoleServiceImpl implements RoleService {
     @Override
     public RoleDto getRoleById(Integer id) {
         try {
+            // Buscar role com permissões usando consulta JPQL otimizada
             Role role = roleRepository.findByIdWithPermissions(id)
                     .orElseThrow(() -> new ResourceNotFoundException("Role não encontrada com ID: " + id));
 
-            return convertToDto(role);
+            // Buscar manualmente a contagem de usuários
+            int userCount = userRoleRepository.countByRoleId(id);
+
+            // Criar o DTO manualmente para evitar problemas com collections
+            List<PermissionDto> permissionDtos = new ArrayList<>();
+            if (role.getRolePermissions() != null) {
+                for (RolePermission rp : role.getRolePermissions()) {
+                    if (rp != null && rp.getPermission() != null) {
+                        Permission permission = rp.getPermission();
+                        permissionDtos.add(new PermissionDto(
+                                permission.getId(),
+                                permission.getName(),
+                                permission.getDescription()
+                        ));
+                    }
+                }
+            }
+
+            return new RoleDto(
+                    role.getId(),
+                    role.getName(),
+                    role.getDescription(),
+                    permissionDtos,
+                    userCount
+            );
         } catch (ResourceNotFoundException e) {
             throw e;
         } catch (Exception e) {
@@ -202,12 +249,17 @@ public class RoleServiceImpl implements RoleService {
         rolePermission.setPermission(permission);
 
         try {
-            rolePermissionRepository.saveAndFlush(rolePermission); // Usar saveAndFlush para garantir persistência
+            rolePermissionRepository.save(rolePermission);
+            // Forçar o flush para garantir que a operação seja persistida
+            rolePermissionRepository.flush();
             logger.info("Permissão {} adicionada com sucesso ao cargo {}", permissionId, roleId);
         } catch (Exception e) {
             logger.error("Erro ao salvar associação role-permissão: {}", e.getMessage(), e);
             throw new RuntimeException("Erro ao adicionar permissão ao cargo: " + e.getMessage(), e);
         }
+
+        // Limpar o cache da sessão Hibernate
+        entityManager.clear();
 
         // 4. Retornar a role atualizada - buscar novamente para garantir dados atualizados
         return getRoleById(roleId);
@@ -233,11 +285,16 @@ public class RoleServiceImpl implements RoleService {
     private RoleDto convertToDto(Role role) {
         List<PermissionDto> permissions = new ArrayList<>();
 
+        // Se role tem permissões, processá-las com segurança
         if (role.getRolePermissions() != null) {
-            permissions = role.getRolePermissions().stream()
-                    .map(RolePermission::getPermission)
-                    .map(this::convertToPermissionDto)
-                    .collect(Collectors.toList());
+            // Usar uma nova lista para evitar problemas de iteração concorrente
+            List<RolePermission> rolePermissionList = new ArrayList<>(role.getRolePermissions());
+
+            for (RolePermission rp : rolePermissionList) {
+                if (rp != null && rp.getPermission() != null) {
+                    permissions.add(convertToPermissionDto(rp.getPermission()));
+                }
+            }
         }
 
         // Contar usuários com esta role
