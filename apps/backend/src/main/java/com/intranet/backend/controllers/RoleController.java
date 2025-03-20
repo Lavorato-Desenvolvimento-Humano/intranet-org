@@ -81,8 +81,14 @@ public class RoleController {
             @PathVariable Integer id,
             @PathVariable Integer permissionId) {
         logger.info("Requisição para adicionar permissão {} à role {}", permissionId, id);
-        RoleDto updatedRole = roleService.addPermissionToRole(id, permissionId);
-        return ResponseEntity.ok(updatedRole);
+        try {
+            RoleDto updatedRole = roleService.addPermissionToRole(id, permissionId);
+            return ResponseEntity.ok(updatedRole);
+        } catch (Exception e) {
+            logger.error("Erro ao processar requisição para adicionar permissão {} à role {}: {}",
+                    permissionId, id, e.getMessage(), e);
+            throw e;
+        }
     }
 
     @DeleteMapping("/{id}/permissions/{permissionId}")

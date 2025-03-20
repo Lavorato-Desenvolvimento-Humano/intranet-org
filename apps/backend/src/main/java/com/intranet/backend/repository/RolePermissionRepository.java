@@ -6,6 +6,8 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+
 @Repository
 public interface RolePermissionRepository extends JpaRepository<RolePermission, Integer> {
 
@@ -20,4 +22,6 @@ public interface RolePermissionRepository extends JpaRepository<RolePermission, 
     @Modifying
     @Query("DELETE FROM RolePermission rp WHERE rp.role.id = :roleId AND rp.permission.id = :permissionId")
     void deleteByRoleIdAndPermissionId(Integer roleId, Integer permissionId);
+
+    List<RolePermission> findByRoleId(Integer roleId);
 }

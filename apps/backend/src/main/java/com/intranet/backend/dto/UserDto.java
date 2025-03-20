@@ -12,7 +12,6 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class UserDto {
-
     private UUID id;
     private String fullName;
     private String email;
@@ -20,4 +19,6 @@ public class UserDto {
     private List<String> roles;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private boolean emailVerified;
 }
+

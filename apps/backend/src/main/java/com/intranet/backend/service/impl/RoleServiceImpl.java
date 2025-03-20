@@ -72,9 +72,52 @@ public class RoleServiceImpl implements RoleService {
 
     @Override
     public RoleDto getRoleById(Integer id) {
-        Role role = roleRepository.findByIdWithPermissions(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Role não encontrada com ID: " + id));
-        return convertToDto(role);
+        try {
+            Role role = roleRepository.findById(id)
+                    .orElseThrow(() -> new ResourceNotFoundException("Role não encontrada com ID: " + id));
+
+            // Buscar permissões separadamente para evitar problemas de LazyLoading
+            List<Permission> permissions = new ArrayList<>();
+            try {
+                // Tentar buscar com JPQL otimizada primeiro
+                Role roleWithPermissions = roleRepository.findByIdWithPermissions(id).orElse(null);
+                if (roleWithPermissions != null && roleWithPermissions.getRolePermissions() != null) {
+                    permissions = roleWithPermissions.getRolePermissions().stream()
+                            .map(RolePermission::getPermission)
+                            .collect(Collectors.toList());
+                }
+            } catch (Exception e) {
+                logger.warn("Erro ao buscar permissões para role {}, tentando método alternativo: {}",
+                        id, e.getMessage());
+
+                // Método alternativo: buscar diretamente via rolePermissionRepository
+                List<RolePermission> rolePermissions = rolePermissionRepository.findByRoleId(id);
+                permissions = rolePermissions.stream()
+                        .map(RolePermission::getPermission)
+                        .collect(Collectors.toList());
+            }
+
+            // Converter para DTO com as permissões obtidas
+            List<PermissionDto> permissionDtos = permissions.stream()
+                    .map(this::convertToPermissionDto)
+                    .collect(Collectors.toList());
+
+            // Contar usuários com esta role
+            int userCount = userRoleRepository.countByRoleId(id);
+
+            return new RoleDto(
+                    role.getId(),
+                    role.getName(),
+                    role.getDescription(),
+                    permissionDtos,
+                    userCount
+            );
+        } catch (ResourceNotFoundException e) {
+            throw e;
+        } catch (Exception e) {
+            logger.error("Erro ao buscar role por ID {}: {}", id, e.getMessage(), e);
+            throw new RuntimeException("Erro ao buscar cargo: " + e.getMessage(), e);
+        }
     }
 
     @Override
@@ -188,25 +231,36 @@ public class RoleServiceImpl implements RoleService {
     @Override
     @Transactional
     public RoleDto addPermissionToRole(Integer roleId, Integer permissionId) {
+        logger.info("Iniciando adição de permissão {} ao cargo {}", permissionId, roleId);
+
+        // 1. Verificar se a role e a permissão existem
         Role role = roleRepository.findById(roleId)
                 .orElseThrow(() -> new ResourceNotFoundException("Role não encontrada com ID: " + roleId));
 
         Permission permission = permissionRepository.findById(permissionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Permissão não encontrada com ID: " + permissionId));
 
-        // Verificar se a permissão já está atribuída à role
-        boolean alreadyHasPermission = rolePermissionRepository.existsByRoleIdAndPermissionId(roleId, permissionId);
-        if (alreadyHasPermission) {
-            logger.info("A permissão {} já está atribuída à role {}", permissionId, roleId);
+        // 2. Verificar se a permissão já está associada à role
+        boolean alreadyExists = rolePermissionRepository.existsByRoleIdAndPermissionId(roleId, permissionId);
+        if (alreadyExists) {
+            logger.info("Permissão {} já está associada ao cargo {}", permissionId, roleId);
             return getRoleById(roleId);
         }
 
-        // Adicionar nova permissão
+        // 3. Criar e salvar a associação role-permissão de forma simplificada
         RolePermission rolePermission = new RolePermission();
         rolePermission.setRole(role);
         rolePermission.setPermission(permission);
-        rolePermissionRepository.save(rolePermission);
 
+        try {
+            rolePermissionRepository.saveAndFlush(rolePermission); // Usar saveAndFlush para garantir persistência
+            logger.info("Permissão {} adicionada com sucesso ao cargo {}", permissionId, roleId);
+        } catch (Exception e) {
+            logger.error("Erro ao salvar associação role-permissão: {}", e.getMessage(), e);
+            throw new RuntimeException("Erro ao adicionar permissão ao cargo: " + e.getMessage(), e);
+        }
+
+        // 4. Retornar a role atualizada - buscar novamente para garantir dados atualizados
         return getRoleById(roleId);
     }
 

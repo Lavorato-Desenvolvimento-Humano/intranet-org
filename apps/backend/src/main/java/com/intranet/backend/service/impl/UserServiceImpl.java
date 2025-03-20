@@ -52,7 +52,8 @@ public class UserServiceImpl implements UserService {
                     user.getProfileImage(),
                     roles,
                     user.getCreatedAt(),
-                    user.getUpdatedAt()
+                    user.getUpdatedAt(),
+                    user.isEmailVerified()
             ));
         }
 
@@ -77,7 +78,8 @@ public class UserServiceImpl implements UserService {
                     user.getProfileImage(),
                     roles,
                     user.getCreatedAt(),
-                    user.getUpdatedAt()
+                    user.getUpdatedAt(),
+                    user.isEmailVerified()
             );
         } catch (Exception e) {
             logger.error("Erro ao buscar usuário por ID: {}", e.getMessage(), e);
@@ -106,7 +108,8 @@ public class UserServiceImpl implements UserService {
                     user.getProfileImage(),
                     roles,
                     user.getCreatedAt(),
-                    user.getUpdatedAt()
+                    user.getUpdatedAt(),
+                    user.isEmailVerified()
             );
         } catch (Exception e) {
             logger.error("Erro ao buscar usuário atual: {}", e.getMessage(), e);
@@ -161,7 +164,8 @@ public class UserServiceImpl implements UserService {
                 updatedUser.getProfileImage(),
                 roles,
                 updatedUser.getCreatedAt(),
-                updatedUser.getUpdatedAt()
+                updatedUser.getUpdatedAt(),
+                updatedUser.isEmailVerified()
         );
     }
 
@@ -192,7 +196,8 @@ public class UserServiceImpl implements UserService {
                 updatedUser.getProfileImage(),
                 roles,
                 updatedUser.getCreatedAt(),
-                updatedUser.getUpdatedAt()
+                updatedUser.getUpdatedAt(),
+                updatedUser.isEmailVerified()
         );
     }
 
@@ -273,7 +278,8 @@ public class UserServiceImpl implements UserService {
                 user.getProfileImage(),
                 roles,
                 user.getCreatedAt(),
-                user.getUpdatedAt()
+                user.getUpdatedAt(),
+                user.isEmailVerified()
         );
     }
 
@@ -299,7 +305,8 @@ public class UserServiceImpl implements UserService {
                 user.getProfileImage(),
                 roles,
                 user.getCreatedAt(),
-                user.getUpdatedAt()
+                user.getUpdatedAt(),
+                user.isEmailVerified()
         );
     }
 }

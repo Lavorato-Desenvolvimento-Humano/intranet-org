@@ -135,6 +135,21 @@ export default function AdminUsersTab() {
     });
   };
 
+  const getProfileImageUrl = (
+    profileImage: string | null | undefined
+  ): string => {
+    if (!profileImage) return "";
+
+    if (profileImage.startsWith("http")) return profileImage;
+
+    // Obter a URL base da API
+    const apiBaseUrl =
+      process.env.NEXT_PUBLIC_API_URL || "https://dev.lavorato.app.br";
+
+    // Construir a URL completa
+    return `${apiBaseUrl}/api/profile-images/${profileImage}`;
+  };
+
   // Renderizar o conteúdo principal
   if (loading) {
     return (
@@ -200,7 +215,7 @@ export default function AdminUsersTab() {
                       <div className="h-10 w-10 flex-shrink-0 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
                         {user.profileImage ? (
                           <img
-                            src={user.profileImage}
+                            src={getProfileImageUrl(user.profileImage)}
                             alt={user.fullName}
                             className="h-10 w-10 rounded-full"
                             onError={(e) => {
