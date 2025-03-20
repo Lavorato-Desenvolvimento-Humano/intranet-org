@@ -25,9 +25,20 @@ export default function ProtectedRoute({
       }
       // Verificar se o usuário tem as roles necessárias (se especificadas)
       else if (requiredRoles.length > 0) {
-        const hasRequiredRole = requiredRoles.some((role) =>
-          user.roles.includes(role)
-        );
+        const hasRequiredRole = requiredRoles.some((requiredRole) => {
+          // Remover "ROLE_" do requiredRole se existir
+          const roleWithoutPrefix = requiredRole.startsWith("ROLE_")
+            ? requiredRole.substring(5)
+            : requiredRole;
+
+          // Verificar se o usuário tem essa role (com ou sem o prefixo)
+          return user.roles.some(
+            (userRole) =>
+              userRole === requiredRole ||
+              userRole === `ROLE_${roleWithoutPrefix}` ||
+              userRole === roleWithoutPrefix
+          );
+        });
 
         if (!hasRequiredRole) {
           // Redirecionar para uma página de acesso negado

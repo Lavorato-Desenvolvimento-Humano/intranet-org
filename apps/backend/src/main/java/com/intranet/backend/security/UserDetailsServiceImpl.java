@@ -28,7 +28,8 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         logger.info("Tentando carregar usuário pelo email: {}", email);
 
         try {
-            User user = userRepository.findByEmailWithRoles(email)
+            // Usando findByEmail básico para obter o usuário
+            User user = userRepository.findByEmail(email)
                     .orElseThrow(() -> {
                         logger.error("Usuário não encontrado com o email: {}", email);
                         return new UsernameNotFoundException("Usuário não encontrado com o email: " + email);
@@ -36,25 +37,27 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
             logger.info("Usuário encontrado: ID={}, Nome={}", user.getId(), user.getFullName());
 
-            // Criar uma lista de autoridades a partir das roles do usuário
+            // Buscar as roles reais do usuário
+            List<String> userRoles = userRepository.findRoleNamesByUserId(user.getId());
+            logger.debug("Roles do usuário obtidas do banco: {}", userRoles);
+
+            // Criar lista de autoridades com as roles do usuário
             List<SimpleGrantedAuthority> authorities = new ArrayList<>();
 
-            // Buscar os papéis do usuário e convertê-los em autoridades
-            List<String> roles = userRepository.findRoleNamesByUserId(user.getId());
-            if (roles != null && !roles.isEmpty()) {
-                for (String role : roles) {
-                    // Garantir que as roles têm o prefixo ROLE_
+            if (userRoles != null && !userRoles.isEmpty()) {
+                // Adicionar cada role com o prefixo ROLE_ se não existir
+                for (String role : userRoles) {
                     String roleWithPrefix = role.startsWith("ROLE_") ? role : "ROLE_" + role;
                     authorities.add(new SimpleGrantedAuthority(roleWithPrefix));
                     logger.debug("Adicionando autoridade: {}", roleWithPrefix);
                 }
             } else {
-                // Adicionar role padrão USER se o usuário não tiver roles
+                // Se o usuário não tiver roles, adicionar ROLE_USER como padrão
                 authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
-                logger.debug("Nenhuma role encontrada, adicionando autoridade padrão ROLE_USER");
+                logger.debug("Usuário sem roles, adicionando ROLE_USER padrão");
             }
 
-            // Criar UserDetails com as informações do usuário e suas autoridades
+            // Criar UserDetails com as informações do usuário
             UserDetails userDetails = org.springframework.security.core.userdetails.User
                     .withUsername(user.getEmail())
                     .password(user.getPasswordHash())
@@ -65,7 +68,8 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                     .disabled(false)
                     .build();
 
-            logger.info("UserDetails criado com sucesso para: {}", user.getEmail());
+            logger.info("UserDetails criado com sucesso para: {}, autoridades: {}",
+                    user.getEmail(), authorities);
             return userDetails;
         } catch (UsernameNotFoundException e) {
             throw e;
