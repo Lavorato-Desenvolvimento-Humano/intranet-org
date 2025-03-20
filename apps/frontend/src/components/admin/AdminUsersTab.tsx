@@ -11,6 +11,8 @@ import {
   X,
   Check,
   AlertTriangle,
+  UserMinus,
+  Edit,
 } from "lucide-react";
 import toastUtil from "@/utils/toast";
 import { CustomButton } from "@/components/ui/custom-button";
@@ -124,6 +126,36 @@ export default function AdminUsersTab() {
     }
   };
 
+  const handleToggleUserStatus = async (
+    userId: string,
+    currentActive: boolean | undefined
+  ) => {
+    try {
+      setProcessingUser(userId);
+      // Convertendo para booleano e invertendo (usando !! para garantir um booleano)
+      const newStatus = !!!currentActive;
+
+      const updatedUser = await adminService.updateUserStatus(
+        userId,
+        newStatus
+      );
+
+      // Atualizar a lista de usuários localmente
+      setUsers((prev) =>
+        prev.map((user) => (user.id === userId ? updatedUser : user))
+      );
+
+      toastUtil.success(
+        `Usuário ${newStatus ? "ativado" : "desativado"} com sucesso.`
+      );
+    } catch (error: any) {
+      console.error("Erro ao atualizar status do usuário:", error);
+      toastUtil.error("Erro ao atualizar status do usuário. Tente novamente.");
+    } finally {
+      setProcessingUser(null);
+    }
+  };
+
   // Formatar a data de criação
   const formatDate = (dateString: string) => {
     if (!dateString) return "N/A";
@@ -193,6 +225,9 @@ export default function AdminUsersTab() {
                 Cargos
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Status
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Data de registro
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -203,7 +238,7 @@ export default function AdminUsersTab() {
           <tbody className="divide-y divide-gray-200">
             {filteredUsers.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
                   Nenhum usuário encontrado
                 </td>
               </tr>
@@ -270,19 +305,52 @@ export default function AdminUsersTab() {
                       )}
                     </div>
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span
+                      className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        user.active
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                      }`}>
+                      {user.active ? "Ativo" : "Inativo"}
+                    </span>
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {user.createdAt
                       ? formatDate(user.createdAt.toString())
                       : "N/A"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <CustomButton
-                      variant="primary"
-                      size="small"
-                      className="text-white"
-                      onClick={() => handleManageRoles(user)}>
-                      Gerenciar Cargos
-                    </CustomButton>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleManageRoles(user)}
+                        className="text-indigo-600 hover:text-indigo-900"
+                        title="Gerenciar cargos">
+                        <Edit size={18} />
+                      </button>
+                      {/* Botão para ativar/desativar */}
+                      <button
+                        onClick={() =>
+                          handleToggleUserStatus(user.id, user.active)
+                        }
+                        className={`${
+                          user.active
+                            ? "text-red-600 hover:text-red-900"
+                            : "text-green-600 hover:text-green-900"
+                        }`}
+                        title={
+                          user.active ? "Desativar usuário" : "Ativar usuário"
+                        }
+                        disabled={processingUser === user.id}>
+                        {processingUser === user.id ? (
+                          <Loader2 size={18} className="animate-spin" />
+                        ) : user.active ? (
+                          <UserMinus size={18} />
+                        ) : (
+                          <UserPlus size={18} />
+                        )}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))

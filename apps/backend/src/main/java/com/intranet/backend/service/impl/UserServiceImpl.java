@@ -53,7 +53,8 @@ public class UserServiceImpl implements UserService {
                     roles,
                     user.getCreatedAt(),
                     user.getUpdatedAt(),
-                    user.isEmailVerified()
+                    user.isEmailVerified(),
+                    user.isActive()
             ));
         }
 
@@ -79,7 +80,8 @@ public class UserServiceImpl implements UserService {
                     roles,
                     user.getCreatedAt(),
                     user.getUpdatedAt(),
-                    user.isEmailVerified()
+                    user.isEmailVerified(),
+                    user.isActive()
             );
         } catch (Exception e) {
             logger.error("Erro ao buscar usuário por ID: {}", e.getMessage(), e);
@@ -109,7 +111,8 @@ public class UserServiceImpl implements UserService {
                     roles,
                     user.getCreatedAt(),
                     user.getUpdatedAt(),
-                    user.isEmailVerified()
+                    user.isEmailVerified(),
+                    user.isActive()
             );
         } catch (Exception e) {
             logger.error("Erro ao buscar usuário atual: {}", e.getMessage(), e);
@@ -119,7 +122,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public UserDto updateUser(UUID id, Map<String, String> updates) {
+    public UserDto updateUser(UUID id, Map<String, String> updates, boolean active) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado com o ID: " + id));
 
@@ -152,6 +155,7 @@ public class UserServiceImpl implements UserService {
             user.setGithubId(newGithubId);
         }
 
+        user.setActive(active);
         User updatedUser = userRepository.save(user);
 
         // Buscar papéis do usuário de forma segura
@@ -165,7 +169,8 @@ public class UserServiceImpl implements UserService {
                 roles,
                 updatedUser.getCreatedAt(),
                 updatedUser.getUpdatedAt(),
-                updatedUser.isEmailVerified()
+                updatedUser.isEmailVerified(),
+                updatedUser.isActive()
         );
     }
 
@@ -197,7 +202,8 @@ public class UserServiceImpl implements UserService {
                 roles,
                 updatedUser.getCreatedAt(),
                 updatedUser.getUpdatedAt(),
-                updatedUser.isEmailVerified()
+                updatedUser.isEmailVerified(),
+                updatedUser.isActive()
         );
     }
 
@@ -279,7 +285,8 @@ public class UserServiceImpl implements UserService {
                 roles,
                 user.getCreatedAt(),
                 user.getUpdatedAt(),
-                user.isEmailVerified()
+                user.isEmailVerified(),
+                user.isActive()
         );
     }
 
@@ -306,7 +313,8 @@ public class UserServiceImpl implements UserService {
                 roles,
                 user.getCreatedAt(),
                 user.getUpdatedAt(),
-                user.isEmailVerified()
+                user.isEmailVerified(),
+                user.isActive()
         );
     }
 }

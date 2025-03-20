@@ -114,6 +114,22 @@ public class UserController {
         }
     }
 
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<UserDto> updateUserStatus(
+            @PathVariable UUID id,
+            @RequestParam boolean active) {
+
+        logger.info("Recebendo solicitação para {} usuário: {}",
+                active ? "ativar" : "desativar", id);
+
+        UserDto updatedUser = userService.updateUserStatus(id, active);
+
+        logger.info("Status do usuário atualizado com sucesso: {}", id);
+
+        return ResponseEntity.ok(updatedUser);
+    }
+
     @PostMapping("/{id}/roles")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserDto> addRole(@PathVariable UUID id, @RequestParam String roleName) {

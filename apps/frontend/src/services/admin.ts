@@ -57,6 +57,24 @@ const adminService = {
       throw error;
     }
   },
+
+  /**
+   * Atualiza o status (ativo/inativo) de um usuário
+   */
+  updateUserStatus: async (userId: string, active: boolean): Promise<User> => {
+    try {
+      const response = await api.patch<User>(
+        `/users/${userId}/status?active=${active}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Erro ao ${active ? "ativar" : "desativar"} usuário ${userId}:`,
+        error
+      );
+      throw error;
+    }
+  },
 };
 
 export default adminService;
