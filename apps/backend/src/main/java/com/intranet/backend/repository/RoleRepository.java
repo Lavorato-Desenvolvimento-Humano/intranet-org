@@ -20,7 +20,6 @@ public interface RoleRepository extends JpaRepository<Role, Integer> {
     @Query("SELECT DISTINCT r FROM Role r LEFT JOIN FETCH r.rolePermissions rp LEFT JOIN FETCH rp.permission WHERE r.name = :name")
     Optional<Role> findByNameWithPermissions(@Param("name") String name);
 
-    // Adicionar um método para buscar todas as roles com permissões em uma única consulta
     @Query("SELECT DISTINCT r FROM Role r LEFT JOIN FETCH r.rolePermissions rp LEFT JOIN FETCH rp.permission")
     List<Role> findAllWithPermissions();
 }

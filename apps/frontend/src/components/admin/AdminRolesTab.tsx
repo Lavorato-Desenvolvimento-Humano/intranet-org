@@ -186,11 +186,24 @@ export default function AdminRolesTab() {
       });
 
       setRoles((prev) =>
-        prev.map((role) => (role.id === updatedRole.id ? updatedRole : role))
+        prev.map((role) => {
+          if (role.id === updatedRole.id) {
+            // Garantir que o objeto updatedRole tenha todas as propriedades necessárias
+            return {
+              ...role,
+              ...updatedRole,
+              permissions: updatedRole.permissions || [],
+            };
+          }
+          return role;
+        })
       );
 
       toastUtil.success(`Cargo ${updatedRole.name} atualizado com sucesso.`);
       handleCloseModal();
+
+      const refreshedRoles = await roleService.getAllRoles();
+      setRoles(refreshedRoles);
     } catch (error: any) {
       console.error("Erro ao atualizar cargo:", error);
       if (error.response?.data?.message) {
@@ -199,87 +212,6 @@ export default function AdminRolesTab() {
         setError(error.message);
       } else {
         setError("Erro ao atualizar cargo. Tente novamente.");
-      }
-    } finally {
-      setProcessingRoleId(null);
-    }
-  };
-
-  // Adicionar permissão a role
-  const handleAddPermissionToRole = async (
-    roleId: number,
-    permissionId: number
-  ) => {
-    try {
-      setProcessingRoleId(roleId);
-
-      // Usar mensagem de loading
-      const loadingToastId = toastUtil.loading("Adicionando permissão...");
-
-      const updatedRole = await roleService.addPermissionToRole(
-        roleId,
-        permissionId
-      );
-
-      // Atualizar a lista de roles
-      setRoles((prev) =>
-        prev.map((role) => (role.id === updatedRole.id ? updatedRole : role))
-      );
-
-      // Remover toast de loading e mostrar sucesso
-      toastUtil.dismiss(loadingToastId);
-      toastUtil.success("Permissão adicionada com sucesso.");
-    } catch (error: any) {
-      console.error("Erro ao adicionar permissão:", error);
-
-      // Tratamento específico baseado no código de status
-      if (error.response?.status === 404) {
-        toastUtil.error("Cargo ou permissão não encontrada.");
-      } else if (error.response?.data?.message) {
-        toastUtil.error(error.response.data.message);
-      } else if (error.response?.status === 500) {
-        toastUtil.error(
-          "Erro no servidor ao adicionar permissão. Por favor, tente novamente."
-        );
-      } else {
-        toastUtil.error("Erro ao adicionar permissão. Tente novamente.");
-      }
-    } finally {
-      setProcessingRoleId(null);
-    }
-  };
-
-  // Remover permissão de role
-  const handleRemovePermissionFromRole = async (
-    roleId: number,
-    permissionId: number
-  ) => {
-    try {
-      setProcessingRoleId(roleId);
-
-      // Usar mensagem de loading
-      const loadingToastId = toastUtil.loading("Removendo permissão...");
-
-      const updatedRole = await roleService.removePermissionFromRole(
-        roleId,
-        permissionId
-      );
-
-      // Atualizar a lista de roles
-      setRoles((prev) =>
-        prev.map((role) => (role.id === updatedRole.id ? updatedRole : role))
-      );
-
-      // Remover toast de loading e mostrar sucesso
-      toastUtil.dismiss(loadingToastId);
-      toastUtil.success("Permissão removida com sucesso.");
-    } catch (error: any) {
-      console.error("Erro ao remover permissão:", error);
-
-      if (error.response?.data?.message) {
-        toastUtil.error(error.response.data.message);
-      } else {
-        toastUtil.error("Erro ao remover permissão. Tente novamente.");
       }
     } finally {
       setProcessingRoleId(null);

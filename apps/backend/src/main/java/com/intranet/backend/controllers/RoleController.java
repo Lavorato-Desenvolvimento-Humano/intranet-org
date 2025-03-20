@@ -58,8 +58,13 @@ public class RoleController {
             @PathVariable Integer id,
             @Valid @RequestBody RoleUpdateRequest request) {
         logger.info("Requisição para atualizar role com ID: {}", id);
-        RoleDto updatedRole = roleService.updateRole(id, request);
-        return ResponseEntity.ok(updatedRole);
+        try {
+            RoleDto updatedRole = roleService.updateRole(id, request);
+            return ResponseEntity.ok(updatedRole);
+        } catch (Exception e) {
+            logger.error("Erro ao atualizar role: {}", e.getMessage(), e);
+            throw e;
+        }
     }
 
     @DeleteMapping("/{id}")
