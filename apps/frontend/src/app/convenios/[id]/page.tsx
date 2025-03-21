@@ -49,13 +49,19 @@ export default function ConvenioDetailsPage() {
         // Buscar postagens do convênio
         const postagensData =
           await postagemService.getPostagensByConvenioId(convenioId);
-        setPostagens(postagensData);
+        setPostagens(postagensData || []);
 
         // Encontrar a tabela de preços (assumindo que seja a primeira tabela em qualquer postagem)
-        const allTabelas = postagensData.flatMap(
-          (postagem) => postagem.tabelas || []
-        );
-        if (allTabelas.length > 0) {
+        const allTabelas =
+          postagensData && postagensData.length > 0
+            ? postagensData.flatMap((postagem) =>
+                postagem.tabelas && postagem.tabelas.length > 0
+                  ? postagem.tabelas
+                  : []
+              )
+            : [];
+
+        if (allTabelas && allTabelas.length > 0) {
           setTabelaPrecos(allTabelas[0]);
         }
       } catch (error: any) {
@@ -76,6 +82,7 @@ export default function ConvenioDetailsPage() {
 
   // Formatar a data para exibição
   const formatDate = (dateString: string) => {
+    if (!dateString) return "";
     const date = new Date(dateString);
     return date.toLocaleDateString("pt-BR", {
       day: "2-digit",
@@ -199,7 +206,7 @@ export default function ConvenioDetailsPage() {
                       </CustomButton>
                     </div>
 
-                    {postagens.length > 0 ? (
+                    {postagens && postagens.length > 0 ? (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {postagens.map((postagem) => (
                           <PostagemCard key={postagem.id} postagem={postagem} />

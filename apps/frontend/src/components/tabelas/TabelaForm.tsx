@@ -49,10 +49,12 @@ const TabelaForm: React.FC<TabelaFormProps> = ({
     const fetchConvenios = async () => {
       try {
         const conveniosData = await convenioService.getAllConvenios();
-        setConvenios(conveniosData);
+        setConvenios(conveniosData || []);
 
         // Pegar o ID do convênio das props ou dos parâmetros de URL
-        const urlConvenioId = searchParams.get("convenioId");
+        const urlConvenioId = searchParams
+          ? searchParams.get("convenioId")
+          : null;
         const finalConvenioId = propConvenioId || urlConvenioId || "";
 
         if (finalConvenioId) {
@@ -85,9 +87,46 @@ const TabelaForm: React.FC<TabelaFormProps> = ({
 
           const postagemData =
             await postagemService.getPostagemById(postagemId);
-          // Resto do código...
+
+          if (postagemData) {
+            setPostagem(postagemData);
+            setTitulo(postagemData.title || "");
+
+            if (postagemData.convenioId) {
+              setConvenioId(postagemData.convenioId);
+            }
+
+            // Verificar se existem tabelas e carregar a primeira
+            if (postagemData.tabelas && postagemData.tabelas.length > 0) {
+              const tabela = postagemData.tabelas[0];
+              let conteudoTabela;
+
+              try {
+                // Tenta fazer o parsing do conteúdo da tabela
+                conteudoTabela =
+                  typeof tabela.conteudo === "string"
+                    ? JSON.parse(tabela.conteudo)
+                    : tabela.conteudo;
+
+                // Verifica se é realmente um array
+                if (Array.isArray(conteudoTabela)) {
+                  setTabelaData(conteudoTabela);
+                } else {
+                  // Se não for um array, usa o padrão
+                  setTabelaData(defaultTabela);
+                }
+              } catch (e) {
+                console.error(
+                  "Erro ao fazer parsing do conteúdo da tabela:",
+                  e
+                );
+                setTabelaData(defaultTabela);
+              }
+            }
+          }
         } catch (error) {
-          // Tratamento de erro...
+          console.error("Erro ao carregar dados da tabela:", error);
+          setError("Não foi possível carregar os dados da tabela.");
         } finally {
           setFetchingData(false);
         }
@@ -104,10 +143,19 @@ const TabelaForm: React.FC<TabelaFormProps> = ({
     value: string
   ) => {
     setTabelaData((prev) => {
+      if (!prev || !Array.isArray(prev)) {
+        // Se não existir ou não for um array, inicializa
+        const newTable = [...defaultTabela];
+        if (newTable[rowIndex] && newTable[rowIndex][colIndex] !== undefined) {
+          newTable[rowIndex][colIndex] = value;
+        }
+        return newTable;
+      }
+
       const updated = [...prev];
 
       // Garantir que a linha existe
-      if (!updated[rowIndex]) {
+      if (!updated[rowIndex] || !Array.isArray(updated[rowIndex])) {
         updated[rowIndex] = [];
       }
 
@@ -121,8 +169,13 @@ const TabelaForm: React.FC<TabelaFormProps> = ({
   // Manipulador para adicionar linha
   const handleAddRow = () => {
     setTabelaData((prev) => {
+      if (!prev || !Array.isArray(prev) || prev.length === 0) {
+        // Se não houver tabela, inicialize com o padrão
+        return defaultTabela;
+      }
+
       // Criar nova linha com o mesmo número de colunas da primeira linha
-      const numCols = prev[0].length;
+      const numCols = prev[0] && Array.isArray(prev[0]) ? prev[0].length : 4;
       const newRow = Array(numCols).fill("");
 
       return [...prev, newRow];
@@ -134,7 +187,13 @@ const TabelaForm: React.FC<TabelaFormProps> = ({
     // Não permitir remover a primeira linha (cabeçalho)
     if (rowIndex === 0) return;
 
-    setTabelaData((prev) => prev.filter((_, index) => index !== rowIndex));
+    setTabelaData((prev) => {
+      if (!prev || !Array.isArray(prev)) {
+        return defaultTabela;
+      }
+
+      return prev.filter((_, index) => index !== rowIndex);
+    });
   };
 
   // Validação do formulário
@@ -182,6 +241,12 @@ const TabelaForm: React.FC<TabelaFormProps> = ({
             },
           ],
         });
+
+        toastUtil.dismiss(loadingToastId);
+        toastUtil.success("Tabela atualizada com sucesso!");
+
+        // Redirecionar para a página da postagem
+        router.push(`/postagens/${postagemId}`);
       } else {
         // Criar nova postagem para tabela de valores
         const novaPostagem = await postagemService.createPostagem({
@@ -191,14 +256,21 @@ const TabelaForm: React.FC<TabelaFormProps> = ({
           createdBy: user?.id || "",
         });
 
-        // Adicionar tabela, enviando explicitamente como JSON string
-        await postagemService.addTabelaToPostagem(novaPostagem.id, tabelaJson);
+        if (novaPostagem && novaPostagem.id) {
+          // Adicionar tabela, enviando explicitamente como JSON string
+          await postagemService.addTabelaToPostagem(
+            novaPostagem.id,
+            tabelaJson
+          );
 
-        toastUtil.dismiss(loadingToastId);
-        toastUtil.success("Tabela criada com sucesso!");
+          toastUtil.dismiss(loadingToastId);
+          toastUtil.success("Tabela criada com sucesso!");
 
-        // Redirecionar para a página do convênio
-        router.push(`/convenios/${convenioId}`);
+          // Redirecionar para a página do convênio
+          router.push(`/convenios/${convenioId}`);
+        } else {
+          throw new Error("Erro ao criar postagem: ID não retornado");
+        }
       }
     } catch (error: any) {
       console.error("Erro ao salvar tabela:", error);
@@ -216,6 +288,7 @@ const TabelaForm: React.FC<TabelaFormProps> = ({
             : "Erro ao criar tabela. Tente novamente."
         );
       }
+    } finally {
       setLoading(false);
     }
   };
@@ -283,11 +356,13 @@ const TabelaForm: React.FC<TabelaFormProps> = ({
             required
             disabled={!!propConvenioId}>
             <option value="">Selecione um convênio</option>
-            {convenios.map((convenio) => (
-              <option key={convenio.id} value={convenio.id}>
-                {convenio.name}
-              </option>
-            ))}
+            {convenios && convenios.length > 0
+              ? convenios.map((convenio) => (
+                  <option key={convenio.id} value={convenio.id}>
+                    {convenio.name}
+                  </option>
+                ))
+              : null}
           </select>
         </div>
       </div>
@@ -302,35 +377,62 @@ const TabelaForm: React.FC<TabelaFormProps> = ({
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <tbody>
-                {tabelaData.map((row, rowIndex) => (
-                  <tr
-                    key={rowIndex}
-                    className={rowIndex % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                    {row.map((cell, colIndex) => (
-                      <td key={colIndex} className="px-2 py-2 border">
-                        <input
-                          type="text"
-                          value={cell}
-                          onChange={(e) =>
-                            handleCellChange(rowIndex, colIndex, e.target.value)
-                          }
-                          className={`w-full p-1 border-gray-200 focus:ring-1 focus:ring-primary 
-                            ${rowIndex === 0 ? "font-medium bg-gray-50" : ""}`}
-                        />
-                      </td>
-                    ))}
+                {tabelaData && Array.isArray(tabelaData) ? (
+                  tabelaData.map((row, rowIndex) => (
+                    <tr
+                      key={rowIndex}
+                      className={
+                        rowIndex % 2 === 0 ? "bg-white" : "bg-gray-50"
+                      }>
+                      {Array.isArray(row) ? (
+                        row.map((cell, colIndex) => (
+                          <td key={colIndex} className="px-2 py-2 border">
+                            <input
+                              type="text"
+                              value={cell || ""}
+                              onChange={(e) =>
+                                handleCellChange(
+                                  rowIndex,
+                                  colIndex,
+                                  e.target.value
+                                )
+                              }
+                              className={`w-full p-1 border-gray-200 focus:ring-1 focus:ring-primary 
+                                ${rowIndex === 0 ? "font-medium bg-gray-50" : ""}`}
+                            />
+                          </td>
+                        ))
+                      ) : (
+                        <td className="px-2 py-2 border">
+                          <input
+                            type="text"
+                            value=""
+                            onChange={(e) =>
+                              handleCellChange(rowIndex, 0, e.target.value)
+                            }
+                            className="w-full p-1 border-gray-200 focus:ring-1 focus:ring-primary"
+                          />
+                        </td>
+                      )}
 
-                    <td className="px-2 py-2 border text-center">
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveRow(rowIndex)}
-                        className={`text-red-600 hover:text-red-800 ${rowIndex === 0 ? "invisible" : ""}`}
-                        disabled={rowIndex === 0}>
-                        <X size={16} />
-                      </button>
+                      <td className="px-2 py-2 border text-center">
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveRow(rowIndex)}
+                          className={`text-red-600 hover:text-red-800 ${rowIndex === 0 ? "invisible" : ""}`}
+                          disabled={rowIndex === 0}>
+                          <X size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={5} className="px-2 py-2 text-center">
+                      Erro ao carregar dados da tabela
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>

@@ -35,16 +35,29 @@ export default function TabelasPage() {
         // Buscar todos os convênios
         const conveniosData = await convenioService.getAllConvenios();
 
+        if (!conveniosData || !Array.isArray(conveniosData)) {
+          setConvenios([]);
+          return;
+        }
+
         // Para cada convênio, verificar se possui tabelas
         const conveniosWithStatus = await Promise.all(
           conveniosData.map(async (convenio) => {
-            const postagens = await postagemService.getPostagensByConvenioId(
-              convenio.id
-            );
-            const hasTabela = postagens.some(
-              (postagem) => postagem.tabelas && postagem.tabelas.length > 0
-            );
-            return { ...convenio, hasTabela };
+            try {
+              const postagens = await postagemService.getPostagensByConvenioId(
+                convenio.id
+              );
+              const hasTabela =
+                postagens &&
+                Array.isArray(postagens) &&
+                postagens.some(
+                  (postagem) => postagem.tabelas && postagem.tabelas.length > 0
+                );
+              return { ...convenio, hasTabela: !!hasTabela };
+            } catch (error) {
+              // Se houver erro ao buscar postagens, assume que não tem tabela
+              return { ...convenio, hasTabela: false };
+            }
           })
         );
 
@@ -64,12 +77,17 @@ export default function TabelasPage() {
   }, []);
 
   // Filtrar convênios com base no termo de pesquisa
-  const filteredConvenios = convenios.filter(
-    (convenio) =>
-      convenio.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (convenio.description &&
-        convenio.description.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const filteredConvenios =
+    convenios && convenios.length > 0
+      ? convenios.filter(
+          (convenio) =>
+            convenio.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (convenio.description &&
+              convenio.description
+                .toLowerCase()
+                .includes(searchTerm.toLowerCase()))
+        )
+      : [];
 
   // Função para adicionar nova tabela
   const handleAddTabela = () => {
@@ -135,7 +153,7 @@ export default function TabelasPage() {
             {/* Lista de convênios com indicação de tabelas */}
             {!loading && !error && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredConvenios.length > 0 ? (
+                {filteredConvenios && filteredConvenios.length > 0 ? (
                   filteredConvenios.map((convenio) => (
                     <div
                       key={convenio.id}

@@ -22,9 +22,9 @@ export default function ConveniosPage() {
   const { user } = useAuth();
 
   // Verificar se o usuário é admin para permissões de adicionar convênio
-  const isAdmin = user?.roles?.some(
-    (role) => role === "ROLE_ADMIN" || role === "ADMIN"
-  );
+  const isAdmin = user?.roles
+    ? user.roles.some((role) => role === "ROLE_ADMIN" || role === "ADMIN")
+    : false;
 
   // Carregar convênios ao montar o componente
   useEffect(() => {
@@ -34,7 +34,7 @@ export default function ConveniosPage() {
 
       try {
         const conveniosData = await convenioService.getAllConvenios();
-        setConvenios(conveniosData);
+        setConvenios(conveniosData || []);
       } catch (error: any) {
         console.error("Erro ao carregar convênios:", error);
         setError(
@@ -50,12 +50,17 @@ export default function ConveniosPage() {
   }, []);
 
   // Filtrar convênios com base no termo de pesquisa
-  const filteredConvenios = convenios.filter(
-    (convenio) =>
-      convenio.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (convenio.description &&
-        convenio.description.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const filteredConvenios =
+    convenios && convenios.length > 0
+      ? convenios.filter(
+          (convenio) =>
+            convenio.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (convenio.description &&
+              convenio.description
+                .toLowerCase()
+                .includes(searchTerm.toLowerCase()))
+        )
+      : [];
 
   // Função para adicionar novo convênio (a ser implementada)
   const handleAddConvenio = () => {
@@ -123,7 +128,7 @@ export default function ConveniosPage() {
             {/* Lista de convênios */}
             {!loading && !error && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredConvenios.length > 0 ? (
+                {filteredConvenios && filteredConvenios.length > 0 ? (
                   filteredConvenios.map((convenio) => (
                     <ConvenioCard key={convenio.id} convenio={convenio} />
                   ))

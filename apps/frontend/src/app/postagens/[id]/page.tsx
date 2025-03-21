@@ -52,7 +52,7 @@ export default function PostagemDetailsPage() {
         setPostagem(postagemData);
 
         // Buscar o convênio associado
-        if (postagemData.convenioId) {
+        if (postagemData && postagemData.convenioId) {
           const convenioData = await convenioService.getConvenioById(
             postagemData.convenioId
           );
@@ -76,6 +76,7 @@ export default function PostagemDetailsPage() {
 
   // Formatar a data para exibição
   const formatDate = (dateString: string) => {
+    if (!dateString) return "";
     const date = new Date(dateString);
     return date.toLocaleDateString("pt-BR", {
       day: "2-digit",
