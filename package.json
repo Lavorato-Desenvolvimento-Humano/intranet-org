@@ -42,6 +42,8 @@
     "**/*.{js,jsx,ts,tsx,json,css,scss,md}": "prettier --write"
   },
   "dependencies": {
+    "@ckeditor/ckeditor5-build-classic": "44.3.0",
+    "@ckeditor/ckeditor5-react": "9.5.0",
     "autoprefixer": "10.4.20",
     "axios": "1.8.2",
     "lodash": "4.17.21",
