@@ -74,26 +74,75 @@ const PostagemForm: React.FC<PostagemFormProps> = ({
     null
   );
 
-  // Efeito para carregar convênios
+  // No useEffect para carregar dados da postagem
   useEffect(() => {
-    const fetchConvenios = async () => {
-      try {
-        const conveniosData = await convenioService.getAllConvenios();
-        setConvenios(conveniosData);
+    const fetchPostagemData = async () => {
+      if (isEditing && postagemId) {
+        setFetchingData(true);
 
-        // Se estamos na criação e o ID do convênio foi passado por parâmetro
-        const convenioIdParam = searchParams.get("convenioId");
-        if (!isEditing && convenioIdParam) {
-          setConvenioId(convenioIdParam);
+        try {
+          // Se postagemId for "new", estamos criando uma nova postagem
+          if (postagemId === "new") {
+            setFetchingData(false);
+            return;
+          }
+
+          const postagem = await postagemService.getPostagemById(postagemId);
+
+          // Preencher o formulário com os dados existentes
+          setTitulo(postagem.title);
+          setTexto(postagem.text);
+          setConvenioId(postagem.convenioId);
+
+          // Configurar imagens existentes
+          if (postagem.imagens && postagem.imagens.length > 0) {
+            setImagens(
+              postagem.imagens.map((img) => ({ ...img, isNew: false }))
+            );
+          }
+
+          // Configurar anexos existentes
+          if (postagem.anexos && postagem.anexos.length > 0) {
+            setAnexos(
+              postagem.anexos.map((anexo) => ({ ...anexo, isNew: false }))
+            );
+          }
+
+          // Configurar tabelas existentes
+          if (postagem.tabelas && postagem.tabelas.length > 0) {
+            setTabelas(
+              postagem.tabelas.map((tabela) => ({
+                id: tabela.id,
+                conteudo:
+                  typeof tabela.conteudo === "string"
+                    ? JSON.parse(tabela.conteudo)
+                    : tabela.conteudo,
+                isNew: false,
+              }))
+            );
+          }
+        } catch (error: any) {
+          // Se o erro for 404 (Not Found) e estamos tentando editar,
+          // provavelmente estamos tentando criar uma nova postagem
+          if (error.response && error.response.status === 404) {
+            console.warn("Postagem não encontrada, criando nova");
+            setFetchingData(false);
+            return;
+          }
+
+          console.error("Erro ao carregar dados da postagem:", error);
+          toastUtil.error("Erro ao carregar dados da postagem para edição");
+          setError(
+            "Não foi possível carregar os dados da postagem. Tente novamente."
+          );
+        } finally {
+          setFetchingData(false);
         }
-      } catch (error) {
-        console.error("Erro ao carregar convênios:", error);
-        toastUtil.error("Erro ao carregar lista de convênios");
       }
     };
 
-    fetchConvenios();
-  }, [isEditing, searchParams]);
+    fetchPostagemData();
+  }, [isEditing, postagemId]);
 
   // Efeito para carregar dados da postagem quando estiver editando
   useEffect(() => {
@@ -436,9 +485,14 @@ const PostagemForm: React.FC<PostagemFormProps> = ({
 
         // Processar tabelas
         for (const tabela of tabelas) {
+          const conteudoFormatado =
+            typeof tabela.conteudo === "string"
+              ? tabela.conteudo
+              : JSON.stringify(tabela.conteudo);
+
           await postagemService.addTabelaToPostagem(
             novaPostagem.id,
-            tabela.conteudo
+            conteudoFormatado
           );
         }
 

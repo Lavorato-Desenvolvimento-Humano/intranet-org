@@ -1,11 +1,9 @@
 package com.intranet.backend.service;
 
-import com.intranet.backend.dto.PostagemCreateRequest;
-import com.intranet.backend.dto.PostagemDto;
-import com.intranet.backend.dto.PostagemSimpleDto;
-import com.intranet.backend.dto.PostagemUpdateRequest;
+import com.intranet.backend.dto.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
@@ -29,4 +27,7 @@ public interface PostagemService {
     void deletePostagem(UUID id);
 
     List<PostagemSimpleDto> getRecentPostagens(int limit);
+
+    @Transactional
+    TabelaPostagemDto addTabelaToPostagem(UUID postagemId, Object conteudo);
 }

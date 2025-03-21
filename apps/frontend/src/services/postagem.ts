@@ -57,6 +57,23 @@ const postagemService = {
    */
   getPostagemById: async (id: string): Promise<Postagem> => {
     try {
+      // Verificar se o ID é "new" e nesse caso retornar uma postagem vazia
+      if (id === "new") {
+        const emptyPostagem: Postagem = {
+          id: "",
+          title: "",
+          text: "",
+          convenioId: "",
+          createdBy: "",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          imagens: [],
+          anexos: [],
+          tabelas: [],
+        };
+        return emptyPostagem;
+      }
+
       const response = await api.get<Postagem>(`/api/postagens/${id}`);
       return response.data;
     } catch (error) {
@@ -195,21 +212,32 @@ const postagemService = {
    */
   addTabelaToPostagem: async (
     postagemId: string,
-    tabela: any
+    conteudo: any
   ): Promise<TabelaPostagem> => {
     try {
+      // Garantir que o conteúdo esteja no formato correto
+      const dadosTabela = {
+        conteudo:
+          typeof conteudo === "string" ? conteudo : JSON.stringify(conteudo),
+      };
+
       const response = await api.post<TabelaPostagem>(
         `/api/postagens/${postagemId}/tabelas`,
-        {
-          conteudo: tabela,
-        }
+        dadosTabela
       );
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error(
         `Erro ao adicionar tabela à postagem ${postagemId}:`,
         error
       );
+
+      // Log detalhado para ajudar no diagnóstico
+      if (error.response) {
+        console.error("Resposta do servidor:", error.response.data);
+        console.error("Status do erro:", error.response.status);
+      }
+
       throw error;
     }
   },

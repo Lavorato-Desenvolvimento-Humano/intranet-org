@@ -1,9 +1,7 @@
 package com.intranet.backend.controllers;
 
-import com.intranet.backend.dto.PostagemCreateRequest;
-import com.intranet.backend.dto.PostagemDto;
-import com.intranet.backend.dto.PostagemSimpleDto;
-import com.intranet.backend.dto.PostagemUpdateRequest;
+import com.intranet.backend.dto.*;
+import com.intranet.backend.repository.PostagemRepository;
 import com.intranet.backend.service.PostagemService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +16,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -28,6 +28,7 @@ public class PostagemController {
 
     private static final Logger logger = LoggerFactory.getLogger(PostagemController.class);
     private final PostagemService postagemService;
+    private final PostagemRepository postagemRepository;
 
     @GetMapping
     public ResponseEntity<List<PostagemSimpleDto>> getAllPostagens() {
@@ -109,5 +110,49 @@ public class PostagemController {
         logger.info("Requisição para excluir postagem com ID: {}", id);
         postagemService.deletePostagem(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/check/{id}")
+    public ResponseEntity<Map<String, Boolean>> checkPostagemExists(@PathVariable String id) {
+        try {
+            // Se for "new", retorna false
+            if ("new".equals(id)) {
+                Map<String, Boolean> response = new HashMap<>();
+                response.put("exists", false);
+                return ResponseEntity.ok(response);
+            }
+
+            // Tenta converter para UUID e verificar se existe
+            UUID uuid = UUID.fromString(id);
+
+            // Em vez de existsById, vamos usar findById e verificar se está presente
+            boolean exists = postagemRepository.findById(uuid).isPresent();
+
+            Map<String, Boolean> response = new HashMap<>();
+            response.put("exists", exists);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            // Se não for um UUID válido
+            Map<String, Boolean> response = new HashMap<>();
+            response.put("exists", false);
+            return ResponseEntity.ok(response);
+        }
+    }
+
+    @PostMapping("/{id}/tabelas")
+    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR')")
+    public ResponseEntity<TabelaPostagemDto> addTabelaToPostagem(
+            @PathVariable UUID id,
+            @RequestBody TabelaPostagemCreateRequest request) {
+        logger.info("Requisição para adicionar tabela à postagem com ID: {}", id);
+        logger.debug("Conteúdo da tabela: {}", request.getConteudo());
+
+        try {
+            TabelaPostagemDto tabela = postagemService.addTabelaToPostagem(id, request.getConteudo());
+            return ResponseEntity.status(HttpStatus.CREATED).body(tabela);
+        } catch (Exception e) {
+            logger.error("Erro ao adicionar tabela: {}", e.getMessage(), e);
+            throw e;
+        }
     }
 }

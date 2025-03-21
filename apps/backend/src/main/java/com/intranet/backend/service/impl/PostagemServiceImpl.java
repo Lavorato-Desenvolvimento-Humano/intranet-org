@@ -1,5 +1,6 @@
 package com.intranet.backend.service.impl;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.intranet.backend.dto.*;
 import com.intranet.backend.exception.ResourceNotFoundException;
 import com.intranet.backend.model.*;
@@ -9,7 +10,6 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.Authentication;
@@ -145,7 +145,19 @@ public class PostagemServiceImpl implements PostagemService {
                     .map(tabelaRequest -> {
                         TabelaPostagem tabela = new TabelaPostagem();
                         tabela.setPost(savedPostagem);
-                        tabela.setConteudo(tabelaRequest.getConteudo());
+                        // Verificar se o conteúdo é uma string ou um objeto JSON
+                        if (tabelaRequest.getConteudo() instanceof String) {
+                            tabela.setConteudo(tabelaRequest.getConteudo());
+                        } else {
+                            // Converter objeto para string JSON
+                            try {
+                                ObjectMapper objectMapper = new ObjectMapper();
+                                tabela.setConteudo(objectMapper.writeValueAsString(tabelaRequest.getConteudo()));
+                            } catch (Exception e) {
+                                logger.error("Erro ao converter conteúdo da tabela para JSON", e);
+                                throw new RuntimeException("Erro ao processar tabela", e);
+                            }
+                        }
                         return tabela;
                     })
                     .collect(Collectors.toList());
@@ -279,6 +291,62 @@ public class PostagemServiceImpl implements PostagemService {
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado"));
     }
 
+    @Transactional
+    @Override
+    public TabelaPostagemDto addTabelaToPostagem(UUID postagemId, Object conteudo) {
+        logger.info("Adicionando tabela à postagem ID: {}", postagemId);
+        logger.debug("Conteúdo recebido: {}", conteudo);
+
+        try {
+            Postagem postagem = postagemRepository.findById(postagemId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Postagem não encontrada com ID: " + postagemId));
+
+            TabelaPostagem tabela = new TabelaPostagem();
+            tabela.setPost(postagem);
+
+            // Determinar o tipo do conteúdo
+            if (conteudo == null) {
+                logger.warn("Conteúdo da tabela é nulo, usando objeto vazio");
+                tabela.setConteudo("{}");
+            }
+            else if (conteudo instanceof String) {
+                logger.debug("Conteúdo da tabela é String: {}", conteudo);
+                // Verificar se a string é um JSON válido
+                try {
+                    new ObjectMapper().readTree((String) conteudo);
+                    tabela.setConteudo((String) conteudo);
+                } catch (Exception e) {
+                    logger.warn("Conteúdo não é JSON válido, tentando converter", e);
+                    // Se não for JSON válido, tenta converter para JSON string
+                    try {
+                        tabela.setConteudo(new ObjectMapper().writeValueAsString(conteudo));
+                    } catch (Exception ex) {
+                        logger.error("Falha ao converter conteúdo para JSON", ex);
+                        tabela.setConteudo("{}");
+                    }
+                }
+            }
+            else {
+                logger.debug("Conteúdo da tabela não é String, convertendo");
+                // Objeto não-String, converter para JSON
+                try {
+                    tabela.setConteudo(new ObjectMapper().writeValueAsString(conteudo));
+                } catch (Exception e) {
+                    logger.error("Erro ao converter objeto para JSON", e);
+                    tabela.setConteudo("{}");
+                }
+            }
+
+            TabelaPostagem savedTabela = tabelaPostagemRepository.save(tabela);
+            logger.info("Tabela adicionada com sucesso, ID: {}", savedTabela.getId());
+
+            return convertToTabelaDto(savedTabela);
+        } catch (Exception e) {
+            logger.error("Erro ao adicionar tabela à postagem {}: {}", postagemId, e.getMessage(), e);
+            throw e;
+        }
+    }
+
     // Métodos auxiliares para conversão
 
     private PostagemSimpleDto convertToSimpleDto(Postagem postagem) {
@@ -368,9 +436,23 @@ public class PostagemServiceImpl implements PostagemService {
     }
 
     private TabelaPostagemDto convertToTabelaDto(TabelaPostagem tabela) {
+        // Verificar e sanitizar o conteúdo JSON
+        String conteudo = tabela.getConteudo();
+        if (conteudo == null) {
+            conteudo = "{}";
+        }
+
+        // Verifica se o conteúdo é JSON válido
+        try {
+            new ObjectMapper().readTree(conteudo);
+        } catch (Exception e) {
+            logger.warn("Conteúdo da tabela ID {} não é JSON válido: {}", tabela.getId(), e.getMessage());
+            conteudo = "{}";
+        }
+
         return new TabelaPostagemDto(
                 tabela.getId(),
-                tabela.getConteudo()
+                conteudo
         );
     }
 }

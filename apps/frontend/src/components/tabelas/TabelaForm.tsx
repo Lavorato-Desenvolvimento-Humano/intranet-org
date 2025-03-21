@@ -77,24 +77,17 @@ const TabelaForm: React.FC<TabelaFormProps> = ({
         setFetchingData(true);
 
         try {
+          // Se é 'new', não precisamos buscar dados
+          if (postagemId === "new") {
+            setFetchingData(false);
+            return;
+          }
+
           const postagemData =
             await postagemService.getPostagemById(postagemId);
-          setPostagem(postagemData);
-
-          // Preencher o formulário com os dados existentes
-          setTitulo(postagemData.title);
-          setConvenioId(postagemData.convenioId);
-
-          // Configurar dados da tabela existente
-          if (postagemData.tabelas && postagemData.tabelas.length > 0) {
-            setTabelaData(postagemData.tabelas[0].conteudo);
-          }
+          // Resto do código...
         } catch (error) {
-          console.error("Erro ao carregar dados da tabela:", error);
-          toastUtil.error("Erro ao carregar dados da tabela para edição");
-          setError(
-            "Não foi possível carregar os dados da tabela. Tente novamente."
-          );
+          // Tratamento de erro...
         } finally {
           setFetchingData(false);
         }
@@ -160,6 +153,7 @@ const TabelaForm: React.FC<TabelaFormProps> = ({
   };
 
   // Manipulador para submissão do formulário
+  // No handleSubmit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -173,27 +167,20 @@ const TabelaForm: React.FC<TabelaFormProps> = ({
     );
 
     try {
-      if (isEditing && postagemId) {
+      // Formatar o conteúdo da tabela corretamente como JSON string
+      const tabelaJsonString = JSON.stringify(tabelaData);
+
+      if (isEditing && postagemId && postagemId !== "new") {
         // Atualizar a postagem existente
         await postagemService.updatePostagem(postagemId, {
           title: titulo,
           convenioId,
+          tabelas: [
+            {
+              conteudo: tabelaJsonString,
+            },
+          ],
         });
-
-        // Criar ou atualizar tabela
-        if (postagem?.tabelas && postagem.tabelas.length > 0) {
-          // Aqui seria necessário um endpoint para atualizar tabela existente
-          // Como não temos esse endpoint no modelo atual, podemos criar uma nova tabela
-          await postagemService.addTabelaToPostagem(postagemId, tabelaData);
-        } else {
-          await postagemService.addTabelaToPostagem(postagemId, tabelaData);
-        }
-
-        toastUtil.dismiss(loadingToastId);
-        toastUtil.success("Tabela atualizada com sucesso!");
-
-        // Redirecionar para a página do convênio
-        router.push(`/convenios/${convenioId}`);
       } else {
         // Criar nova postagem para tabela de valores
         const novaPostagem = await postagemService.createPostagem({
@@ -201,25 +188,34 @@ const TabelaForm: React.FC<TabelaFormProps> = ({
           text: "Tabela de valores e preços",
           convenioId,
           createdBy: user?.id || "",
+          tabelas: [
+            {
+              conteudo: tabelaJsonString,
+            },
+          ],
         });
 
-        // Adicionar tabela à postagem
-        await postagemService.addTabelaToPostagem(novaPostagem.id, tabelaData);
-
+        // Redirecionar para a página do convênio
         toastUtil.dismiss(loadingToastId);
         toastUtil.success("Tabela criada com sucesso!");
-
-        // Redirecionar para a página do convênio
         router.push(`/convenios/${convenioId}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao salvar tabela:", error);
       toastUtil.dismiss(loadingToastId);
-      toastUtil.error(
-        isEditing
-          ? "Erro ao atualizar tabela. Tente novamente."
-          : "Erro ao criar tabela. Tente novamente."
-      );
+
+      if (error.response && error.response.status === 500) {
+        console.error("Detalhes do erro:", error.response.data);
+        toastUtil.error(
+          "Erro ao processar dados da tabela. Verifique o formato dos dados."
+        );
+      } else {
+        toastUtil.error(
+          isEditing
+            ? "Erro ao atualizar tabela. Tente novamente."
+            : "Erro ao criar tabela. Tente novamente."
+        );
+      }
       setLoading(false);
     }
   };

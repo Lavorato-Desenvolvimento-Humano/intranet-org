@@ -33,4 +33,6 @@ public interface PostagemRepository extends JpaRepository<Postagem, UUID> {
             "JOIN FETCH p.convenio " +
             "ORDER BY p.createdAt DESC")
     List<Postagem> findRecentPostagens(Pageable pageable);
+
+
 }
