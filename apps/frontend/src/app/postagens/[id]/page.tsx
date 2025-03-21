@@ -1,4 +1,3 @@
-// src/app/postagens/[id]/page.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -13,6 +12,7 @@ import {
   Image as ImageIcon,
   Paperclip,
   Table,
+  AlertTriangle,
 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Breadcrumb from "@/components/ui/breadcrumb";
@@ -127,7 +127,7 @@ export default function PostagemViewPage() {
     }
   };
 
-  // Função para carregar tabela
+  // Função para renderizar tabela
   const renderTabela = (tabela: TabelaPostagemDto) => {
     try {
       // Tentar analisar o JSON da tabela
@@ -157,7 +157,9 @@ export default function PostagemViewPage() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {tabelaData.rows.map((row: any[], rowIndex: number) => (
-                  <tr key={rowIndex}>
+                  <tr
+                    key={rowIndex}
+                    className={rowIndex % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                     {row.map((cell, cellIndex) => (
                       <td
                         key={cellIndex}
@@ -171,15 +173,54 @@ export default function PostagemViewPage() {
             </table>
           </div>
         );
+      } else if (Array.isArray(tabelaData)) {
+        // Caso seja um array simples (possivelmente um array de objetos)
+        if (tabelaData.length === 0) {
+          return <div className="p-4 text-gray-500">Tabela vazia</div>;
+        }
+
+        // Extrair cabeçalhos dos campos do primeiro objeto
+        const headers = Object.keys(tabelaData[0]);
+
+        return (
+          <div className="overflow-x-auto mt-4 mb-6">
+            <table className="min-w-full divide-y divide-gray-200 border border-gray-300">
+              <thead className="bg-gray-50">
+                <tr>
+                  {headers.map((header, index) => (
+                    <th
+                      key={index}
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300 last:border-r-0">
+                      {header}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {tabelaData.map((row: any, rowIndex: number) => (
+                  <tr
+                    key={rowIndex}
+                    className={rowIndex % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                    {headers.map((header, cellIndex) => (
+                      <td
+                        key={cellIndex}
+                        className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 border-r border-gray-300 last:border-r-0">
+                        {row[header]?.toString() || ""}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
       } else {
-        // Tentar renderizar tabela genérica
+        // Tentar renderizar tabela genérica ou objeto
         return (
           <div className="bg-gray-50 p-4 rounded-md mt-4 mb-6">
-            <p className="text-sm text-gray-500">
-              Formato de tabela não reconhecido
-            </p>
-            <pre className="mt-2 text-xs bg-gray-100 p-2 rounded overflow-auto max-h-60">
-              {tabela.conteudo}
+            <p className="text-sm text-gray-700 mb-2">Conteúdo da tabela:</p>
+            <pre className="bg-white p-3 rounded-md border border-gray-300 overflow-auto max-h-96 text-sm">
+              {JSON.stringify(tabelaData, null, 2)}
             </pre>
           </div>
         );
@@ -187,8 +228,16 @@ export default function PostagemViewPage() {
     } catch (error) {
       console.error("Erro ao renderizar tabela:", error);
       return (
-        <div className="bg-red-50 p-4 rounded-md mt-4 mb-6">
-          <p className="text-sm text-red-500">Erro ao carregar tabela</p>
+        <div className="bg-red-50 p-4 rounded-md mt-4 mb-6 flex">
+          <AlertTriangle className="text-red-500 mr-2" size={20} />
+          <div>
+            <p className="text-sm font-medium text-red-800">
+              Erro ao carregar tabela
+            </p>
+            <p className="text-sm text-red-600">
+              O formato da tabela é inválido ou não pode ser processado.
+            </p>
+          </div>
         </div>
       );
     }
@@ -210,12 +259,13 @@ export default function PostagemViewPage() {
       <div className="min-h-screen bg-gray-50 flex flex-col">
         <Navbar />
         <main className="flex-grow container mx-auto p-6">
-          <div className="bg-red-50 text-red-700 p-4 rounded-md mb-4">
+          <div className="bg-red-50 text-red-700 p-4 rounded-md mb-4 flex items-center">
+            <AlertTriangle className="mr-2" />
             {error || "Postagem não encontrada."}
           </div>
           <button
             onClick={() => router.push("/convenios")}
-            className="flex items-center text-primary hover:text-primary-dark">
+            className="flex items-center text-primary hover:text-primary-dark transition-colors">
             <ArrowLeft size={16} className="mr-1" />
             Voltar para a lista de convênios
           </button>
@@ -359,7 +409,8 @@ export default function PostagemViewPage() {
             {activeTab === "conteudo" && (
               <div
                 className="prose max-w-none"
-                dangerouslySetInnerHTML={{ __html: postagem.text }}></div>
+                dangerouslySetInnerHTML={{ __html: postagem.text }}
+              />
             )}
 
             {activeTab === "imagens" && (
@@ -386,7 +437,7 @@ export default function PostagemViewPage() {
                 {postagem.anexos.map((anexo) => (
                   <div
                     key={anexo.id}
-                    className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
+                    className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
                     <div className="mr-3 text-gray-400">
                       <Paperclip size={20} />
                     </div>
@@ -400,7 +451,7 @@ export default function PostagemViewPage() {
                       href={anexo.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="p-2 text-primary hover:text-primary-dark"
+                      className="p-2 text-primary hover:text-primary-dark transition-colors"
                       title="Baixar anexo">
                       <Download size={20} />
                     </a>
