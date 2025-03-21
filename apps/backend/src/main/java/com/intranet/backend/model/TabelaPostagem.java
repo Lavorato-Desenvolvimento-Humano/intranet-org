@@ -8,11 +8,11 @@ import lombok.NoArgsConstructor;
 import java.util.UUID;
 
 @Entity
-@Table(name = "imagens")
+@Table(name = "tabelas_postagens")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Imagem {
+public class TabelaPostagem {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
@@ -22,9 +22,6 @@ public class Imagem {
     @JoinColumn(name = "post_id")
     private Postagem postagem;
 
-    @Column(name = "url", nullable = false, columnDefinition = "TEXT")
-    private String url;
-
-    @Column(name = "description", columnDefinition = "TEXT")
-    private String description;
+    @Column(name = "conteudo", nullable = false, columnDefinition = "jsonb")
+    private String conteudo; // Armazenará o JSON como string
 }

@@ -8,11 +8,11 @@ import lombok.NoArgsConstructor;
 import java.util.UUID;
 
 @Entity
-@Table(name = "imagens")
+@Table(name = "anexos")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Imagem {
+public class Anexo {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
@@ -22,9 +22,12 @@ public class Imagem {
     @JoinColumn(name = "post_id")
     private Postagem postagem;
 
+    @Column(name = "name_file", nullable = false, length = 255)
+    private String nameFile;
+
+    @Column(name = "type_file", length = 50)
+    private String typeFile;
+
     @Column(name = "url", nullable = false, columnDefinition = "TEXT")
     private String url;
-
-    @Column(name = "description", columnDefinition = "TEXT")
-    private String description;
 }
