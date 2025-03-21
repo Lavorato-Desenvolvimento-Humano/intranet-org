@@ -32,7 +32,7 @@ export default function Navbar() {
                 src="/logo.svg"
                 alt="Lavorato Saúde Integrada"
                 width={120}
-                height={30}
+                height={"auto"}
                 className="mr-2"
                 style={{ objectFit: "contain" }}
               />
