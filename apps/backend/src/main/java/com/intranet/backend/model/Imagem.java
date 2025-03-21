@@ -18,10 +18,6 @@ public class Imagem {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "post_id")
-    private Postagem post;
-
     @Column(name = "url", nullable = false, columnDefinition = "TEXT")
     private String url;
 

@@ -11,21 +11,21 @@ export default function Home() {
   const { user, loading } = useAuth();
   const router = useRouter();
 
-  // Redirecionar para dashboard se o usuário já estiver autenticado
-  useEffect(() => {
-    if (!loading && user) {
-      router.push("/dashboard");
-    }
-  }, [user, loading, router]);
+  // // Redirecionar para dashboard se o usuário já estiver autenticado
+  // useEffect(() => {
+  //   if (!loading && user) {
+  //     router.push("/dashboard");
+  //   }
+  // }, [user, loading, router]);
 
-  // Se o usuário estiver autenticado, não renderize o conteúdo da página inicial
-  if (loading || user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
+  // // Se o usuário estiver autenticado, não renderize o conteúdo da página inicial
+  // if (loading || user) {
+  //   return (
+  //     <div className="min-h-screen flex items-center justify-center bg-gray-50">
+  //       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+  //     </div>
+  //   );
+  // }
 
   // Renderize a página de boas-vindas normal para usuários não autenticados
   return (
