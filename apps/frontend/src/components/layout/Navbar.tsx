@@ -31,8 +31,8 @@ export default function Navbar() {
               <Image
                 src="/logo_branca.png"
                 alt="Lavorato Saúde Integrada"
-                width={120}
-                height={40}
+                width={53}
+                height={53}
                 className="mr-2"
                 style={{ objectFit: "contain" }}
               />
