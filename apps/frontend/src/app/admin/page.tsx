@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
-import AdminHeader from "@/components/admin/AdminHeader";
+import Navbar from "@/components/layout/Navbar";
 import AdminUsersTab from "@/components/admin/AdminUsersTab";
 import AdminRolesTab from "@/components/admin/AdminRolesTab";
 import AdminPermissionsTab from "@/components/admin/AdminPermissionsTab";
@@ -80,7 +80,7 @@ export default function AdminDashboardPage() {
   return (
     <ProtectedRoute requiredRoles={["ROLE_ADMIN"]}>
       <div className="min-h-screen bg-gray-50 flex flex-col">
-        <AdminHeader />
+        <Navbar />
 
         <main className="flex-grow container mx-auto p-6">
           <div className="bg-white rounded-lg shadow-lg p-6">

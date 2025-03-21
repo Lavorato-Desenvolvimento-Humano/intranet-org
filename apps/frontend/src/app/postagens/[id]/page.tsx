@@ -18,7 +18,7 @@ import {
   Clock,
 } from "lucide-react";
 import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
-import Header from "@/components/layout/header";
+import Navbar from "@/components/layout/Navbar";
 import { Postagem } from "@/services/postagem";
 import { Convenio } from "@/services/convenio";
 import postagemService from "@/services/postagem";
@@ -127,7 +127,7 @@ export default function PostagemDetailsPage() {
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gray-50 flex flex-col">
-        <Header />
+        <Navbar />
 
         <main className="flex-grow container mx-auto p-6">
           <div className="bg-white rounded-lg shadow-lg p-6">

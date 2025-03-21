@@ -11,7 +11,7 @@ import {
   Plus,
 } from "lucide-react";
 import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
-import Header from "@/components/layout/header";
+import Navbar from "@/components/layout/Navbar";
 import PostagemCard from "@/components/postagens/PostagemCard";
 import { Convenio } from "@/services/convenio";
 import { Postagem, TabelaPostagem } from "@/services/postagem";
@@ -92,7 +92,7 @@ export default function ConvenioDetailsPage() {
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gray-50 flex flex-col">
-        <Header />
+        <Navbar />
 
         <main className="flex-grow container mx-auto p-6">
           <div className="bg-white rounded-lg shadow-lg p-6">

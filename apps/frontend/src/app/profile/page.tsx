@@ -1,8 +1,9 @@
-// app/profile/page.tsx com tratamento de erro melhorado
+// src/app/profile/page.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
 import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
+import Navbar from "@/components/layout/Navbar";
 import { useAuth } from "@/context/AuthContext";
 import { User } from "@/services/auth";
 import { ProfileImageUpload } from "@/components/profile/ProfileImageUpload";
@@ -11,7 +12,6 @@ import { PasswordChange } from "@/components/profile/PasswordChange";
 import { DeleteAccount } from "@/components/profile/DeleteAccount";
 import profileService from "@/services/profile";
 import toastUtil from "@/utils/toast";
-import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   UserIcon,
@@ -88,25 +88,7 @@ export default function ProfilePage() {
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gray-50 flex flex-col">
-        <header className="bg-primary text-white p-4 shadow-md">
-          <div className="container mx-auto flex justify-between items-center">
-            <h1 className="text-xl font-bold">Lavorato Saúde Integrada</h1>
-            <div className="flex items-center space-x-4">
-              <Link
-                href="/"
-                className="flex items-center text-white hover:text-gray-200">
-                <HomeIcon className="mr-1" size={16} />
-                <span>Início</span>
-              </Link>
-              <button
-                onClick={logout}
-                className="flex items-center bg-white text-primary px-4 py-2 rounded hover:bg-gray-200 transition-colors">
-                <LogOutIcon className="mr-1" size={16} />
-                <span>Sair</span>
-              </button>
-            </div>
-          </div>
-        </header>
+        <Navbar />
 
         <main className="flex-grow container mx-auto p-6">
           {loading ? (
