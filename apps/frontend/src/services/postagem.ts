@@ -73,7 +73,7 @@ const postagemService = {
   }> => {
     try {
       const response = await api.get<any>(
-        `/postagens?page=${page}&size=${size}`
+        `/api/postagens?page=${page}&size=${size}`
       );
       return response.data;
     } catch (error) {
@@ -87,7 +87,7 @@ const postagemService = {
    */
   getPostagemById: async (id: string): Promise<PostagemDto> => {
     try {
-      const response = await api.get<PostagemDto>(`/postagens/${id}`);
+      const response = await api.get<PostagemDto>(`/api/postagens/${id}`);
       return response.data;
     } catch (error) {
       console.error(`Erro ao buscar postagem ${id}:`, error);
@@ -100,7 +100,9 @@ const postagemService = {
    */
   getMinhasPostagens: async (): Promise<PostagemSummaryDto[]> => {
     try {
-      const response = await api.get<PostagemSummaryDto[]>("/postagens/minhas");
+      const response = await api.get<PostagemSummaryDto[]>(
+        "/api/postagens/minhas"
+      );
       return response.data;
     } catch (error) {
       console.error("Erro ao buscar minhas postagens:", error);
@@ -113,7 +115,7 @@ const postagemService = {
    */
   createPostagem: async (postagem: PostagemCreateDto): Promise<PostagemDto> => {
     try {
-      const response = await api.post<PostagemDto>("/postagens", postagem);
+      const response = await api.post<PostagemDto>("/api/postagens", postagem);
       return response.data;
     } catch (error) {
       console.error("Erro ao criar postagem:", error);
@@ -129,7 +131,10 @@ const postagemService = {
     postagem: PostagemCreateDto
   ): Promise<PostagemDto> => {
     try {
-      const response = await api.put<PostagemDto>(`/postagens/${id}`, postagem);
+      const response = await api.put<PostagemDto>(
+        `/api/postagens/${id}`,
+        postagem
+      );
       return response.data;
     } catch (error) {
       console.error(`Erro ao atualizar postagem ${id}:`, error);
@@ -142,7 +147,7 @@ const postagemService = {
    */
   deletePostagem: async (id: string): Promise<void> => {
     try {
-      await api.delete(`/postagens/${id}`);
+      await api.delete(`/api/postagens/${id}`);
     } catch (error) {
       console.error(`Erro ao excluir postagem ${id}:`, error);
       throw error;
@@ -165,7 +170,7 @@ const postagemService = {
       }
 
       const response = await api.post<ImagemDto>(
-        `/postagens/${postagemId}/imagens`,
+        `/api/postagens/${postagemId}/imagens`,
         formData,
         {
           headers: {
@@ -188,7 +193,7 @@ const postagemService = {
    */
   deleteImagem: async (id: string): Promise<void> => {
     try {
-      await api.delete(`/postagens/imagens/${id}`);
+      await api.delete(`/api/postagens/imagens/${id}`);
     } catch (error) {
       console.error(`Erro ao excluir imagem ${id}:`, error);
       throw error;
@@ -204,7 +209,7 @@ const postagemService = {
       formData.append("file", file);
 
       const response = await api.post<AnexoDto>(
-        `/postagens/${postagemId}/anexos`,
+        `/api/postagens/${postagemId}/anexos`,
         formData,
         {
           headers: {
@@ -224,7 +229,7 @@ const postagemService = {
    */
   deleteAnexo: async (id: string): Promise<void> => {
     try {
-      await api.delete(`/postagens/anexos/${id}`);
+      await api.delete(`/api/postagens/anexos/${id}`);
     } catch (error) {
       console.error(`Erro ao excluir anexo ${id}:`, error);
       throw error;
@@ -240,7 +245,7 @@ const postagemService = {
   ): Promise<TabelaPostagemDto> => {
     try {
       const response = await api.post<TabelaPostagemDto>(
-        `/postagens/${postagemId}/tabelas`,
+        `/api/postagens/${postagemId}/tabelas`,
         conteudoJson,
         {
           headers: {
@@ -267,7 +272,7 @@ const postagemService = {
   ): Promise<TabelaPostagemDto> => {
     try {
       const response = await api.put<TabelaPostagemDto>(
-        `/postagens/tabelas/${id}`,
+        `/api/postagens/tabelas/${id}`,
         conteudoJson,
         {
           headers: {
@@ -287,7 +292,7 @@ const postagemService = {
    */
   deleteTabela: async (id: string): Promise<void> => {
     try {
-      await api.delete(`/postagens/tabelas/${id}`);
+      await api.delete(`/api/postagens/tabelas/${id}`);
     } catch (error) {
       console.error(`Erro ao excluir tabela ${id}:`, error);
       throw error;
