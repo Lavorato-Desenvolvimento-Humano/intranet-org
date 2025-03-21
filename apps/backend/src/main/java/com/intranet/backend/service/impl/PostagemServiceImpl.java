@@ -316,8 +316,8 @@ public class PostagemServiceImpl implements PostagemService {
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado"));
     }
 
-    @Transactional
     @Override
+    @Transactional
     public TabelaPostagemDto addTabelaToPostagem(UUID postagemId, Object conteudo) {
         logger.info("Adicionando tabela à postagem ID: {}", postagemId);
         logger.debug("Conteúdo recebido: {}", conteudo);
@@ -326,43 +326,50 @@ public class PostagemServiceImpl implements PostagemService {
             Postagem postagem = postagemRepository.findById(postagemId)
                     .orElseThrow(() -> new ResourceNotFoundException("Postagem não encontrada com ID: " + postagemId));
 
+            // Criar a tabela e associar à postagem
             TabelaPostagem tabela = new TabelaPostagem();
             tabela.setPost(postagem);
 
-            // Determinar o tipo do conteúdo
-            if (conteudo == null) {
-                logger.warn("Conteúdo da tabela é nulo, usando objeto vazio");
-                tabela.setConteudo("{}");
-            }
-            else if (conteudo instanceof String) {
-                logger.debug("Conteúdo da tabela é String: {}", conteudo);
-                // Verificar se a string é um JSON válido
+            // Transformar o conteúdo em JSON válido
+            String jsonConteudo;
+            if (conteudo instanceof String) {
+                // Se já for string, verificar se é JSON válido
+                String conteudoStr = (String) conteudo;
                 try {
-                    new ObjectMapper().readTree((String) conteudo);
-                    tabela.setConteudo((String) conteudo);
+                    // Verificar se é JSON válido
+                    new ObjectMapper().readTree(conteudoStr);
+                    jsonConteudo = conteudoStr;
                 } catch (Exception e) {
-                    logger.warn("Conteúdo não é JSON válido, tentando converter", e);
-                    // Se não for JSON válido, tenta converter para JSON string
-                    try {
-                        tabela.setConteudo(new ObjectMapper().writeValueAsString(conteudo));
-                    } catch (Exception ex) {
-                        logger.error("Falha ao converter conteúdo para JSON", ex);
-                        tabela.setConteudo("{}");
-                    }
+                    // Se não for JSON válido, converte para string JSON
+                    jsonConteudo = "\"" + conteudoStr.replace("\"", "\\\"") + "\"";
                 }
-            }
-            else {
-                logger.debug("Conteúdo da tabela não é String, convertendo");
-                // Objeto não-String, converter para JSON
+            } else {
+                // Se não for string, converter objeto para JSON
                 try {
-                    tabela.setConteudo(new ObjectMapper().writeValueAsString(conteudo));
+                    jsonConteudo = new ObjectMapper().writeValueAsString(conteudo);
                 } catch (Exception e) {
                     logger.error("Erro ao converter objeto para JSON", e);
-                    tabela.setConteudo("{}");
+                    jsonConteudo = "{}";
                 }
             }
 
-            TabelaPostagem savedTabela = tabelaPostagemRepository.save(tabela);
+            // Usar uma consulta nativa para inserir com cast explícito para JSONB
+            // Este é o passo crítico para resolver o erro
+            UUID tabelaId = UUID.randomUUID();
+
+            // Aqui usamos EntityManager para executar uma consulta nativa com cast para JSONB
+            EntityManager em = entityManager;
+            em.createNativeQuery(
+                            "INSERT INTO tabelas_postagens (id, post_id, conteudo) VALUES (?1, ?2, ?3::jsonb)")
+                    .setParameter(1, tabelaId)
+                    .setParameter(2, postagemId)
+                    .setParameter(3, jsonConteudo)
+                    .executeUpdate();
+
+            // Buscar a tabela recém-criada para retornar
+            TabelaPostagem savedTabela = tabelaPostagemRepository.findById(tabelaId)
+                    .orElseThrow(() -> new RuntimeException("Erro ao recuperar tabela após inserção"));
+
             logger.info("Tabela adicionada com sucesso, ID: {}", savedTabela.getId());
 
             return convertToTabelaDto(savedTabela);

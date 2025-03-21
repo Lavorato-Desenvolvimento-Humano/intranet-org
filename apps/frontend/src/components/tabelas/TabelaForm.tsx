@@ -167,7 +167,7 @@ const TabelaForm: React.FC<TabelaFormProps> = ({
 
     try {
       // Formatar o conteúdo da tabela corretamente como JSON string
-      const tabelaJsonString = JSON.stringify(tabelaData);
+      const tabelaJson = JSON.stringify(tabelaData);
 
       if (isEditing && postagemId && postagemId !== "new") {
         // Atualizar a postagem existente
@@ -176,7 +176,7 @@ const TabelaForm: React.FC<TabelaFormProps> = ({
           convenioId,
           tabelas: [
             {
-              conteudo: tabelaJsonString,
+              conteudo: tabelaJson,
               id: "",
               postId: "",
             },
@@ -189,18 +189,15 @@ const TabelaForm: React.FC<TabelaFormProps> = ({
           text: "Tabela de valores e preços",
           convenioId,
           createdBy: user?.id || "",
-          tabelas: [
-            {
-              conteudo: tabelaJsonString,
-              id: "",
-              postId: "",
-            },
-          ],
         });
 
-        // Redirecionar para a página do convênio
+        // Adicionar tabela, enviando explicitamente como JSON string
+        await postagemService.addTabelaToPostagem(novaPostagem.id, tabelaJson);
+
         toastUtil.dismiss(loadingToastId);
         toastUtil.success("Tabela criada com sucesso!");
+
+        // Redirecionar para a página do convênio
         router.push(`/convenios/${convenioId}`);
       }
     } catch (error: any) {
