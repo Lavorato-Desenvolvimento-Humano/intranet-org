@@ -32,13 +32,16 @@ export default function DashboardPage() {
           postagemService.getAllPostagens(),
         ]);
 
-        setConvenios(conveniosData);
+        setConvenios(conveniosData || []);
 
         // Ordenar postagens por data (mais recentes primeiro)
-        const sortedPostagens = postagensData.sort(
-          (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
+        const sortedPostagens = Array.isArray(postagensData)
+          ? postagensData.sort(
+              (a, b) =>
+                new Date(b.createdAt).getTime() -
+                new Date(a.createdAt).getTime()
+            )
+          : [];
 
         setPostagens(sortedPostagens);
       } catch (error: any) {
@@ -56,9 +59,10 @@ export default function DashboardPage() {
   }, []);
 
   // Filtrar postagens com base no convênio selecionado
-  const filteredPostagens = selectedConvenio
-    ? postagens.filter((postagem) => postagem.convenioId === selectedConvenio)
-    : postagens;
+  const filteredPostagens =
+    selectedConvenio && postagens && postagens.length > 0
+      ? postagens.filter((postagem) => postagem.convenioId === selectedConvenio)
+      : postagens || [];
 
   return (
     <ProtectedRoute>
@@ -77,11 +81,13 @@ export default function DashboardPage() {
                   onChange={(e) => setSelectedConvenio(e.target.value || null)}
                   className="w-full p-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary appearance-none">
                   <option value="">Todas as postagens</option>
-                  {convenios.map((convenio) => (
-                    <option key={convenio.id} value={convenio.id}>
-                      {convenio.name}
-                    </option>
-                  ))}
+                  {convenios && convenios.length > 0
+                    ? convenios.map((convenio) => (
+                        <option key={convenio.id} value={convenio.id}>
+                          {convenio.name}
+                        </option>
+                      ))
+                    : null}
                 </select>
                 <Search
                   className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
@@ -117,7 +123,7 @@ export default function DashboardPage() {
                   {selectedConvenio && "(Filtradas por Convênio)"}
                 </h2>
 
-                {filteredPostagens.length > 0 ? (
+                {filteredPostagens && filteredPostagens.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredPostagens.map((postagem) => (
                       <PostagemCard key={postagem.id} postagem={postagem} />
