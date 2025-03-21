@@ -3,10 +3,10 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import dashboardService, { DashboardData } from "@/services/dashboardService";
-import ConvenioCard from "@/components/dashboard/ConvenioCard";
-import PostagemList from "@/components/dashboard/PostagemList";
-import Sidebar from "@/components/dashboard/Sidebar";
-import Loading from "@/components/ui/loading";
+// import ConvenioCard from "@/components/dashboard/ConvenioCard";
+// import PostagemList from "@/components/dashboard/PostagemList";
+// import Sidebar from "@/components/dashboard/Sidebar";
+// import Loading from "@/components/ui/loading";
 import toastUtil from "@/utils/toast";
 import { RefreshCw } from "lucide-react";
 import { CustomButton } from "@/components/ui/custom-button";
@@ -54,9 +54,9 @@ export default function DashboardPage() {
     fetchDashboardData();
   };
 
-  if (loading) {
-    return <Loading message="Carregando dashboard..." />;
-  }
+  //   if (loading) {
+  //     return <Loading message="Carregando dashboard..." />;
+  //   }
 
   if (error) {
     return (
@@ -99,7 +99,7 @@ export default function DashboardPage() {
   return (
     <div className="flex min-h-screen bg-gray-50">
       {/* Sidebar com lista de convênios */}
-      <Sidebar convenios={dashboardData.allConvenios} />
+      {/* <Sidebar convenios={dashboardData.allConvenios} /> */}
 
       {/* Conteúdo principal */}
       <main className="flex-grow p-6">
@@ -116,7 +116,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Seção de postagens recentes */}
-          <section className="mb-10">
+          {/* <section className="mb-10">
             <h2 className="text-xl font-semibold text-gray-700 mb-4">
               Postagens Recentes
             </h2>
@@ -129,7 +129,7 @@ export default function DashboardPage() {
                 </p>
               </div>
             )}
-          </section>
+          </section> */}
 
           {/* Cards de convênios com suas últimas postagens */}
           <section>
@@ -137,7 +137,7 @@ export default function DashboardPage() {
               Convênios
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {dashboardData.conveniosWithPostagens.map((convenio) => (
+              {/* {dashboardData.conveniosWithPostagens.map((convenio) => (
                 <ConvenioCard key={convenio.id} convenio={convenio} />
               ))}
 
@@ -145,11 +145,12 @@ export default function DashboardPage() {
                 <div className="col-span-4 bg-white rounded-lg shadow p-6 text-center">
                   <p className="text-gray-500">Nenhum convênio encontrado.</p>
                 </div>
-              )}
+              )} */}
             </div>
           </section>
         </div>
       </main>
     </div>
   );
+  //oi
 }

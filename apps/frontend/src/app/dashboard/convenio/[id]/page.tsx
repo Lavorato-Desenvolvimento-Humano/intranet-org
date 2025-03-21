@@ -4,9 +4,9 @@ import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import dashboardService, { Postagem } from "@/services/dashboardService";
-import Sidebar from "@/components/dashboard/Sidebar";
-import Loading from "@/components/ui/loading";
-import ContentRenderer from "@/components/dashboard/ContentRenderer";
+// import Sidebar from "@/components/dashboard/Sidebar";
+// import Loading from "@/components/ui/loading";
+// import ContentRenderer from "@/components/dashboard/ContentRenderer";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -16,13 +16,13 @@ import {
   Trash2,
   User,
 } from "lucide-react";
-import { CustomButton } from "@/components/ui/custom-button";
-import convenioService from "@/services/convenioService";
-import ImageGallery from "@/components/dashboard/ImageGallery";
-import AnexoList from "@/components/dashboard/AnexoList";
-import TabelasList from "@/components/dashboard/TabelasList";
-import toastUtil from "@/utils/toast";
-import { formatDate } from "@/utils/formatters";
+// import { CustomButton } from "@/components/ui/custom-button";
+// import convenioService from "@/services/convenioService";
+// import ImageGallery from "@/components/dashboard/ImageGallery";
+// import AnexoList from "@/components/dashboard/AnexoList";
+// import TabelasList from "@/components/dashboard/TabelasList";
+// import toastUtil from "@/utils/toast";
+// import { formatDate } from "@/utils/formatters";
 
 export default function PostagemDetailPage() {
   const params = useParams();
@@ -52,8 +52,8 @@ export default function PostagemDetailPage() {
       setPostagem(postagemData);
 
       // Buscar lista de convênios para a sidebar
-      const conveniosData = await convenioService.getAllConvenios();
-      setConvenios(conveniosData);
+      //   const conveniosData = await convenioService.getAllConvenios();
+      //   setConvenios(conveniosData);
     } catch (error: any) {
       console.error(`Erro ao carregar dados da postagem ${postagemId}:`, error);
 
@@ -87,26 +87,26 @@ export default function PostagemDetailPage() {
 
   const handleDelete = async () => {
     try {
-      await postagemService.deletePostagem(postagemId);
-      toastUtil.success("Postagem excluída com sucesso!");
-      router.push(`/dashboard/convenio/${postagem?.convenioId}`);
+      //   await postagemService.deletePostagem(postagemId);
+      //   toastUtil.success("Postagem excluída com sucesso!");
+      //   router.push(`/dashboard/convenio/${postagem?.convenioId}`);
     } catch (error: any) {
       console.error(`Erro ao excluir postagem ${postagemId}:`, error);
 
       if (error.response?.data?.message) {
-        toastUtil.error(error.response.data.message);
+        // toastUtil.error(error.response.data.message);
       } else if (error.message) {
-        toastUtil.error(error.message);
+        // toastUtil.error(error.message);
       } else {
-        toastUtil.error(
-          "Erro ao excluir postagem. Tente novamente mais tarde."
-        );
+        // toastUtil.error(
+        //   "Erro ao excluir postagem. Tente novamente mais tarde."
+        // );
       }
     }
   };
 
   if (loading) {
-    return <Loading message="Carregando postagem..." />;
+    // return <Loading message="Carregando postagem..." />;
   }
 
   if (error) {
@@ -118,7 +118,7 @@ export default function PostagemDetailPage() {
           </h2>
           <p className="mb-6 text-gray-700">{error}</p>
           <div className="flex gap-4">
-            <CustomButton
+            {/* <CustomButton
               onClick={() => window.history.back()}
               icon={ArrowLeft}
               variant="secondary"
@@ -130,7 +130,7 @@ export default function PostagemDetailPage() {
               icon={RefreshCw}
               className="flex-1">
               Tentar novamente
-            </CustomButton>
+            </CustomButton> */}
           </div>
         </div>
       </div>
@@ -146,9 +146,9 @@ export default function PostagemDetailPage() {
             Não foi possível carregar os dados desta postagem.
           </p>
           <Link href="/dashboard" className="block w-full">
-            <CustomButton icon={ArrowLeft} className="w-full">
+            {/* <CustomButton icon={ArrowLeft} className="w-full">
               Voltar para a Dashboard
-            </CustomButton>
+            </CustomButton> */}
           </Link>
         </div>
       </div>
@@ -158,7 +158,7 @@ export default function PostagemDetailPage() {
   return (
     <div className="flex min-h-screen bg-gray-50">
       {/* Sidebar com lista de convênios */}
-      <Sidebar convenios={convenios} activeConvenioId={postagem.convenioId} />
+      {/* <Sidebar convenios={convenios} activeConvenioId={postagem.convenioId} /> */}
 
       {/* Conteúdo principal */}
       <main className="flex-grow p-6">
@@ -188,12 +188,12 @@ export default function PostagemDetailPage() {
               {canEdit && (
                 <div className="flex gap-2">
                   <Link href={`/dashboard/postagem/edit/${postagem.id}`}>
-                    <CustomButton icon={Edit} variant="secondary" size="small">
+                    {/* <CustomButton icon={Edit} variant="secondary" size="small">
                       Editar
-                    </CustomButton>
+                    </CustomButton> */}
                   </Link>
 
-                  {!deleteConfirmation ? (
+                  {/* {!deleteConfirmation ? (
                     <CustomButton
                       icon={Trash2}
                       className="bg-red-600 hover:bg-red-700"
@@ -216,7 +216,7 @@ export default function PostagemDetailPage() {
                         Cancelar
                       </CustomButton>
                     </div>
-                  )}
+                  )} */}
                 </div>
               )}
             </div>
@@ -229,7 +229,7 @@ export default function PostagemDetailPage() {
               </div>
               <div className="flex items-center gap-1">
                 <Calendar size={16} />
-                <span>{formatDate(postagem.createdAt)}</span>
+                {/* <span>{formatDate(postagem.createdAt)}</span> */}
               </div>
               <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs">
                 {postagem.convenioName}
@@ -238,7 +238,7 @@ export default function PostagemDetailPage() {
 
             {/* Conteúdo da postagem */}
             <div className="prose max-w-none">
-              <ContentRenderer content={postagem.text} />
+              {/* <ContentRenderer content={postagem.text} /> */}
             </div>
           </div>
 
@@ -248,7 +248,7 @@ export default function PostagemDetailPage() {
               <h2 className="text-xl font-semibold text-gray-700 mb-4">
                 Imagens
               </h2>
-              <ImageGallery images={postagem.imagens} />
+              {/* <ImageGallery images={postagem.imagens} /> */}
             </div>
           )}
 
@@ -258,7 +258,7 @@ export default function PostagemDetailPage() {
               <h2 className="text-xl font-semibold text-gray-700 mb-4">
                 Tabelas
               </h2>
-              <TabelasList tabelas={postagem.tabelas} />
+              {/* <TabelasList tabelas={postagem.tabelas} /> */}
             </div>
           )}
 
@@ -268,7 +268,7 @@ export default function PostagemDetailPage() {
               <h2 className="text-xl font-semibold text-gray-700 mb-4">
                 Anexos
               </h2>
-              <AnexoList anexos={postagem.anexos} />
+              {/* <AnexoList anexos={postagem.anexos} /> */}
             </div>
           )}
         </div>
