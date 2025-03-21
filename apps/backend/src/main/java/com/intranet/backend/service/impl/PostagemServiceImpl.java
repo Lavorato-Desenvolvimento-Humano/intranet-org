@@ -6,7 +6,10 @@ import com.intranet.backend.exception.ResourceNotFoundException;
 import com.intranet.backend.model.*;
 import com.intranet.backend.repository.*;
 import com.intranet.backend.service.PostagemService;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.Hibernate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -35,6 +38,9 @@ public class PostagemServiceImpl implements PostagemService {
     private final AnexoRepository anexoRepository;
     private final TabelaPostagemRepository tabelaPostagemRepository;
 
+    @PersistenceContext
+    private EntityManager entityManager;
+
     @Override
     public List<PostagemSimpleDto> getAllPostagens() {
         logger.info("Buscando todas as postagens");
@@ -57,10 +63,29 @@ public class PostagemServiceImpl implements PostagemService {
     public PostagemDto getPostagemById(UUID id) {
         logger.info("Buscando postagem com ID: {}", id);
 
-        Postagem postagem = postagemRepository.findByIdWithDetails(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Postagem não encontrada com ID: " + id));
+        try {
+            // Buscar a postagem básica
+            Postagem postagem = postagemRepository.findById(id)
+                    .orElseThrow(() -> new ResourceNotFoundException("Postagem não encontrada com ID: " + id));
 
-        return convertToDto(postagem);
+            // Carregar as coleções manualmente
+            if (!Hibernate.isInitialized(postagem.getImagens())) {
+                Hibernate.initialize(postagem.getImagens());
+            }
+
+            if (!Hibernate.isInitialized(postagem.getAnexos())) {
+                Hibernate.initialize(postagem.getAnexos());
+            }
+
+            if (!Hibernate.isInitialized(postagem.getTabelas())) {
+                Hibernate.initialize(postagem.getTabelas());
+            }
+
+            return convertToDto(postagem);
+        } catch (Exception e) {
+            logger.error("Erro ao buscar postagem com ID {}: {}", id, e.getMessage(), e);
+            throw e;
+        }
     }
 
     @Override
