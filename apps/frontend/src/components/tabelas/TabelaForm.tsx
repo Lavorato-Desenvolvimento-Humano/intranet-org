@@ -152,7 +152,6 @@ const TabelaForm: React.FC<TabelaFormProps> = ({
     return true;
   };
 
-  // Manipulador para submissão do formulário
   // No handleSubmit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -178,6 +177,8 @@ const TabelaForm: React.FC<TabelaFormProps> = ({
           tabelas: [
             {
               conteudo: tabelaJsonString,
+              id: "",
+              postId: "",
             },
           ],
         });
@@ -191,6 +192,8 @@ const TabelaForm: React.FC<TabelaFormProps> = ({
           tabelas: [
             {
               conteudo: tabelaJsonString,
+              id: "",
+              postId: "",
             },
           ],
         });
