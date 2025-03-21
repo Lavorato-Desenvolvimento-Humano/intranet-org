@@ -10,6 +10,7 @@ import {
   UserIcon,
   SettingsIcon,
   LogOutIcon,
+  Table,
 } from "lucide-react";
 
 export default function Navbar() {
@@ -30,9 +31,10 @@ export default function Navbar() {
               <Image
                 src="/logo.svg"
                 alt="Lavorato Saúde Integrada"
-                width={130}
-                height={40}
+                width={120}
+                height={30}
                 className="mr-2"
+                style={{ objectFit: "contain" }}
               />
             </Link>
           </div>
@@ -51,6 +53,13 @@ export default function Navbar() {
               className="text-gray-700 hover:text-primary flex items-center">
               <FileTextIcon className="mr-1" size={18} />
               <span>Convênios</span>
+            </Link>
+
+            <Link
+              href="/tabelas"
+              className="text-gray-700 hover:text-primary flex items-center">
+              <Table className="mr-1" size={18} />
+              <span>Tabelas</span>
             </Link>
 
             {hasAdminRole && (
