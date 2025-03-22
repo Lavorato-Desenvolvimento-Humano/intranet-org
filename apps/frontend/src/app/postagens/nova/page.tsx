@@ -14,13 +14,16 @@ import toastUtil from "@/utils/toast";
 import { CustomButton } from "@/components/ui/custom-button";
 import dynamic from "next/dynamic";
 
-// Editor de texto rico carregado dinamicamente para evitar erros de SSR
-const RichEditor = dynamic(() => import("@/components/ui/rich-editor"), {
-  ssr: false,
-  loading: () => (
-    <div className="h-64 w-full animate-pulse bg-gray-100 rounded-md"></div>
-  ),
-});
+// Importando o editor simples em vez do CKEditor
+const SimpleRichEditor = dynamic(
+  () => import("@/components/ui/simple-rich-editor"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-64 w-full animate-pulse bg-gray-100 rounded-md"></div>
+    ),
+  }
+);
 
 export default function NovaPostagemPage() {
   const router = useRouter();
@@ -238,13 +241,37 @@ export default function NovaPostagemPage() {
                 className="block text-sm font-medium text-gray-700 mb-1">
                 Conteúdo *
               </label>
-              <RichEditor
+              <SimpleRichEditor
                 value={formData.text}
                 onChange={handleEditorChange}
                 placeholder="Digite o conteúdo da postagem..."
                 height="400px"
                 error={errors.text}
                 disabled={submitting}
+                onImageUpload={async (file: File) => {
+                  try {
+                    const imagem = await postagemService.addImagem(
+                      "temp", // Este valor não é usado, mas precisamos fornecer algo
+                      file
+                    );
+                    return imagem.url;
+                  } catch (err) {
+                    console.error("Erro ao fazer upload da imagem:", err);
+                    throw err;
+                  }
+                }}
+                onFileUpload={async (file: File) => {
+                  try {
+                    const anexo = await postagemService.addAnexo(
+                      "temp", // Este valor não é usado, mas precisamos fornecer algo
+                      file
+                    );
+                    return anexo.url;
+                  } catch (err) {
+                    console.error("Erro ao fazer upload do arquivo:", err);
+                    throw err;
+                  }
+                }}
               />
               {errors.text && (
                 <p className="mt-1 text-sm text-red-500">{errors.text}</p>
