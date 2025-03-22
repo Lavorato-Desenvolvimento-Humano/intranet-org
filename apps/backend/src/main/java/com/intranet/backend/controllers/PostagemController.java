@@ -143,4 +143,11 @@ public class PostagemController {
         postagemService.deleteTabelaPostagem(id);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/nova")
+    public ResponseEntity<PostagemCreateDto> getNovaPostagemFormulario() {
+        // Retornar um modelo vazio para o formulário de nova postagem
+        PostagemCreateDto postagemCreateDto = new PostagemCreateDto();
+        return ResponseEntity.ok(postagemCreateDto);
+    }
 }
