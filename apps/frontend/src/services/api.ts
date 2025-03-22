@@ -25,6 +25,10 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // Log para depuração
+    console.log(`Fazendo requisição para: ${config.baseURL}${config.url}`);
+
     return config;
   },
   (error) => {
@@ -39,11 +43,23 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
+    // Melhorar o log de erro para incluir mais detalhes
     if (error.response) {
       console.error(`Erro de API (${error.config?.url}):`, {
         status: error.response.status,
         data: error.response.data,
+        headers: error.response.headers,
       });
+
+      // Para erros 500, logar mais detalhes
+      if (error.response.status === 500) {
+        console.error("Detalhes do erro 500:", {
+          url: error.config?.url,
+          method: error.config?.method,
+          headers: error.config?.headers,
+          data: error.config?.data,
+        });
+      }
 
       if (error.response.status === 401) {
         // Token expirado ou inválido

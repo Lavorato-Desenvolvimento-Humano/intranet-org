@@ -26,9 +26,15 @@ public class ConvenioController {
 
     @GetMapping
     public ResponseEntity<List<ConvenioDto>> getAllConvenios() {
-        logger.info("Requisição para listar todos os convênios");
-        List<ConvenioDto> convenios = convenioService.getAllConvenios();
-        return ResponseEntity.ok(convenios);
+        logger.info("Requisição para listar todos os convênios recebida");
+        try {
+            List<ConvenioDto> convenios = convenioService.getAllConvenios();
+            logger.info("Retornando {} convênios", convenios.size());
+            return ResponseEntity.ok(convenios);
+        } catch (Exception e) {
+            logger.error("Erro ao buscar convênios: ", e);
+            throw e; // Relançar para ser capturado pelo handler global
+        }
     }
 
     @GetMapping("/{id}")
