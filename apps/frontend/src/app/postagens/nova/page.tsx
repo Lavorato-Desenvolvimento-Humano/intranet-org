@@ -9,7 +9,11 @@ import Breadcrumb from "@/components/ui/breadcrumb";
 import { Loading } from "@/components/ui/loading";
 import { useAuth } from "@/context/AuthContext";
 import convenioService, { ConvenioDto } from "@/services/convenio";
-import postagemService, { PostagemCreateDto } from "@/services/postagem";
+import postagemService, {
+  AnexoDto,
+  ImagemDto,
+  PostagemCreateDto,
+} from "@/services/postagem";
 import toastUtil from "@/utils/toast";
 import { CustomButton } from "@/components/ui/custom-button";
 import dynamic from "next/dynamic";
@@ -38,6 +42,13 @@ export default function NovaPostagemPage() {
     convenioId: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [tempUploads, setTempUploads] = useState<{
+    images: ImagemDto[];
+    attachments: AnexoDto[];
+  }>({
+    images: [],
+    attachments: [],
+  });
 
   // Verificar permissões
   const isAdmin =
@@ -250,10 +261,15 @@ export default function NovaPostagemPage() {
                 disabled={submitting}
                 onImageUpload={async (file: File) => {
                   try {
-                    const imagem = await postagemService.addImagem(
-                      "temp", // Este valor não é usado, mas precisamos fornecer algo
-                      file
-                    );
+                    // Usar o endpoint temporário
+                    const imagem = await postagemService.addTempImagem(file);
+
+                    // Rastrear o upload
+                    setTempUploads((prev) => ({
+                      ...prev,
+                      images: [...prev.images, imagem],
+                    }));
+
                     return imagem.url;
                   } catch (err) {
                     console.error("Erro ao fazer upload da imagem:", err);
@@ -262,10 +278,15 @@ export default function NovaPostagemPage() {
                 }}
                 onFileUpload={async (file: File) => {
                   try {
-                    const anexo = await postagemService.addAnexo(
-                      "temp", // Este valor não é usado, mas precisamos fornecer algo
-                      file
-                    );
+                    // Usar o endpoint temporário
+                    const anexo = await postagemService.addTempAnexo(file);
+
+                    // Rastrear o upload
+                    setTempUploads((prev) => ({
+                      ...prev,
+                      attachments: [...prev.attachments, anexo],
+                    }));
+
                     return anexo.url;
                   } catch (err) {
                     console.error("Erro ao fazer upload do arquivo:", err);
