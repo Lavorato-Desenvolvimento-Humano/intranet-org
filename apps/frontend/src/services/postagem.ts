@@ -169,7 +169,7 @@ const postagemService = {
       }
 
       const response = await api.post<ImagemDto>(
-        `/postagens/temp/imagens`,
+        `/api/postagens/temp/imagens`,
         formData,
         {
           headers: {
@@ -193,7 +193,7 @@ const postagemService = {
       formData.append("file", file);
 
       const response = await api.post<AnexoDto>(
-        `/postagens/temp/anexos`,
+        `/api/postagens/temp/anexos`,
         formData,
         {
           headers: {
@@ -362,7 +362,7 @@ const postagemService = {
   ): Promise<ImagemDto> => {
     try {
       const response = await api.post<ImagemDto>(
-        `/postagens/${postagemId}/associar-imagem/${imagemId}`
+        `/api/postagens/${postagemId}/associar-imagem/${imagemId}`
       );
       return response.data;
     } catch (error) {
@@ -380,7 +380,7 @@ const postagemService = {
   ): Promise<AnexoDto> => {
     try {
       const response = await api.post<AnexoDto>(
-        `/postagens/${postagemId}/associar-anexo/${anexoId}`
+        `/api/postagens/${postagemId}/associar-anexo/${anexoId}`
       );
       return response.data;
     } catch (error) {
