@@ -31,12 +31,24 @@ public class ConvenioServiceImpl implements ConvenioService {
     @Override
     public List<ConvenioDto> getAllConvenios() {
         logger.info("Buscando todos os convênios");
-        List<Convenio> convenios = convenioRepository.findAllOrderedByName();
+        try {
+            List<Convenio> convenios = convenioRepository.findAllOrderedByName();
+            logger.info("Encontrados {} convênios no banco de dados", convenios.size());
 
-        return convenios.stream().map(convenio -> {
-            long postagemCount = postagemRepository.countByConvenioId(convenio.getId());
-            return mapToDto(convenio, postagemCount);
-        }).collect(Collectors.toList());
+            return convenios.stream().map(convenio -> {
+                try {
+                    long postagemCount = postagemRepository.countByConvenioId(convenio.getId());
+                    return mapToDto(convenio, postagemCount);
+                } catch (Exception e) {
+                    logger.error("Erro ao contar postagens para o convênio {}: {}", convenio.getId(), e.getMessage(), e);
+                    // Retornar o convênio mesmo sem a contagem de postagens
+                    return mapToDto(convenio, 0);
+                }
+            }).collect(Collectors.toList());
+        } catch (Exception e) {
+            logger.error("Erro ao buscar convênios: {}", e.getMessage(), e);
+            throw e;
+        }
     }
 
     @Override

@@ -1,6 +1,16 @@
 package com.intranet.backend.controllers;
 
 import com.intranet.backend.dto.*;
+import com.intranet.backend.exception.ResourceNotFoundException;
+import com.intranet.backend.model.Anexo;
+import com.intranet.backend.model.Imagem;
+import com.intranet.backend.model.Postagem;
+import com.intranet.backend.model.User;
+import com.intranet.backend.repository.AnexoRepository;
+import com.intranet.backend.repository.ImagemRepository;
+import com.intranet.backend.repository.PostagemRepository;
+import com.intranet.backend.repository.UserRepository;
+import com.intranet.backend.service.FileStorageService;
 import com.intranet.backend.service.PostagemService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +24,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -27,6 +39,11 @@ public class PostagemController {
 
     private static final Logger logger = LoggerFactory.getLogger(PostagemController.class);
     private final PostagemService postagemService;
+    private final UserRepository userRepository;
+    private final FileStorageService fileStorageService;
+    private final ImagemRepository imagemRepository;
+    private final AnexoRepository anexoRepository;
+    private final PostagemRepository postagemRepository;
 
     @GetMapping
     public ResponseEntity<Page<PostagemSummaryDto>> getAllPostagens(
@@ -142,5 +159,198 @@ public class PostagemController {
         logger.info("Requisição para deletar tabela com ID: {}", id);
         postagemService.deleteTabelaPostagem(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/nova")
+    public ResponseEntity<PostagemCreateDto> getNovaPostagemFormulario() {
+        // Retornar um modelo vazio para o formulário de nova postagem
+        PostagemCreateDto postagemCreateDto = new PostagemCreateDto();
+        return ResponseEntity.ok(postagemCreateDto);
+    }
+
+    @PostMapping(value = "/temp/imagens", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR') or hasRole('USER')")
+    public ResponseEntity<ImagemDto> addTempImagem(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "description", required = false) String description) {
+
+        logger.info("Requisição para adicionar imagem temporária");
+
+        try {
+            // Obter usuário atual
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String currentUserEmail = authentication.getName();
+            User currentUser = userRepository.findByEmail(currentUserEmail)
+                    .orElseThrow(() -> new IllegalStateException("Usuário autenticado não encontrado"));
+
+            // Salvar arquivo
+            String fileName = fileStorageService.storeFile(file);
+            String fileUrl = "/uploads/images/" + fileName;
+
+            // Criar entidade Imagem temporária (sem postagem)
+            Imagem imagem = new Imagem();
+            imagem.setId(UUID.randomUUID());
+            imagem.setUrl(fileUrl);
+            imagem.setDescription(description);
+            // Não definir postagem ainda
+
+            // Salvar no banco de dados
+            Imagem savedImagem = imagemRepository.save(imagem);
+
+            // Criar DTO para retorno
+            ImagemDto imagemDto = new ImagemDto();
+            imagemDto.setId(savedImagem.getId());
+            imagemDto.setUrl(savedImagem.getUrl());
+            imagemDto.setDescription(savedImagem.getDescription());
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(imagemDto);
+        } catch (Exception e) {
+            logger.error("Erro ao adicionar imagem temporária: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @PostMapping(value = "/temp/anexos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR') or hasRole('USER')")
+    public ResponseEntity<AnexoDto> addTempAnexo(
+            @RequestParam("file") MultipartFile file) {
+
+        logger.info("Requisição para adicionar anexo temporário");
+
+        try {
+            // Obter usuário atual
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String currentUserEmail = authentication.getName();
+            User currentUser = userRepository.findByEmail(currentUserEmail)
+                    .orElseThrow(() -> new IllegalStateException("Usuário autenticado não encontrado"));
+
+            // Salvar arquivo
+            String fileName = fileStorageService.storeFile(file);
+            String fileUrl = "/uploads/files/" + fileName;
+
+            // Criar entidade Anexo temporária (sem postagem)
+            Anexo anexo = new Anexo();
+            anexo.setId(UUID.randomUUID());
+            anexo.setNameFile(file.getOriginalFilename());
+            anexo.setTypeFile(file.getContentType());
+            anexo.setUrl(fileUrl);
+            // Não definir postagem ainda
+
+            // Salvar no banco de dados
+            Anexo savedAnexo = anexoRepository.save(anexo);
+
+            // Criar DTO para retorno
+            AnexoDto anexoDto = new AnexoDto();
+            anexoDto.setId(savedAnexo.getId());
+            anexoDto.setNameFile(savedAnexo.getNameFile());
+            anexoDto.setTypeFile(savedAnexo.getTypeFile());
+            anexoDto.setUrl(savedAnexo.getUrl());
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(anexoDto);
+        } catch (Exception e) {
+            logger.error("Erro ao adicionar anexo temporário: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    // Adicione endpoints para associar uploads temporários a uma postagem
+    @PostMapping("/{id}/associar-imagem/{imagemId}")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR') or hasRole('USER')")
+    public ResponseEntity<ImagemDto> associarImagem(
+            @PathVariable UUID id,
+            @PathVariable UUID imagemId) {
+
+        logger.info("Requisição para associar imagem {} à postagem {}", imagemId, id);
+
+        try {
+            // Verificar se a postagem existe
+            Postagem postagem = postagemRepository.findById(id)
+                    .orElseThrow(() -> new ResourceNotFoundException("Postagem não encontrada"));
+
+            // Verificar se o usuário atual é o criador da postagem
+            User currentUser = getCurrentUser();
+            if (!postagem.getCreatedBy().getId().equals(currentUser.getId())) {
+                throw new IllegalStateException("Apenas o criador da postagem pode associar imagens");
+            }
+
+            // Buscar imagem
+            Imagem imagem = imagemRepository.findById(imagemId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Imagem não encontrada"));
+
+            // Associar imagem à postagem
+            imagem.setPostagem(postagem);
+            postagem.getImagens().add(imagem);
+
+            // Salvar
+            Imagem savedImagem = imagemRepository.save(imagem);
+
+            // Retornar DTO atualizado
+            ImagemDto imagemDto = new ImagemDto();
+            imagemDto.setId(savedImagem.getId());
+            imagemDto.setPostagemId(postagem.getId());
+            imagemDto.setUrl(savedImagem.getUrl());
+            imagemDto.setDescription(savedImagem.getDescription());
+
+            return ResponseEntity.ok(imagemDto);
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            logger.error("Erro ao associar imagem: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @PostMapping("/{id}/associar-anexo/{anexoId}")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR') or hasRole('USER')")
+    public ResponseEntity<AnexoDto> associarAnexo(
+            @PathVariable UUID id,
+            @PathVariable UUID anexoId) {
+
+        logger.info("Requisição para associar anexo {} à postagem {}", anexoId, id);
+
+        try {
+            // Verificar se a postagem existe
+            Postagem postagem = postagemRepository.findById(id)
+                    .orElseThrow(() -> new ResourceNotFoundException("Postagem não encontrada"));
+
+            // Verificar se o usuário atual é o criador da postagem
+            User currentUser = getCurrentUser();
+            if (!postagem.getCreatedBy().getId().equals(currentUser.getId())) {
+                throw new IllegalStateException("Apenas o criador da postagem pode associar anexos");
+            }
+
+            // Buscar anexo
+            Anexo anexo = anexoRepository.findById(anexoId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Anexo não encontrado"));
+
+            // Associar anexo à postagem
+            anexo.setPostagem(postagem);
+            postagem.getAnexos().add(anexo);
+
+            // Salvar
+            Anexo savedAnexo = anexoRepository.save(anexo);
+
+            // Retornar DTO atualizado
+            AnexoDto anexoDto = new AnexoDto();
+            anexoDto.setId(savedAnexo.getId());
+            anexoDto.setPostagemId(postagem.getId());
+            anexoDto.setNameFile(savedAnexo.getNameFile());
+            anexoDto.setTypeFile(savedAnexo.getTypeFile());
+            anexoDto.setUrl(savedAnexo.getUrl());
+
+            return ResponseEntity.ok(anexoDto);
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            logger.error("Erro ao associar anexo: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    private User getCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUserEmail = authentication.getName();
+        return userRepository.findByEmail(currentUserEmail)
+                .orElseThrow(() -> new IllegalStateException("Usuário autenticado não encontrado"));
     }
 }
