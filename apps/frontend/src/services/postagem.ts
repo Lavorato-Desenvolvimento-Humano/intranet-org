@@ -168,6 +168,8 @@ const postagemService = {
         formData.append("description", description);
       }
 
+      console.log("Enviando imagem para o servidor...");
+
       const response = await api.post<ImagemDto>(
         `/api/postagens/temp/imagens`,
         formData,
@@ -175,12 +177,30 @@ const postagemService = {
           headers: {
             "Content-Type": "multipart/form-data",
           },
+          timeout: 30000, // 30 segundos
         }
       );
+
+      console.log("Imagem enviada com sucesso:", response.data);
       return response.data;
-    } catch (error) {
-      console.error(`Erro ao adicionar imagem temporária:`, error);
-      throw error;
+    } catch (error: any) {
+      console.error("Erro detalhado ao adicionar imagem temporária:", error);
+
+      // Mensagem amigável baseada no tipo de erro
+      let errorMessage = "Erro desconhecido ao fazer upload da imagem";
+
+      if (error.response) {
+        errorMessage = `Erro do servidor (${error.response.status}): ${
+          error.response.data?.message || "Falha no processamento da imagem"
+        }`;
+      } else if (error.request) {
+        errorMessage = "Servidor não respondeu. Verifique sua conexão.";
+      } else {
+        errorMessage = `Erro na requisição: ${error.message}`;
+      }
+
+      // Re-lançar o erro com mensagem personalizada
+      throw new Error(errorMessage);
     }
   },
 
