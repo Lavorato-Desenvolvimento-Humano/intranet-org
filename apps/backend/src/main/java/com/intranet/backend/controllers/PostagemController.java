@@ -168,7 +168,7 @@ public class PostagemController {
         return ResponseEntity.ok(postagemCreateDto);
     }
 
-    @PostMapping(value = "/api/postagens/temp/imagens", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/temp/imagens", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR') or hasRole('USER')")
     public ResponseEntity<ImagemDto> addTempImagem(
             @RequestParam("file") MultipartFile file,
@@ -227,7 +227,7 @@ public class PostagemController {
         }
     }
 
-    @PostMapping(value = "/api/postagens/temp/anexos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/temp/anexos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR') or hasRole('USER')")
     public ResponseEntity<AnexoDto> addTempAnexo(
             @RequestParam("file") MultipartFile file) {
