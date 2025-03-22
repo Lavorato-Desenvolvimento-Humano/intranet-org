@@ -44,6 +44,20 @@ public class FileStorageService {
                 throw new FileStorageException("Diretório sem permissão de escrita: " + this.fileStorageLocation);
             }
 
+            // Criar subdiretórios se necessário
+            Path imagesDir = this.fileStorageLocation.resolve("images");
+            Path filesDir = this.fileStorageLocation.resolve("files");
+
+            if (!Files.exists(imagesDir)) {
+                Files.createDirectories(imagesDir);
+                logger.info("Subdiretório de imagens criado: {}", imagesDir);
+            }
+
+            if (!Files.exists(filesDir)) {
+                Files.createDirectories(filesDir);
+                logger.info("Subdiretório de arquivos criado: {}", filesDir);
+            }
+
             logger.info("Diretório de armazenamento de arquivos inicializado: {}", this.fileStorageLocation);
         } catch (Exception ex) {
             logger.error("Não foi possível criar o diretório para armazenar os arquivos: {}", this.fileStorageLocation, ex);
@@ -66,9 +80,9 @@ public class FileStorageService {
 
         // Verificar o tipo de conteúdo do arquivo
         String contentType = file.getContentType();
-        if (contentType == null || !isValidImageContentType(contentType)) {
-            logger.error("Tipo de arquivo não suportado: {}", contentType);
-            throw new FileStorageException("Apenas imagens JPEG, PNG, GIF e WEBP são aceitas");
+        if (contentType == null) {
+            logger.error("Tipo de conteúdo desconhecido");
+            throw new FileStorageException("Tipo de conteúdo desconhecido");
         }
 
         // Normaliza o nome do arquivo
@@ -90,8 +104,11 @@ public class FileStorageService {
             String newFilename = UUID.randomUUID().toString() + fileExtension;
             logger.debug("Nome de arquivo gerado: {}", newFilename);
 
+            // Determinar o subdiretório com base no tipo de conteúdo
+            String subdir = contentType.startsWith("image/") ? "images" : "files";
+            Path targetLocation = this.fileStorageLocation.resolve(subdir).resolve(newFilename);
+
             // Copia o arquivo para o diretório de destino
-            Path targetLocation = this.fileStorageLocation.resolve(newFilename);
             Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
             logger.info("Arquivo armazenado com sucesso: {}", newFilename);
 
@@ -170,5 +187,9 @@ public class FileStorageService {
             logger.error("Erro ao obter caminho absoluto do arquivo: {}", filename, ex);
             return null;
         }
+    }
+    
+    public Path getStorageLocation() {
+        return this.fileStorageLocation;
     }
 }
