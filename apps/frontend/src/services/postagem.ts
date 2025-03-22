@@ -168,8 +168,7 @@ const postagemService = {
         formData.append("description", description);
       }
 
-      console.log("Enviando imagem para o servidor...");
-
+      // URL corrigida - remova quaisquer variáveis de caminho e use o endpoint correto
       const response = await api.post<ImagemDto>(
         `/api/postagens/temp/imagens`,
         formData,
