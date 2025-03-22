@@ -43,6 +43,7 @@ jobs:
           npm install --package-lock-only
           npm ci
           npm install lucide-react react-hot-toast axios
+          npm install --save @ckeditor/ckeditor5-react @ckeditor/ckeditor5-build-classic
 
       - name: Verificar Linting (com tratamento de erro)
         run: |

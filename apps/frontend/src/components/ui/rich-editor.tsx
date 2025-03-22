@@ -20,17 +20,17 @@ import {
 } from "lucide-react";
 import dynamic from "next/dynamic";
 
-// Importar o CKEditor dinamicamente para evitar problemas de SSR
-// const CKEditor = dynamic(
-//   () => import("@ckeditor/ckeditor5-react").then((mod) => mod.CKEditor),
-//   { ssr: false }
-// );
+//Importar o CKEditor dinamicamente para evitar problemas de SSR
+const CKEditor = dynamic(
+  () => import("@ckeditor/ckeditor5-react").then((mod) => mod.CKEditor),
+  { ssr: false }
+);
 
-// // Importar o ClassicEditor dinamicamente
-// const ClassicEditor = dynamic(
-//   () => import("@ckeditor/ckeditor5-build-classic"),
-//   { ssr: false }
-// );
+// Importar o ClassicEditor dinamicamente
+const ClassicEditor = dynamic(
+  () => import("@ckeditor/ckeditor5-build-classic"),
+  { ssr: false }
+);
 
 interface RichEditorProps {
   value: string;
