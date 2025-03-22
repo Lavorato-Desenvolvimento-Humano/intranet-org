@@ -168,7 +168,7 @@ public class PostagemController {
         return ResponseEntity.ok(postagemCreateDto);
     }
 
-    @PostMapping(value = "/temp/imagens", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/api/postagens/temp/imagens", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR') or hasRole('USER')")
     public ResponseEntity<ImagemDto> addTempImagem(
             @RequestParam("file") MultipartFile file,
@@ -177,14 +177,30 @@ public class PostagemController {
         logger.info("Requisição para adicionar imagem temporária");
 
         try {
+            // Validação do arquivo
+            if (file.isEmpty()) {
+                logger.error("Arquivo vazio enviado");
+                return ResponseEntity.badRequest().build();
+            }
+
             // Obter usuário atual
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null) {
+                logger.error("Autenticação não encontrada");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+
             String currentUserEmail = authentication.getName();
             User currentUser = userRepository.findByEmail(currentUserEmail)
                     .orElseThrow(() -> new IllegalStateException("Usuário autenticado não encontrado"));
 
             // Salvar arquivo
             String fileName = fileStorageService.storeFile(file);
+            if (fileName == null || fileName.isEmpty()) {
+                logger.error("Falha ao salvar arquivo");
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            }
+
             String fileUrl = "/uploads/images/" + fileName;
 
             // Criar entidade Imagem temporária (sem postagem)
@@ -196,6 +212,7 @@ public class PostagemController {
 
             // Salvar no banco de dados
             Imagem savedImagem = imagemRepository.save(imagem);
+            logger.info("Imagem temporária salva com sucesso: {}", savedImagem.getId());
 
             // Criar DTO para retorno
             ImagemDto imagemDto = new ImagemDto();
@@ -205,12 +222,12 @@ public class PostagemController {
 
             return ResponseEntity.status(HttpStatus.CREATED).body(imagemDto);
         } catch (Exception e) {
-            logger.error("Erro ao adicionar imagem temporária: {}", e.getMessage(), e);
+            logger.error("Erro ao adicionar imagem temporária: {} - StackTrace: {}", e.getMessage(), e.getStackTrace());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
-    @PostMapping(value = "/temp/anexos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/api/postagens/temp/anexos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR') or hasRole('USER')")
     public ResponseEntity<AnexoDto> addTempAnexo(
             @RequestParam("file") MultipartFile file) {
