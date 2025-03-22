@@ -1,5 +1,6 @@
 // src/services/convenio.ts
 import api from "./api";
+import axios from "axios";
 
 export interface ConvenioDto {
   id: string;
@@ -35,12 +36,40 @@ const convenioService = {
   /**
    * Obtém todos os convênios
    */
+  /**
+   * Obtém todos os convênios
+   */
   getAllConvenios: async (): Promise<ConvenioDto[]> => {
     try {
+      console.log("Iniciando busca de convênios...");
+      // Verifique se a API está funcionando com uma chamada simples
       const response = await api.get<ConvenioDto[]>("/api/convenios");
+      console.log("Convênios recebidos:", response.data);
       return response.data;
     } catch (error) {
       console.error("Erro ao buscar convênios:", error);
+
+      // Tentar alternativa com URL completa
+      try {
+        console.log("Tentando URL alternativa para buscar convênios...");
+        const altResponse = await axios.get<ConvenioDto[]>(
+          "https://dev.lavorato.app.br/api/convenios",
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        console.log(
+          "Convênios recebidos da URL alternativa:",
+          altResponse.data
+        );
+        return altResponse.data;
+      } catch (altError) {
+        console.error("Erro na URL alternativa:", altError);
+      }
+
       throw error;
     }
   },

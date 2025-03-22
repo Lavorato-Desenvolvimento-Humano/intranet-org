@@ -19,7 +19,7 @@ public class Anexo {
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "post_id")
+    @JoinColumn(name = "post_id", nullable = true)
     private Postagem postagem;
 
     @Column(name = "name_file", nullable = false, length = 255)
