@@ -5,8 +5,8 @@ import axios from "axios";
 const isDevelopment =
   typeof window !== "undefined" && window.location.hostname === "localhost";
 const baseURL = isDevelopment
-  ? "http://localhost:8443"
-  : "https://dev.lavorato.app.br";
+  ? "http://localhost:8443/api"
+  : "https://dev.lavorato.app.br/api";
 
 // Criar instância axios com configurações otimizadas
 const api = axios.create({
