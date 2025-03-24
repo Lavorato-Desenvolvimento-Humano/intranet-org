@@ -39,17 +39,20 @@ const convenioService = {
   /**
    * Obtém todos os convênios
    */
+  /**
+   * Obtém todos os convênios
+   */
   getAllConvenios: async (): Promise<ConvenioDto[]> => {
     try {
       console.log("Iniciando busca de convênios...");
-      // Verifique se a API está funcionando com uma chamada simples
-      const response = await api.get<ConvenioDto[]>("/api/convenios");
+      // Use a URL correta sem duplicar /api
+      const response = await api.get<ConvenioDto[]>("/convenios");
       console.log("Convênios recebidos:", response.data);
       return response.data;
     } catch (error) {
       console.error("Erro ao buscar convênios:", error);
 
-      // Tentar alternativa com URL completa
+      // Tentar alternativa com URL completa como fallback
       try {
         console.log("Tentando URL alternativa para buscar convênios...");
         const altResponse = await axios.get<ConvenioDto[]>(
@@ -70,7 +73,8 @@ const convenioService = {
         console.error("Erro na URL alternativa:", altError);
       }
 
-      throw error;
+      // Se todas as tentativas falharem, retornar array vazio para evitar quebrar a UI
+      return [];
     }
   },
 

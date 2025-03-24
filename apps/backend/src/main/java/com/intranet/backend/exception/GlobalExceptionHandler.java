@@ -14,10 +14,12 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.WebRequest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
 import java.util.ConcurrentModificationException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
@@ -26,7 +28,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ErrorDetails> handleResourceNotFoundException(
-            ResourceNotFoundException exception, WebRequest request) {
+            ResourceNotFoundException exception, WebRequest request, HttpServletRequest httpRequest) {
+
+        logError(httpRequest, exception);
 
         ErrorDetails errorDetails = new ErrorDetails(
                 LocalDateTime.now(),
@@ -41,7 +45,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(FileStorageException.class)
     public ResponseEntity<ErrorDetails> handleFileStorageException(
-            FileStorageException exception, WebRequest request) {
+            FileStorageException exception, WebRequest request, HttpServletRequest httpRequest) {
+
+        logError(httpRequest, exception);
 
         ErrorDetails errorDetails = new ErrorDetails(
                 LocalDateTime.now(),
@@ -56,7 +62,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ErrorDetails> handleBadCredentialsException(
-            BadCredentialsException exception, WebRequest request) {
+            BadCredentialsException exception, WebRequest request, HttpServletRequest httpRequest) {
+
+        logError(httpRequest, exception);
 
         ErrorDetails errorDetails = new ErrorDetails(
                 LocalDateTime.now(),
@@ -71,7 +79,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorDetails> handleAccessDeniedException(
-            AccessDeniedException exception, WebRequest request) {
+            AccessDeniedException exception, WebRequest request, HttpServletRequest httpRequest) {
+
+        logError(httpRequest, exception);
 
         ErrorDetails errorDetails = new ErrorDetails(
                 LocalDateTime.now(),
@@ -86,7 +96,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, String>> handleValidationExceptions(
-            MethodArgumentNotValidException exception) {
+            MethodArgumentNotValidException exception, HttpServletRequest httpRequest) {
+
+        logError(httpRequest, exception);
 
         Map<String, String> errors = new HashMap<>();
         exception.getBindingResult().getAllErrors().forEach((error) -> {
@@ -100,7 +112,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorDetails> handleGlobalException(
-            Exception exception, WebRequest request) {
+            Exception exception, WebRequest request, HttpServletRequest httpRequest) {
+
+        logError(httpRequest, exception);
 
         ErrorDetails errorDetails = new ErrorDetails(
                 LocalDateTime.now(),
@@ -115,7 +129,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(EmailNotVerifiedException.class)
     public ResponseEntity<ErrorDetails> handleEmailNotVerifiedException(
-            EmailNotVerifiedException exception, WebRequest request) {
+            EmailNotVerifiedException exception, WebRequest request, HttpServletRequest httpRequest) {
+
+        logError(httpRequest, exception);
 
         ErrorDetails errorDetails = new ErrorDetails(
                 LocalDateTime.now(),
@@ -130,9 +146,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(DataAccessException.class)
     public ResponseEntity<ErrorDetails> handleDataAccessException(
-            DataAccessException exception, WebRequest request) {
+            DataAccessException exception, WebRequest request, HttpServletRequest httpRequest) {
 
-        logger.error("Erro de acesso a dados: {}", exception.getMessage(), exception);
+        logError(httpRequest, exception);
 
         ErrorDetails errorDetails = new ErrorDetails(
                 LocalDateTime.now(),
@@ -147,9 +163,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(HibernateException.class)
     public ResponseEntity<ErrorDetails> handleHibernateException(
-            HibernateException exception, WebRequest request) {
+            HibernateException exception, WebRequest request, HttpServletRequest httpRequest) {
 
-        logger.error("Erro de Hibernate: {}", exception.getMessage(), exception);
+        logError(httpRequest, exception);
 
         ErrorDetails errorDetails = new ErrorDetails(
                 LocalDateTime.now(),
@@ -164,9 +180,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ConcurrentModificationException.class)
     public ResponseEntity<ErrorDetails> handleConcurrentModificationException(
-            ConcurrentModificationException exception, WebRequest request) {
+            ConcurrentModificationException exception, WebRequest request, HttpServletRequest httpRequest) {
 
-        logger.error("Erro de modificação concorrente: {}", exception.getMessage(), exception);
+        logError(httpRequest, exception);
 
         ErrorDetails errorDetails = new ErrorDetails(
                 LocalDateTime.now(),
@@ -177,6 +193,19 @@ public class GlobalExceptionHandler {
         );
 
         return new ResponseEntity<>(errorDetails, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    /**
+     * Método para registrar detalhes do erro no log
+     */
+    private void logError(HttpServletRequest request, Exception exception) {
+        String requestURI = request != null ? request.getRequestURI() : "desconhecido";
+        String requestMethod = request != null ? request.getMethod() : "desconhecido";
+        String userAgent = request != null ? request.getHeader("User-Agent") : "desconhecido";
+        String remoteAddr = request != null ? request.getRemoteAddr() : "desconhecido";
+
+        logger.error("Erro ao processar requisição: {} {} - Cliente: {} - IP: {}",
+                requestMethod, requestURI, userAgent, remoteAddr, exception);
     }
 
     // Classe interna para detalhes de erro
