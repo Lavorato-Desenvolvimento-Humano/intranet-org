@@ -38,7 +38,7 @@ const tabelaValoresService = {
   }> => {
     try {
       const response = await api.get<any>(
-        `/api/tabelas-valores?page=${page}&size=${size}`
+        `/tabelas-valores?page=${page}&size=${size}`
       );
       return response.data;
     } catch (error) {
@@ -53,7 +53,7 @@ const tabelaValoresService = {
   getTabelaById: async (id: string): Promise<TabelaValoresDto> => {
     try {
       const response = await api.get<TabelaValoresDto>(
-        `/api/tabelas-valores/${id}`
+        `/tabelas-valores/${id}`
       );
       return response.data;
     } catch (error) {
@@ -70,7 +70,7 @@ const tabelaValoresService = {
   ): Promise<TabelaValoresDto[]> => {
     try {
       const response = await api.get<TabelaValoresDto[]>(
-        `/api/tabelas-valores/convenio/${convenioId}`
+        `/tabelas-valores/convenio/${convenioId}`
       );
       return response.data;
     } catch (error) {
@@ -88,7 +88,7 @@ const tabelaValoresService = {
   getMinhasTabelas: async (): Promise<TabelaValoresDto[]> => {
     try {
       const response = await api.get<TabelaValoresDto[]>(
-        "/api/tabelas-valores/minhas"
+        "/tabelas-valores/minhas"
       );
       return response.data;
     } catch (error) {
@@ -105,7 +105,7 @@ const tabelaValoresService = {
   ): Promise<TabelaValoresDto> => {
     try {
       const response = await api.post<TabelaValoresDto>(
-        "/api/tabelas-valores",
+        "/tabelas-valores",
         tabela
       );
       return response.data;
@@ -124,7 +124,7 @@ const tabelaValoresService = {
   ): Promise<TabelaValoresDto> => {
     try {
       const response = await api.put<TabelaValoresDto>(
-        `/api/tabelas-valores/${id}`,
+        `/tabelas-valores/${id}`,
         tabela
       );
       return response.data;
@@ -139,7 +139,7 @@ const tabelaValoresService = {
    */
   deleteTabela: async (id: string): Promise<void> => {
     try {
-      await api.delete(`/api/tabelas-valores/${id}`);
+      await api.delete(`/tabelas-valores/${id}`);
     } catch (error) {
       console.error(`Erro ao excluir tabela de valores ${id}:`, error);
       throw error;
@@ -152,7 +152,7 @@ const tabelaValoresService = {
   countTabelasByConvenio: async (convenioId: string): Promise<number> => {
     try {
       const response = await api.get<number>(
-        `/api/tabelas-valores/convenio/${convenioId}/count`
+        `/tabelas-valores/convenio/${convenioId}/count`
       );
       return response.data;
     } catch (error) {
