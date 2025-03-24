@@ -3,6 +3,8 @@ package com.intranet.backend.config;
 import com.intranet.backend.security.JwtAuthenticationEntryPoint;
 import com.intranet.backend.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -28,6 +30,8 @@ import java.util.Arrays;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+    private static final Logger logger = LoggerFactory.getLogger(SecurityConfig.class);
+
     private final UserDetailsService userDetailsService;
     private final JwtAuthenticationEntryPoint unauthorizedHandler;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -50,17 +54,21 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(Arrays.asList("https://dev.lavorato.app.br", "http://localhost:3000"));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With"));
         configuration.setAllowCredentials(true);
+        configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
+        logger.info("CORS configurado para origens: {}", configuration.getAllowedOrigins());
         return source;
     }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        logger.info("Configurando regras de segurança");
+
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
@@ -68,21 +76,20 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth ->
                         auth
-                                // Public endpoints for authentication
-                                .requestMatchers("/auth/**", "/public/**").permitAll()
+                                // Public endpoints for authentication - always start with /api
+                                .requestMatchers("/api/auth/**", "/api/public/**").permitAll()
 
-                                // Public access to image resources
-                                .requestMatchers("/api/uploads/images/**").permitAll()
-                                .requestMatchers("/uploads/images/**").permitAll()
-                                .requestMatchers("/images/**").permitAll()
+                                // Public access to image and file resources
+                                .requestMatchers("/api/uploads/**").permitAll()
+                                .requestMatchers("/api/images/**").permitAll()
                                 .requestMatchers("/api/files/check/**").permitAll()
                                 .requestMatchers("/api/profile-images/**").permitAll()
-                                .requestMatchers("/profile-images/**").permitAll()
-                                .requestMatchers("/api/postagens/temp/imagens").permitAll()
-                                .requestMatchers("/postagens/temp/imagens").permitAll()
 
-                                // Explicitamente permitir upload temporário de arquivos
+                                // Permitir uploads temporários para usuários autenticados
                                 .requestMatchers("/api/postagens/temp/**").authenticated()
+
+                                // For debugging purposes
+                                .requestMatchers("/api/diagnostic/**").permitAll()
 
                                 // All other requests need authentication
                                 .anyRequest().authenticated()
@@ -91,6 +98,7 @@ public class SecurityConfig {
         http.authenticationProvider(authenticationProvider());
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
+        logger.info("Configuração de segurança concluída");
         return http.build();
     }
 }
