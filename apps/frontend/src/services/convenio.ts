@@ -36,12 +36,6 @@ const convenioService = {
   /**
    * Obtém todos os convênios
    */
-  /**
-   * Obtém todos os convênios
-   */
-  /**
-   * Obtém todos os convênios
-   */
   getAllConvenios: async (): Promise<ConvenioDto[]> => {
     try {
       console.log("Iniciando busca de convênios...");

@@ -3,13 +3,11 @@ package com.intranet.backend.service.impl;
 import com.intranet.backend.dto.UserDto;
 import com.intranet.backend.exception.ResourceNotFoundException;
 import com.intranet.backend.model.*;
-import com.intranet.backend.repository.EmailVerificationTokenRepository;
-import com.intranet.backend.repository.PasswordResetTokenRepository;
-import com.intranet.backend.repository.RoleRepository;
-import com.intranet.backend.repository.UserRepository;
-import com.intranet.backend.repository.UserRoleRepository;
+import com.intranet.backend.repository.*;
 import com.intranet.backend.service.FileStorageService;
 import com.intranet.backend.service.UserService;
+import com.intranet.backend.util.DTOMapperUtil;
+import com.intranet.backend.util.FileHelper;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,17 +43,7 @@ public class UserServiceImpl implements UserService {
 
         for (User user : users) {
             List<String> roles = userRepository.findRoleNamesByUserId(user.getId());
-            userDtos.add(new UserDto(
-                    user.getId(),
-                    user.getFullName(),
-                    user.getEmail(),
-                    user.getProfileImage(),
-                    roles,
-                    user.getCreatedAt(),
-                    user.getUpdatedAt(),
-                    user.isEmailVerified(),
-                    user.isActive()
-            ));
+            userDtos.add(DTOMapperUtil.mapToUserDto(user, roles));
         }
 
         return userDtos;
@@ -72,17 +60,7 @@ public class UserServiceImpl implements UserService {
             List<String> roles = userRepository.findRoleNamesByUserId(id);
 
             // Converter para DTO sem acessar coleções LazyLoaded
-            return new UserDto(
-                    user.getId(),
-                    user.getFullName(),
-                    user.getEmail(),
-                    user.getProfileImage(),
-                    roles,
-                    user.getCreatedAt(),
-                    user.getUpdatedAt(),
-                    user.isEmailVerified(),
-                    user.isActive()
-            );
+            return DTOMapperUtil.mapToUserDto(user, roles);
         } catch (Exception e) {
             logger.error("Erro ao buscar usuário por ID: {}", e.getMessage(), e);
             throw e;
@@ -102,18 +80,8 @@ public class UserServiceImpl implements UserService {
             // Buscar papéis do usuário de forma segura usando consulta direta
             List<String> roles = userRepository.findRoleNamesByUserId(user.getId());
 
-            // Converter para DTO sem acessar coleções LazyLoaded
-            return new UserDto(
-                    user.getId(),
-                    user.getFullName(),
-                    user.getEmail(),
-                    user.getProfileImage(),
-                    roles,
-                    user.getCreatedAt(),
-                    user.getUpdatedAt(),
-                    user.isEmailVerified(),
-                    user.isActive()
-            );
+            // Converter para DTO
+            return DTOMapperUtil.mapToUserDto(user, roles);
         } catch (Exception e) {
             logger.error("Erro ao buscar usuário atual: {}", e.getMessage(), e);
             throw e;
@@ -126,51 +94,48 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado com o ID: " + id));
 
+        boolean modified = false;
+
         // Atualiza o nome completo se fornecido
-        if (updates.containsKey("fullName")) {
+        if (updates.containsKey("fullName") && !updates.get("fullName").equals(user.getFullName())) {
             user.setFullName(updates.get("fullName"));
+            modified = true;
         }
 
         // Atualiza o email se fornecido
-        if (updates.containsKey("email")) {
+        if (updates.containsKey("email") && !updates.get("email").equals(user.getEmail())) {
             String newEmail = updates.get("email");
-            if (!newEmail.equals(user.getEmail()) && userRepository.existsByEmail(newEmail)) {
+            if (userRepository.existsByEmail(newEmail)) {
                 throw new RuntimeException("Email já está em uso");
             }
             user.setEmail(newEmail);
+            user.setEmailVerified(false); // Reseta a verificação do email
+            modified = true;
         }
 
         // Atualiza a senha se fornecida
         if (updates.containsKey("password")) {
             user.setPasswordHash(passwordEncoder.encode(updates.get("password")));
+            modified = true;
         }
 
         // Atualiza o ID do GitHub se fornecido
-        if (updates.containsKey("githubId")) {
+        if (updates.containsKey("githubId") &&
+                (user.getGithubId() == null || !user.getGithubId().equals(updates.get("githubId")))) {
             String newGithubId = updates.get("githubId");
-            if (newGithubId != null && !newGithubId.isEmpty() &&
-                    !newGithubId.equals(user.getGithubId()) && userRepository.existsByGithubId(newGithubId)) {
+            if (newGithubId != null && !newGithubId.isEmpty() && userRepository.existsByGithubId(newGithubId)) {
                 throw new RuntimeException("ID do GitHub já está em uso");
             }
             user.setGithubId(newGithubId);
+            modified = true;
         }
 
-        User updatedUser = userRepository.save(user);
+        User updatedUser = modified ? userRepository.save(user) : user;
 
         // Buscar papéis do usuário de forma segura
         List<String> roles = userRepository.findRoleNamesByUserId(updatedUser.getId());
 
-        return new UserDto(
-                updatedUser.getId(),
-                updatedUser.getFullName(),
-                updatedUser.getEmail(),
-                updatedUser.getProfileImage(),
-                roles,
-                updatedUser.getCreatedAt(),
-                updatedUser.getUpdatedAt(),
-                updatedUser.isEmailVerified(),
-                updatedUser.isActive()
-        );
+        return DTOMapperUtil.mapToUserDto(updatedUser, roles);
     }
 
     @Override
@@ -185,17 +150,7 @@ public class UserServiceImpl implements UserService {
         // Buscar papéis do usuário de forma segura
         List<String> roles = userRepository.findRoleNamesByUserId(updatedUser.getId());
 
-        return new UserDto(
-                updatedUser.getId(),
-                updatedUser.getFullName(),
-                updatedUser.getEmail(),
-                updatedUser.getProfileImage(),
-                roles,
-                updatedUser.getCreatedAt(),
-                updatedUser.getUpdatedAt(),
-                updatedUser.isEmailVerified(),
-                updatedUser.isActive()
-        );
+        return DTOMapperUtil.mapToUserDto(updatedUser, roles);
     }
 
     @Override
@@ -204,8 +159,15 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado com o ID: " + id));
 
+        // Validar o arquivo
+        String errorMessage = FileHelper.validateFile(image, true);
+        if (errorMessage != null) {
+            throw new RuntimeException(errorMessage);
+        }
+
         // Remove a imagem de perfil anterior se existir
-        if (user.getProfileImage() != null && !user.getProfileImage().isEmpty()) {
+        if (user.getProfileImage() != null && !user.getProfileImage().isEmpty() &&
+                !user.getProfileImage().startsWith("http")) {
             fileStorageService.deleteFile(user.getProfileImage());
         }
 
@@ -218,17 +180,7 @@ public class UserServiceImpl implements UserService {
         // Buscar papéis do usuário de forma segura
         List<String> roles = userRepository.findRoleNamesByUserId(updatedUser.getId());
 
-        return new UserDto(
-                updatedUser.getId(),
-                updatedUser.getFullName(),
-                updatedUser.getEmail(),
-                updatedUser.getProfileImage(),
-                roles,
-                updatedUser.getCreatedAt(),
-                updatedUser.getUpdatedAt(),
-                updatedUser.isEmailVerified(),
-                updatedUser.isActive()
-        );
+        return DTOMapperUtil.mapToUserDto(updatedUser, roles);
     }
 
     @Override
@@ -301,17 +253,7 @@ public class UserServiceImpl implements UserService {
         // Buscar papéis atualizados usando consulta direta
         List<String> roles = userRepository.findRoleNamesByUserId(id);
 
-        return new UserDto(
-                user.getId(),
-                user.getFullName(),
-                user.getEmail(),
-                user.getProfileImage(),
-                roles,
-                user.getCreatedAt(),
-                user.getUpdatedAt(),
-                user.isEmailVerified(),
-                user.isActive()
-        );
+        return DTOMapperUtil.mapToUserDto(user, roles);
     }
 
     @Override
@@ -329,16 +271,6 @@ public class UserServiceImpl implements UserService {
         // Buscar papéis atualizados usando consulta direta
         List<String> roles = userRepository.findRoleNamesByUserId(id);
 
-        return new UserDto(
-                user.getId(),
-                user.getFullName(),
-                user.getEmail(),
-                user.getProfileImage(),
-                roles,
-                user.getCreatedAt(),
-                user.getUpdatedAt(),
-                user.isEmailVerified(),
-                user.isActive()
-        );
+        return DTOMapperUtil.mapToUserDto(user, roles);
     }
 }

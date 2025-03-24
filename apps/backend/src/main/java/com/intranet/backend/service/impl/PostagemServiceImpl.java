@@ -6,6 +6,7 @@ import com.intranet.backend.model.*;
 import com.intranet.backend.repository.*;
 import com.intranet.backend.service.FileStorageService;
 import com.intranet.backend.service.PostagemService;
+import com.intranet.backend.util.DTOMapperUtil;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,7 +18,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -40,8 +40,7 @@ public class PostagemServiceImpl implements PostagemService {
     public Page<PostagemSummaryDto> getAllPostagens(Pageable pageable) {
         logger.info("Buscando todas as postagens paginadas");
         Page<Postagem> postagensPage = postagemRepository.findAllWithConvenioAndCreatedBy(pageable);
-
-        return postagensPage.map(this::mapToSummaryDto);
+        return DTOMapperUtil.mapToPostagemSummaryDtoPage(postagensPage);
     }
 
     @Override
@@ -55,7 +54,7 @@ public class PostagemServiceImpl implements PostagemService {
         List<Postagem> postagens = postagemRepository.findByConvenioIdOrderByCreatedAtDesc(convenioId);
 
         return postagens.stream()
-                .map(this::mapToSummaryDto)
+                .map(DTOMapperUtil::mapToPostagemSummaryDto)
                 .collect(Collectors.toList());
     }
 
@@ -67,7 +66,7 @@ public class PostagemServiceImpl implements PostagemService {
         List<Postagem> postagens = postagemRepository.findByCreatedByIdOrderByCreatedAtDesc(currentUser.getId());
 
         return postagens.stream()
-                .map(this::mapToSummaryDto)
+                .map(DTOMapperUtil::mapToPostagemSummaryDto)
                 .collect(Collectors.toList());
     }
 
@@ -81,7 +80,7 @@ public class PostagemServiceImpl implements PostagemService {
             throw new ResourceNotFoundException("Postagem não encontrada com ID: " + id);
         }
 
-        return mapToDto(postagem);
+        return DTOMapperUtil.mapToPostagemDto(postagem);
     }
 
     @Override
@@ -103,7 +102,7 @@ public class PostagemServiceImpl implements PostagemService {
         Postagem savedPostagem = postagemRepository.save(postagem);
         logger.info("Postagem criada com sucesso. ID: {}", savedPostagem.getId());
 
-        return mapToDto(savedPostagem);
+        return DTOMapperUtil.mapToPostagemDto(savedPostagem);
     }
 
     @Override
@@ -133,7 +132,7 @@ public class PostagemServiceImpl implements PostagemService {
         Postagem updatedPostagem = postagemRepository.save(postagem);
         logger.info("Postagem atualizada com sucesso. ID: {}", updatedPostagem.getId());
 
-        return mapToDto(updatedPostagem);
+        return DTOMapperUtil.mapToPostagemDto(updatedPostagem);
     }
 
     @Override
@@ -152,12 +151,12 @@ public class PostagemServiceImpl implements PostagemService {
 
         // Excluir arquivos físicos das imagens e anexos
         for (Imagem imagem : postagem.getImagens()) {
-            String fileName = extractFileNameFromUrl(imagem.getUrl());
+            String fileName = DTOMapperUtil.extractFileNameFromUrl(imagem.getUrl());
             fileStorageService.deleteFile(fileName);
         }
 
         for (Anexo anexo : postagem.getAnexos()) {
-            String fileName = extractFileNameFromUrl(anexo.getUrl());
+            String fileName = DTOMapperUtil.extractFileNameFromUrl(anexo.getUrl());
             fileStorageService.deleteFile(fileName);
         }
 
@@ -194,7 +193,7 @@ public class PostagemServiceImpl implements PostagemService {
 
         logger.info("Imagem adicionada com sucesso. ID: {}", savedImagem.getId());
 
-        return mapToImagemDto(savedImagem);
+        return DTOMapperUtil.mapToImagemDto(savedImagem);
     }
 
     @Override
@@ -212,7 +211,7 @@ public class PostagemServiceImpl implements PostagemService {
         }
 
         // Excluir arquivo físico
-        String fileName = extractFileNameFromUrl(imagem.getUrl());
+        String fileName = DTOMapperUtil.extractFileNameFromUrl(imagem.getUrl());
         fileStorageService.deleteFile(fileName);
 
         // Remover da lista de imagens da postagem
@@ -252,7 +251,7 @@ public class PostagemServiceImpl implements PostagemService {
 
         logger.info("Anexo adicionado com sucesso. ID: {}", savedAnexo.getId());
 
-        return mapToAnexoDto(savedAnexo);
+        return DTOMapperUtil.mapToAnexoDto(savedAnexo);
     }
 
     @Override
@@ -270,7 +269,7 @@ public class PostagemServiceImpl implements PostagemService {
         }
 
         // Excluir arquivo físico
-        String fileName = extractFileNameFromUrl(anexo.getUrl());
+        String fileName = DTOMapperUtil.extractFileNameFromUrl(anexo.getUrl());
         fileStorageService.deleteFile(fileName);
 
         // Remover da lista de anexos da postagem
@@ -304,7 +303,7 @@ public class PostagemServiceImpl implements PostagemService {
 
         logger.info("Tabela adicionada com sucesso. ID: {}", savedTabela.getId());
 
-        return mapToTabelaDto(savedTabela);
+        return DTOMapperUtil.mapToTabelaDto(savedTabela);
     }
 
     @Override
@@ -326,7 +325,7 @@ public class PostagemServiceImpl implements PostagemService {
         TabelaPostagem updatedTabela = tabelaPostagemRepository.save(tabela);
         logger.info("Tabela atualizada com sucesso. ID: {}", updatedTabela.getId());
 
-        return mapToTabelaDto(updatedTabela);
+        return DTOMapperUtil.mapToTabelaDto(updatedTabela);
     }
 
     @Override
@@ -351,99 +350,12 @@ public class PostagemServiceImpl implements PostagemService {
         logger.info("Tabela excluída com sucesso. ID: {}", id);
     }
 
-    // Métodos auxiliares
-
+    // Método auxiliar para obter o usuário atual
     private User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String currentUserEmail = authentication.getName();
 
         return userRepository.findByEmail(currentUserEmail)
                 .orElseThrow(() -> new IllegalStateException("Usuário autenticado não encontrado no sistema"));
-    }
-
-    private PostagemSummaryDto mapToSummaryDto(Postagem postagem) {
-        PostagemSummaryDto dto = new PostagemSummaryDto();
-        dto.setId(postagem.getId());
-        dto.setTitle(postagem.getTitle());
-        dto.setConvenioId(postagem.getConvenio().getId());
-        dto.setConvenioName(postagem.getConvenio().getName());
-        dto.setCreatedById(postagem.getCreatedBy().getId());
-        dto.setCreatedByName(postagem.getCreatedBy().getFullName());
-        dto.setCreatedAt(postagem.getCreatedAt());
-        dto.setHasImagens(!postagem.getImagens().isEmpty());
-        dto.setHasAnexos(!postagem.getAnexos().isEmpty());
-        dto.setHasTabelas(!postagem.getTabelas().isEmpty());
-        return dto;
-    }
-
-    private PostagemDto mapToDto(Postagem postagem) {
-        PostagemDto dto = new PostagemDto();
-        dto.setId(postagem.getId());
-        dto.setTitle(postagem.getTitle());
-        dto.setText(postagem.getText());
-        dto.setConvenioId(postagem.getConvenio().getId());
-        dto.setConvenioName(postagem.getConvenio().getName());
-        dto.setCreatedById(postagem.getCreatedBy().getId());
-        dto.setCreatedByName(postagem.getCreatedBy().getFullName());
-        dto.setCreatedAt(postagem.getCreatedAt());
-        dto.setUpdatedAt(postagem.getUpdatedAt());
-
-        List<ImagemDto> imagemDtos = postagem.getImagens().stream()
-                .map(this::mapToImagemDto)
-                .collect(Collectors.toList());
-        dto.setImagens(imagemDtos);
-
-        List<AnexoDto> anexoDtos = postagem.getAnexos().stream()
-                .map(this::mapToAnexoDto)
-                .collect(Collectors.toList());
-        dto.setAnexos(anexoDtos);
-
-        List<TabelaPostagemDto> tabelaDtos = postagem.getTabelas().stream()
-                .map(this::mapToTabelaDto)
-                .collect(Collectors.toList());
-        dto.setTabelas(tabelaDtos);
-
-        return dto;
-    }
-
-    private ImagemDto mapToImagemDto(Imagem imagem) {
-        ImagemDto dto = new ImagemDto();
-        dto.setId(imagem.getId());
-        dto.setPostagemId(imagem.getPostagem().getId());
-        dto.setUrl(imagem.getUrl());
-        dto.setDescription(imagem.getDescription());
-        return dto;
-    }
-
-    private AnexoDto mapToAnexoDto(Anexo anexo) {
-        AnexoDto dto = new AnexoDto();
-        dto.setId(anexo.getId());
-        dto.setPostagemId(anexo.getPostagem().getId());
-        dto.setNameFile(anexo.getNameFile());
-        dto.setTypeFile(anexo.getTypeFile());
-        dto.setUrl(anexo.getUrl());
-        return dto;
-    }
-
-    private TabelaPostagemDto mapToTabelaDto(TabelaPostagem tabela) {
-        TabelaPostagemDto dto = new TabelaPostagemDto();
-        dto.setId(tabela.getId());
-        dto.setPostagemId(tabela.getPostagem().getId());
-        dto.setConteudo(tabela.getConteudo());
-        return dto;
-    }
-
-    private String extractFileNameFromUrl(String url) {
-        if (url == null || url.isEmpty()) {
-            return "";
-        }
-
-        // Extrair o nome do arquivo da URL
-        int lastSlashIndex = url.lastIndexOf('/');
-        if (lastSlashIndex >= 0 && lastSlashIndex < url.length() - 1) {
-            return url.substring(lastSlashIndex + 1);
-        }
-
-        return url;
     }
 }
