@@ -171,7 +171,7 @@ const postagemService = {
       console.log("Enviando imagem para o servidor...");
 
       const response = await api.post<ImagemDto>(
-        "/api/postagens/temp/imagens",
+        "/postagens/temp/imagens",
         formData,
         {
           headers: {
@@ -226,7 +226,7 @@ const postagemService = {
       formData.append("file", file);
 
       const response = await api.post<AnexoDto>(
-        "/api/postagens/temp/anexos",
+        "/postagens/temp/anexos",
         formData,
         {
           headers: {
