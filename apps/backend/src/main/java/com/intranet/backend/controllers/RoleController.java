@@ -17,7 +17,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 
 @RestController
-@RequestMapping("/roles")
+@RequestMapping("/api/roles")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
 public class RoleController {
