@@ -5,11 +5,10 @@ import axios from "axios";
 const isDevelopment =
   typeof window !== "undefined" && window.location.hostname === "localhost";
 
-// Como os controllers do backend já incluem o prefixo /api/ nos caminhos,
-// não devemos incluí-lo no baseURL para evitar duplicação
+// Configurar a URL base dependendo do ambiente
 const baseURL = isDevelopment
   ? "http://localhost:8443" // Em desenvolvimento, conectar diretamente ao backend
-  : ""; // Em produção, usar o caminho relativo sem /api
+  : ""; // Em produção, usar o caminho relativo
 
 // Criar instância axios com configurações otimizadas
 const api = axios.create({
@@ -21,12 +20,18 @@ const api = axios.create({
   timeout: 20000,
 });
 
-// Adicionar token JWT a todas as requisições
+// Adicionar prefixo /api/ a todas as requisições
 api.interceptors.request.use(
   (config) => {
+    // Adicionar o token JWT
     const token = localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    // Adicionar prefixo /api/ às requisições se ainda não tiver
+    if (config.url && !config.url.startsWith("/api/")) {
+      config.url = `/api${config.url}`; // Garantir que comece com /api/
     }
 
     // Log para depuração
