@@ -23,7 +23,7 @@ const profileService = {
    */
   getCurrentProfile: async (): Promise<User> => {
     try {
-      const response = await api.get<User>("/users/me");
+      const response = await api.get<User>("/api/users/me");
       return response.data;
     } catch (error) {
       console.error("Erro ao buscar perfil do usuário:", error);
@@ -39,7 +39,7 @@ const profileService = {
     data: ProfileUpdateData
   ): Promise<User> => {
     try {
-      const response = await api.put<User>(`/users/${userId}`, data);
+      const response = await api.put<User>(`/api/users/${userId}`, data);
 
       // Atualizar o usuário no localStorage com os novos dados
       const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
@@ -65,7 +65,7 @@ const profileService = {
     try {
       // O backend espera "password" no body para atualizar a senha
       // Também enviar a senha atual para validação
-      const response = await api.put<User>(`/users/${userId}`, {
+      const response = await api.put<User>(`/api/users/${userId}`, {
         currentPassword: data.currentPassword,
         password: data.newPassword,
       });
@@ -90,7 +90,7 @@ const profileService = {
 
       // Configuração especial para upload de arquivo
       const response = await api.post<User>(
-        `/users/${userId}/profile-image`,
+        `/api/users/${userId}/profile-image`,
         formData,
         {
           headers: {
@@ -142,7 +142,7 @@ const profileService = {
   deleteAccount: async (userId: string): Promise<void> => {
     try {
       // Configuração especial para operação crítica
-      await api.delete(`/users/${userId}`, {
+      await api.delete(`/api/users/${userId}`, {
         timeout: 30000, // 30 segundos
       });
 

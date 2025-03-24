@@ -11,7 +11,7 @@ const adminService = {
    */
   getAllUsers: async (): Promise<User[]> => {
     try {
-      const response = await api.get<User[]>("/users");
+      const response = await api.get<User[]>("/api/users");
       return response.data;
     } catch (error) {
       console.error("Erro ao buscar todos os usuários:", error);
@@ -25,7 +25,7 @@ const adminService = {
   addRoleToUser: async (userId: string, roleName: string): Promise<User> => {
     try {
       const response = await api.post<User>(
-        `/users/${userId}/roles?roleName=${roleName}`
+        `/api/users/${userId}/roles?roleName=${roleName}`
       );
       return response.data;
     } catch (error) {
@@ -46,7 +46,7 @@ const adminService = {
   ): Promise<User> => {
     try {
       const response = await api.delete<User>(
-        `/users/${userId}/roles/${roleName}`
+        `/api/users/${userId}/roles/${roleName}`
       );
       return response.data;
     } catch (error) {
@@ -64,7 +64,7 @@ const adminService = {
   updateUserStatus: async (userId: string, active: boolean): Promise<User> => {
     try {
       const response = await api.patch<User>(
-        `/users/${userId}/status?active=${active}`
+        `/api/users/${userId}/status?active=${active}`
       );
       return response.data;
     } catch (error) {

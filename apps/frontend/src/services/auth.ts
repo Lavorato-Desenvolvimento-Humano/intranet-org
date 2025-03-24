@@ -47,7 +47,10 @@ export interface NewPasswordRequest {
 export const login = async (credentials: LoginCredentials): Promise<User> => {
   try {
     console.log("Tentando login com credenciais:", credentials.email);
-    const response = await api.post<AuthResponse>("/auth/login", credentials);
+    const response = await api.post<AuthResponse>(
+      "/api/auth/login",
+      credentials
+    );
     return processAuthResponse(response.data);
   } catch (error) {
     console.error("Erro no login:", error);
@@ -86,7 +89,10 @@ export const register = async (data: RegisterData): Promise<User> => {
   // Remover confirmPassword antes de enviar para o backend
   const { confirmPassword, ...registerData } = data;
 
-  const response = await api.post<AuthResponse>("/auth/register", registerData);
+  const response = await api.post<AuthResponse>(
+    "/api/auth/register",
+    registerData
+  );
   return processAuthResponse(response.data);
 };
 
@@ -94,7 +100,7 @@ export const requestPasswordReset = async (
   email: string
 ): Promise<string | undefined> => {
   try {
-    const response = await api.post("/auth/reset-password/request", null, {
+    const response = await api.post("/api/auth/reset-password/request", null, {
       params: { email },
     });
 
@@ -110,7 +116,7 @@ export const verifyResetCode = async (
   code: string
 ): Promise<void> => {
   try {
-    await api.post("/auth/reset-password/verify", null, {
+    await api.post("/api/auth/reset-password/verify", null, {
       params: { email, code },
     });
   } catch (error) {
@@ -123,7 +129,7 @@ export const resetPassword = async (
   data: NewPasswordRequest
 ): Promise<void> => {
   try {
-    await api.post("/auth/reset-password/complete", data);
+    await api.post("/api/auth/reset-password/complete", data);
   } catch (error) {
     console.error("Erro ao redefinir senha:", error);
     throw error;
@@ -135,7 +141,7 @@ export const logout = (): void => {
   localStorage.removeItem("user");
 
   if (typeof window !== "undefined") {
-    window.location.href = "/auth/login";
+    window.location.href = "/api/auth/login";
   }
 };
 
@@ -153,7 +159,7 @@ export const githubLogin = async (code: string): Promise<User> => {
   try {
     console.log("Autenticando com GitHub, código:", code);
     const response = await api.get<AuthResponse>(
-      `/auth/github/callback?code=${code}`
+      `/api/auth/github/callback?code=${code}`
     );
     return processAuthResponse(response.data);
   } catch (error: any) {
@@ -177,7 +183,9 @@ export const githubLogin = async (code: string): Promise<User> => {
 export const initiateGithubLogin = async (): Promise<string> => {
   try {
     // Obter URL de autorização do GitHub do backend
-    const response = await api.get<{ authUrl: string }>("/auth/github/login");
+    const response = await api.get<{ authUrl: string }>(
+      "/api/auth/github/login"
+    );
     return response.data.authUrl;
   } catch (error) {
     console.error("Erro ao iniciar login GitHub:", error);
@@ -191,7 +199,7 @@ export const verifyEmail = async (
   code: string
 ): Promise<void> => {
   try {
-    await api.post("/auth/verify-email/confirm", null, {
+    await api.post("/api/auth/verify-email/confirm", null, {
       params: { email, code },
     });
   } catch (error) {
@@ -205,7 +213,7 @@ export const resendVerificationEmail = async (
   email: string
 ): Promise<string | undefined> => {
   try {
-    const response = await api.post("/auth/verify-email/resend", null, {
+    const response = await api.post("/api/auth/verify-email/resend", null, {
       params: { email },
     });
     return response.data.message;
