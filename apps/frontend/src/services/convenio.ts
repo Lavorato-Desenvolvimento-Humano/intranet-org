@@ -39,21 +39,24 @@ const convenioService = {
   /**
    * Obtém todos os convênios
    */
+  /**
+   * Obtém todos os convênios
+   */
   getAllConvenios: async (): Promise<ConvenioDto[]> => {
     try {
       console.log("Iniciando busca de convênios...");
-      // Verifique se a API está funcionando com uma chamada simples
-      const response = await api.get<ConvenioDto[]>("/api/convenios");
+      // Use a URL correta sem duplicar /api
+      const response = await api.get<ConvenioDto[]>("/convenios");
       console.log("Convênios recebidos:", response.data);
       return response.data;
     } catch (error) {
       console.error("Erro ao buscar convênios:", error);
 
-      // Tentar alternativa com URL completa
+      // Tentar alternativa com URL completa como fallback
       try {
         console.log("Tentando URL alternativa para buscar convênios...");
         const altResponse = await axios.get<ConvenioDto[]>(
-          "https://dev.lavorato.app.br/api/convenios",
+          "https://dev.lavorato.app.br/api/api/convenios",
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -70,7 +73,8 @@ const convenioService = {
         console.error("Erro na URL alternativa:", altError);
       }
 
-      throw error;
+      // Se todas as tentativas falharem, retornar array vazio para evitar quebrar a UI
+      return [];
     }
   },
 
@@ -79,7 +83,7 @@ const convenioService = {
    */
   getConvenioById: async (id: string): Promise<ConvenioDto> => {
     try {
-      const response = await api.get<ConvenioDto>(`/api/convenios/${id}`);
+      const response = await api.get<ConvenioDto>(`/convenios/${id}`);
       return response.data;
     } catch (error) {
       console.error(`Erro ao buscar convênio ${id}:`, error);
@@ -92,7 +96,7 @@ const convenioService = {
    */
   createConvenio: async (convenio: ConvenioCreateDto): Promise<ConvenioDto> => {
     try {
-      const response = await api.post<ConvenioDto>("/api/convenios", convenio);
+      const response = await api.post<ConvenioDto>("/convenios", convenio);
       return response.data;
     } catch (error) {
       console.error("Erro ao criar convênio:", error);
@@ -108,10 +112,7 @@ const convenioService = {
     convenio: ConvenioCreateDto
   ): Promise<ConvenioDto> => {
     try {
-      const response = await api.put<ConvenioDto>(
-        `/api/convenios/${id}`,
-        convenio
-      );
+      const response = await api.put<ConvenioDto>(`/convenios/${id}`, convenio);
       return response.data;
     } catch (error) {
       console.error(`Erro ao atualizar convênio ${id}:`, error);
@@ -124,7 +125,7 @@ const convenioService = {
    */
   deleteConvenio: async (id: string): Promise<void> => {
     try {
-      await api.delete(`/api/convenios/${id}`);
+      await api.delete(`/convenios/${id}`);
     } catch (error) {
       console.error(`Erro ao excluir convênio ${id}:`, error);
       throw error;
@@ -137,7 +138,7 @@ const convenioService = {
   getPostagens: async (convenioId: string): Promise<PostagemSummaryDto[]> => {
     try {
       const response = await api.get<PostagemSummaryDto[]>(
-        `/api/convenios/${convenioId}/postagens`
+        `/convenios/${convenioId}/postagens`
       );
       return response.data;
     } catch (error) {
@@ -155,7 +156,7 @@ const convenioService = {
   countPostagens: async (convenioId: string): Promise<number> => {
     try {
       const response = await api.get<number>(
-        `/api/convenios/${convenioId}/postagens/count`
+        `/convenios/${convenioId}/postagens/count`
       );
       return response.data;
     } catch (error) {

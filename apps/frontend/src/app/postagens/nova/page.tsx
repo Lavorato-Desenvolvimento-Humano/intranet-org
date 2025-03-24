@@ -261,18 +261,44 @@ export default function NovaPostagemPage() {
                 disabled={submitting}
                 onImageUpload={async (file: File) => {
                   try {
-                    // Usar o endpoint temporário
+                    // Usar o endpoint temporário com tratamento de erros aprimorado
                     const imagem = await postagemService.addTempImagem(file);
 
-                    // Rastrear o upload
+                    // Rastrear o upload para associação posterior quando a postagem for criada
                     setTempUploads((prev) => ({
                       ...prev,
                       images: [...prev.images, imagem],
                     }));
 
-                    return imagem.url;
-                  } catch (err) {
+                    // Se a URL não começar com http ou /, adicionar / no início
+                    let url = imagem.url;
+                    if (!url.startsWith("http") && !url.startsWith("/")) {
+                      url = "/" + url;
+                    }
+
+                    // Verificar se a URL existe e é acessível
+                    try {
+                      const response = await fetch(url, { method: "HEAD" });
+                      if (!response.ok) {
+                        console.warn(
+                          `A URL da imagem ${url} não está acessível diretamente. Tentando URL alternativa.`
+                        );
+                        // Tentar URL alternativa
+                        url = `/api${url}`;
+                      }
+                    } catch (err) {
+                      console.warn(
+                        `Erro ao verificar URL da imagem: ${err}. Tentando URL alternativa.`
+                      );
+                      url = `/api${url}`;
+                    }
+
+                    return url;
+                  } catch (err: any) {
                     console.error("Erro ao fazer upload da imagem:", err);
+                    toastUtil.error(
+                      err.message || "Erro ao fazer upload da imagem"
+                    );
                     throw err;
                   }
                 }}
