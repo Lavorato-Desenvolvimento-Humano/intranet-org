@@ -165,32 +165,16 @@ const postagemService = {
 
       console.log("Enviando imagem para o servidor...");
 
-      // Tentar ambos os padrões de endpoint
-      let response;
-      try {
-        response = await api.post<ImagemDto>(
-          "/postagens/temp/imagens",
-          formData,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-            timeout: 30000, // 30 segundos
-          }
-        );
-      } catch (err) {
-        console.log("Falha no primeiro endpoint, tentando alternativo...");
-        response = await api.post<ImagemDto>(
-          "/postagens/temp/imagens",
-          formData,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-            timeout: 30000,
-          }
-        );
-      }
+      const response = await api.post<ImagemDto>(
+        "/postagens/temp/imagens",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+          timeout: 30000, // 30 segundos
+        }
+      );
 
       console.log("Imagem enviada com sucesso:", response.data);
       return response.data;
@@ -237,12 +221,13 @@ const postagemService = {
       formData.append("file", file);
 
       const response = await api.post<AnexoDto>(
-        "postagens/temp/anexos", // Corrigido para evitar duplicação de /api
+        "/postagens/temp/anexos",
         formData,
         {
           headers: {
             "Content-Type": "multipart/form-data",
           },
+          timeout: 30000, // 30 segundos
         }
       );
       return response.data;
@@ -281,6 +266,7 @@ const postagemService = {
           headers: {
             "Content-Type": "multipart/form-data",
           },
+          timeout: 30000, // 30 segundos
         }
       );
       return response.data;
@@ -320,6 +306,7 @@ const postagemService = {
           headers: {
             "Content-Type": "multipart/form-data",
           },
+          timeout: 30000, // 30 segundos
         }
       );
       return response.data;

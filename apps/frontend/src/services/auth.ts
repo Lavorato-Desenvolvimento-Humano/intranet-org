@@ -43,7 +43,7 @@ export interface NewPasswordRequest {
   newPassword: string;
 }
 
-// Função de login usando apenas o endpoint /auth/login
+// Função de login usando o endpoint /auth/login
 export const login = async (credentials: LoginCredentials): Promise<User> => {
   try {
     console.log("Tentando login com credenciais:", credentials.email);
