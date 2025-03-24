@@ -4,9 +4,12 @@ import axios from "axios";
 // Auto-detectar ambiente
 const isDevelopment =
   typeof window !== "undefined" && window.location.hostname === "localhost";
+
+// Como o NGINX está configurado para rotear /api/ para o backend,
+// não precisamos incluir o host completo do backend
 const baseURL = isDevelopment
-  ? "http://localhost:8443/api"
-  : "https://dev.lavorato.app.br/api";
+  ? "http://localhost:8443/api" // Em desenvolvimento, conectar diretamente ao backend
+  : "/api"; // Em produção, usar o caminho relativo que o NGINX irá rotear
 
 // Criar instância axios com configurações otimizadas
 const api = axios.create({
@@ -28,11 +31,6 @@ api.interceptors.request.use(
 
     // Log para depuração
     console.log(`Fazendo requisição para: ${config.url}`);
-
-    // Garantir que todas as requisições usem o prefixo /api
-    if (config.url && !config.url.startsWith("/api")) {
-      config.url = `/api${config.url}`;
-    }
 
     return config;
   },

@@ -38,7 +38,12 @@ export const buildProfileImageUrl = (
     : imageIdentifier;
 
   // Construir URL completa usando o novo endpoint dedicado
-  return `${apiBaseUrl}/api/profile-images/${normalizedIdentifier}`;
+  // Garantir que tenha /api/ como prefixo
+  if (!normalizedIdentifier.startsWith("api/")) {
+    return `${apiBaseUrl}/api/profile-images/${normalizedIdentifier}`;
+  } else {
+    return `${apiBaseUrl}/${normalizedIdentifier}`;
+  }
 };
 
 /**
@@ -78,9 +83,8 @@ export const getAlternativeImageUrls = (
   // começando com o novo endpoint dedicado
   const urls = [
     `${apiBaseUrl}/api/profile-images/${normalizedIdentifier}`,
-    `${apiBaseUrl}/uploads/images/${normalizedIdentifier}`,
     `${apiBaseUrl}/api/uploads/images/${normalizedIdentifier}`,
-    `${apiBaseUrl}/images/${normalizedIdentifier}`,
+    `${apiBaseUrl}/api/images/${normalizedIdentifier}`,
   ];
 
   // Adicionar URL baseada no ID do usuário se disponível
@@ -89,16 +93,18 @@ export const getAlternativeImageUrls = (
   }
 
   // Adicionar URLs locais em desenvolvimento para evitar problemas de CORS
-  urls.push(
-    window.location.origin + `/api/profile-images/${normalizedIdentifier}`,
-    window.location.origin + `/uploads/images/${normalizedIdentifier}`,
-    window.location.origin + `/api/uploads/images/${normalizedIdentifier}`,
-    window.location.origin + `/images/${normalizedIdentifier}`
-  );
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  if (origin) {
+    urls.push(
+      `${origin}/api/profile-images/${normalizedIdentifier}`,
+      `${origin}/api/uploads/images/${normalizedIdentifier}`,
+      `${origin}/api/images/${normalizedIdentifier}`
+    );
 
-  // Se o ID do usuário estiver disponível, adicionar também uma URL local baseada no ID
-  if (user?.id) {
-    urls.push(window.location.origin + `/api/profile-images/user/${user.id}`);
+    // Se o ID do usuário estiver disponível, adicionar também uma URL local baseada no ID
+    if (user?.id) {
+      urls.push(`${origin}/api/profile-images/user/${user.id}`);
+    }
   }
 
   return urls;
