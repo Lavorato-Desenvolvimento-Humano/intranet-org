@@ -1,9 +1,7 @@
 package com.intranet.backend.exception;
 
-import org.hibernate.HibernateException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -16,10 +14,8 @@ import org.springframework.web.context.request.WebRequest;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
-import java.util.ConcurrentModificationException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
@@ -29,75 +25,35 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ErrorDetails> handleResourceNotFoundException(
             ResourceNotFoundException exception, WebRequest request, HttpServletRequest httpRequest) {
-
-        logError(httpRequest, exception);
-
-        ErrorDetails errorDetails = new ErrorDetails(
-                LocalDateTime.now(),
-                HttpStatus.NOT_FOUND.value(),
-                "Recurso não encontrado",
-                exception.getMessage(),
-                request.getDescription(false)
-        );
-
-        return new ResponseEntity<>(errorDetails, HttpStatus.NOT_FOUND);
+        return createErrorResponse(exception, request, httpRequest,
+                HttpStatus.NOT_FOUND, "Recurso não encontrado");
     }
 
     @ExceptionHandler(FileStorageException.class)
     public ResponseEntity<ErrorDetails> handleFileStorageException(
             FileStorageException exception, WebRequest request, HttpServletRequest httpRequest) {
-
-        logError(httpRequest, exception);
-
-        ErrorDetails errorDetails = new ErrorDetails(
-                LocalDateTime.now(),
-                HttpStatus.BAD_REQUEST.value(),
-                "Erro de armazenamento de arquivo",
-                exception.getMessage(),
-                request.getDescription(false)
-        );
-
-        return new ResponseEntity<>(errorDetails, HttpStatus.BAD_REQUEST);
+        return createErrorResponse(exception, request, httpRequest,
+                HttpStatus.BAD_REQUEST, "Erro de armazenamento de arquivo");
     }
 
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ErrorDetails> handleBadCredentialsException(
             BadCredentialsException exception, WebRequest request, HttpServletRequest httpRequest) {
-
-        logError(httpRequest, exception);
-
-        ErrorDetails errorDetails = new ErrorDetails(
-                LocalDateTime.now(),
-                HttpStatus.UNAUTHORIZED.value(),
-                "Credenciais inválidas",
-                "Email ou senha incorretos",
-                request.getDescription(false)
-        );
-
-        return new ResponseEntity<>(errorDetails, HttpStatus.UNAUTHORIZED);
+        return createErrorResponse(new RuntimeException("Email ou senha incorretos"),
+                request, httpRequest, HttpStatus.UNAUTHORIZED, "Credenciais inválidas");
     }
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorDetails> handleAccessDeniedException(
             AccessDeniedException exception, WebRequest request, HttpServletRequest httpRequest) {
-
-        logError(httpRequest, exception);
-
-        ErrorDetails errorDetails = new ErrorDetails(
-                LocalDateTime.now(),
-                HttpStatus.FORBIDDEN.value(),
-                "Acesso negado",
-                "Você não tem permissão para acessar este recurso",
-                request.getDescription(false)
-        );
-
-        return new ResponseEntity<>(errorDetails, HttpStatus.FORBIDDEN);
+        return createErrorResponse(
+                new RuntimeException("Você não tem permissão para acessar este recurso"),
+                request, httpRequest, HttpStatus.FORBIDDEN, "Acesso negado");
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, String>> handleValidationExceptions(
             MethodArgumentNotValidException exception, HttpServletRequest httpRequest) {
-
         logError(httpRequest, exception);
 
         Map<String, String> errors = new HashMap<>();
@@ -110,89 +66,38 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errors, HttpStatus.BAD_REQUEST);
     }
 
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorDetails> handleGlobalException(
-            Exception exception, WebRequest request, HttpServletRequest httpRequest) {
-
-        logError(httpRequest, exception);
-
-        ErrorDetails errorDetails = new ErrorDetails(
-                LocalDateTime.now(),
-                HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                "Erro interno do servidor",
-                exception.getMessage(),
-                request.getDescription(false)
-        );
-
-        return new ResponseEntity<>(errorDetails, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-
     @ExceptionHandler(EmailNotVerifiedException.class)
     public ResponseEntity<ErrorDetails> handleEmailNotVerifiedException(
             EmailNotVerifiedException exception, WebRequest request, HttpServletRequest httpRequest) {
+        return createErrorResponse(exception, request, httpRequest,
+                HttpStatus.FORBIDDEN, "Email não verificado");
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorDetails> handleGlobalException(
+            Exception exception, WebRequest request, HttpServletRequest httpRequest) {
+        return createErrorResponse(exception, request, httpRequest,
+                HttpStatus.INTERNAL_SERVER_ERROR, "Erro interno do servidor");
+    }
+
+    /**
+     * Método utilitário para criar respostas de erro padronizadas
+     */
+    private ResponseEntity<ErrorDetails> createErrorResponse(
+            Exception exception, WebRequest request, HttpServletRequest httpRequest,
+            HttpStatus status, String error) {
 
         logError(httpRequest, exception);
 
         ErrorDetails errorDetails = new ErrorDetails(
                 LocalDateTime.now(),
-                HttpStatus.FORBIDDEN.value(),
-                "Email não verificado",
+                status.value(),
+                error,
                 exception.getMessage(),
                 request.getDescription(false)
         );
 
-        return new ResponseEntity<>(errorDetails, HttpStatus.FORBIDDEN);
-    }
-
-    @ExceptionHandler(DataAccessException.class)
-    public ResponseEntity<ErrorDetails> handleDataAccessException(
-            DataAccessException exception, WebRequest request, HttpServletRequest httpRequest) {
-
-        logError(httpRequest, exception);
-
-        ErrorDetails errorDetails = new ErrorDetails(
-                LocalDateTime.now(),
-                HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                "Erro ao acessar dados",
-                "Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente mais tarde.",
-                request.getDescription(false)
-        );
-
-        return new ResponseEntity<>(errorDetails, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-
-    @ExceptionHandler(HibernateException.class)
-    public ResponseEntity<ErrorDetails> handleHibernateException(
-            HibernateException exception, WebRequest request, HttpServletRequest httpRequest) {
-
-        logError(httpRequest, exception);
-
-        ErrorDetails errorDetails = new ErrorDetails(
-                LocalDateTime.now(),
-                HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                "Erro de processamento",
-                "Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente mais tarde.",
-                request.getDescription(false)
-        );
-
-        return new ResponseEntity<>(errorDetails, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-
-    @ExceptionHandler(ConcurrentModificationException.class)
-    public ResponseEntity<ErrorDetails> handleConcurrentModificationException(
-            ConcurrentModificationException exception, WebRequest request, HttpServletRequest httpRequest) {
-
-        logError(httpRequest, exception);
-
-        ErrorDetails errorDetails = new ErrorDetails(
-                LocalDateTime.now(),
-                HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                "Erro de processamento",
-                "Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.",
-                request.getDescription(false)
-        );
-
-        return new ResponseEntity<>(errorDetails, HttpStatus.INTERNAL_SERVER_ERROR);
+        return new ResponseEntity<>(errorDetails, status);
     }
 
     /**
