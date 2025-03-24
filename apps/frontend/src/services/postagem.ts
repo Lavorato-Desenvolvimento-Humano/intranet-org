@@ -168,9 +168,10 @@ const postagemService = {
         formData.append("description", description);
       }
 
-      // URL corrigida - remova quaisquer variáveis de caminho e use o endpoint correto
+      console.log("Enviando imagem para o servidor...");
+
       const response = await api.post<ImagemDto>(
-        `/api/postagens/temp/imagens`,
+        `/postagens/temp/imagens`, // Remove o prefixo /api para evitar duplicação
         formData,
         {
           headers: {
@@ -189,9 +190,22 @@ const postagemService = {
       let errorMessage = "Erro desconhecido ao fazer upload da imagem";
 
       if (error.response) {
-        errorMessage = `Erro do servidor (${error.response.status}): ${
-          error.response.data?.message || "Falha no processamento da imagem"
-        }`;
+        // Melhorar log para depuração
+        console.error("Status do erro:", error.response.status);
+        console.error("Dados do erro:", error.response.data);
+
+        // Personalizar mensagem baseada no status
+        if (error.response.status === 413) {
+          errorMessage =
+            "A imagem é muito grande. Por favor, use uma imagem menor.";
+        } else if (error.response.status === 415) {
+          errorMessage = "Formato de imagem não suportado.";
+        } else if (error.response.status === 500) {
+          errorMessage =
+            "Erro no servidor. Por favor, tente novamente mais tarde.";
+        } else if (error.response.data?.message) {
+          errorMessage = error.response.data.message;
+        }
       } else if (error.request) {
         errorMessage = "Servidor não respondeu. Verifique sua conexão.";
       } else {
@@ -212,7 +226,7 @@ const postagemService = {
       formData.append("file", file);
 
       const response = await api.post<AnexoDto>(
-        `/api/postagens/temp/anexos`,
+        `/postagens/temp/anexos`, // Corrigido para evitar duplicação
         formData,
         {
           headers: {
@@ -221,9 +235,16 @@ const postagemService = {
         }
       );
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Erro ao adicionar anexo temporário:`, error);
-      throw error;
+
+      // Tratamento de erro melhorado
+      let message = "Erro ao fazer upload do arquivo";
+      if (error.response?.data?.message) {
+        message = error.response.data.message;
+      }
+
+      throw new Error(message);
     }
   },
 

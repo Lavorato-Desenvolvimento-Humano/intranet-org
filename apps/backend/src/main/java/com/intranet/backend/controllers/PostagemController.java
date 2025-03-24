@@ -228,7 +228,7 @@ public class PostagemController {
     }
 
     @PostMapping(value = "/temp/anexos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR') or hasRole('USER')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR')")
     public ResponseEntity<AnexoDto> addTempAnexo(
             @RequestParam("file") MultipartFile file) {
 
@@ -272,7 +272,7 @@ public class PostagemController {
 
     // Adicione endpoints para associar uploads temporários a uma postagem
     @PostMapping("/{id}/associar-imagem/{imagemId}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR') or hasRole('USER')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR')")
     public ResponseEntity<ImagemDto> associarImagem(
             @PathVariable UUID id,
             @PathVariable UUID imagemId) {
