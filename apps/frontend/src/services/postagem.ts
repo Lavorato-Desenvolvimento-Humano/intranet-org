@@ -165,18 +165,32 @@ const postagemService = {
 
       console.log("Enviando imagem para o servidor...");
 
-      // Usar a URL explícita para evitar problemas de duplicação de /api
-      // Remover o prefixo /api se já estiver na URL base
-      const response = await api.post<ImagemDto>(
-        "postagens/temp/imagens", // Remover o prefixo /api para evitar duplicação
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-          timeout: 30000, // 30 segundos
-        }
-      );
+      // Tentar ambos os padrões de endpoint
+      let response;
+      try {
+        response = await api.post<ImagemDto>(
+          "/api/postagens/temp/imagens",
+          formData,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+            timeout: 30000, // 30 segundos
+          }
+        );
+      } catch (err) {
+        console.log("Falha no primeiro endpoint, tentando alternativo...");
+        response = await api.post<ImagemDto>(
+          "/postagens/temp/imagens",
+          formData,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+            timeout: 30000,
+          }
+        );
+      }
 
       console.log("Imagem enviada com sucesso:", response.data);
       return response.data;

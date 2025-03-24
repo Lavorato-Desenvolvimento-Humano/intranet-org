@@ -183,16 +183,9 @@ public class PostagemController {
                 return ResponseEntity.badRequest().build();
             }
 
-            // Obter usuário atual
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            if (authentication == null) {
-                logger.error("Autenticação não encontrada");
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-            }
-
-            String currentUserEmail = authentication.getName();
-            User currentUser = userRepository.findByEmail(currentUserEmail)
-                    .orElseThrow(() -> new IllegalStateException("Usuário autenticado não encontrado"));
+            // Log de detalhes do arquivo para depuração
+            logger.info("Recebido arquivo: nome={}, tamanho={}, tipo={}",
+                    file.getOriginalFilename(), file.getSize(), file.getContentType());
 
             // Salvar arquivo
             String fileName = fileStorageService.storeFile(file);
@@ -201,7 +194,16 @@ public class PostagemController {
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
             }
 
-            String fileUrl = "/uploads/images/" + fileName;
+            // Tornar a URL consistente
+            String fileUrl = "/api/uploads/images/" + fileName;
+
+            // Confirmar que o arquivo existe após salvar
+            if (!fileStorageService.fileExists(fileName)) {
+                logger.error("Arquivo salvo mas não encontrado após salvar: {}", fileName);
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            }
+
+            logger.info("Arquivo salvo com sucesso: {}", fileName);
 
             // Criar entidade Imagem temporária (sem postagem)
             Imagem imagem = new Imagem();

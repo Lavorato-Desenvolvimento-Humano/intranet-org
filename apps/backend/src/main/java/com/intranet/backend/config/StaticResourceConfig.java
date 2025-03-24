@@ -64,6 +64,14 @@ public class StaticResourceConfig implements WebMvcConfigurer {
                 .addResourceLocations("file:" + uploadDir + "/")
                 .setCacheControl(cacheControl);
 
+        registry.addResourceHandler("/api/postagens/temp/imagens/**")
+                .addResourceLocations("file:" + uploadDir + "/")
+                .setCacheControl(cacheControl);
+
+        registry.addResourceHandler("/postagens/temp/imagens/**")
+                .addResourceLocations("file:" + uploadDir + "/")
+                .setCacheControl(cacheControl);
+
         logger.info("Configuração de recursos estáticos concluída");
     }
 }
