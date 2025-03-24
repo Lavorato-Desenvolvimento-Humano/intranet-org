@@ -56,7 +56,7 @@ export default function Navbar() {
             </Link>
 
             <Link
-              href="/tabelas"
+              href="/tabelas-valores"
               className="text-white hover:text-gray-200 flex items-center">
               <Table className="mr-1" size={18} />
               <span>Tabelas</span>

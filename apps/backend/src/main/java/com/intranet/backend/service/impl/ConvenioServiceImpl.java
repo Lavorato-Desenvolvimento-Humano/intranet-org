@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -47,7 +48,8 @@ public class ConvenioServiceImpl implements ConvenioService {
             }).collect(Collectors.toList());
         } catch (Exception e) {
             logger.error("Erro ao buscar convênios: {}", e.getMessage(), e);
-            throw e;
+            // Retorna uma lista vazia em vez de lançar exceção para evitar quebrar a UI
+            return new ArrayList<>();
         }
     }
 
