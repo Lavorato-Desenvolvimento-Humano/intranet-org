@@ -73,7 +73,7 @@ const postagemService = {
   }> => {
     try {
       const response = await api.get<any>(
-        `/api/postagens?page=${page}&size=${size}`
+        `/postagens?page=${page}&size=${size}`
       );
       return response.data;
     } catch (error) {
@@ -87,7 +87,7 @@ const postagemService = {
    */
   getPostagemById: async (id: string): Promise<PostagemDto> => {
     try {
-      const response = await api.get<PostagemDto>(`/api/postagens/${id}`);
+      const response = await api.get<PostagemDto>(`/postagens/${id}`);
       return response.data;
     } catch (error) {
       console.error(`Erro ao buscar postagem ${id}:`, error);
@@ -100,9 +100,7 @@ const postagemService = {
    */
   getMinhasPostagens: async (): Promise<PostagemSummaryDto[]> => {
     try {
-      const response = await api.get<PostagemSummaryDto[]>(
-        "/api/postagens/minhas"
-      );
+      const response = await api.get<PostagemSummaryDto[]>("/postagens/minhas");
       return response.data;
     } catch (error) {
       console.error("Erro ao buscar minhas postagens:", error);
@@ -115,7 +113,7 @@ const postagemService = {
    */
   createPostagem: async (postagem: PostagemCreateDto): Promise<PostagemDto> => {
     try {
-      const response = await api.post<PostagemDto>("/api/postagens", postagem);
+      const response = await api.post<PostagemDto>("/postagens", postagem);
       return response.data;
     } catch (error) {
       console.error("Erro ao criar postagem:", error);
@@ -131,10 +129,7 @@ const postagemService = {
     postagem: PostagemCreateDto
   ): Promise<PostagemDto> => {
     try {
-      const response = await api.put<PostagemDto>(
-        `/api/postagens/${id}`,
-        postagem
-      );
+      const response = await api.put<PostagemDto>(`/postagens/${id}`, postagem);
       return response.data;
     } catch (error) {
       console.error(`Erro ao atualizar postagem ${id}:`, error);
@@ -147,7 +142,7 @@ const postagemService = {
    */
   deletePostagem: async (id: string): Promise<void> => {
     try {
-      await api.delete(`/api/postagens/${id}`);
+      await api.delete(`/postagens/${id}`);
     } catch (error) {
       console.error(`Erro ao excluir postagem ${id}:`, error);
       throw error;
@@ -171,7 +166,7 @@ const postagemService = {
       console.log("Enviando imagem para o servidor...");
 
       const response = await api.post<ImagemDto>(
-        `/api/postagens/temp/imagens`,
+        `/postagens/temp/imagens`, // Remove o prefixo /api para evitar duplicação
         formData,
         {
           headers: {
@@ -190,9 +185,22 @@ const postagemService = {
       let errorMessage = "Erro desconhecido ao fazer upload da imagem";
 
       if (error.response) {
-        errorMessage = `Erro do servidor (${error.response.status}): ${
-          error.response.data?.message || "Falha no processamento da imagem"
-        }`;
+        // Melhorar log para depuração
+        console.error("Status do erro:", error.response.status);
+        console.error("Dados do erro:", error.response.data);
+
+        // Personalizar mensagem baseada no status
+        if (error.response.status === 413) {
+          errorMessage =
+            "A imagem é muito grande. Por favor, use uma imagem menor.";
+        } else if (error.response.status === 415) {
+          errorMessage = "Formato de imagem não suportado.";
+        } else if (error.response.status === 500) {
+          errorMessage =
+            "Erro no servidor. Por favor, tente novamente mais tarde.";
+        } else if (error.response.data?.message) {
+          errorMessage = error.response.data.message;
+        }
       } else if (error.request) {
         errorMessage = "Servidor não respondeu. Verifique sua conexão.";
       } else {
@@ -213,7 +221,7 @@ const postagemService = {
       formData.append("file", file);
 
       const response = await api.post<AnexoDto>(
-        `/api/postagens/temp/anexos`,
+        `/postagens/temp/anexos`, // Corrigido para evitar duplicação
         formData,
         {
           headers: {
@@ -222,9 +230,16 @@ const postagemService = {
         }
       );
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Erro ao adicionar anexo temporário:`, error);
-      throw error;
+
+      // Tratamento de erro melhorado
+      let message = "Erro ao fazer upload do arquivo";
+      if (error.response?.data?.message) {
+        message = error.response.data.message;
+      }
+
+      throw new Error(message);
     }
   },
 
@@ -244,7 +259,7 @@ const postagemService = {
       }
 
       const response = await api.post<ImagemDto>(
-        `/api/postagens/${postagemId}/imagens`,
+        `/postagens/${postagemId}/imagens`,
         formData,
         {
           headers: {
@@ -267,7 +282,7 @@ const postagemService = {
    */
   deleteImagem: async (id: string): Promise<void> => {
     try {
-      await api.delete(`/api/postagens/imagens/${id}`);
+      await api.delete(`/postagens/imagens/${id}`);
     } catch (error) {
       console.error(`Erro ao excluir imagem ${id}:`, error);
       throw error;
@@ -283,7 +298,7 @@ const postagemService = {
       formData.append("file", file);
 
       const response = await api.post<AnexoDto>(
-        `/api/postagens/${postagemId}/anexos`,
+        `/postagens/${postagemId}/anexos`,
         formData,
         {
           headers: {
@@ -303,7 +318,7 @@ const postagemService = {
    */
   deleteAnexo: async (id: string): Promise<void> => {
     try {
-      await api.delete(`/api/postagens/anexos/${id}`);
+      await api.delete(`/postagens/anexos/${id}`);
     } catch (error) {
       console.error(`Erro ao excluir anexo ${id}:`, error);
       throw error;
@@ -319,7 +334,7 @@ const postagemService = {
   ): Promise<TabelaPostagemDto> => {
     try {
       const response = await api.post<TabelaPostagemDto>(
-        `/api/postagens/${postagemId}/tabelas`,
+        `/postagens/${postagemId}/tabelas`,
         conteudoJson,
         {
           headers: {
@@ -346,7 +361,7 @@ const postagemService = {
   ): Promise<TabelaPostagemDto> => {
     try {
       const response = await api.put<TabelaPostagemDto>(
-        `/api/postagens/tabelas/${id}`,
+        `/postagens/tabelas/${id}`,
         conteudoJson,
         {
           headers: {
@@ -366,7 +381,7 @@ const postagemService = {
    */
   deleteTabela: async (id: string): Promise<void> => {
     try {
-      await api.delete(`/api/postagens/tabelas/${id}`);
+      await api.delete(`/postagens/tabelas/${id}`);
     } catch (error) {
       console.error(`Erro ao excluir tabela ${id}:`, error);
       throw error;
@@ -382,7 +397,7 @@ const postagemService = {
   ): Promise<ImagemDto> => {
     try {
       const response = await api.post<ImagemDto>(
-        `/api/postagens/${postagemId}/associar-imagem/${imagemId}`
+        `/postagens/${postagemId}/associar-imagem/${imagemId}`
       );
       return response.data;
     } catch (error) {
@@ -400,7 +415,7 @@ const postagemService = {
   ): Promise<AnexoDto> => {
     try {
       const response = await api.post<AnexoDto>(
-        `/api/postagens/${postagemId}/associar-anexo/${anexoId}`
+        `/postagens/${postagemId}/associar-anexo/${anexoId}`
       );
       return response.data;
     } catch (error) {
