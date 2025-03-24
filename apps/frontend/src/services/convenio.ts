@@ -56,7 +56,7 @@ const convenioService = {
       try {
         console.log("Tentando URL alternativa para buscar convênios...");
         const altResponse = await axios.get<ConvenioDto[]>(
-          "https://dev.lavorato.app.br/api/convenios",
+          "https://dev.lavorato.app.br/api/api/convenios",
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,
