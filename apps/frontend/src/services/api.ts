@@ -4,9 +4,11 @@ import axios from "axios";
 // Auto-detectar ambiente
 const isDevelopment =
   typeof window !== "undefined" && window.location.hostname === "localhost";
+
+// Configurar a URL base dependendo do ambiente
 const baseURL = isDevelopment
-  ? "http://localhost:8443/api"
-  : "https://dev.lavorato.app.br/api";
+  ? "http://localhost:8443" // Em desenvolvimento, conectar diretamente ao backend
+  : ""; // Em produção, usar o caminho relativo
 
 // Criar instância axios com configurações otimizadas
 const api = axios.create({
@@ -18,24 +20,22 @@ const api = axios.create({
   timeout: 20000,
 });
 
-// Adicionar token JWT a todas as requisições
+// Adicionar prefixo /api/ a todas as requisições
 api.interceptors.request.use(
   (config) => {
+    // Adicionar o token JWT
     const token = localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    // Log para depuração
-    console.log(`Fazendo requisição para: ${config.baseURL}${config.url}`);
+    // Adicionar prefixo /api/ às requisições se ainda não tiver
+    if (config.url && !config.url.startsWith("/api/")) {
+      config.url = `/api${config.url}`; // Garantir que comece com /api/
+    }
 
-    // Verificar se a URL já contém /api para evitar duplicação
-    // if (config.url && config.url.startsWith("/api/")) {
-    //   console.log(
-    //     "URL já contém prefixo /api/, ajustando para evitar duplicação"
-    //   );
-    //   config.url = config.url.substring(4); // Remover '/api' do início
-    // }
+    // Log para depuração
+    console.log(`Fazendo requisição para: ${config.url}`);
 
     return config;
   },
