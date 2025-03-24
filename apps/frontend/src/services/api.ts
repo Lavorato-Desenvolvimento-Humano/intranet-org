@@ -5,11 +5,11 @@ import axios from "axios";
 const isDevelopment =
   typeof window !== "undefined" && window.location.hostname === "localhost";
 
-// Como o NGINX está configurado para rotear /api/ para o backend,
-// não precisamos incluir o host completo do backend
+// Como os controllers do backend já incluem o prefixo /api/ nos caminhos,
+// não devemos incluí-lo no baseURL para evitar duplicação
 const baseURL = isDevelopment
-  ? "http://localhost:8443/api" // Em desenvolvimento, conectar diretamente ao backend
-  : "/api"; // Em produção, usar o caminho relativo que o NGINX irá rotear
+  ? "http://localhost:8443" // Em desenvolvimento, conectar diretamente ao backend
+  : ""; // Em produção, usar o caminho relativo sem /api
 
 // Criar instância axios com configurações otimizadas
 const api = axios.create({
