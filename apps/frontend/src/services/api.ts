@@ -8,7 +8,7 @@ const isDevelopment =
 // Configurar a URL base dependendo do ambiente
 const baseURL = isDevelopment
   ? "http://localhost:8443/api" // Em desenvolvimento, conectar diretamente ao backend com /api já incluído
-  : "https://dev.lavorato.app.br/api"; // Em produção, usar o caminho relativo com /api já incluído
+  : "/api"; // Em produção, usar o caminho relativo com /api já incluído
 
 // Criar instância axios com configurações otimizadas
 const api = axios.create({
