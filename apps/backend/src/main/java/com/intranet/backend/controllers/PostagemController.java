@@ -228,7 +228,7 @@ public class PostagemController {
     }
 
     @PostMapping(value = "/temp/anexos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR') or hasRole('USER')")
     public ResponseEntity<AnexoDto> addTempAnexo(
             @RequestParam("file") MultipartFile file) {
 

@@ -29,6 +29,14 @@ api.interceptors.request.use(
     // Log para depuração
     console.log(`Fazendo requisição para: ${config.baseURL}${config.url}`);
 
+    // Verificar se a URL já contém /api para evitar duplicação
+    if (config.url && config.url.startsWith("/api/")) {
+      console.log(
+        "URL já contém prefixo /api/, ajustando para evitar duplicação"
+      );
+      config.url = config.url.substring(4); // Remover '/api' do início
+    }
+
     return config;
   },
   (error) => {

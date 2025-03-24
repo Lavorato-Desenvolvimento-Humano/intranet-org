@@ -78,6 +78,9 @@ public class SecurityConfig {
                                 .requestMatchers("/api/profile-images/**").permitAll()
                                 .requestMatchers("/profile-images/**").permitAll()
 
+                                // Explicitamente permitir upload temporário de arquivos
+                                .requestMatchers("/api/postagens/temp/**").authenticated()
+
                                 // All other requests need authentication
                                 .anyRequest().authenticated()
                 );

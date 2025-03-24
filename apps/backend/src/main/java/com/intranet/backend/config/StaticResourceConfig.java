@@ -59,6 +59,11 @@ public class StaticResourceConfig implements WebMvcConfigurer {
                 .addResourceLocations("file:" + uploadDir + "/")
                 .setCacheControl(cacheControl);
 
+        // Opção 7: Servir arquivos temporários
+        registry.addResourceHandler("/api/postagens/temp/**")
+                .addResourceLocations("file:" + uploadDir + "/")
+                .setCacheControl(cacheControl);
+
         logger.info("Configuração de recursos estáticos concluída");
     }
 }

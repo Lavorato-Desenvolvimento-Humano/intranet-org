@@ -75,7 +75,7 @@ public class FileStorageService {
         // Verificar o tamanho do arquivo
         if (file.getSize() > MAX_FILE_SIZE) {
             logger.error("Arquivo excede o tamanho máximo permitido: {} bytes", file.getSize());
-            throw new FileStorageException("Arquivo excede o tamanho máximo permitido de 5MB");
+            throw new FileStorageException("Arquivo excede o tamanho máximo permitido de 10MB");
         }
 
         // Verificar o tipo de conteúdo do arquivo
@@ -108,7 +108,11 @@ public class FileStorageService {
             String subdir = contentType.startsWith("image/") ? "images" : "files";
             Path targetLocation = this.fileStorageLocation.resolve(subdir).resolve(newFilename);
 
+            // Garantir que o diretório de destino existe
+            Files.createDirectories(targetLocation.getParent());
+
             // Copia o arquivo para o diretório de destino
+            logger.debug("Copiando arquivo para: {}", targetLocation);
             Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
             logger.info("Arquivo armazenado com sucesso: {}", newFilename);
 
@@ -122,7 +126,7 @@ public class FileStorageService {
                 throw new FileStorageException("Arquivo foi criado, mas não pode ser lido: " + newFilename);
             }
 
-            return newFilename;
+            return subdir + "/" + newFilename;
         } catch (IOException ex) {
             logger.error("Não foi possível armazenar o arquivo: {}", originalFilename, ex);
             throw new FileStorageException("Não foi possível armazenar o arquivo " + originalFilename + ". Por favor, tente novamente!", ex);
@@ -136,14 +140,40 @@ public class FileStorageService {
         }
 
         try {
-            Path filePath = this.fileStorageLocation.resolve(filename).normalize();
+            // Extrair o nome do arquivo do caminho completo, se necessário
+            String cleanFilename = filename;
+            if (cleanFilename.contains("/")) {
+                cleanFilename = cleanFilename.substring(cleanFilename.lastIndexOf("/") + 1);
+            }
+
+            // Tentar em diferentes diretórios possíveis
+            Path imageFilePath = this.fileStorageLocation.resolve("images").resolve(cleanFilename).normalize();
+            Path fileFilePath = this.fileStorageLocation.resolve("files").resolve(cleanFilename).normalize();
 
             // Verificar se o arquivo existe antes de tentar excluí-lo
-            if (Files.exists(filePath)) {
-                Files.deleteIfExists(filePath);
-                logger.info("Arquivo excluído com sucesso: {}", filename);
-            } else {
-                logger.warn("Arquivo não encontrado para exclusão: {}", filename);
+            boolean deleted = false;
+
+            if (Files.exists(imageFilePath)) {
+                Files.deleteIfExists(imageFilePath);
+                logger.info("Arquivo de imagem excluído com sucesso: {}", cleanFilename);
+                deleted = true;
+            }
+
+            if (Files.exists(fileFilePath)) {
+                Files.deleteIfExists(fileFilePath);
+                logger.info("Arquivo de documento excluído com sucesso: {}", cleanFilename);
+                deleted = true;
+            }
+
+            if (!deleted) {
+                // Tentar diretamente no diretório raiz como último recurso
+                Path rootFilePath = this.fileStorageLocation.resolve(cleanFilename).normalize();
+                if (Files.exists(rootFilePath)) {
+                    Files.deleteIfExists(rootFilePath);
+                    logger.info("Arquivo excluído do diretório raiz: {}", cleanFilename);
+                } else {
+                    logger.warn("Arquivo não encontrado para exclusão: {}", cleanFilename);
+                }
             }
         } catch (IOException ex) {
             logger.error("Não foi possível excluir o arquivo: {}", filename, ex);
@@ -166,8 +196,18 @@ public class FileStorageService {
         }
 
         try {
-            Path filePath = this.fileStorageLocation.resolve(filename).normalize();
-            return Files.exists(filePath);
+            // Extrair o nome do arquivo do caminho completo, se necessário
+            String cleanFilename = filename;
+            if (cleanFilename.contains("/")) {
+                cleanFilename = cleanFilename.substring(cleanFilename.lastIndexOf("/") + 1);
+            }
+
+            // Verificar nos subdiretórios
+            Path imageFilePath = this.fileStorageLocation.resolve("images").resolve(cleanFilename).normalize();
+            Path fileFilePath = this.fileStorageLocation.resolve("files").resolve(cleanFilename).normalize();
+            Path rootFilePath = this.fileStorageLocation.resolve(cleanFilename).normalize();
+
+            return Files.exists(imageFilePath) || Files.exists(fileFilePath) || Files.exists(rootFilePath);
         } catch (Exception ex) {
             logger.error("Erro ao verificar existência do arquivo: {}", filename, ex);
             return false;
@@ -181,7 +221,39 @@ public class FileStorageService {
         }
 
         try {
-            Path filePath = this.fileStorageLocation.resolve(filename).normalize();
+            // Extrair o nome do arquivo e subdiretório, se presente
+            String subdir = "";
+            String cleanFilename = filename;
+
+            if (cleanFilename.startsWith("images/")) {
+                subdir = "images";
+                cleanFilename = cleanFilename.substring(7); // Remover "images/"
+            } else if (cleanFilename.startsWith("files/")) {
+                subdir = "files";
+                cleanFilename = cleanFilename.substring(6); // Remover "files/"
+            } else if (cleanFilename.contains("/")) {
+                // Se há uma barra, mas não começa com os subdiretórios conhecidos
+                cleanFilename = cleanFilename.substring(cleanFilename.lastIndexOf("/") + 1);
+            }
+
+            Path filePath;
+            if (!subdir.isEmpty()) {
+                filePath = this.fileStorageLocation.resolve(subdir).resolve(cleanFilename).normalize();
+            } else {
+                // Verificar em diferentes diretórios possíveis
+                Path imagePath = this.fileStorageLocation.resolve("images").resolve(cleanFilename).normalize();
+                Path filesPath = this.fileStorageLocation.resolve("files").resolve(cleanFilename).normalize();
+                Path rootPath = this.fileStorageLocation.resolve(cleanFilename).normalize();
+
+                if (Files.exists(imagePath)) {
+                    filePath = imagePath;
+                } else if (Files.exists(filesPath)) {
+                    filePath = filesPath;
+                } else {
+                    filePath = rootPath;
+                }
+            }
+
             return filePath.toString();
         } catch (Exception ex) {
             logger.error("Erro ao obter caminho absoluto do arquivo: {}", filename, ex);

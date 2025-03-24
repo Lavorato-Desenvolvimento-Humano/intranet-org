@@ -165,8 +165,10 @@ const postagemService = {
 
       console.log("Enviando imagem para o servidor...");
 
+      // Usar a URL explícita para evitar problemas de duplicação de /api
+      // Remover o prefixo /api se já estiver na URL base
       const response = await api.post<ImagemDto>(
-        `/postagens/temp/imagens`, // Remove o prefixo /api para evitar duplicação
+        "postagens/temp/imagens", // Remover o prefixo /api para evitar duplicação
         formData,
         {
           headers: {
@@ -221,7 +223,7 @@ const postagemService = {
       formData.append("file", file);
 
       const response = await api.post<AnexoDto>(
-        `/postagens/temp/anexos`, // Corrigido para evitar duplicação
+        "postagens/temp/anexos", // Corrigido para evitar duplicação de /api
         formData,
         {
           headers: {
@@ -384,42 +386,6 @@ const postagemService = {
       await api.delete(`/postagens/tabelas/${id}`);
     } catch (error) {
       console.error(`Erro ao excluir tabela ${id}:`, error);
-      throw error;
-    }
-  },
-
-  /**
-   * Associa uma imagem temporária a uma postagem
-   */
-  associateImage: async (
-    postagemId: string,
-    imagemId: string
-  ): Promise<ImagemDto> => {
-    try {
-      const response = await api.post<ImagemDto>(
-        `/postagens/${postagemId}/associar-imagem/${imagemId}`
-      );
-      return response.data;
-    } catch (error) {
-      console.error(`Erro ao associar imagem à postagem:`, error);
-      throw error;
-    }
-  },
-
-  /**
-   * Associa um anexo temporário a uma postagem
-   */
-  associateAttachment: async (
-    postagemId: string,
-    anexoId: string
-  ): Promise<AnexoDto> => {
-    try {
-      const response = await api.post<AnexoDto>(
-        `/postagens/${postagemId}/associar-anexo/${anexoId}`
-      );
-      return response.data;
-    } catch (error) {
-      console.error(`Erro ao associar anexo à postagem:`, error);
       throw error;
     }
   },
