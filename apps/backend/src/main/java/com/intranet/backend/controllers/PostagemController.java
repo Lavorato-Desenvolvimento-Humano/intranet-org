@@ -12,6 +12,8 @@ import com.intranet.backend.repository.PostagemRepository;
 import com.intranet.backend.repository.UserRepository;
 import com.intranet.backend.service.FileStorageService;
 import com.intranet.backend.service.PostagemService;
+import com.intranet.backend.util.FileHelper;
+import com.intranet.backend.util.ResponseUtil;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -20,7 +22,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -50,21 +51,21 @@ public class PostagemController {
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         logger.info("Requisição para listar todas as postagens");
         Page<PostagemSummaryDto> postagens = postagemService.getAllPostagens(pageable);
-        return ResponseEntity.ok(postagens);
+        return ResponseUtil.success(postagens);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<PostagemDto> getPostagemById(@PathVariable UUID id) {
         logger.info("Requisição para buscar postagem com ID: {}", id);
         PostagemDto postagem = postagemService.getPostagemById(id);
-        return ResponseEntity.ok(postagem);
+        return ResponseUtil.success(postagem);
     }
 
     @GetMapping("/minhas")
     public ResponseEntity<List<PostagemSummaryDto>> getPostagensByCurrentUser() {
         logger.info("Requisição para listar postagens do usuário atual");
         List<PostagemSummaryDto> postagens = postagemService.getPostagensByCurrentUser();
-        return ResponseEntity.ok(postagens);
+        return ResponseUtil.success(postagens);
     }
 
     @PostMapping
@@ -72,7 +73,7 @@ public class PostagemController {
     public ResponseEntity<PostagemDto> createPostagem(@Valid @RequestBody PostagemCreateDto postagemCreateDto) {
         logger.info("Requisição para criar nova postagem: {}", postagemCreateDto.getTitle());
         PostagemDto createdPostagem = postagemService.createPostagem(postagemCreateDto);
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdPostagem);
+        return ResponseUtil.created(createdPostagem);
     }
 
     @PutMapping("/{id}")
@@ -82,7 +83,7 @@ public class PostagemController {
             @Valid @RequestBody PostagemCreateDto postagemUpdateDto) {
         logger.info("Requisição para atualizar postagem com ID: {}", id);
         PostagemDto updatedPostagem = postagemService.updatePostagem(id, postagemUpdateDto);
-        return ResponseEntity.ok(updatedPostagem);
+        return ResponseUtil.success(updatedPostagem);
     }
 
     @DeleteMapping("/{id}")
@@ -90,7 +91,7 @@ public class PostagemController {
     public ResponseEntity<Void> deletePostagem(@PathVariable UUID id) {
         logger.info("Requisição para deletar postagem com ID: {}", id);
         postagemService.deletePostagem(id);
-        return ResponseEntity.noContent().build();
+        return ResponseUtil.noContent();
     }
 
     // Endpoints para manipulação de imagens
@@ -101,8 +102,15 @@ public class PostagemController {
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "description", required = false) String description) {
         logger.info("Requisição para adicionar imagem à postagem com ID: {}", id);
+
+        // Validar o arquivo de imagem
+        String errorMessage = FileHelper.validateFile(file, true);
+        if (errorMessage != null) {
+            return ResponseEntity.badRequest().build();
+        }
+
         ImagemDto imagem = postagemService.addImagem(id, file, description);
-        return ResponseEntity.status(HttpStatus.CREATED).body(imagem);
+        return ResponseUtil.created(imagem);
     }
 
     @DeleteMapping("/imagens/{id}")
@@ -110,7 +118,7 @@ public class PostagemController {
     public ResponseEntity<Void> deleteImagem(@PathVariable UUID id) {
         logger.info("Requisição para deletar imagem com ID: {}", id);
         postagemService.deleteImagem(id);
-        return ResponseEntity.noContent().build();
+        return ResponseUtil.noContent();
     }
 
     // Endpoints para manipulação de anexos
@@ -120,8 +128,15 @@ public class PostagemController {
             @PathVariable UUID id,
             @RequestParam("file") MultipartFile file) {
         logger.info("Requisição para adicionar anexo à postagem com ID: {}", id);
+
+        // Validar o arquivo
+        String errorMessage = FileHelper.validateFile(file, false);
+        if (errorMessage != null) {
+            return ResponseEntity.badRequest().build();
+        }
+
         AnexoDto anexo = postagemService.addAnexo(id, file);
-        return ResponseEntity.status(HttpStatus.CREATED).body(anexo);
+        return ResponseUtil.created(anexo);
     }
 
     @DeleteMapping("/anexos/{id}")
@@ -129,7 +144,7 @@ public class PostagemController {
     public ResponseEntity<Void> deleteAnexo(@PathVariable UUID id) {
         logger.info("Requisição para deletar anexo com ID: {}", id);
         postagemService.deleteAnexo(id);
-        return ResponseEntity.noContent().build();
+        return ResponseUtil.noContent();
     }
 
     // Endpoints para manipulação de tabelas
@@ -140,7 +155,7 @@ public class PostagemController {
             @RequestBody String conteudoJson) {
         logger.info("Requisição para adicionar tabela à postagem com ID: {}", id);
         TabelaPostagemDto tabela = postagemService.addTabelaPostagem(id, conteudoJson);
-        return ResponseEntity.status(HttpStatus.CREATED).body(tabela);
+        return ResponseUtil.created(tabela);
     }
 
     @PutMapping("/tabelas/{id}")
@@ -150,7 +165,7 @@ public class PostagemController {
             @RequestBody String conteudoJson) {
         logger.info("Requisição para atualizar tabela com ID: {}", id);
         TabelaPostagemDto tabela = postagemService.updateTabelaPostagem(id, conteudoJson);
-        return ResponseEntity.ok(tabela);
+        return ResponseUtil.success(tabela);
     }
 
     @DeleteMapping("/tabelas/{id}")
@@ -158,14 +173,14 @@ public class PostagemController {
     public ResponseEntity<Void> deleteTabela(@PathVariable UUID id) {
         logger.info("Requisição para deletar tabela com ID: {}", id);
         postagemService.deleteTabelaPostagem(id);
-        return ResponseEntity.noContent().build();
+        return ResponseUtil.noContent();
     }
 
     @GetMapping("/nova")
     public ResponseEntity<PostagemCreateDto> getNovaPostagemFormulario() {
         // Retornar um modelo vazio para o formulário de nova postagem
         PostagemCreateDto postagemCreateDto = new PostagemCreateDto();
-        return ResponseEntity.ok(postagemCreateDto);
+        return ResponseUtil.success(postagemCreateDto);
     }
 
     @PostMapping(value = "/temp/imagens", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -177,40 +192,21 @@ public class PostagemController {
         logger.info("Requisição para adicionar imagem temporária");
 
         try {
-            // Validação do arquivo
-            if (file.isEmpty()) {
-                logger.error("Arquivo vazio enviado");
+            // Validar o arquivo
+            String errorMessage = FileHelper.validateFile(file, true);
+            if (errorMessage != null) {
                 return ResponseEntity.badRequest().build();
             }
 
-            // Log de detalhes do arquivo para depuração
-            logger.info("Recebido arquivo: nome={}, tamanho={}, tipo={}",
-                    file.getOriginalFilename(), file.getSize(), file.getContentType());
-
             // Salvar arquivo
             String fileName = fileStorageService.storeFile(file);
-            if (fileName == null || fileName.isEmpty()) {
-                logger.error("Falha ao salvar arquivo");
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-            }
-
-            // Tornar a URL consistente
-            String fileUrl = "/api/uploads/images/" + fileName;
-
-            // Confirmar que o arquivo existe após salvar
-            if (!fileStorageService.fileExists(fileName)) {
-                logger.error("Arquivo salvo mas não encontrado após salvar: {}", fileName);
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-            }
-
-            logger.info("Arquivo salvo com sucesso: {}", fileName);
+            String fileUrl = "/api/uploads/images/" + FileHelper.extractFileNameFromUrl(fileName);
 
             // Criar entidade Imagem temporária (sem postagem)
             Imagem imagem = new Imagem();
             imagem.setId(UUID.randomUUID());
             imagem.setUrl(fileUrl);
             imagem.setDescription(description);
-            // Não definir postagem ainda
 
             // Salvar no banco de dados
             Imagem savedImagem = imagemRepository.save(imagem);
@@ -222,30 +218,31 @@ public class PostagemController {
             imagemDto.setUrl(savedImagem.getUrl());
             imagemDto.setDescription(savedImagem.getDescription());
 
-            return ResponseEntity.status(HttpStatus.CREATED).body(imagemDto);
+            return ResponseUtil.created(imagemDto);
         } catch (Exception e) {
-            logger.error("Erro ao adicionar imagem temporária: {} - StackTrace: {}", e.getMessage(), e.getStackTrace());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            logger.error("Erro ao adicionar imagem temporária: {}", e.getMessage(), e);
+            return ResponseUtil.<ImagemDto>serverError("Erro ao processar imagem temporária");
         }
     }
 
     @PostMapping(value = "/temp/anexos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR') or hasRole('USER')")
-    public ResponseEntity<AnexoDto> addTempAnexo(
-            @RequestParam("file") MultipartFile file) {
-
+    public ResponseEntity<AnexoDto> addTempAnexo(@RequestParam("file") MultipartFile file) {
         logger.info("Requisição para adicionar anexo temporário");
 
         try {
+            // Validar o arquivo
+            String errorMessage = FileHelper.validateFile(file, false);
+            if (errorMessage != null) {
+                return ResponseEntity.badRequest().build();
+            }
+
             // Obter usuário atual
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            String currentUserEmail = authentication.getName();
-            User currentUser = userRepository.findByEmail(currentUserEmail)
-                    .orElseThrow(() -> new IllegalStateException("Usuário autenticado não encontrado"));
+            User currentUser = getCurrentUser();
 
             // Salvar arquivo
             String fileName = fileStorageService.storeFile(file);
-            String fileUrl = "/uploads/files/" + fileName;
+            String fileUrl = "/uploads/files/" + FileHelper.extractFileNameFromUrl(fileName);
 
             // Criar entidade Anexo temporária (sem postagem)
             Anexo anexo = new Anexo();
@@ -253,10 +250,10 @@ public class PostagemController {
             anexo.setNameFile(file.getOriginalFilename());
             anexo.setTypeFile(file.getContentType());
             anexo.setUrl(fileUrl);
-            // Não definir postagem ainda
 
             // Salvar no banco de dados
             Anexo savedAnexo = anexoRepository.save(anexo);
+            logger.info("Anexo temporário salvo com sucesso: {}", savedAnexo.getId());
 
             // Criar DTO para retorno
             AnexoDto anexoDto = new AnexoDto();
@@ -265,16 +262,16 @@ public class PostagemController {
             anexoDto.setTypeFile(savedAnexo.getTypeFile());
             anexoDto.setUrl(savedAnexo.getUrl());
 
-            return ResponseEntity.status(HttpStatus.CREATED).body(anexoDto);
+            return ResponseUtil.created(anexoDto);
         } catch (Exception e) {
             logger.error("Erro ao adicionar anexo temporário: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return ResponseUtil.<AnexoDto>serverError("Erro ao processar anexo temporário");
         }
     }
 
-    // Adicione endpoints para associar uploads temporários a uma postagem
+    // Endpoints para associar uploads temporários a uma postagem
     @PostMapping("/{id}/associar-imagem/{imagemId}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR') or hasRole('USER')")
     public ResponseEntity<ImagemDto> associarImagem(
             @PathVariable UUID id,
             @PathVariable UUID imagemId) {
@@ -289,7 +286,7 @@ public class PostagemController {
             // Verificar se o usuário atual é o criador da postagem
             User currentUser = getCurrentUser();
             if (!postagem.getCreatedBy().getId().equals(currentUser.getId())) {
-                throw new IllegalStateException("Apenas o criador da postagem pode associar imagens");
+                return ResponseUtil.<ImagemDto>forbidden("Apenas o criador da postagem pode associar imagens");
             }
 
             // Buscar imagem
@@ -310,12 +307,12 @@ public class PostagemController {
             imagemDto.setUrl(savedImagem.getUrl());
             imagemDto.setDescription(savedImagem.getDescription());
 
-            return ResponseEntity.ok(imagemDto);
+            return ResponseUtil.success(imagemDto);
         } catch (ResourceNotFoundException e) {
-            return ResponseEntity.notFound().build();
+            return ResponseUtil.<ImagemDto>notFound(e.getMessage());
         } catch (Exception e) {
             logger.error("Erro ao associar imagem: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return ResponseUtil.<ImagemDto>serverError("Erro ao associar imagem");
         }
     }
 
@@ -335,7 +332,7 @@ public class PostagemController {
             // Verificar se o usuário atual é o criador da postagem
             User currentUser = getCurrentUser();
             if (!postagem.getCreatedBy().getId().equals(currentUser.getId())) {
-                throw new IllegalStateException("Apenas o criador da postagem pode associar anexos");
+                return ResponseUtil.<AnexoDto>forbidden("Apenas o criador da postagem pode associar anexos");
             }
 
             // Buscar anexo
@@ -357,12 +354,12 @@ public class PostagemController {
             anexoDto.setTypeFile(savedAnexo.getTypeFile());
             anexoDto.setUrl(savedAnexo.getUrl());
 
-            return ResponseEntity.ok(anexoDto);
+            return ResponseUtil.success(anexoDto);
         } catch (ResourceNotFoundException e) {
-            return ResponseEntity.notFound().build();
+            return ResponseUtil.<AnexoDto>notFound(e.getMessage());
         } catch (Exception e) {
             logger.error("Erro ao associar anexo: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return ResponseUtil.<AnexoDto>serverError("Erro ao associar anexo");
         }
     }
 

@@ -169,7 +169,7 @@ const postagemService = {
       let response;
       try {
         response = await api.post<ImagemDto>(
-          "/api/postagens/temp/imagens",
+          "/postagens/temp/imagens",
           formData,
           {
             headers: {

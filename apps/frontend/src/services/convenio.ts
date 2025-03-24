@@ -36,17 +36,11 @@ const convenioService = {
   /**
    * Obtém todos os convênios
    */
-  /**
-   * Obtém todos os convênios
-   */
-  /**
-   * Obtém todos os convênios
-   */
   getAllConvenios: async (): Promise<ConvenioDto[]> => {
     try {
       console.log("Iniciando busca de convênios...");
       // Use a URL correta sem duplicar /api
-      const response = await api.get<ConvenioDto[]>("/convenios");
+      const response = await api.get<ConvenioDto[]>("/api/convenios");
       console.log("Convênios recebidos:", response.data);
       return response.data;
     } catch (error) {
@@ -83,7 +77,7 @@ const convenioService = {
    */
   getConvenioById: async (id: string): Promise<ConvenioDto> => {
     try {
-      const response = await api.get<ConvenioDto>(`/convenios/${id}`);
+      const response = await api.get<ConvenioDto>(`/api/convenios/${id}`);
       return response.data;
     } catch (error) {
       console.error(`Erro ao buscar convênio ${id}:`, error);
@@ -96,7 +90,7 @@ const convenioService = {
    */
   createConvenio: async (convenio: ConvenioCreateDto): Promise<ConvenioDto> => {
     try {
-      const response = await api.post<ConvenioDto>("/convenios", convenio);
+      const response = await api.post<ConvenioDto>("/api/convenios", convenio);
       return response.data;
     } catch (error) {
       console.error("Erro ao criar convênio:", error);
@@ -112,7 +106,10 @@ const convenioService = {
     convenio: ConvenioCreateDto
   ): Promise<ConvenioDto> => {
     try {
-      const response = await api.put<ConvenioDto>(`/convenios/${id}`, convenio);
+      const response = await api.put<ConvenioDto>(
+        `/api/convenios/${id}`,
+        convenio
+      );
       return response.data;
     } catch (error) {
       console.error(`Erro ao atualizar convênio ${id}:`, error);
@@ -125,7 +122,7 @@ const convenioService = {
    */
   deleteConvenio: async (id: string): Promise<void> => {
     try {
-      await api.delete(`/convenios/${id}`);
+      await api.delete(`/api/convenios/${id}`);
     } catch (error) {
       console.error(`Erro ao excluir convênio ${id}:`, error);
       throw error;
@@ -138,7 +135,7 @@ const convenioService = {
   getPostagens: async (convenioId: string): Promise<PostagemSummaryDto[]> => {
     try {
       const response = await api.get<PostagemSummaryDto[]>(
-        `/convenios/${convenioId}/postagens`
+        `/api/convenios/${convenioId}/postagens`
       );
       return response.data;
     } catch (error) {
@@ -156,7 +153,7 @@ const convenioService = {
   countPostagens: async (convenioId: string): Promise<number> => {
     try {
       const response = await api.get<number>(
-        `/convenios/${convenioId}/postagens/count`
+        `/api/convenios/${convenioId}/postagens/count`
       );
       return response.data;
     } catch (error) {

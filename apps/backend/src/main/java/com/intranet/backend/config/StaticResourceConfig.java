@@ -11,7 +11,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Configuração para servir arquivos estáticos, incluindo imagens de perfil
+ * Configuração para servir arquivos estáticos
  */
 @Configuration
 public class StaticResourceConfig implements WebMvcConfigurer {
@@ -29,49 +29,28 @@ public class StaticResourceConfig implements WebMvcConfigurer {
         CacheControl cacheControl = CacheControl.maxAge(1, TimeUnit.HOURS)
                 .cachePublic();
 
-        // Opção 1: Servir imagens em /uploads/images/**
-        registry.addResourceHandler("/uploads/images/**")
-                .addResourceLocations("file:" + uploadDir + "/")
-                .setCacheControl(cacheControl);
+        // Configuração principal para servir imagens
+        configureResourceHandler(registry, "/api/uploads/**", cacheControl);
 
-        // Opção 2: Servir imagens em /api/uploads/images/**
-        registry.addResourceHandler("/api/uploads/images/**")
-                .addResourceLocations("file:" + uploadDir + "/")
-                .setCacheControl(cacheControl);
-
-        // Opção 3: Servir imagens em /images/**
-        registry.addResourceHandler("/images/**")
-                .addResourceLocations("file:" + uploadDir + "/")
-                .setCacheControl(cacheControl);
-
-        // Opção 4: Servir imagens para o endpoint de verificação de arquivo
-        registry.addResourceHandler("/api/files/check/**")
-                .addResourceLocations("file:" + uploadDir + "/")
-                .setCacheControl(cacheControl);
-
-        // Opção 5: Servir imagens para o endpoint de imagens de perfil
-        registry.addResourceHandler("/api/profile-images/**")
-                .addResourceLocations("file:" + uploadDir + "/")
-                .setCacheControl(cacheControl);
-
-        // Opção 6: Servir imagens diretamente de /profile-images/**
-        registry.addResourceHandler("/profile-images/**")
-                .addResourceLocations("file:" + uploadDir + "/")
-                .setCacheControl(cacheControl);
-
-        // Opção 7: Servir arquivos temporários
-        registry.addResourceHandler("/api/postagens/temp/**")
-                .addResourceLocations("file:" + uploadDir + "/")
-                .setCacheControl(cacheControl);
-
-        registry.addResourceHandler("/api/postagens/temp/imagens/**")
-                .addResourceLocations("file:" + uploadDir + "/")
-                .setCacheControl(cacheControl);
-
-        registry.addResourceHandler("/postagens/temp/imagens/**")
-                .addResourceLocations("file:" + uploadDir + "/")
-                .setCacheControl(cacheControl);
+        // Manter compatibilidade com endpoints existentes
+        configureResourceHandler(registry, "/uploads/**", cacheControl);
+        configureResourceHandler(registry, "/images/**", cacheControl);
+        configureResourceHandler(registry, "/api/files/check/**", cacheControl);
+        configureResourceHandler(registry, "/api/profile-images/**", cacheControl);
+        configureResourceHandler(registry, "/profile-images/**", cacheControl);
+        configureResourceHandler(registry, "/api/postagens/temp/**", cacheControl);
+        configureResourceHandler(registry, "/postagens/temp/imagens/**", cacheControl);
 
         logger.info("Configuração de recursos estáticos concluída");
+    }
+
+    /**
+     * Helper method to configure resource handlers with consistent settings
+     */
+    private void configureResourceHandler(ResourceHandlerRegistry registry, String pathPattern, CacheControl cacheControl) {
+        registry.addResourceHandler(pathPattern)
+                .addResourceLocations("file:" + uploadDir + "/")
+                .setCacheControl(cacheControl);
+        logger.debug("Configurado path pattern: {}", pathPattern);
     }
 }
