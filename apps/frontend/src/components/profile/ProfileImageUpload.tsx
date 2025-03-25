@@ -1,3 +1,4 @@
+// src/components/profile/ProfileImageUpload.tsx
 import React, { useState, useRef, useEffect } from "react";
 import { Camera, Loader2 } from "lucide-react";
 import { User } from "@/services/auth";
@@ -8,6 +9,8 @@ import {
   getAlternativeImageUrls,
   findWorkingImageUrl,
   checkFileExists,
+  getPlaceholderImageUrl,
+  checkImageUrl,
 } from "@/utils/imageUtils";
 
 interface ProfileImageUploadProps {
@@ -24,65 +27,46 @@ export const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imageError, setImageError] = useState(false);
   const [imageUrl, setImageUrl] = useState<string>("");
-  const [cachedImageUrl, setCachedImageUrl] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
-  // Efeito para construir a URL da imagem quando o usuário muda
+  // Efeito para construir a URL da imagem quando o usuário muda ou retryCount muda
   useEffect(() => {
-    if (!user.profileImage) {
-      setImageError(true);
-      setIsLoading(false);
-      return;
-    }
-
     const loadProfileImage = async () => {
-      // Se já tivermos uma URL em cache para este usuário e imagem, use-a
-      const profileImage = user.profileImage || "";
-      const cacheKey = `${user.id}-${profileImage}`;
-      const cachedUrl = localStorage.getItem(`profile-image-${cacheKey}`);
-
-      if (cachedUrl) {
-        console.log("Usando URL em cache:", cachedUrl);
-        setImageUrl(cachedUrl);
-        setCachedImageUrl(cachedUrl);
-        setImageError(false);
+      if (!user.profileImage) {
+        setImageError(true);
         setIsLoading(false);
         return;
       }
 
       setIsLoading(true);
       try {
-        // Verifica primeiro se o arquivo existe usando a API
-        const filename = profileImage.split("/").pop() || profileImage;
-        const fileExists = await checkFileExists(filename);
+        // Tentar a URL principal primeiro
+        const mainUrl = buildProfileImageUrl(user.profileImage);
+        console.log("Tentando URL principal:", mainUrl);
 
-        if (fileExists) {
-          const mainUrl = buildProfileImageUrl(profileImage);
-          console.log("Arquivo existe, usando URL principal:", mainUrl);
+        // Verificar se a imagem principal é acessível
+        const mainUrlWorks = await checkImageUrl(mainUrl);
+
+        if (mainUrlWorks) {
+          console.log("URL principal funciona:", mainUrl);
           setImageUrl(mainUrl);
           setImageError(false);
-
-          // Salvar URL no cache do localStorage
-          localStorage.setItem(`profile-image-${cacheKey}`, mainUrl);
-          setCachedImageUrl(mainUrl);
         } else {
-          // Se o arquivo não existir pelo endpoint de verificação,
-          // tenta uma última tentativa com várias URLs
-          console.log(
-            "Arquivo não existe pelo endpoint de verificação, tentando URLs alternativas"
+          // Se a URL principal falhar, tentar URLs alternativas
+          console.log("URL principal falhou, tentando alternativas");
+          const alternativeUrls = getAlternativeImageUrls(
+            user.profileImage,
+            user
           );
-          const alternativeUrls = getAlternativeImageUrls(profileImage, user);
           const workingUrl = await findWorkingImageUrl(alternativeUrls);
 
           if (workingUrl) {
-            console.log("URL alternativa encontrada:", workingUrl);
+            console.log("URL alternativa funciona:", workingUrl);
             setImageUrl(workingUrl);
             setImageError(false);
-
-            // Salvar URL no cache do localStorage
-            localStorage.setItem(`profile-image-${cacheKey}`, workingUrl);
-            setCachedImageUrl(workingUrl);
           } else {
-            console.log("Nenhuma URL alternativa funcionou");
+            // Se nenhuma URL funcionar, usar avatar placeholder
+            console.log("Nenhuma URL alternativa funciona, usando placeholder");
             setImageError(true);
           }
         }
@@ -95,7 +79,7 @@ export const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
     };
 
     loadProfileImage();
-  }, [user.id, user.profileImage]);
+  }, [user.profileImage, user.id, retryCount]);
 
   const handleImageClick = () => {
     fileInputRef.current?.click();
@@ -104,6 +88,11 @@ export const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
   const handleImageError = () => {
     console.error(`Erro ao carregar imagem: ${imageUrl}`);
     setImageError(true);
+
+    // Tentar novamente com URLs alternativas após um pequeno delay
+    setTimeout(() => {
+      setRetryCount((prev) => prev + 1);
+    }, 500);
   };
 
   // Função para renderizar a imagem de perfil
@@ -117,7 +106,7 @@ export const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
     }
 
     if (!user.profileImage || imageError || !imageUrl) {
-      // Se não há imagem, ocorreu um erro ou não há URL, mostrar a inicial do nome
+      // Se não há imagem, ocorreu um erro ou não há URL, mostrar a inicial do nome ou avatar placeholder
       return (
         <div className="w-full h-full flex items-center justify-center text-2xl font-bold text-gray-600">
           {user.fullName.charAt(0).toUpperCase()}
@@ -166,16 +155,12 @@ export const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
         file
       );
 
-      // Limpar cache de URL antiga
-      if (user.profileImage) {
-        const oldCacheKey = `${user.id}-${user.profileImage}`;
-        localStorage.removeItem(`profile-image-${oldCacheKey}`);
-      }
-
       // Resetar estados
       setImageError(false);
       setImageUrl("");
-      setCachedImageUrl(null);
+
+      // Forçar nova tentativa de carregamento
+      setRetryCount((prev) => prev + 1);
 
       onImageUpdate(updatedUser);
 

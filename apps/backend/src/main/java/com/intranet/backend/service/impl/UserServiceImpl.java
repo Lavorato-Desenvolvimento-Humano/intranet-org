@@ -172,7 +172,8 @@ public class UserServiceImpl implements UserService {
         }
 
         // Armazena a nova imagem de perfil
-        String newImagePath = fileStorageService.storeFile(image);
+        String newImagePath = fileStorageService.storeProfileImage(image);
+
         user.setProfileImage(newImagePath);
 
         User updatedUser = userRepository.save(user);

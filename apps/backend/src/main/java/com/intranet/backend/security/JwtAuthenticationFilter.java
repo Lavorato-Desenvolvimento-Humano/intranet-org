@@ -51,14 +51,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getServletPath();
 
-        // Verificar se o caminho corresponde a algum padrão excluído
-        boolean shouldExclude = EXCLUDED_PATHS.stream()
-                .anyMatch(pattern -> pathMatcher.match(pattern, path));
+        //Lista de caminhos excluídos do filtro de autenticação (recursos públicos)
+        boolean shouldExclude = EXCLUDED_PATHS.stream().anyMatch(pattern -> pathMatcher.match(path, pattern));
 
-        // Verificar se é um arquivo de imagem
+        // Verifica se é uma imagem de perfil
+        boolean isProfileImage = path.startsWith("/api/profile-images/");
+
+        // Verifica se é um arquivo de imagem
         boolean isImageFile = path.matches(".*\\.(jpg|jpeg|png|gif|bmp|webp)$");
 
-        return shouldExclude || isImageFile;
+        return shouldExclude || isProfileImage || isImageFile;
     }
 
     @Override
