@@ -75,16 +75,16 @@ export const getAlternativeImageUrls = (
     ? baseUrl || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8443"
     : "";
 
-  // Se o imageIdentifier começar com uma barra, remova-a
-  const normalizedIdentifier = imageIdentifier.startsWith("/")
-    ? imageIdentifier.substring(1)
+  // Extrair o nome do arquivo do caminho
+  const filename = imageIdentifier.includes("/")
+    ? imageIdentifier.substring(imageIdentifier.lastIndexOf("/") + 1)
     : imageIdentifier;
 
   // Array com várias alternativas de caminho para testar - em ordem de prioridade
   const urls = [
-    `${apiBaseUrl}/api/profile-images/${normalizedIdentifier}`,
-    `${apiBaseUrl}/api/uploads/images/${normalizedIdentifier}`,
-    `${apiBaseUrl}/api/images/${normalizedIdentifier}`,
+    `${apiBaseUrl}/api/profile-images/${filename}`,
+    `${apiBaseUrl}/api/uploads/images/${filename}`,
+    `${apiBaseUrl}/api/images/${filename}`,
   ];
 
   // Adicionar URL baseada no ID do usuário se disponível
@@ -96,9 +96,9 @@ export const getAlternativeImageUrls = (
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   if (origin && isDevelopment) {
     urls.push(
-      `${origin}/api/profile-images/${normalizedIdentifier}`,
-      `${origin}/api/uploads/images/${normalizedIdentifier}`,
-      `${origin}/api/images/${normalizedIdentifier}`
+      `${origin}/api/profile-images/${filename}`,
+      `${origin}/api/uploads/images/${filename}`,
+      `${origin}/api/images/${filename}`
     );
 
     // Se o ID do usuário estiver disponível, adicionar também uma URL local baseada no ID
@@ -108,6 +108,15 @@ export const getAlternativeImageUrls = (
   }
 
   return urls;
+};
+
+/**
+ * Obtém uma URL de avatar placeholder baseada no nome
+ * @param name Nome para gerar o avatar
+ * @returns URL para o avatar gerado
+ */
+export const getPlaceholderImageUrl = (name: string): string => {
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`;
 };
 
 /**
@@ -182,18 +191,32 @@ export const checkImageUrl = async (url: string): Promise<boolean> => {
  * @returns Promessa que resolve para a primeira URL acessível, ou string vazia se nenhuma funcionar
  */
 export const findWorkingImageUrl = async (urls: string[]): Promise<string> => {
-  const checkPromises = urls.map(async (url) => {
-    try {
-      const isAccessible = await checkImageUrl(url);
-      return isAccessible ? url : null;
-    } catch (error) {
-      return null;
+  if (!urls || urls.length === 0) return "";
+
+  try {
+    // Tenta uma verificação rápida com HEAD request na primeira URL
+    const isFirstUrlAccessible = await checkImageUrl(urls[0]);
+    if (isFirstUrlAccessible) {
+      return urls[0];
     }
-  });
 
-  // Aguarda todas as promessas e filtra resultados não nulos
-  const results = await Promise.all(checkPromises);
-  const workingUrl = results.find((result) => result !== null);
+    // Se a primeira URL falhar, tenta as URLs alternativas
+    for (let i = 1; i < urls.length; i++) {
+      try {
+        const isAccessible = await checkImageUrl(urls[i]);
+        if (isAccessible) {
+          return urls[i];
+        }
+      } catch (error) {
+        console.error(`Erro ao verificar URL alternativa ${i}:`, error);
+        // Continua tentando as próximas URLs
+      }
+    }
 
-  return workingUrl || ""; // Retorna a primeira URL que funciona ou string vazia
+    // Se todas as URLs falharem, retorna string vazia
+    return "";
+  } catch (error) {
+    console.error("Erro ao verificar URLs de imagem:", error);
+    return "";
+  }
 };
