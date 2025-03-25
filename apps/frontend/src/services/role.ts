@@ -36,7 +36,7 @@ const roleService = {
    */
   getAllRoles: async (): Promise<Role[]> => {
     try {
-      const response = await api.get<Role[]>("/roles");
+      const response = await api.get<Role[]>("/api/roles");
       return response.data;
     } catch (error: any) {
       console.error("Erro ao buscar roles:", error);
@@ -65,7 +65,7 @@ const roleService = {
    */
   getRoleById: async (id: number): Promise<Role> => {
     try {
-      const response = await api.get<Role>(`/roles/${id}`);
+      const response = await api.get<Role>(`/api/roles/${id}`);
       return response.data;
     } catch (error: any) {
       console.error(`Erro ao buscar role ${id}:`, error);
@@ -83,7 +83,7 @@ const roleService = {
    */
   createRole: async (role: RoleCreateRequest): Promise<Role> => {
     try {
-      const response = await api.post<Role>("/roles", role);
+      const response = await api.post<Role>("/api/roles", role);
       return response.data;
     } catch (error: any) {
       console.error("Erro ao criar role:", error);
@@ -105,7 +105,7 @@ const roleService = {
    */
   updateRole: async (id: number, role: RoleUpdateRequest): Promise<Role> => {
     try {
-      const response = await api.put<Role>(`/roles/${id}`, role);
+      const response = await api.put<Role>(`/api/roles/${id}`, role);
       return response.data;
     } catch (error: any) {
       console.error(`Erro ao atualizar role ${id}:`, error);
@@ -127,7 +127,7 @@ const roleService = {
    */
   deleteRole: async (id: number): Promise<void> => {
     try {
-      await api.delete(`/roles/${id}`);
+      await api.delete(`/api/roles/${id}`);
     } catch (error: any) {
       console.error(`Erro ao excluir role ${id}:`, error);
 
@@ -158,7 +158,7 @@ const roleService = {
   ): Promise<Role> => {
     try {
       const response = await api.post<Role>(
-        `/roles/${roleId}/permissions/${permissionId}`
+        `/api/roles/${roleId}/permissions/${permissionId}`
       );
       return response.data;
     } catch (error: any) {
@@ -186,7 +186,7 @@ const roleService = {
   ): Promise<Role> => {
     try {
       const response = await api.delete<Role>(
-        `/roles/${roleId}/permissions/${permissionId}`
+        `/api/roles/${roleId}/permissions/${permissionId}`
       );
       return response.data;
     } catch (error: any) {

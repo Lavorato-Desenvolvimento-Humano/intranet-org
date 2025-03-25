@@ -16,7 +16,7 @@ const permissionService = {
    */
   getAllPermissions: async (): Promise<Permission[]> => {
     try {
-      const response = await api.get<Permission[]>("/permissions");
+      const response = await api.get<Permission[]>("/api/permissions");
       return response.data;
     } catch (error) {
       console.error("Erro ao buscar permissões:", error);
@@ -29,7 +29,7 @@ const permissionService = {
    */
   getPermissionById: async (id: number): Promise<Permission> => {
     try {
-      const response = await api.get<Permission>(`/permissions/${id}`);
+      const response = await api.get<Permission>(`/api/permissions/${id}`);
       return response.data;
     } catch (error) {
       console.error(`Erro ao buscar permissão ${id}:`, error);
@@ -44,7 +44,10 @@ const permissionService = {
     permission: PermissionCreateRequest
   ): Promise<Permission> => {
     try {
-      const response = await api.post<Permission>("/permissions", permission);
+      const response = await api.post<Permission>(
+        "/api/permissions",
+        permission
+      );
       return response.data;
     } catch (error) {
       console.error("Erro ao criar permissão:", error);
@@ -61,7 +64,7 @@ const permissionService = {
   ): Promise<Permission> => {
     try {
       const response = await api.put<Permission>(
-        `/permissions/${id}`,
+        `/api/permissions/${id}`,
         permission
       );
       return response.data;
@@ -76,7 +79,7 @@ const permissionService = {
    */
   deletePermission: async (id: number): Promise<void> => {
     try {
-      await api.delete(`/permissions/${id}`);
+      await api.delete(`/api/permissions/${id}`);
     } catch (error) {
       console.error(`Erro ao excluir permissão ${id}:`, error);
       throw error;

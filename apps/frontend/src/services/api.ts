@@ -7,8 +7,8 @@ const isDevelopment =
 
 // Configurar a URL base dependendo do ambiente
 const baseURL = isDevelopment
-  ? "http://localhost:8443" // Em desenvolvimento, conectar diretamente ao backend
-  : ""; // Em produção, usar o caminho relativo
+  ? "http://localhost:8443/api" // Em desenvolvimento, conectar diretamente ao backend com /api já incluído
+  : "/api"; // Em produção, usar o caminho relativo com /api já incluído
 
 // Criar instância axios com configurações otimizadas
 const api = axios.create({
@@ -20,7 +20,7 @@ const api = axios.create({
   timeout: 20000,
 });
 
-// Adicionar prefixo /api/ a todas as requisições
+// Adicionar token de autenticação a todas as requisições
 api.interceptors.request.use(
   (config) => {
     // Adicionar o token JWT
@@ -29,9 +29,12 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    // Adicionar prefixo /api/ às requisições se ainda não tiver
-    if (config.url && !config.url.startsWith("/api/")) {
-      config.url = `/api${config.url}`; // Garantir que comece com /api/
+    // Remover barras duplicadas na URL
+    if (config.url) {
+      // Garantir que não haja barras duplicadas entre baseURL e url
+      if (config.url.startsWith("/") && baseURL.endsWith("/")) {
+        config.url = config.url.substring(1);
+      }
     }
 
     // Log para depuração
