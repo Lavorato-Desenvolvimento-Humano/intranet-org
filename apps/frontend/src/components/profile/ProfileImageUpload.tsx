@@ -51,41 +51,9 @@ export const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
 
       setIsLoading(true);
       try {
-        // Verifica primeiro se o arquivo existe usando a API
-        const filename = profileImage.split("/").pop() || profileImage;
-        const fileExists = await checkFileExists(filename);
-
-        if (fileExists) {
-          const mainUrl = buildProfileImageUrl(profileImage);
-          console.log("Arquivo existe, usando URL principal:", mainUrl);
-          setImageUrl(mainUrl);
-          setImageError(false);
-
-          // Salvar URL no cache do localStorage
-          localStorage.setItem(`profile-image-${cacheKey}`, mainUrl);
-          setCachedImageUrl(mainUrl);
-        } else {
-          // Se o arquivo não existir pelo endpoint de verificação,
-          // tenta uma última tentativa com várias URLs
-          console.log(
-            "Arquivo não existe pelo endpoint de verificação, tentando URLs alternativas"
-          );
-          const alternativeUrls = getAlternativeImageUrls(profileImage, user);
-          const workingUrl = await findWorkingImageUrl(alternativeUrls);
-
-          if (workingUrl) {
-            console.log("URL alternativa encontrada:", workingUrl);
-            setImageUrl(workingUrl);
-            setImageError(false);
-
-            // Salvar URL no cache do localStorage
-            localStorage.setItem(`profile-image-${cacheKey}`, workingUrl);
-            setCachedImageUrl(workingUrl);
-          } else {
-            console.log("Nenhuma URL alternativa funcionou");
-            setImageError(true);
-          }
-        }
+        const imageUrl = buildProfileImageUrl(user.profileImage);
+        setImageUrl(imageUrl);
+        setImageError(false);
       } catch (error) {
         console.error("Erro ao carregar imagem de perfil:", error);
         setImageError(true);

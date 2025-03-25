@@ -1,5 +1,7 @@
 package com.intranet.backend.controllers;
 
+import com.intranet.backend.model.User;
+import com.intranet.backend.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,6 +18,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -26,6 +29,7 @@ import java.util.UUID;
 public class ProfileImageController {
 
     private static final Logger logger = LoggerFactory.getLogger(ProfileImageController.class);
+    private UserRepository userRepository;
 
     @Value("${file.upload-dir}")
     private String uploadDir;
@@ -52,7 +56,7 @@ public class ProfileImageController {
         logger.info("Servindo imagem de perfil: {}", filename);
 
         try {
-            Path filePath = Paths.get(uploadDir, filename);
+            Path filePath = Paths.get(uploadDir, "profiles",filename);
             Resource resource = new FileSystemResource(filePath.toFile());
 
             if (!resource.exists()) {
@@ -81,20 +85,44 @@ public class ProfileImageController {
     public ResponseEntity<Resource> getProfileImageByUserId(@PathVariable String userId) {
         logger.info("Solicitada imagem de perfil para o usuário: {}", userId);
 
-        // Em uma implementação real, busque o nome do arquivo a partir do registro do usuário
-        // Por enquanto, apenas passa o UUID como nome do arquivo
         try {
-            UUID.fromString(userId); // Valida se é um UUID adequado
+            UUID userUuid = UUID.fromString(userId);
 
-            // Implementar lógica para encontrar o arquivo de imagem correto para este usuário
-            // Por enquanto, retornando 404 pois não temos a lógica de mapeamento
-            return ResponseEntity.notFound().build();
+            // Buscar o usuário para obter o nome do arquivo de imagem
+            Optional<User> userOptional = userRepository.findById(userUuid);
 
+            if (userOptional.isEmpty() || userOptional.get().getProfileImage() == null) {
+                return ResponseEntity.notFound().build();
+            }
+
+            User user = userOptional.get();
+            String profileImage = user.getProfileImage();
+
+            //Extrair o nome do arquivo do caminho armazenado
+            String filename = profileImage;
+            if (profileImage.contains("/")) {
+                filename = profileImage.substring(profileImage.lastIndexOf("/") + 1 );
+            }
+
+            Path filePath = Paths.get(uploadDir, "profiles", filename);
+            Resource resource = new FileSystemResource(filePath.toFile());
+
+            if (!resource.exists()) {
+                logger.warn("Imagem de perfil não encontrada para o usuário: {}", userId);
+                return ResponseEntity.notFound().build();
+            }
+
+            String contentType = determineContentType(filePath);
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(contentType))
+                    .header(HttpHeaders.CACHE_CONTROL, "max-age=3600, public")
+                    .body(resource);
         } catch (IllegalArgumentException e) {
             logger.warn("Formato de ID de usuário inválido: {}", userId);
             return ResponseEntity.badRequest().build();
         } catch (Exception e) {
-            logger.error("Erro ao processar imagem de perfil do usuário {}: {}", userId, e.getMessage());
+            logger.warn("Erro ao processar imagem de perfil do usuário {}: {}", userId, e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

@@ -28,9 +28,9 @@ export const buildProfileImageUrl = (
     return imageIdentifier;
   }
 
-  // Se o imageIdentifier começar com uma barra, remova-a
-  const normalizedIdentifier = imageIdentifier.startsWith("/")
-    ? imageIdentifier.substring(1)
+  // Extrair o nome do arquivo do caminho
+  const filename = imageIdentifier.includes("/")
+    ? imageIdentifier.substring(imageIdentifier.lastIndexOf("/") + 1)
     : imageIdentifier;
 
   // Em ambiente de desenvolvimento, usa a URL completa, em produção usa caminho relativo
@@ -40,12 +40,8 @@ export const buildProfileImageUrl = (
     ? baseUrl || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8443"
     : "";
 
-  // Construir URL correta
-  if (!normalizedIdentifier.startsWith("api/")) {
-    return `${apiBaseUrl}/api/profile-images/${normalizedIdentifier}`;
-  } else {
-    return `${apiBaseUrl}/${normalizedIdentifier}`;
-  }
+  // Construir URL padronizada
+  return `${apiBaseUrl}/api/profile-images/${filename}`;
 };
 
 /**

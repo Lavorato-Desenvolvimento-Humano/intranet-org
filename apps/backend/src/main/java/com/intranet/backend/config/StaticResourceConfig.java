@@ -29,18 +29,18 @@ public class StaticResourceConfig implements WebMvcConfigurer {
         CacheControl cacheControl = CacheControl.maxAge(1, TimeUnit.HOURS)
                 .cachePublic();
 
-        // Configuração para servir recursos estáticos com prefixo /api
-        // Cada padrão deve começar com /api para garantir consistência com o Nginx
+        // Path unificado para imagens de perfil
+        registry.addResourceHandler("/api/profile-images/**")
+                .addResourceLocations("file:" + uploadDir + "/profiles/")
+                .setCacheControl(cacheControl);
+
+        // Configuração para outros recursos
         registry.addResourceHandler("/api/uploads/**")
                 .addResourceLocations("file:" + uploadDir + "/")
                 .setCacheControl(cacheControl);
 
         registry.addResourceHandler("/api/images/**")
-                .addResourceLocations("file:" + uploadDir + "/")
-                .setCacheControl(cacheControl);
-
-        registry.addResourceHandler("/api/profile-images/**")
-                .addResourceLocations("file:" + uploadDir + "/")
+                .addResourceLocations("file:" + uploadDir + "/images/")
                 .setCacheControl(cacheControl);
 
         registry.addResourceHandler("/api/files/check/**")
