@@ -50,7 +50,7 @@ public class ProfileImageController {
         logger.info("Servindo imagem de perfil: {}", filename);
 
         try {
-            Path filePath = Paths.get(uploadDir, "profiles", filename);
+            Path filePath = Paths.get(uploadDir, "/upload-data/profiles", filename);
             Resource resource = new FileSystemResource(filePath.toFile());
 
             if (!resource.exists()) {
