@@ -20,10 +20,6 @@ export const buildProfileImageUrl = (
     return ""; // Retorna string vazia se não houver imagem
   }
 
-  // Define a URL base (usa o valor do ambiente ou o padrão)
-  const apiBaseUrl =
-    baseUrl || process.env.NEXT_PUBLIC_API_URL || "https://dev.lavorato.app.br";
-
   // Se já for uma URL completa ou uma data URL, use como está
   if (
     imageIdentifier.startsWith("http") ||
@@ -37,8 +33,14 @@ export const buildProfileImageUrl = (
     ? imageIdentifier.substring(1)
     : imageIdentifier;
 
-  // Construir URL completa usando o novo endpoint dedicado
-  // Garantir que tenha /api/ como prefixo
+  // Em ambiente de desenvolvimento, usa a URL completa, em produção usa caminho relativo
+  const isDevelopment =
+    typeof window !== "undefined" && window.location.hostname === "localhost";
+  const apiBaseUrl = isDevelopment
+    ? baseUrl || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8443"
+    : "";
+
+  // Construir URL correta
   if (!normalizedIdentifier.startsWith("api/")) {
     return `${apiBaseUrl}/api/profile-images/${normalizedIdentifier}`;
   } else {
@@ -70,17 +72,19 @@ export const getAlternativeImageUrls = (
     return [imageIdentifier];
   }
 
-  // Define a URL base (usa o valor do ambiente ou o padrão)
-  const apiBaseUrl =
-    baseUrl || process.env.NEXT_PUBLIC_API_URL || "https://dev.lavorato.app.br";
+  // Em ambiente de desenvolvimento, usa a URL completa, em produção usa caminho relativo
+  const isDevelopment =
+    typeof window !== "undefined" && window.location.hostname === "localhost";
+  const apiBaseUrl = isDevelopment
+    ? baseUrl || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8443"
+    : "";
 
   // Se o imageIdentifier começar com uma barra, remova-a
   const normalizedIdentifier = imageIdentifier.startsWith("/")
     ? imageIdentifier.substring(1)
     : imageIdentifier;
 
-  // Array com várias alternativas de caminho para testar - em ordem de prioridade,
-  // começando com o novo endpoint dedicado
+  // Array com várias alternativas de caminho para testar - em ordem de prioridade
   const urls = [
     `${apiBaseUrl}/api/profile-images/${normalizedIdentifier}`,
     `${apiBaseUrl}/api/uploads/images/${normalizedIdentifier}`,
@@ -94,7 +98,7 @@ export const getAlternativeImageUrls = (
 
   // Adicionar URLs locais em desenvolvimento para evitar problemas de CORS
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-  if (origin) {
+  if (origin && isDevelopment) {
     urls.push(
       `${origin}/api/profile-images/${normalizedIdentifier}`,
       `${origin}/api/uploads/images/${normalizedIdentifier}`,
@@ -131,11 +135,12 @@ export const checkFileExists = async (
       filenameOnly = filename.substring(filename.lastIndexOf("/") + 1);
     }
 
-    // Define a URL base
-    const apiBaseUrl =
-      baseUrl ||
-      process.env.NEXT_PUBLIC_API_URL ||
-      "https://dev.lavorato.app.br";
+    // Em ambiente de desenvolvimento, usa a URL completa, em produção usa caminho relativo
+    const isDevelopment =
+      typeof window !== "undefined" && window.location.hostname === "localhost";
+    const apiBaseUrl = isDevelopment
+      ? baseUrl || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8443"
+      : "";
 
     // Faz a requisição para o endpoint de verificação
     const response = await fetch(
