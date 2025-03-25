@@ -36,6 +36,7 @@ public class FileStorageService {
             // Criar subdiretórios para imagens e arquivos
             createDirectoryIfNotExists(fileStorageLocation.resolve("images"));
             createDirectoryIfNotExists(fileStorageLocation.resolve("files"));
+            createDirectoryIfNotExists(fileStorageLocation.resolve("profiles"));
 
             logger.info("Diretórios de armazenamento inicializados: {}", fileStorageLocation);
         } catch (Exception e) {
@@ -198,6 +199,35 @@ public class FileStorageService {
 
         // Se não encontrou, retorna o caminho padrão (poderá lançar exceção depois)
         return fileStorageLocation.resolve(fileName);
+    }
+
+    public String storeProfileImage(MultipartFile file) {
+        //Validar o arquivo
+        String errorMessage = FileHelper.validateFile(file, true);
+        if (errorMessage != null) {
+            logger.error("Validação de arquivo falhou: {}", errorMessage);
+            throw new FileStorageException(errorMessage);
+        }
+
+        try {
+            //Gerar nome único para a imagem de perfil
+            String fileName = FileHelper.generateUniqueFileName(file);
+            Path targetLocation = fileStorageLocation.resolve("profiles").resolve(fileName);
+
+            //Copiar o arquivo
+            Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
+            logger.info("Imagem de perfil armazenada com sucesso: {}", targetLocation);
+
+            //Confirmar que o arquivo existe e pode ser lido
+            if (!Files.exists(targetLocation) || !Files.isReadable(targetLocation)) {
+                throw new FileStorageException("Falha ao armazenar imagem de perfil ou imagem não legível: " + fileName);
+            }
+
+            return "profiles/" + fileName;
+        } catch (IOException e) {
+            logger.error("Erro ao armazenar imagem de perfil: {}", e.getMessage(), e);
+            throw new FileStorageException("Falha ao armazenar imagem de perfil: " + e.getMessage(), e);
+        }
     }
 
     /**
