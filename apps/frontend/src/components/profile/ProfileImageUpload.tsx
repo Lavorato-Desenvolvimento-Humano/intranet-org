@@ -28,16 +28,16 @@ export const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
     // Se já for uma URL completa
     if (profileImage.startsWith("http")) return profileImage;
 
-    // Construindo a URL base da API
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "";
-
-    // Se o profileImage já contém a parte de profiles/
-    if (profileImage.includes("profiles/")) {
-      return `${apiBaseUrl}/api/${profileImage}`;
+    // Se o caminho começa com "profiles/"
+    if (profileImage.startsWith("profiles/")) {
+      const fileName = profileImage.substring(
+        profileImage.lastIndexOf("/") + 1
+      );
+      return `/api/profile-images/${fileName}`;
     }
 
-    // Caso contrário, construa o caminho completo
-    return `${apiBaseUrl}/api/profile-images/${profileImage}`;
+    // Outros casos, usar o caminho como está com prefixo api
+    return `/api/profile-images/${profileImage}`;
   };
 
   // Efeito para construir a URL da imagem quando o usuário muda ou retryCount muda

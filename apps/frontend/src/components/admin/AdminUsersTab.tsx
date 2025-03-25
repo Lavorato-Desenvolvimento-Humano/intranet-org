@@ -174,16 +174,16 @@ export default function AdminUsersTab() {
 
     if (profileImage.startsWith("http")) return profileImage;
 
-    // Obter a URL base da API
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "";
+    // Se o caminho começa com "profiles/"
+    if (profileImage.startsWith("profiles/")) {
+      const fileName = profileImage.substring(
+        profileImage.lastIndexOf("/") + 1
+      );
+      return `/api/profile-images/${fileName}`;
+    }
 
-    // Extrair apenas o nome do arquivo, caso seja um caminho
-    const fileName = profileImage.includes("/")
-      ? profileImage.substring(profileImage.lastIndexOf("/") + 1)
-      : profileImage;
-
-    // Construir a URL completa
-    return `${apiBaseUrl}/api/profile-images/${fileName}`;
+    // Outros casos, usar o caminho como está com prefixo api
+    return `/api/profile-images/${profileImage}`;
   };
 
   return (
