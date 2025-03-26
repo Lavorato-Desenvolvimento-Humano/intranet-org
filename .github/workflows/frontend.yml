@@ -44,6 +44,7 @@ jobs:
           npm ci
           npm install lucide-react react-hot-toast axios
           npm install --save @ckeditor/ckeditor5-react @ckeditor/ckeditor5-build-classic
+          npm install -D @tailwindcss/typography
 
       - name: Verificar Linting (com tratamento de erro)
         run: |
