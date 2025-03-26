@@ -47,6 +47,11 @@ public class StaticResourceConfig implements WebMvcConfigurer {
                 .addResourceLocations("file:" + uploadDir + "/")
                 .setCacheControl(cacheControl);
 
+        registry.addResourceHandler("/profiles/**")
+                .addResourceLocations("file:" + uploadDir + "/profiles/")
+                .setCacheControl(cacheControl);
+
+
         logger.info("Configuração de recursos estáticos concluída");
     }
 

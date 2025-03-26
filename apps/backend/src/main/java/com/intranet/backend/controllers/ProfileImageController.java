@@ -4,6 +4,7 @@ import com.intranet.backend.model.User;
 import com.intranet.backend.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
@@ -21,22 +22,18 @@ import java.nio.file.Paths;
 import java.util.Optional;
 import java.util.UUID;
 
-/**
- * Controlador dedicado a servir imagens de perfil com acesso público adequado
- */
 @RestController
 @RequestMapping("/api")
 public class ProfileImageController {
 
     private static final Logger logger = LoggerFactory.getLogger(ProfileImageController.class);
+
+    @Autowired
     private UserRepository userRepository;
 
     @Value("${file.upload-dir}")
     private String uploadDir;
 
-    /**
-     * Endpoint para verificar se um arquivo existe
-     */
     @GetMapping("/files/check/{filename:.+}")
     public ResponseEntity<?> checkFileExists(@PathVariable String filename) {
         logger.info("Verificando se o arquivo existe: {}", filename);
@@ -48,15 +45,12 @@ public class ProfileImageController {
         return ResponseEntity.notFound().build();
     }
 
-    /**
-     * Endpoint para servir imagens de perfil diretamente
-     */
     @GetMapping("/profile-images/{filename:.+}")
     public ResponseEntity<Resource> getProfileImage(@PathVariable String filename) {
         logger.info("Servindo imagem de perfil: {}", filename);
 
         try {
-            Path filePath = Paths.get(uploadDir, "profiles",filename);
+            Path filePath = Paths.get(uploadDir, "/upload-data/profiles", filename);
             Resource resource = new FileSystemResource(filePath.toFile());
 
             if (!resource.exists()) {
@@ -78,9 +72,6 @@ public class ProfileImageController {
         }
     }
 
-    /**
-     * Endpoint para servir imagens de perfil pelo ID do usuário
-     */
     @GetMapping("/profile-images/user/{userId}")
     public ResponseEntity<Resource> getProfileImageByUserId(@PathVariable String userId) {
         logger.info("Solicitada imagem de perfil para o usuário: {}", userId);
@@ -101,7 +92,7 @@ public class ProfileImageController {
             //Extrair o nome do arquivo do caminho armazenado
             String filename = profileImage;
             if (profileImage.contains("/")) {
-                filename = profileImage.substring(profileImage.lastIndexOf("/") + 1 );
+                filename = profileImage.substring(profileImage.lastIndexOf("/") + 1);
             }
 
             Path filePath = Paths.get(uploadDir, "profiles", filename);
@@ -127,9 +118,6 @@ public class ProfileImageController {
         }
     }
 
-    /**
-     * Método auxiliar para determinar o tipo de conteúdo com base na extensão do arquivo
-     */
     private String determineContentType(Path filePath) throws IOException {
         String fileName = filePath.getFileName().toString().toLowerCase();
 

@@ -174,22 +174,17 @@ export default function AdminUsersTab() {
 
     if (profileImage.startsWith("http")) return profileImage;
 
-    // Obter a URL base da API
-    const apiBaseUrl =
-      process.env.NEXT_PUBLIC_API_URL || "https://dev.lavorato.app.br";
+    // Se o caminho começa com "profiles/"
+    if (profileImage.startsWith("profiles/")) {
+      const fileName = profileImage.substring(
+        profileImage.lastIndexOf("/") + 1
+      );
+      return `/api/profile-images/${fileName}`;
+    }
 
-    // Construir a URL completa
-    return `${apiBaseUrl}/api/profile-images/${profileImage}`;
+    // Outros casos, usar o caminho como está com prefixo api
+    return `/api/profile-images/${profileImage}`;
   };
-
-  // Renderizar o conteúdo principal
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <Loader2 size={36} className="animate-spin text-primary" />
-      </div>
-    );
-  }
 
   return (
     <div>

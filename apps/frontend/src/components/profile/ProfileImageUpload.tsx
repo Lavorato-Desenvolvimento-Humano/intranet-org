@@ -4,14 +4,6 @@ import { Camera, Loader2 } from "lucide-react";
 import { User } from "@/services/auth";
 import profileService from "@/services/profile";
 import toastUtil from "@/utils/toast";
-import {
-  buildProfileImageUrl,
-  getAlternativeImageUrls,
-  findWorkingImageUrl,
-  checkFileExists,
-  getPlaceholderImageUrl,
-  checkImageUrl,
-} from "@/utils/imageUtils";
 
 interface ProfileImageUploadProps {
   user: User;
@@ -29,6 +21,25 @@ export const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
   const [imageUrl, setImageUrl] = useState<string>("");
   const [retryCount, setRetryCount] = useState(0);
 
+  // Função para construir a URL da imagem diretamente
+  const buildImageUrl = (profileImage: string | null | undefined): string => {
+    if (!profileImage) return "";
+
+    // Se já for uma URL completa
+    if (profileImage.startsWith("http")) return profileImage;
+
+    // Se o caminho começa com "profiles/"
+    if (profileImage.startsWith("profiles/")) {
+      const fileName = profileImage.substring(
+        profileImage.lastIndexOf("/") + 1
+      );
+      return `/api/profile-images/${fileName}`;
+    }
+
+    // Outros casos, usar o caminho como está com prefixo api
+    return `/api/profile-images/${profileImage}`;
+  };
+
   // Efeito para construir a URL da imagem quando o usuário muda ou retryCount muda
   useEffect(() => {
     const loadProfileImage = async () => {
@@ -39,47 +50,15 @@ export const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
       }
 
       setIsLoading(true);
-      try {
-        // Tentar a URL principal primeiro
-        const mainUrl = buildProfileImageUrl(user.profileImage);
-        console.log("Tentando URL principal:", mainUrl);
 
-        // Verificar se a imagem principal é acessível
-        const mainUrlWorks = await checkImageUrl(mainUrl);
-
-        if (mainUrlWorks) {
-          console.log("URL principal funciona:", mainUrl);
-          setImageUrl(mainUrl);
-          setImageError(false);
-        } else {
-          // Se a URL principal falhar, tentar URLs alternativas
-          console.log("URL principal falhou, tentando alternativas");
-          const alternativeUrls = getAlternativeImageUrls(
-            user.profileImage,
-            user
-          );
-          const workingUrl = await findWorkingImageUrl(alternativeUrls);
-
-          if (workingUrl) {
-            console.log("URL alternativa funciona:", workingUrl);
-            setImageUrl(workingUrl);
-            setImageError(false);
-          } else {
-            // Se nenhuma URL funcionar, usar avatar placeholder
-            console.log("Nenhuma URL alternativa funciona, usando placeholder");
-            setImageError(true);
-          }
-        }
-      } catch (error) {
-        console.error("Erro ao carregar imagem de perfil:", error);
-        setImageError(true);
-      } finally {
-        setIsLoading(false);
-      }
+      // Montar a URL da imagem
+      const url = buildImageUrl(user.profileImage);
+      setImageUrl(url);
+      setIsLoading(false);
     };
 
     loadProfileImage();
-  }, [user.profileImage, user.id, retryCount]);
+  }, [user.profileImage, retryCount]);
 
   const handleImageClick = () => {
     fileInputRef.current?.click();
@@ -88,11 +67,6 @@ export const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
   const handleImageError = () => {
     console.error(`Erro ao carregar imagem: ${imageUrl}`);
     setImageError(true);
-
-    // Tentar novamente com URLs alternativas após um pequeno delay
-    setTimeout(() => {
-      setRetryCount((prev) => prev + 1);
-    }, 500);
   };
 
   // Função para renderizar a imagem de perfil
@@ -106,7 +80,7 @@ export const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
     }
 
     if (!user.profileImage || imageError || !imageUrl) {
-      // Se não há imagem, ocorreu um erro ou não há URL, mostrar a inicial do nome ou avatar placeholder
+      // Usar um avatar baseado na inicial do nome
       return (
         <div className="w-full h-full flex items-center justify-center text-2xl font-bold text-gray-600">
           {user.fullName.charAt(0).toUpperCase()}
@@ -157,11 +131,12 @@ export const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
 
       // Resetar estados
       setImageError(false);
-      setImageUrl("");
 
-      // Forçar nova tentativa de carregamento
-      setRetryCount((prev) => prev + 1);
+      // Atualizar a URL da imagem com a nova imagem
+      const newImageUrl = buildImageUrl(updatedUser.profileImage);
+      setImageUrl(newImageUrl);
 
+      // Notificar o componente pai sobre a atualização
       onImageUpdate(updatedUser);
 
       toastUtil.dismiss(loadingToastId);
