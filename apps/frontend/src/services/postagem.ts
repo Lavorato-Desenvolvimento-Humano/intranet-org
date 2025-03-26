@@ -170,12 +170,16 @@ const postagemService = {
 
       console.log("Enviando imagem para o servidor...");
 
-      const response = await api.post<ImagemDto>("/temp/imagens", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-        timeout: 30000, // 30 segundos
-      });
+      const response = await api.post<ImagemDto>(
+        "/api/temp/imagens",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+          timeout: 30000, // 30 segundos
+        }
+      );
 
       let url = response.data.url;
       if (!url.startsWith("http") && !url.startsWith("/")) {
