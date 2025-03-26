@@ -13,6 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.UUID;
 
 @Service
 public class FileStorageService {
@@ -39,6 +40,14 @@ public class FileStorageService {
             createDirectoryIfNotExists(fileStorageLocation.resolve("profiles"));
 
             logger.info("Diretórios de armazenamento inicializados: {}", fileStorageLocation);
+
+            // Log adicional para depuração
+            logger.info("Caminhos completos dos diretórios:");
+            logger.info("Base: {}", fileStorageLocation.toAbsolutePath());
+            logger.info("Images: {}", fileStorageLocation.resolve("images").toAbsolutePath());
+            logger.info("Files: {}", fileStorageLocation.resolve("files").toAbsolutePath());
+            logger.info("Profiles: {}", fileStorageLocation.resolve("profiles").toAbsolutePath());
+
         } catch (Exception e) {
             logger.error("Erro ao inicializar diretórios de armazenamento: {}", e.getMessage(), e);
             throw new FileStorageException("Não foi possível inicializar os diretórios de armazenamento.", e);
@@ -55,6 +64,7 @@ public class FileStorageService {
         }
 
         if (!Files.isWritable(directory)) {
+            logger.error("Diretório sem permissão de escrita: {}", directory);
             throw new FileStorageException("Diretório sem permissão de escrita: " + directory);
         }
     }
@@ -105,16 +115,19 @@ public class FileStorageService {
         try {
             // Extrair o nome do arquivo e subdiretório
             String fileName = FileHelper.extractFileNameFromUrl(filePath);
+            logger.debug("Tentando excluir arquivo: {}", fileName);
 
             // Tentar em diferentes diretórios possíveis
             Path[] possibleLocations = {
                     fileStorageLocation.resolve("images").resolve(fileName),
                     fileStorageLocation.resolve("files").resolve(fileName),
+                    fileStorageLocation.resolve("profiles").resolve(fileName),
                     fileStorageLocation.resolve(fileName)
             };
 
             boolean deleted = false;
             for (Path location : possibleLocations) {
+                logger.debug("Verificando localização: {}", location);
                 if (Files.exists(location)) {
                     Files.delete(location);
                     logger.info("Arquivo excluído com sucesso: {}", location);
@@ -141,19 +154,24 @@ public class FileStorageService {
 
         try {
             String fileName = FileHelper.extractFileNameFromUrl(filePath);
+            logger.debug("Verificando existência do arquivo: {}", fileName);
 
             Path[] possibleLocations = {
                     fileStorageLocation.resolve("images").resolve(fileName),
                     fileStorageLocation.resolve("files").resolve(fileName),
+                    fileStorageLocation.resolve("profiles").resolve(fileName),
                     fileStorageLocation.resolve(fileName)
             };
 
             for (Path location : possibleLocations) {
+                logger.debug("Verificando em: {}", location);
                 if (Files.exists(location)) {
+                    logger.debug("Arquivo encontrado em: {}", location);
                     return true;
                 }
             }
 
+            logger.debug("Arquivo não encontrado em nenhum diretório esperado: {}", fileName);
             return false;
         } catch (Exception e) {
             logger.error("Erro ao verificar existência do arquivo: {}", filePath, e);
@@ -170,6 +188,7 @@ public class FileStorageService {
         }
 
         String fileName = FileHelper.extractFileNameFromUrl(filePath);
+        logger.debug("Resolvendo caminho para o arquivo: {}", fileName);
 
         // Determinar o subdiretório, se presente no caminho
         String subdir = "";
@@ -177,15 +196,20 @@ public class FileStorageService {
             subdir = "images";
         } else if (filePath.startsWith("files/")) {
             subdir = "files";
+        } else if (filePath.startsWith("profiles/")) {
+            subdir = "profiles";
         }
 
         // Resolver o caminho
         if (!subdir.isEmpty()) {
-            return fileStorageLocation.resolve(subdir).resolve(fileName);
+            Path path = fileStorageLocation.resolve(subdir).resolve(fileName);
+            logger.debug("Caminho resolvido (com subdir): {}", path);
+            return path;
         }
 
         // Verificar em diferentes locais possíveis
         Path[] possibleLocations = {
+                fileStorageLocation.resolve("profiles").resolve(fileName),
                 fileStorageLocation.resolve("images").resolve(fileName),
                 fileStorageLocation.resolve("files").resolve(fileName),
                 fileStorageLocation.resolve(fileName)
@@ -193,14 +217,20 @@ public class FileStorageService {
 
         for (Path location : possibleLocations) {
             if (Files.exists(location)) {
+                logger.debug("Arquivo encontrado em: {}", location);
                 return location;
             }
         }
 
         // Se não encontrou, retorna o caminho padrão (poderá lançar exceção depois)
-        return fileStorageLocation.resolve(fileName);
+        Path defaultPath = fileStorageLocation.resolve(fileName);
+        logger.debug("Arquivo não encontrado, retornando caminho padrão: {}", defaultPath);
+        return defaultPath;
     }
 
+    /**
+     * Armazena uma imagem de perfil
+     */
     public String storeProfileImage(MultipartFile file) {
         //Validar o arquivo
         String errorMessage = FileHelper.validateFile(file, true);
@@ -212,7 +242,16 @@ public class FileStorageService {
         try {
             //Gerar nome único para a imagem de perfil
             String fileName = FileHelper.generateUniqueFileName(file);
-            Path targetLocation = fileStorageLocation.resolve("profiles").resolve(fileName);
+            Path profilesDir = fileStorageLocation.resolve("profiles");
+
+            // Garantir que o diretório existe
+            if (!Files.exists(profilesDir)) {
+                Files.createDirectories(profilesDir);
+                logger.info("Diretório de perfis criado: {}", profilesDir);
+            }
+
+            Path targetLocation = profilesDir.resolve(fileName);
+            logger.debug("Armazenando imagem de perfil em: {}", targetLocation);
 
             //Copiar o arquivo
             Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
@@ -223,6 +262,7 @@ public class FileStorageService {
                 throw new FileStorageException("Falha ao armazenar imagem de perfil ou imagem não legível: " + fileName);
             }
 
+            // Retornar o caminho relativo padronizado
             return "profiles/" + fileName;
         } catch (IOException e) {
             logger.error("Erro ao armazenar imagem de perfil: {}", e.getMessage(), e);

@@ -50,11 +50,18 @@ public class ProfileImageController {
         logger.info("Servindo imagem de perfil: {}", filename);
 
         try {
-            Path filePath = Paths.get(uploadDir, "/upload-data/profiles", filename);
+            // Corrigido: removido o prefixo "/upload-data" que estava incorreto
+            Path filePath = Paths.get(uploadDir, "profiles", filename);
+
+            // Adicionar log para debug
+            logger.debug("Buscando arquivo em: {}", filePath.toString());
+
             Resource resource = new FileSystemResource(filePath.toFile());
 
             if (!resource.exists()) {
-                logger.warn("Imagem de perfil não encontrada: {}", filename);
+                // Adicionar mais informação para log
+                logger.warn("Imagem de perfil não encontrada: {} em {}",
+                        filename, filePath.toAbsolutePath().toString());
                 return ResponseEntity.notFound().build();
             }
 
@@ -96,10 +103,16 @@ public class ProfileImageController {
             }
 
             Path filePath = Paths.get(uploadDir, "profiles", filename);
+
+            // Adicionar log para debug
+            logger.debug("Buscando arquivo para userId {} em: {}",
+                    userId, filePath.toString());
+
             Resource resource = new FileSystemResource(filePath.toFile());
 
             if (!resource.exists()) {
-                logger.warn("Imagem de perfil não encontrada para o usuário: {}", userId);
+                logger.warn("Imagem de perfil não encontrada para o usuário: {} em caminho {}",
+                        userId, filePath.toAbsolutePath().toString());
                 return ResponseEntity.notFound().build();
             }
 
