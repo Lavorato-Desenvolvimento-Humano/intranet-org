@@ -25,4 +25,7 @@ public interface ImagemRepository extends JpaRepository<Imagem, UUID> {
     // Se a entidade tiver um campo createdAt, adicione também:
     @Query("SELECT i FROM Imagem i WHERE i.postagem IS NULL AND i.createdAt < :date")
     List<Imagem> findOrphanedImagesCreatedBefore(LocalDateTime date);
+
+    // Adicionar ao ImagemRepository.java
+    List<Imagem> findByUrlContaining(String partialUrl);
 }

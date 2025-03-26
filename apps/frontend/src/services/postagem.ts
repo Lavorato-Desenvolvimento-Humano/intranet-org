@@ -171,7 +171,7 @@ const postagemService = {
       console.log("Enviando imagem para o servidor...");
 
       const response = await api.post<ImagemDto>(
-        "/api/temp/imagens", // Novo endpoint
+        "/api/temp/imagens",
         formData,
         {
           headers: {
