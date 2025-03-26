@@ -17,6 +17,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import java.util.List;
 import java.util.UUID;
@@ -102,6 +104,8 @@ public class PostagemServiceImpl implements PostagemService {
         Postagem savedPostagem = postagemRepository.save(postagem);
         logger.info("Postagem criada com sucesso. ID: {}", savedPostagem.getId());
 
+        associarImagensTemporarias(savedPostagem, postagemCreateDto.getText());
+
         return DTOMapperUtil.mapToPostagemDto(savedPostagem);
     }
 
@@ -131,6 +135,8 @@ public class PostagemServiceImpl implements PostagemService {
 
         Postagem updatedPostagem = postagemRepository.save(postagem);
         logger.info("Postagem atualizada com sucesso. ID: {}", updatedPostagem.getId());
+
+        associarImagensTemporarias(updatedPostagem, postagemUpdateDto.getText());
 
         return DTOMapperUtil.mapToPostagemDto(updatedPostagem);
     }
@@ -348,6 +354,30 @@ public class PostagemServiceImpl implements PostagemService {
         // Excluir a tabela
         tabelaPostagemRepository.delete(tabela);
         logger.info("Tabela excluída com sucesso. ID: {}", id);
+    }
+
+    // Método a ser adicionado no PostagemService após salvar uma postagem
+    private void associarImagensTemporarias(Postagem postagem, String conteudoHtml) {
+        // Usar regex ou parser HTML para extrair URLs de imagens
+        Pattern pattern = Pattern.compile("<img[^>]+src=\"([^\"]+)\"");
+        Matcher matcher = pattern.matcher(conteudoHtml);
+
+        while (matcher.find()) {
+            String imageUrl = matcher.group(1);
+            // Extrair nome do arquivo da URL
+            String filename = imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
+
+            // Buscar imagens temporárias com esta URL
+            List<Imagem> imagens = imagemRepository.findByUrlContaining(filename);
+
+            // Associar cada imagem encontrada à postagem
+            for (Imagem imagem : imagens) {
+                if (imagem.getPostagem() == null) {
+                    imagem.setPostagem(postagem);
+                    imagemRepository.save(imagem);
+                }
+            }
+        }
     }
 
     // Método auxiliar para obter o usuário atual
