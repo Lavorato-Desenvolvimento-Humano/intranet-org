@@ -2,6 +2,7 @@ package com.intranet.backend.controllers;
 
 import com.intranet.backend.dto.AnexoDto;
 import com.intranet.backend.dto.ImagemDto;
+import com.intranet.backend.exception.ResourceNotFoundException;
 import com.intranet.backend.model.Anexo;
 import com.intranet.backend.model.Imagem;
 import com.intranet.backend.repository.AnexoRepository;
@@ -15,10 +16,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.UUID;
@@ -40,6 +38,7 @@ public class TempUploadController {
             @RequestParam(value = "description", required = false) String description) {
 
         logger.info("Requisição para adicionar imagem temporária");
+        logger.debug("Criando nova imagem temporária sem ID...");
 
         try {
             // Validar o arquivo
@@ -52,14 +51,19 @@ public class TempUploadController {
             String fileName = fileStorageService.storeFileInPath(file, "temp/imagens");
             String fileUrl = "/api/uploads/temp/imagens/" + FileHelper.extractFileNameFromUrl(fileName);
 
-            // Criar entidade Imagem temporária (sem postagem)
+            // Criar uma nova instância de Imagem (sem usar um ID existente)
             Imagem imagem = new Imagem();
-            imagem.setId(UUID.randomUUID());
+            // Não definir ID manualmente
             imagem.setUrl(fileUrl);
             imagem.setDescription(description);
+            imagem.setPostagem(null); // Explicitamente definir postagem como null
 
-            // Salvar no banco de dados
+            logger.debug("Objeto Imagem criado com URL: {}", imagem.getUrl());
+            logger.debug("Salvando imagem no banco de dados...");
+
+            // Salvar no banco de dados como uma nova entidade
             Imagem savedImagem = imagemRepository.save(imagem);
+            logger.debug("Imagem salva com ID: {}", savedImagem.getId());
             logger.info("Imagem temporária salva com sucesso: {}", savedImagem.getId());
 
             // Criar DTO para retorno
@@ -71,7 +75,17 @@ public class TempUploadController {
             return ResponseUtil.created(imagemDto);
         } catch (Exception e) {
             logger.error("Erro ao adicionar imagem temporária: {}", e.getMessage(), e);
-            return ResponseUtil.<ImagemDto>serverError("Erro ao processar imagem temporária");
+
+            // Fornecer mais detalhes para ajudar no diagnóstico
+            String errorMessage = "Erro ao processar imagem temporária";
+            if (e instanceof org.springframework.orm.ObjectOptimisticLockingFailureException ||
+                    e.getCause() instanceof org.hibernate.StaleObjectStateException) {
+                errorMessage = "Erro de concorrência ao salvar imagem. Por favor, tente novamente.";
+            } else if (e instanceof org.springframework.dao.DataIntegrityViolationException) {
+                errorMessage = "Erro de integridade de dados ao salvar imagem.";
+            }
+
+            return ResponseUtil.<ImagemDto>serverError(errorMessage);
         }
     }
 
@@ -93,10 +107,11 @@ public class TempUploadController {
 
             // Criar entidade Anexo temporária (sem postagem)
             Anexo anexo = new Anexo();
-            anexo.setId(UUID.randomUUID());
+            // Não definir ID manualmente
             anexo.setNameFile(file.getOriginalFilename());
             anexo.setTypeFile(file.getContentType());
             anexo.setUrl(fileUrl);
+            anexo.setPostagem(null); // Explicitamente definir postagem como null
 
             // Salvar no banco de dados
             Anexo savedAnexo = anexoRepository.save(anexo);
@@ -112,7 +127,7 @@ public class TempUploadController {
             return ResponseUtil.created(anexoDto);
         } catch (Exception e) {
             logger.error("Erro ao adicionar anexo temporário: {}", e.getMessage(), e);
-            return ResponseUtil.<AnexoDto>serverError("Erro ao processar anexo temporário");
+            return ResponseUtil.<AnexoDto>serverError("Erro ao processar anexo temporário: " + e.getMessage());
         }
     }
 }

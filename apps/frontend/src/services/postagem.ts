@@ -197,6 +197,7 @@ const postagemService = {
       console.log("Imagem enviada com sucesso:", response.data);
       return response.data;
     } catch (error: any) {
+      // Tratamento de erro existente
       console.error("Erro detalhado ao adicionar imagem temporária:", error);
 
       // Mensagem amigável baseada no tipo de erro

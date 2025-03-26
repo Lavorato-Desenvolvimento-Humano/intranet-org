@@ -300,7 +300,7 @@ public class FileStorageService {
             Files.copy(file.getInputStream(), targetFile, StandardCopyOption.REPLACE_EXISTING);
             logger.info("Arquivo armazenado com sucesso em: {}", targetFile);
 
-            return subPath + "/" + fileName;
+            return fileName;
         } catch (IOException e) {
             logger.error("Erro ao armazenar arquivo: {}", e.getMessage(), e);
             throw new FileStorageException("Falha ao armazenar arquivo: " + e.getMessage(), e);
