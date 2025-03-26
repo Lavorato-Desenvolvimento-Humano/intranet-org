@@ -19,6 +19,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @RestController
@@ -57,6 +58,7 @@ public class TempUploadController {
             imagem.setUrl(fileUrl);
             imagem.setDescription(description);
             imagem.setPostagem(null); // Explicitamente definir postagem como null
+            imagem.setCreatedAt(LocalDateTime.now());
 
             logger.debug("Objeto Imagem criado com URL: {}", imagem.getUrl());
             logger.debug("Salvando imagem no banco de dados...");
