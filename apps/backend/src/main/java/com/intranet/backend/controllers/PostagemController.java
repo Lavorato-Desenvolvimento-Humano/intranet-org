@@ -198,9 +198,9 @@ public class PostagemController {
                 return ResponseEntity.badRequest().build();
             }
 
-            // Salvar arquivo
-            String fileName = fileStorageService.storeFile(file);
-            String fileUrl = "/api/uploads/images/" + FileHelper.extractFileNameFromUrl(fileName);
+            // Salvar arquivo no diretório temp/postagens
+            String fileName = fileStorageService.storeFileInPath(file, "temp/postagens");
+            String fileUrl = "/api/uploads/temp/postagens/" + FileHelper.extractFileNameFromUrl(fileName);
 
             // Criar entidade Imagem temporária (sem postagem)
             Imagem imagem = new Imagem();

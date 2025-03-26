@@ -181,6 +181,19 @@ const postagemService = {
         }
       );
 
+      let url = response.data.url;
+      if (!url.startsWith("http") && !url.startsWith("/")) {
+        url = "/" + url;
+      }
+
+      //Verificar se estamos em desenvolvimento ou produção
+      const isDevelopment = process.env.NODE_ENV === "development";
+      const baseUrl = isDevelopment
+        ? process.env.NEXT_PUBLIC_API_URL || ""
+        : "";
+
+      response.data.url = baseUrl + url;
+
       console.log("Imagem enviada com sucesso:", response.data);
       return response.data;
     } catch (error: any) {
