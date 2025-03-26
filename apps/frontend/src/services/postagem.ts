@@ -171,7 +171,7 @@ const postagemService = {
       console.log("Enviando imagem para o servidor...");
 
       const response = await api.post<ImagemDto>(
-        "/postagens/temp/imagens",
+        "/api/temp/imagens", // Novo endpoint
         formData,
         {
           headers: {
@@ -181,9 +181,23 @@ const postagemService = {
         }
       );
 
+      let url = response.data.url;
+      if (!url.startsWith("http") && !url.startsWith("/")) {
+        url = "/" + url;
+      }
+
+      // Verificar se estamos em desenvolvimento ou produção
+      const isDevelopment = process.env.NODE_ENV === "development";
+      const baseUrl = isDevelopment
+        ? process.env.NEXT_PUBLIC_API_URL || ""
+        : "";
+
+      response.data.url = baseUrl + url;
+
       console.log("Imagem enviada com sucesso:", response.data);
       return response.data;
     } catch (error: any) {
+      // Tratamento de erro existente
       console.error("Erro detalhado ao adicionar imagem temporária:", error);
 
       // Mensagem amigável baseada no tipo de erro
@@ -226,7 +240,7 @@ const postagemService = {
       formData.append("file", file);
 
       const response = await api.post<AnexoDto>(
-        "/postagens/temp/anexos",
+        "/api/temp/anexos", // Novo endpoint
         formData,
         {
           headers: {

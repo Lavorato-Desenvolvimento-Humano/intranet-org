@@ -63,6 +63,18 @@ public class StaticResourceConfig implements WebMvcConfigurer {
                 .addResourceLocations("file:" + uploadDir + "/profiles/")
                 .setCacheControl(cacheControl);
 
+        registry.addResourceHandler("api/temp/**")
+                .addResourceLocations("file:" + uploadDir + "/temp/")
+                .setCacheControl(cacheControl);
+
+        CacheControl tempCacheControl = CacheControl.maxAge(1, TimeUnit.DAYS)
+                .cachePublic()
+                .mustRevalidate();
+
+        registry.addResourceHandler("/api/uploads/temp/**")
+                .addResourceLocations("file:" + uploadDir + "/temp/")
+                        .setCacheControl(tempCacheControl);
+
         logger.info("Configuração de recursos estáticos concluída");
     }
 
@@ -76,6 +88,19 @@ public class StaticResourceConfig implements WebMvcConfigurer {
             if (!Files.exists(basePath)) {
                 Files.createDirectories(basePath);
                 logger.info("Diretório base criado: {}", basePath);
+            }
+
+            // Diretório temporário
+            Path tempPath = Paths.get(uploadDir, "temp");
+            if (!Files.exists(tempPath)) {
+                Files.createDirectories(tempPath);
+                logger.info("Diretório temporário criado: {}", tempPath);
+            }
+
+            Path tempImagesPath = Paths.get(uploadDir, "temp/postagens");
+            if (!Files.exists(tempImagesPath)) {
+                Files.createDirectories(tempImagesPath);
+                logger.info("Diretório temporário de postagens criado: {}", tempImagesPath);
             }
 
             // Diretório de perfis
