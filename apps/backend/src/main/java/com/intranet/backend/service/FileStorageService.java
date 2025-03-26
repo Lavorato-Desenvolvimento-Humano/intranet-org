@@ -271,6 +271,43 @@ public class FileStorageService {
     }
 
     /**
+     * Armazena um arquivo em um caminho específico e retorna o caminho relativo
+     */
+    public String storeFileInPath(MultipartFile file, String subPath) {
+        // Validar o arquivo
+        String errorMessage = FileHelper.validateFile(file, false);
+        if (errorMessage != null) {
+            logger.error("Validação de arquivo falhou: {}", errorMessage);
+            throw new FileStorageException(errorMessage);
+        }
+
+        try {
+            // Gerar nome único para o arquivo
+            String fileName = FileHelper.generateUniqueFileName(file);
+
+            // Resolver o caminho completo
+            Path targetPath = fileStorageLocation.resolve(subPath);
+
+            // Garantir que o diretório existe
+            if (!Files.exists(targetPath)) {
+                Files.createDirectories(targetPath);
+                logger.info("Diretório criado: {}", targetPath);
+            }
+
+            Path targetFile = targetPath.resolve(fileName);
+
+            // Copiar o arquivo
+            Files.copy(file.getInputStream(), targetFile, StandardCopyOption.REPLACE_EXISTING);
+            logger.info("Arquivo armazenado com sucesso em: {}", targetFile);
+
+            return fileName;
+        } catch (IOException e) {
+            logger.error("Erro ao armazenar arquivo: {}", e.getMessage(), e);
+            throw new FileStorageException("Falha ao armazenar arquivo: " + e.getMessage(), e);
+        }
+    }
+
+    /**
      * Retorna o diretório de armazenamento base
      */
     public Path getStorageLocation() {

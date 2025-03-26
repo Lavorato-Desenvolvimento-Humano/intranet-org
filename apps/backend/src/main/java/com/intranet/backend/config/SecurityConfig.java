@@ -81,6 +81,7 @@ public class SecurityConfig {
 
                                 // Public access to image and file resources
                                 .requestMatchers("/api/uploads/**").permitAll()
+                                .requestMatchers("/api/uploads/temp/**").permitAll()
                                 .requestMatchers("/api/images/**").permitAll()
                                 .requestMatchers("/api/files/check/**").permitAll()
                                 .requestMatchers("/api/profile-images/**", "/profile-images/**").permitAll()
@@ -88,6 +89,7 @@ public class SecurityConfig {
 
                                 // Permitir uploads temporários para usuários autenticados
                                 .requestMatchers("/api/postagens/temp/**").authenticated()
+                                .requestMatchers("/api/temp/**").authenticated()
 
                                 // For debugging purposes
                                 .requestMatchers("/api/diagnostic/**").permitAll()
