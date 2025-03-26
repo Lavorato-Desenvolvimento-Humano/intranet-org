@@ -88,6 +88,7 @@ public class SecurityConfig {
 
                                 // Permitir uploads temporários para usuários autenticados
                                 .requestMatchers("/api/postagens/temp/**").authenticated()
+                                .requestMatchers("api/temp/**").authenticated()
 
                                 // For debugging purposes
                                 .requestMatchers("/api/diagnostic/**").permitAll()

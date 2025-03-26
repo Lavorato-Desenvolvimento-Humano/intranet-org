@@ -171,7 +171,7 @@ const postagemService = {
       console.log("Enviando imagem para o servidor...");
 
       const response = await api.post<ImagemDto>(
-        "/api/postagens/temp/imagens",
+        "/api/temp/imagens", // Novo endpoint
         formData,
         {
           headers: {
@@ -186,7 +186,7 @@ const postagemService = {
         url = "/" + url;
       }
 
-      //Verificar se estamos em desenvolvimento ou produção
+      // Verificar se estamos em desenvolvimento ou produção
       const isDevelopment = process.env.NODE_ENV === "development";
       const baseUrl = isDevelopment
         ? process.env.NEXT_PUBLIC_API_URL || ""
@@ -239,7 +239,7 @@ const postagemService = {
       formData.append("file", file);
 
       const response = await api.post<AnexoDto>(
-        "/postagens/temp/anexos",
+        "/api/temp/anexos", // Novo endpoint
         formData,
         {
           headers: {

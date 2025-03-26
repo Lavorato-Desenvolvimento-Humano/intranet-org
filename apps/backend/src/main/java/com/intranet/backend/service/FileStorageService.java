@@ -300,11 +300,6 @@ public class FileStorageService {
             Files.copy(file.getInputStream(), targetFile, StandardCopyOption.REPLACE_EXISTING);
             logger.info("Arquivo armazenado com sucesso em: {}", targetFile);
 
-            // Confirmar que o arquivo existe e pode ser lido
-            if (!Files.exists(targetFile) || !Files.isReadable(targetFile)) {
-                throw new FileStorageException("Falha ao armazenar arquivo ou arquivo não legível: " + fileName);
-            }
-
             return subPath + "/" + fileName;
         } catch (IOException e) {
             logger.error("Erro ao armazenar arquivo: {}", e.getMessage(), e);
