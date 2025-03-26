@@ -63,7 +63,7 @@ public class StaticResourceConfig implements WebMvcConfigurer {
                 .addResourceLocations("file:" + uploadDir + "/profiles/")
                 .setCacheControl(cacheControl);
 
-        registry.addResourceHandler("api/temp/**")
+        registry.addResourceHandler("/api/temp/**")
                 .addResourceLocations("file:" + uploadDir + "/temp/")
                 .setCacheControl(cacheControl);
 
