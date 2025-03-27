@@ -420,7 +420,7 @@ export default function PostagemViewPage() {
                     <img
                       src={imagem.url}
                       alt={imagem.description || `Imagem ${index + 1}`}
-                      className="w-full h-48 object-cover rounded-lg mb-2"
+                      className="w-full max-h-96 rounded-lg mb-2"
                     />
                     {imagem.description && (
                       <p className="text-sm text-gray-600 text-center">
