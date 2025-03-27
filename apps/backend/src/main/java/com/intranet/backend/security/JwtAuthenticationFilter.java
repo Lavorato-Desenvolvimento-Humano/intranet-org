@@ -38,8 +38,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             "/profile-images/**",
             "/api/postagens/temp/imagens",
             "/profiles/**",
-            "/uploads/temp/anexos/**", // Adicionar esta linha
-            "/api/uploads/temp/anexos/**" // Adicionar esta linha
+            "/uploads/temp/**",
+            "/uploads/temp/anexos/**",
+            "/uploads/temp/imagens/**",
+            "/api/uploads/temp/**",
+            "/api/uploads/temp/anexos/**",
+            "/api/uploads/temp/imagens/**"
     );
 
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
@@ -63,7 +67,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // Verifica se é um arquivo de imagem
         boolean isImageFile = path.matches(".*\\.(jpg|jpeg|png|gif|bmp|webp)$");
 
-        return shouldExclude || isProfileImage || isImageFile;
+        boolean isStaticResource = path.matches(".*\\.(jpg|jpeg|png|gif|bmp|webp|svg|css|js|html|ico)$");
+
+        return shouldExclude || isProfileImage || isImageFile || isStaticResource;
     }
 
     @Override
