@@ -27,6 +27,7 @@ import postagemService, {
 } from "@/services/postagem";
 import toastUtil from "@/utils/toast";
 import { CustomButton } from "@/components/ui/custom-button";
+import ContentViewer from "@/components/ui/content-viewer";
 
 export default function PostagemViewPage() {
   const router = useRouter();
@@ -307,12 +308,12 @@ export default function PostagemViewPage() {
             )}
             {canDelete() && (
               <CustomButton
-                variant="secondary"
+                variant="primary"
                 icon={Trash}
                 onClick={() =>
                   setConfirmDelete({ show: true, isDeleting: false })
                 }
-                className="text-red-500 border-red-500 hover:bg-red-50">
+                className="bg-red-600 hover:bg-red-700 text-white border-none">
                 Excluir
               </CustomButton>
             )}
@@ -407,9 +408,9 @@ export default function PostagemViewPage() {
           {/* Conteúdo da aba selecionada */}
           <div className="p-6">
             {activeTab === "conteudo" && (
-              <div
-                className="prose max-w-none whitespace-pre-wrap"
-                dangerouslySetInnerHTML={{ __html: postagem.text }}
+              <ContentViewer
+                content={postagem.text}
+                className="whitespace-pre-wrap"
               />
             )}
 
