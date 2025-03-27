@@ -82,6 +82,7 @@ public class SecurityConfig {
                                 // Public access to image and file resources
                                 .requestMatchers("/api/uploads/**").permitAll()
                                 .requestMatchers("/api/uploads/temp/**").permitAll()
+                                .requestMatchers("/uploads/temp/anexos/**").permitAll() // Adicionar esta linha
                                 .requestMatchers("/api/images/**").permitAll()
                                 .requestMatchers("/api/files/check/**").permitAll()
                                 .requestMatchers("/api/profile-images/**", "/profile-images/**").permitAll()
