@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Calendar, Edit, ArrowLeft } from "lucide-react";
+import { Calendar, Edit, ArrowLeft, Trash } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Breadcrumb from "@/components/ui/breadcrumb";
 import { Loading } from "@/components/ui/loading";
@@ -12,6 +12,8 @@ import tabelaValoresService, {
   TabelaValoresDto,
 } from "@/services/tabelaValores";
 import { CustomButton } from "@/components/ui/custom-button";
+import ConfirmDialog from "@/components/ui/confirm-dialog";
+import toastUtil from "@/utils/toast";
 
 export default function TabelaValoresViewPage() {
   const router = useRouter();
@@ -20,6 +22,13 @@ export default function TabelaValoresViewPage() {
   const [tabela, setTabela] = useState<TabelaValoresDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{
+    show: boolean;
+    isDeleting: boolean;
+  }>({
+    show: false,
+    isDeleting: false,
+  });
 
   const tabelaId = params?.id as string;
 
@@ -29,6 +38,7 @@ export default function TabelaValoresViewPage() {
   const isEditor =
     user?.roles?.includes("ROLE_EDITOR") || user?.roles?.includes("EDITOR");
   const canEdit = isAdmin || isEditor;
+  const canDelete = isAdmin || isEditor;
 
   // Buscar dados da tabela
   useEffect(() => {
@@ -70,6 +80,31 @@ export default function TabelaValoresViewPage() {
       hour: "2-digit",
       minute: "2-digit",
     });
+  };
+
+  // Função para abrir o diálogo de confirmação
+  const handleDeleteClick = () => {
+    setConfirmDelete({
+      show: true,
+      isDeleting: false,
+    });
+  };
+
+  // Função para excluir a tabela
+  const handleConfirmDelete = async () => {
+    setConfirmDelete((prev) => ({ ...prev, isDeleting: true }));
+
+    try {
+      await tabelaValoresService.deleteTabela(tabelaId);
+      toastUtil.success("Tabela de valores excluída com sucesso!");
+      router.push("/tabelas-valores");
+    } catch (error) {
+      console.error("Erro ao excluir tabela de valores:", error);
+      toastUtil.error(
+        "Erro ao excluir tabela de valores. Tente novamente mais tarde."
+      );
+      setConfirmDelete((prev) => ({ ...prev, isDeleting: false }));
+    }
   };
 
   // Função para renderizar o conteúdo da tabela
@@ -179,16 +214,26 @@ export default function TabelaValoresViewPage() {
 
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-800">{tabela.nome}</h1>
-          {canEdit && (
-            <CustomButton
-              variant="primary"
-              icon={Edit}
-              onClick={() =>
-                router.push(`/tabelas-valores/${tabelaId}/editar`)
-              }>
-              Editar
-            </CustomButton>
-          )}
+          <div className="flex space-x-2">
+            {canEdit && (
+              <CustomButton
+                variant="primary"
+                icon={Edit}
+                onClick={() =>
+                  router.push(`/tabelas-valores/${tabelaId}/editar`)
+                }>
+                Editar
+              </CustomButton>
+            )}
+            {canDelete && (
+              <CustomButton
+                variant="secondary"
+                icon={Trash}
+                onClick={handleDeleteClick}>
+                Excluir
+              </CustomButton>
+            )}
+          </div>
         </div>
 
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
@@ -236,6 +281,20 @@ export default function TabelaValoresViewPage() {
           {renderTableContent()}
         </div>
       </main>
+
+      {confirmDelete.show && (
+        <ConfirmDialog
+          isOpen={confirmDelete.show}
+          title="Excluir Tabela de Valores"
+          message={`Tem certeza que deseja excluir a tabela "${tabela.nome}"? Esta ação não pode ser desfeita.`}
+          confirmText="Excluir"
+          cancelText="Cancelar"
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setConfirmDelete({ show: false, isDeleting: false })}
+          isLoading={confirmDelete.isDeleting}
+          variant="danger"
+        />
+      )}
     </div>
   );
 }
