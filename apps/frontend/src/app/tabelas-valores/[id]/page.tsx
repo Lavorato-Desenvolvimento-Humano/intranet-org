@@ -227,8 +227,9 @@ export default function TabelaValoresViewPage() {
             )}
             {canDelete && (
               <CustomButton
-                variant="secondary"
+                variant="primary"
                 icon={Trash}
+                className="bg-red-500 hover:bg-red-700 text-white border-none"
                 onClick={handleDeleteClick}>
                 Excluir
               </CustomButton>
