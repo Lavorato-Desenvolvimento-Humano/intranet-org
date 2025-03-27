@@ -27,6 +27,7 @@ import postagemService, {
 } from "@/services/postagem";
 import toastUtil from "@/utils/toast";
 import { CustomButton } from "@/components/ui/custom-button";
+import ContentViewer from "@/components/ui/content-viewer";
 
 export default function PostagemViewPage() {
   const router = useRouter();
