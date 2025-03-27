@@ -308,12 +308,12 @@ export default function PostagemViewPage() {
             )}
             {canDelete() && (
               <CustomButton
-                variant="secondary"
+                variant="primary"
                 icon={Trash}
                 onClick={() =>
                   setConfirmDelete({ show: true, isDeleting: false })
                 }
-                className="text-red-600 border-red-600 hover:bg-red-50">
+                className="bg-red-600 hover:bg-red-700 text-white border-none">
                 Excluir
               </CustomButton>
             )}
