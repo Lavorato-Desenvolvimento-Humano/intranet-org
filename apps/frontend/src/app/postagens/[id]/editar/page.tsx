@@ -28,14 +28,18 @@ import toastUtil from "@/utils/toast";
 import { CustomButton } from "@/components/ui/custom-button";
 import dynamic from "next/dynamic";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
+import RichTextPreview from "@/components/ui/rich-text-preview";
 
 // Importar o editor de texto rico dinamicamente para evitar problemas de SSR
-const RichEditor = dynamic(() => import("@/components/ui/rich-editor"), {
-  ssr: false,
-  loading: () => (
-    <div className="h-64 w-full animate-pulse bg-gray-100 rounded-md"></div>
-  ),
-});
+const SimpleRichEditor = dynamic(
+  () => import("@/components/ui/simple-rich-editor"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-64 w-full animate-pulse bg-gray-100 rounded-md"></div>
+    ),
+  }
+);
 
 export default function EditarPostagemPage() {
   const router = useRouter();
@@ -600,7 +604,7 @@ export default function EditarPostagemPage() {
                     className="block text-sm font-medium text-gray-700 mb-1">
                     Conteúdo *
                   </label>
-                  <RichEditor
+                  <SimpleRichEditor
                     value={formData.text}
                     onChange={handleEditorChange}
                     placeholder="Digite o conteúdo da postagem..."
@@ -648,6 +652,12 @@ export default function EditarPostagemPage() {
                       }
                     }}
                   />
+                  {errors.text && (
+                    <p className="mt-1 text-sm text-red-500">{errors.text}</p>
+                  )}
+
+                  {/* Componente de pré-visualização */}
+                  <RichTextPreview content={formData.text} />
                 </div>
 
                 <div className="flex justify-end space-x-3">

@@ -17,8 +17,9 @@ import postagemService, {
 import toastUtil from "@/utils/toast";
 import { CustomButton } from "@/components/ui/custom-button";
 import dynamic from "next/dynamic";
+import RichTextPreview from "@/components/ui/rich-text-preview";
 
-// Importando o editor simples em vez do CKEditor
+// Importando o editor melhorado com carregamento dinâmico
 const SimpleRichEditor = dynamic(
   () => import("@/components/ui/simple-rich-editor"),
   {
@@ -323,6 +324,9 @@ export default function NovaPostagemPage() {
               {errors.text && (
                 <p className="mt-1 text-sm text-red-500">{errors.text}</p>
               )}
+
+              {/* Adicionar componente de pré-visualização */}
+              <RichTextPreview content={formData.text} />
             </div>
 
             <div className="flex justify-end space-x-3">
