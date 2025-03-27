@@ -26,6 +26,7 @@ interface SimpleRichEditorProps {
   height?: string;
   error?: string;
   disabled?: boolean;
+  preserveWhitespace?: boolean;
   onImageUpload?: (file: File) => Promise<string>;
   onFileUpload?: (file: File) => Promise<string>;
 }
@@ -37,6 +38,7 @@ const SimpleRichEditor: React.FC<SimpleRichEditorProps> = ({
   height = "400px",
   error,
   disabled = false,
+  preserveWhitespace = true,
   onImageUpload,
   onFileUpload,
 }) => {
@@ -62,6 +64,7 @@ const SimpleRichEditor: React.FC<SimpleRichEditorProps> = ({
   useEffect(() => {
     if (editorRef.current) {
       if (!isInitialized) {
+        // Garantir que o HTML é renderizado corretamente sem processamento adicional
         editorRef.current.innerHTML = value || "";
         setIsInitialized(true);
         checkIfEmpty();
@@ -69,15 +72,63 @@ const SimpleRichEditor: React.FC<SimpleRichEditorProps> = ({
         // Only update if content has changed from external source
         const selection = window.getSelection();
         const isEditorFocused = document.activeElement === editorRef.current;
+        const activeElement = document.activeElement;
 
-        // Update content
+        // Salvar a posição atual da seleção
+        const savedSelection = {
+          anchorNode: selection?.anchorNode,
+          anchorOffset: selection?.anchorOffset || 0,
+          focusNode: selection?.focusNode,
+          focusOffset: selection?.focusOffset || 0,
+          rangeCount: selection?.rangeCount || 0,
+        };
+
+        // Update content without processing
         editorRef.current.innerHTML = value || "";
         checkIfEmpty();
+
+        // Restaurar seleção apenas se o editor estiver focado e se tivermos savedSelection
+        if (isEditorFocused && savedSelection.rangeCount > 0 && selection) {
+          try {
+            setTimeout(() => {
+              // Dar tempo para o DOM atualizar
+              if (activeElement instanceof HTMLElement) {
+                activeElement.focus();
+              }
+
+              // Tentar restaurar a seleção
+              if (
+                savedSelection.anchorNode &&
+                savedSelection.anchorNode.parentNode &&
+                document.contains(savedSelection.anchorNode)
+              ) {
+                const range = document.createRange();
+                range.setStart(
+                  savedSelection.anchorNode,
+                  savedSelection.anchorOffset
+                );
+                if (
+                  savedSelection.focusNode &&
+                  document.contains(savedSelection.focusNode)
+                ) {
+                  range.setEnd(
+                    savedSelection.focusNode,
+                    savedSelection.focusOffset
+                  );
+                }
+                selection.removeAllRanges();
+                selection.addRange(range);
+              }
+            }, 0);
+          } catch (e) {
+            console.error("Erro ao restaurar seleção:", e);
+          }
+        }
       }
     }
   }, [value, isInitialized]);
 
-  // Handle editor content changes
+  // Handle editor content changes - enviar o HTML bruto sem processamento
   const handleEditorChange = () => {
     if (editorRef.current) {
       const newValue = editorRef.current.innerHTML;
@@ -139,6 +190,7 @@ const SimpleRichEditor: React.FC<SimpleRichEditorProps> = ({
 
     handleEditorChange();
   };
+
   // Função auxiliar para obter o nó da linha atual
   const getCurrentLineNode = () => {
     const selection = window.getSelection();
@@ -386,6 +438,11 @@ const SimpleRichEditor: React.FC<SimpleRichEditorProps> = ({
     }
   };
 
+  // Aplicar a classe de preserveWhitespace se solicitado
+  const editorClasses = `w-full h-full px-3 py-2 focus:outline-none overflow-auto leading-normal ${
+    preserveWhitespace ? "whitespace-pre-wrap break-words" : ""
+  }`;
+
   return (
     <div className="w-full">
       <div className="border rounded-md overflow-hidden">
@@ -468,7 +525,7 @@ const SimpleRichEditor: React.FC<SimpleRichEditorProps> = ({
             onInput={handleEditorChange}
             onBlur={handleEditorChange}
             onKeyDown={handleKeyDown}
-            className="w-full h-full px-3 py-2 focus:outline-none overflow-auto leading-normal"
+            className={editorClasses}
             style={{ minHeight: "200px" }}
             suppressContentEditableWarning={true}
           />

@@ -7,7 +7,8 @@ interface ContentViewerProps {
 }
 
 /**
- * ContentViewer component for rendering HTML content safely with proper styling using Tailwind
+ * ContentViewer component para renderizar conteúdo HTML de forma segura com estilização adequada
+ * Preserva quebras de linha e espaçamento
  */
 const ContentViewer: React.FC<ContentViewerProps> = ({
   content,
@@ -15,7 +16,7 @@ const ContentViewer: React.FC<ContentViewerProps> = ({
 }) => {
   return (
     <div
-      className={`prose max-w-none text-gray-800 ${className}`}
+      className={`prose max-w-none text-gray-800 whitespace-pre-wrap break-words ${className}`}
       dangerouslySetInnerHTML={{ __html: content }}
     />
   );
