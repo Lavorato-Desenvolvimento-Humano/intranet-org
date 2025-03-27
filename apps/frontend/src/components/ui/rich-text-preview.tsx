@@ -43,7 +43,7 @@ const RichTextPreview: React.FC<RichTextPreviewProps> = ({
         <div
           className={`border rounded-md p-4 bg-white overflow-auto max-h-96 ${className}`}>
           <div
-            className="prose max-w-none"
+            className="prose max-w-none whitespace-pre-wrap"
             dangerouslySetInnerHTML={{ __html: content }}
           />
         </div>

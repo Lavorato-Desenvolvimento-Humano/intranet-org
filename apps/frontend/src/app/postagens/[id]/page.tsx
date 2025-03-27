@@ -408,7 +408,7 @@ export default function PostagemViewPage() {
           <div className="p-6">
             {activeTab === "conteudo" && (
               <div
-                className="prose max-w-none"
+                className="prose max-w-none whitespace-pre-wrap"
                 dangerouslySetInnerHTML={{ __html: postagem.text }}
               />
             )}
