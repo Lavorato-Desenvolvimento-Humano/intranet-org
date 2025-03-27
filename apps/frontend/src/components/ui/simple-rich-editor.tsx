@@ -1,7 +1,7 @@
 // src/components/ui/simple-rich-editor.tsx
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import {
   Bold,
   Italic,
@@ -34,212 +34,178 @@ const SimpleRichEditor: React.FC<SimpleRichEditorProps> = ({
   value,
   onChange,
   placeholder = "Digite o conteúdo aqui...",
-  height = "300px",
+  height = "400px",
   error,
   disabled = false,
   onImageUpload,
   onFileUpload,
 }) => {
-  // Referências para inputs file ocultos
+  // Reference to the editor element
+  const editorRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Para armazenar a última posição conhecida do cursor
-  const [selection, setSelection] = useState({
-    start: 0,
-    end: 0,
-    text: "",
-  });
+  // State to track if editor content has been initialized
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [isEmpty, setIsEmpty] = useState(true);
 
-  // Função para capturar a seleção atual
-  const captureSelection = () => {
-    if (textareaRef.current) {
-      const start = textareaRef.current.selectionStart;
-      const end = textareaRef.current.selectionEnd;
-      const selectedText = value.substring(start, end);
-
-      setSelection({
-        start,
-        end,
-        text: selectedText,
-      });
+  // Check if editor is empty
+  const checkIfEmpty = () => {
+    if (editorRef.current) {
+      // Check if content is empty or just contains empty tags, whitespace, etc.
+      const content = editorRef.current.innerHTML.trim();
+      setIsEmpty(!content || content === "<br>" || content === "<p></p>");
     }
   };
 
-  // Função para aplicar formatação ao texto selecionado
-  const applyFormatting = (openTag: string, closeTag: string) => {
-    // Se não há texto selecionado, inserir tags com texto padrão
-    if (selection.start === selection.end) {
-      const defaultText = "texto selecionado";
-      const newText =
-        value.substring(0, selection.start) +
-        openTag +
-        defaultText +
-        closeTag +
-        value.substring(selection.end);
+  // Initialize editor content from value
+  useEffect(() => {
+    if (editorRef.current) {
+      if (!isInitialized) {
+        editorRef.current.innerHTML = value || "";
+        setIsInitialized(true);
+        checkIfEmpty();
+      } else if (value !== editorRef.current.innerHTML) {
+        // Only update if content has changed from external source
+        const selection = window.getSelection();
+        const isEditorFocused = document.activeElement === editorRef.current;
 
-      onChange(newText);
+        // Update content
+        editorRef.current.innerHTML = value || "";
+        checkIfEmpty();
+      }
+    }
+  }, [value, isInitialized]);
 
-      // Calcular nova posição para seleção (no texto padrão)
-      const newCursorPos = selection.start + openTag.length;
-      setTimeout(() => {
-        if (textareaRef.current) {
-          textareaRef.current.focus();
-          textareaRef.current.setSelectionRange(
-            newCursorPos,
-            newCursorPos + defaultText.length
-          );
-        }
-      }, 0);
-    } else {
-      // Aplicar formatação ao texto selecionado
-      const newText =
-        value.substring(0, selection.start) +
-        openTag +
-        selection.text +
-        closeTag +
-        value.substring(selection.end);
-
-      onChange(newText);
-
-      // Colocar cursor após o texto formatado
-      const newCursorPos =
-        selection.start +
-        openTag.length +
-        selection.text.length +
-        closeTag.length;
-      setTimeout(() => {
-        if (textareaRef.current) {
-          textareaRef.current.focus();
-          textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
-        }
-      }, 0);
+  // Handle editor content changes
+  const handleEditorChange = () => {
+    if (editorRef.current) {
+      const newValue = editorRef.current.innerHTML;
+      checkIfEmpty();
+      // Prevent unnecessary updates
+      if (newValue !== value) {
+        onChange(newValue);
+      }
     }
   };
 
-  // Handlers para botões da barra de ferramentas
-  const handleBold = () => {
-    applyFormatting("<strong>", "</strong>");
+  // Additional event handlers
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Handle tab key to create indent instead of losing focus
+    if (e.key === "Tab") {
+      e.preventDefault();
+      execCommand("insertHTML", false, "&nbsp;&nbsp;&nbsp;&nbsp;");
+    }
   };
 
-  const handleItalic = () => {
-    applyFormatting("<em>", "</em>");
+  // Execute a document command for formatting
+  const execCommand = (command: string, showUI = false, value?: string) => {
+    if (disabled) return;
+
+    // Focus the editor first
+    if (editorRef.current) {
+      editorRef.current.focus();
+    }
+
+    document.execCommand(command, showUI, value);
+    handleEditorChange();
   };
 
+  // Handlers for toolbar buttons
+  const handleBold = () => execCommand("bold");
+  const handleItalic = () => execCommand("italic");
   const handleHeading1 = () => {
-    applyFormatting("<h1>", "</h1>");
+    if (disabled) return;
+
+    // Save selection position
+    const selection = window.getSelection();
+    const range = selection?.getRangeAt(0);
+
+    if (selection && range && editorRef.current) {
+      const selectedText = selection.toString();
+
+      // Create h1 element with selected text
+      const h1 = document.createElement("h1");
+      h1.className = "text-2xl font-bold my-3";
+      h1.textContent = selectedText || "Título de nível 1";
+
+      // Replace selected text with h1 element
+      range.deleteContents();
+      range.insertNode(h1);
+
+      // Move cursor to end of inserted content
+      range.setStartAfter(h1);
+      range.setEndAfter(h1);
+      selection.removeAllRanges();
+      selection.addRange(range);
+
+      handleEditorChange();
+    }
   };
 
   const handleHeading2 = () => {
-    applyFormatting("<h2>", "</h2>");
-  };
+    if (disabled) return;
 
-  const handleList = () => {
-    // Se já temos texto selecionado, colocamos cada linha dentro de um <li>
-    if (selection.text) {
-      const lines = selection.text.split("\n");
-      const formattedItems = lines
-        .map((line) => (line.trim() ? `  <li>${line}</li>` : ""))
-        .filter(Boolean)
-        .join("\n");
+    // Save selection position
+    const selection = window.getSelection();
+    const range = selection?.getRangeAt(0);
 
-      const formattedList = `<ul>\n${formattedItems}\n</ul>`;
+    if (selection && range && editorRef.current) {
+      const selectedText = selection.toString();
 
-      const newText =
-        value.substring(0, selection.start) +
-        formattedList +
-        value.substring(selection.end);
+      // Create h2 element with selected text
+      const h2 = document.createElement("h2");
+      h2.className = "text-xl font-bold my-2";
+      h2.textContent = selectedText || "Título de nível 2";
 
-      onChange(newText);
-    } else {
-      // Inserir uma lista vazia com 3 itens
-      const defaultList =
-        "<ul>\n  <li>Item 1</li>\n  <li>Item 2</li>\n  <li>Item 3</li>\n</ul>";
+      // Replace selected text with h2 element
+      range.deleteContents();
+      range.insertNode(h2);
 
-      const newText =
-        value.substring(0, selection.start) +
-        defaultList +
-        value.substring(selection.end);
+      // Move cursor to end of inserted content
+      range.setStartAfter(h2);
+      range.setEndAfter(h2);
+      selection.removeAllRanges();
+      selection.addRange(range);
 
-      onChange(newText);
+      handleEditorChange();
     }
   };
 
-  const handleOrderedList = () => {
-    // Se já temos texto selecionado, colocamos cada linha dentro de um <li>
-    if (selection.text) {
-      const lines = selection.text.split("\n");
-      const formattedItems = lines
-        .map((line) => (line.trim() ? `  <li>${line}</li>` : ""))
-        .filter(Boolean)
-        .join("\n");
-
-      const formattedList = `<ol>\n${formattedItems}\n</ol>`;
-
-      const newText =
-        value.substring(0, selection.start) +
-        formattedList +
-        value.substring(selection.end);
-
-      onChange(newText);
-    } else {
-      // Inserir uma lista vazia com 3 itens
-      const defaultList =
-        "<ol>\n  <li>Primeiro item</li>\n  <li>Segundo item</li>\n  <li>Terceiro item</li>\n</ol>";
-
-      const newText =
-        value.substring(0, selection.start) +
-        defaultList +
-        value.substring(selection.end);
-
-      onChange(newText);
-    }
-  };
+  const handleList = () => execCommand("insertUnorderedList");
+  const handleOrderedList = () => execCommand("insertOrderedList");
 
   const handleImageClick = () => {
-    if (imageInputRef.current) {
+    if (imageInputRef.current && !disabled) {
       imageInputRef.current.click();
     }
   };
 
   const handleFileClick = () => {
-    if (fileInputRef.current) {
+    if (fileInputRef.current && !disabled) {
       fileInputRef.current.click();
     }
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files || files.length === 0 || !onImageUpload) return;
+    if (!files || files.length === 0 || !onImageUpload || disabled) return;
 
     try {
       const file = files[0];
       const imageUrl = await onImageUpload(file);
 
-      // Inserir imagem na posição do cursor
-      const imageTag = `<img src="${imageUrl}" alt="${file.name}" style="max-width: 100%;" />`;
-
-      const newText =
-        value.substring(0, selection.start) +
-        imageTag +
-        value.substring(selection.end);
-
-      onChange(newText);
-
-      // Colocar cursor após a imagem
-      const newCursorPos = selection.start + imageTag.length;
-      setTimeout(() => {
-        if (textareaRef.current) {
-          textareaRef.current.focus();
-          textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
-        }
-      }, 0);
+      // Insert image at cursor position with Tailwind classes
+      execCommand(
+        "insertHTML",
+        false,
+        `<img src="${imageUrl}" alt="${file.name}" class="max-w-full h-auto my-2 rounded" />`
+      );
     } catch (error) {
       console.error("Erro ao fazer upload da imagem:", error);
       alert("Erro ao fazer upload da imagem. Tente novamente.");
     } finally {
-      // Limpar o input
+      // Clear the input
       if (imageInputRef.current) {
         imageInputRef.current.value = "";
       }
@@ -248,35 +214,23 @@ const SimpleRichEditor: React.FC<SimpleRichEditorProps> = ({
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files || files.length === 0 || !onFileUpload) return;
+    if (!files || files.length === 0 || !onFileUpload || disabled) return;
 
     try {
       const file = files[0];
       const fileUrl = await onFileUpload(file);
 
-      // Inserir link na posição do cursor
-      const linkTag = `<p><a href="${fileUrl}" target="_blank">${file.name}</a></p>`;
-
-      const newText =
-        value.substring(0, selection.start) +
-        linkTag +
-        value.substring(selection.end);
-
-      onChange(newText);
-
-      // Colocar cursor após o link
-      const newCursorPos = selection.start + linkTag.length;
-      setTimeout(() => {
-        if (textareaRef.current) {
-          textareaRef.current.focus();
-          textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
-        }
-      }, 0);
+      // Insert link at cursor position with Tailwind classes
+      execCommand(
+        "insertHTML",
+        false,
+        `<p class="my-2"><a href="${fileUrl}" target="_blank" class="text-primary hover:text-primary-dark underline">${file.name}</a></p>`
+      );
     } catch (error) {
       console.error("Erro ao fazer upload do arquivo:", error);
       alert("Erro ao fazer upload do arquivo. Tente novamente.");
     } finally {
-      // Limpar o input
+      // Clear the input
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -286,7 +240,7 @@ const SimpleRichEditor: React.FC<SimpleRichEditorProps> = ({
   return (
     <div className="w-full">
       <div className="border rounded-md overflow-hidden">
-        {/* Barra de ferramentas */}
+        {/* Toolbar */}
         <div className="flex items-center p-2 border-b bg-gray-50 flex-wrap gap-1">
           <button
             type="button"
@@ -357,28 +311,31 @@ const SimpleRichEditor: React.FC<SimpleRichEditorProps> = ({
           </button>
         </div>
 
-        {/* Área de texto */}
-        <textarea
-          ref={textareaRef}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onSelect={captureSelection} // Capturar seleção quando mudar
-          onMouseUp={captureSelection} // Capturar seleção ao soltar o mouse
-          onKeyUp={captureSelection} // Capturar seleção ao soltar tecla
-          placeholder={placeholder}
-          className="w-full px-3 py-2 focus:outline-none"
-          style={{
-            height,
-            resize: "vertical",
-            minHeight: "200px",
-          }}
-          disabled={disabled}
-        />
+        {/* Content editable div with placeholder handling via Tailwind */}
+        <div className="relative" style={{ height }}>
+          <div
+            ref={editorRef}
+            contentEditable={!disabled}
+            onInput={handleEditorChange}
+            onBlur={handleEditorChange}
+            onKeyDown={handleKeyDown}
+            className="w-full h-full px-3 py-2 focus:outline-none overflow-auto leading-normal"
+            style={{ minHeight: "200px" }}
+            suppressContentEditableWarning={true}
+          />
+
+          {/* Placeholder element using Tailwind positioning */}
+          {isEmpty && (
+            <div className="absolute top-2 left-3 pointer-events-none text-gray-400">
+              {placeholder}
+            </div>
+          )}
+        </div>
       </div>
 
       {error && <p className="mt-1 text-sm text-red-500">{error}</p>}
 
-      {/* Input oculto para upload de imagem */}
+      {/* Hidden inputs for file uploads */}
       <input
         type="file"
         accept="image/*"
@@ -387,8 +344,6 @@ const SimpleRichEditor: React.FC<SimpleRichEditorProps> = ({
         onChange={handleImageUpload}
         disabled={disabled}
       />
-
-      {/* Input oculto para upload de arquivo */}
       <input
         type="file"
         ref={fileInputRef}

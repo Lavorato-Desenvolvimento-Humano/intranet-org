@@ -407,9 +407,9 @@ export default function PostagemViewPage() {
           {/* Conteúdo da aba selecionada */}
           <div className="p-6">
             {activeTab === "conteudo" && (
-              <div
-                className="prose max-w-none whitespace-pre-wrap"
-                dangerouslySetInnerHTML={{ __html: postagem.text }}
+              <ContentViewer
+                content={postagem.text}
+                className="whitespace-pre-wrap"
               />
             )}
 

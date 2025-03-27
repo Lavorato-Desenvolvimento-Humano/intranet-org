@@ -15,6 +15,9 @@ const RichTextPreview: React.FC<RichTextPreviewProps> = ({
 }) => {
   const [showPreview, setShowPreview] = useState(false);
 
+  // Process content to handle any special cases if needed
+  const processedContent = content || "";
+
   return (
     <div className="w-full mt-4">
       <div className="flex justify-between items-center mb-2">
@@ -44,7 +47,7 @@ const RichTextPreview: React.FC<RichTextPreviewProps> = ({
           className={`border rounded-md p-4 bg-white overflow-auto max-h-96 ${className}`}>
           <div
             className="prose max-w-none whitespace-pre-wrap"
-            dangerouslySetInnerHTML={{ __html: content }}
+            dangerouslySetInnerHTML={{ __html: processedContent }}
           />
         </div>
       )}
