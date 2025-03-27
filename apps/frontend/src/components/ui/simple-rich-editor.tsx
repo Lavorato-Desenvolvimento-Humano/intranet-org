@@ -111,69 +111,218 @@ const SimpleRichEditor: React.FC<SimpleRichEditorProps> = ({
     handleEditorChange();
   };
 
-  // Handlers for toolbar buttons
-  const handleBold = () => execCommand("bold");
-  const handleItalic = () => execCommand("italic");
+  // Handlers for toolbar buttons com classes Tailwind
+  const handleBold = () => {
+    execCommand("bold");
+
+    // Adicionamos classes Tailwind aos elementos criados
+    if (editorRef.current) {
+      const boldElements = editorRef.current.querySelectorAll("b");
+      boldElements.forEach((element) => {
+        element.className = "font-bold";
+      });
+    }
+
+    handleEditorChange();
+  };
+
+  const handleItalic = () => {
+    execCommand("italic");
+
+    // Adicionamos classes Tailwind aos elementos criados
+    if (editorRef.current) {
+      const italicElements = editorRef.current.querySelectorAll("i");
+      italicElements.forEach((element) => {
+        element.className = "italic";
+      });
+    }
+
+    handleEditorChange();
+  };
+  // Função auxiliar para obter o nó da linha atual
+  const getCurrentLineNode = () => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return null;
+
+    let node = selection.anchorNode;
+
+    // Se o nó for um nó de texto, pegamos o elemento pai
+    if (node?.nodeType === Node.TEXT_NODE) {
+      node = node.parentNode;
+    }
+
+    // Encontrar o elemento de bloco mais próximo (p, div, etc.)
+    while (
+      node &&
+      node.nodeType === Node.ELEMENT_NODE &&
+      window.getComputedStyle(node as Element).display !== "block" &&
+      node !== editorRef.current
+    ) {
+      node = node.parentNode;
+    }
+
+    // Se chegarmos ao editor em si, criamos um parágrafo
+    if (node === editorRef.current) {
+      const p = document.createElement("p");
+      if (selection.anchorNode && selection.anchorNode !== editorRef.current) {
+        // Envolve o nó atual com um parágrafo
+        const range = selection.getRangeAt(0);
+        range.selectNode(selection.anchorNode);
+        range.surroundContents(p);
+        node = p;
+      } else {
+        // Insere um novo parágrafo
+        p.innerHTML = "<br>";
+        editorRef.current?.appendChild(p);
+        node = p;
+      }
+    }
+
+    return node;
+  };
+
   const handleHeading1 = () => {
     if (disabled) return;
 
-    // Save selection position
     const selection = window.getSelection();
-    const range = selection?.getRangeAt(0);
+    if (!selection || selection.rangeCount === 0 || !editorRef.current) return;
 
-    if (selection && range && editorRef.current) {
+    // Verificar se há texto selecionado
+    const hasSelection = !selection.isCollapsed;
+
+    if (hasSelection) {
+      // Caso 1: Texto selecionado - transformar apenas a seleção
+      const range = selection.getRangeAt(0);
       const selectedText = selection.toString();
 
-      // Create h1 element with selected text
       const h1 = document.createElement("h1");
       h1.className = "text-2xl font-bold my-3";
-      h1.textContent = selectedText || "Título de nível 1";
+      h1.textContent = selectedText;
 
-      // Replace selected text with h1 element
       range.deleteContents();
       range.insertNode(h1);
 
-      // Move cursor to end of inserted content
+      // Mover cursor para o final do novo elemento
       range.setStartAfter(h1);
       range.setEndAfter(h1);
       selection.removeAllRanges();
       selection.addRange(range);
+    } else {
+      // Caso 2: Nenhum texto selecionado - transformar a linha atual
+      const currentLineNode = getCurrentLineNode();
 
-      handleEditorChange();
+      if (currentLineNode) {
+        // Criar novo elemento H1 com o conteúdo do nó atual
+        const h1 = document.createElement("h1");
+        h1.className = "text-2xl font-bold my-3";
+        h1.textContent = currentLineNode.textContent || "";
+
+        // Substituir o nó atual pelo H1
+        currentLineNode.parentNode?.replaceChild(h1, currentLineNode);
+
+        // Posicionar o cursor dentro do H1
+        const range = document.createRange();
+        range.selectNodeContents(h1);
+        range.collapse(false); // Colapsar no final
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
     }
+
+    handleEditorChange();
   };
 
   const handleHeading2 = () => {
     if (disabled) return;
 
-    // Save selection position
     const selection = window.getSelection();
-    const range = selection?.getRangeAt(0);
+    if (!selection || selection.rangeCount === 0 || !editorRef.current) return;
 
-    if (selection && range && editorRef.current) {
+    // Verificar se há texto selecionado
+    const hasSelection = !selection.isCollapsed;
+
+    if (hasSelection) {
+      // Caso 1: Texto selecionado - transformar apenas a seleção
+      const range = selection.getRangeAt(0);
       const selectedText = selection.toString();
 
-      // Create h2 element with selected text
       const h2 = document.createElement("h2");
       h2.className = "text-xl font-bold my-2";
-      h2.textContent = selectedText || "Título de nível 2";
+      h2.textContent = selectedText;
 
-      // Replace selected text with h2 element
       range.deleteContents();
       range.insertNode(h2);
 
-      // Move cursor to end of inserted content
+      // Mover cursor para o final do novo elemento
       range.setStartAfter(h2);
       range.setEndAfter(h2);
       selection.removeAllRanges();
       selection.addRange(range);
+    } else {
+      // Caso 2: Nenhum texto selecionado - transformar a linha atual
+      const currentLineNode = getCurrentLineNode();
 
-      handleEditorChange();
+      if (currentLineNode) {
+        // Criar novo elemento H2 com o conteúdo do nó atual
+        const h2 = document.createElement("h2");
+        h2.className = "text-xl font-bold my-2";
+        h2.textContent = currentLineNode.textContent || "";
+
+        // Substituir o nó atual pelo H2
+        currentLineNode.parentNode?.replaceChild(h2, currentLineNode);
+
+        // Posicionar o cursor dentro do H2
+        const range = document.createRange();
+        range.selectNodeContents(h2);
+        range.collapse(false); // Colapsar no final
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
     }
+
+    handleEditorChange();
   };
 
-  const handleList = () => execCommand("insertUnorderedList");
-  const handleOrderedList = () => execCommand("insertOrderedList");
+  // Funções melhoradas para listas
+  const handleList = () => {
+    // O comando insertUnorderedList trata corretamente os diferentes casos:
+    // - Se não houver seleção, cria uma lista com a linha atual
+    // - Se houver seleção, cria uma lista com o texto selecionado
+    execCommand("insertUnorderedList");
+
+    // Adicionamos classes Tailwind às listas criadas
+    if (editorRef.current) {
+      const lists = editorRef.current.querySelectorAll("ul");
+      lists.forEach((list) => {
+        list.className = "list-disc pl-5 my-3";
+        const items = list.querySelectorAll("li");
+        items.forEach((item) => {
+          item.className = "my-1";
+        });
+      });
+    }
+
+    handleEditorChange();
+  };
+
+  const handleOrderedList = () => {
+    // Semelhante ao comando de lista não ordenada
+    execCommand("insertOrderedList");
+
+    // Adicionamos classes Tailwind às listas criadas
+    if (editorRef.current) {
+      const lists = editorRef.current.querySelectorAll("ol");
+      lists.forEach((list) => {
+        list.className = "list-decimal pl-5 my-3";
+        const items = list.querySelectorAll("li");
+        items.forEach((item) => {
+          item.className = "my-1";
+        });
+      });
+    }
+
+    handleEditorChange();
+  };
 
   const handleImageClick = () => {
     if (imageInputRef.current && !disabled) {

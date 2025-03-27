@@ -313,7 +313,7 @@ export default function PostagemViewPage() {
                 onClick={() =>
                   setConfirmDelete({ show: true, isDeleting: false })
                 }
-                className="text-red-500 border-red-500 hover:bg-red-50">
+                className="text-red-600 border-red-600 hover:bg-red-50">
                 Excluir
               </CustomButton>
             )}
