@@ -111,7 +111,11 @@ public class TempUploadController {
             Anexo anexo = new Anexo();
             // Não definir ID manualmente
             anexo.setNameFile(file.getOriginalFilename());
-            anexo.setTypeFile(file.getContentType());
+
+            // Limitar o tamanho do tipo de arquivo para 50 caracteres
+            String contentType = FileHelper.limitContentType(file.getContentType(), 50);
+            anexo.setTypeFile(contentType);
+
             anexo.setUrl(fileUrl);
             anexo.setPostagem(null); // Explicitamente definir postagem como null
 

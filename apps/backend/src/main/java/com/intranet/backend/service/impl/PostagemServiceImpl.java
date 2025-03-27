@@ -380,6 +380,27 @@ public class PostagemServiceImpl implements PostagemService {
         }
     }
 
+    /**
+     * Associa um anexo temporário a uma postagem
+     */
+    @Transactional
+    public AnexoDto associarAnexo(UUID postagemId, UUID anexoId) {
+        Postagem postagem = postagemRepository.findById(postagemId)
+                .orElseThrow(() -> new ResourceNotFoundException("Postagem não encontrada"));
+
+        Anexo anexo = anexoRepository.findById(anexoId)
+                .orElseThrow(() -> new ResourceNotFoundException("Anexo não encontrado"));
+
+        // Associar anexo à postagem
+        anexo.setPostagem(postagem);
+        postagem.getAnexos().add(anexo);
+
+        // Salvar as alterações
+        Anexo savedAnexo = anexoRepository.save(anexo);
+
+        return DTOMapperUtil.mapToAnexoDto(savedAnexo);
+    }
+
     // Método auxiliar para obter o usuário atual
     private User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();

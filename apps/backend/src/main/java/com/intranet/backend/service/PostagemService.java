@@ -40,4 +40,6 @@ public interface PostagemService {
     TabelaPostagemDto updateTabelaPostagem(UUID id, String conteudoJson);
 
     void deleteTabelaPostagem(UUID id);
+
+    AnexoDto associarAnexo(UUID postagemId, UUID anexoId);
 }
