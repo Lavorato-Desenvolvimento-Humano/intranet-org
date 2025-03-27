@@ -1,105 +1,53 @@
+// tailwind.config.js
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
-    "./app/**/*.{js,ts,jsx,tsx,mdx}",
-    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
     extend: {
       colors: {
-        // Cores principais
         primary: {
-          DEFAULT: "#2EA6B8",
-          light: "#58C5D6",
-          dark: "#2686A0", // Adicionei uma versão mais escura para hover
+          DEFAULT: "var(--primary)",
+          light: "var(--primary-light)",
+          dark: "#1f8a9a", // Versão mais escura para hover
         },
-        // Cores neutras/cinza
         neutral: {
-          light: "#A7A9AC",
-          medium: "#939598",
-          dark: "#808285",
+          light: "var(--neutral-light)",
+          medium: "var(--neutral-medium)",
+          dark: "var(--neutral-dark)",
         },
       },
-      fontFamily: {
-        inter: ["Inter", "sans-serif"],
-      },
-      // Configuração de tipografia para o editor rich text
       typography: {
         DEFAULT: {
           css: {
-            color: "#333",
-            maxWidth: "none",
-            a: {
-              color: "#2EA6B8",
-              "&:hover": {
-                color: "#2686A0",
-              },
-              textDecoration: "underline",
+            // Configurações para preservar espaços em branco em elementos específicos
+            "p, blockquote, pre, h1, h2, h3, h4, h5, h6": {
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
             },
-            "h1, h2, h3, h4, h5, h6": {
-              color: "#333",
-              fontWeight: "600",
-              marginTop: "1.25em",
-              marginBottom: "0.75em",
-            },
-            h1: {
-              fontSize: "1.875rem",
-            },
-            h2: {
-              fontSize: "1.5rem",
-            },
-            strong: {
-              fontWeight: "600",
-              color: "#333",
-            },
-            ol: {
-              listStyleType: "decimal",
-              paddingLeft: "1.5em",
-            },
-            ul: {
-              listStyleType: "disc",
-              paddingLeft: "1.5em",
-            },
-            li: {
-              marginTop: "0.25em",
-              marginBottom: "0.25em",
+            br: {
+              display: "block",
+              content: '""',
+              marginTop: "0.5em",
             },
             img: {
-              marginTop: "1em",
-              marginBottom: "1em",
-              borderRadius: "0.375rem",
+              maxWidth: "100%",
+              height: "auto",
+              borderRadius: "0.25rem",
             },
-            p: {
-              marginTop: "1em",
-              marginBottom: "1em",
-            },
-            table: {
-              width: "100%",
-              marginTop: "1.5em",
-              marginBottom: "1.5em",
-              borderCollapse: "collapse",
-            },
-            "thead, tbody": {
-              borderBottom: "1px solid #e5e7eb",
-            },
-            "th, td": {
-              padding: "0.75em",
-              borderBottom: "1px solid #e5e7eb",
-              borderRight: "1px solid #e5e7eb",
-            },
-            th: {
-              backgroundColor: "#f9fafb",
-              fontWeight: "600",
-              textAlign: "left",
+            a: {
+              color: "var(--primary)",
+              "&:hover": {
+                color: "#1f8a9a",
+              },
             },
           },
         },
       },
     },
   },
-  plugins: [
-    require("@tailwindcss/typography"), // Plugin para estilizar conteúdo HTML rico
-  ],
+  plugins: [require("@tailwindcss/typography")],
 };

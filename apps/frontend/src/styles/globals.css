@@ -43,3 +43,60 @@
     @apply bg-white rounded-lg shadow-md p-6;
   }
 }
+
+/* Estilos para preservação de espaços em branco */
+.whitespace-preserve {
+  @apply whitespace-pre-wrap break-words;
+}
+
+/* Estilos específicos para o editor e para o visualizador de conteúdo */
+.rich-content {
+  @apply whitespace-pre-wrap break-words;
+}
+
+.rich-content p {
+  @apply mb-4;
+}
+
+.rich-content br {
+  @apply block;
+  content: "";
+  @apply my-2;
+}
+
+.rich-content img {
+  @apply max-w-full h-auto rounded my-2;
+}
+
+.rich-content h1 {
+  @apply text-2xl font-bold my-3;
+}
+
+.rich-content h2 {
+  @apply text-xl font-bold my-2;
+}
+
+.rich-content ul {
+  @apply list-disc pl-5 my-3;
+}
+
+.rich-content ol {
+  @apply list-decimal pl-5 my-3;
+}
+
+.rich-content li {
+  @apply my-1;
+}
+
+.rich-content a {
+  @apply text-primary hover:text-primary-dark underline;
+}
+
+/* Classes específicas para o modo de edição */
+[contenteditable="true"] {
+  @apply outline-none whitespace-pre-wrap break-words;
+}
+
+[contenteditable="true"]:focus {
+  @apply outline-none ring-2 ring-primary;
+}
