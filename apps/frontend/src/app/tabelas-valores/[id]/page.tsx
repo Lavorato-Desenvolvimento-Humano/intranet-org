@@ -76,49 +76,54 @@ export default function TabelaValoresViewPage() {
   const renderTableContent = () => {
     try {
       // Analisar o conteúdo JSON
-      const jsonContent = JSON.parse(tabela?.conteudo || "{}");
+      const jsonContent = JSON.parse(tabela?.conteudo || "[]");
 
-      // Verificar estrutura e renderizar adequadamente
-      if (Array.isArray(jsonContent)) {
-        // Renderizar array como tabela
+      // Se for um array vazio, mostrar mensagem
+      if (!Array.isArray(jsonContent) || jsonContent.length === 0) {
         return (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  {Object.keys(jsonContent[0] || {}).map((key, index) => (
-                    <th
-                      key={index}
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {key}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {jsonContent.map((row, rowIndex) => (
-                  <tr key={rowIndex}>
-                    {Object.values(row).map((cell, cellIndex) => (
-                      <td
-                        key={cellIndex}
-                        className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {cell as string}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="text-gray-500 text-center py-4">
+            Tabela sem valores cadastrados.
           </div>
         );
-      } else {
-        // Renderizar objeto como pré-formatado
-        return (
-          <pre className="bg-gray-100 p-4 rounded-md overflow-auto">
-            {JSON.stringify(jsonContent, null, 2)}
-          </pre>
-        );
       }
+
+      // Renderizar como tabela estruturada
+      return (
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 border-collapse border border-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Especialidade
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Valor
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Observação
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {jsonContent.map((item: any, index: number) => (
+                <tr
+                  key={index}
+                  className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {item.especialidade || "-"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {item.valor || "-"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {item.observacao || "-"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
     } catch (error) {
       console.error("Erro ao renderizar conteúdo da tabela:", error);
       return (

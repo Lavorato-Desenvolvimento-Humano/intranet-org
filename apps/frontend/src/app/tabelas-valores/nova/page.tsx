@@ -1,4 +1,4 @@
-// apps/frontend/src/app/tabelas-valores/nova/page.tsx
+// apps/frontend/src/app/tabelas-valores/nova/page.tsx (atualizado)
 "use client";
 
 import React, { useState, useEffect, Suspense } from "react";
@@ -14,6 +14,7 @@ import tabelaValoresService, {
 import convenioService, { ConvenioDto } from "@/services/convenio";
 import toastUtil from "@/utils/toast";
 import { CustomButton } from "@/components/ui/custom-button";
+import TabelaValoresEditor from "@/components/ui/tabela-valores-editor";
 
 // Componente que usa o useSearchParams
 function NovaTabelaContent() {
@@ -25,7 +26,9 @@ function NovaTabelaContent() {
   const [tabela, setTabela] = useState<TabelaValoresCreateDto>({
     nome: "",
     descricao: "",
-    conteudo: JSON.stringify([], null, 2),
+    conteudo: JSON.stringify([
+      { especialidade: "", valor: "", observacao: "" },
+    ]),
     convenioId: "",
   });
   const [loading, setLoading] = useState(false);
@@ -73,9 +76,7 @@ function NovaTabelaContent() {
     fetchConvenios();
   }, [searchParams]);
 
-  // Restante do código de validação, handleChange, etc...
-  // [código existente]
-
+  // Função para validar o formulário
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
@@ -96,15 +97,19 @@ function NovaTabelaContent() {
     }
 
     try {
-      JSON.parse(tabela.conteudo);
+      const conteudoObj = JSON.parse(tabela.conteudo);
+      if (!Array.isArray(conteudoObj) || conteudoObj.length === 0) {
+        newErrors.conteudo = "A tabela precisa ter pelo menos uma linha";
+      }
     } catch (e) {
-      newErrors.conteudo = "Conteúdo JSON inválido";
+      newErrors.conteudo = "Conteúdo da tabela inválido";
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
+  // Função para lidar com mudanças nos campos
   const handleChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
@@ -114,6 +119,12 @@ function NovaTabelaContent() {
     setTabela((prev) => ({ ...prev, [name]: value }));
   };
 
+  // Função para lidar com mudanças no conteúdo da tabela
+  const handleTabelaChange = (value: string) => {
+    setTabela((prev) => ({ ...prev, conteudo: value }));
+  };
+
+  // Função para lidar com o envio do formulário
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -228,29 +239,16 @@ function NovaTabelaContent() {
         </div>
 
         <div className="mb-6">
-          <label
-            htmlFor="conteudo"
-            className="block text-sm font-medium text-gray-700 mb-1">
-            Conteúdo da Tabela (JSON) *
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Valores *
           </label>
-          <textarea
-            id="conteudo"
-            name="conteudo"
+
+          <TabelaValoresEditor
             value={tabela.conteudo}
-            onChange={handleChange}
-            rows={10}
-            className={`w-full px-3 py-2 border rounded-md font-mono ${
-              errors.conteudo ? "border-red-500" : "border-gray-300"
-            } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
-            placeholder='[{"coluna1": "valor1", "coluna2": "valor2"}]'
-            disabled={loading}></textarea>
-          {errors.conteudo && (
-            <p className="mt-1 text-sm text-red-500">{errors.conteudo}</p>
-          )}
-          <p className="mt-1 text-xs text-gray-500">
-            Insira o conteúdo da tabela em formato JSON. Para tabelas, use um
-            array de objetos.
-          </p>
+            onChange={handleTabelaChange}
+            disabled={loading}
+            error={errors.conteudo}
+          />
         </div>
 
         <div className="flex justify-end space-x-3">
