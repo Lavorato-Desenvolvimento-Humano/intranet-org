@@ -133,7 +133,12 @@ export default function NovaPostagemPage() {
 
   // Lidar com mudanças no editor rico
   const handleEditorChange = (content: string) => {
-    setFormData((prev) => ({ ...prev, text: content }));
+    // Garantir que as quebras de linha HTML sejam preservadas
+    const processedContent = content
+      .replace(/<p>\s*<\/p>/g, "<br />")
+      .replace(/\n/g, "<br />");
+
+    setFormData((prev) => ({ ...prev, text: processedContent }));
   };
 
   // Submeter formulário
@@ -146,8 +151,50 @@ export default function NovaPostagemPage() {
 
     setSubmitting(true);
     try {
+      // Criar a postagem
       const createdPostagem = await postagemService.createPostagem(formData);
-      toastUtil.success("Postagem criada com sucesso!");
+
+      // Arrays para armazenar as promessas de associação
+      const associationPromises = [];
+
+      // Adicionar promessas para associar anexos temporários
+      for (const anexo of tempUploads.attachments) {
+        associationPromises.push(
+          postagemService
+            .associarAnexo(createdPostagem.id, anexo.id)
+            .catch((err) => {
+              console.error(`Erro ao associar anexo ${anexo.id}:`, err);
+              return null; // Continuar mesmo se um anexo falhar
+            })
+        );
+      }
+
+      // Adicionar promessas para associar imagens temporárias
+      for (const imagem of tempUploads.images) {
+        associationPromises.push(
+          postagemService
+            .associarImagem(createdPostagem.id, imagem.id)
+            .catch((err) => {
+              console.error(`Erro ao associar imagem ${imagem.id}:`, err);
+              return null; // Continuar mesmo se uma imagem falhar
+            })
+        );
+      }
+
+      // Aguardar todas as associações
+      if (associationPromises.length > 0) {
+        await Promise.allSettled(associationPromises);
+      }
+
+      // Verificar e relatar quaisquer problemas
+      const totalAttachments =
+        tempUploads.attachments.length + tempUploads.images.length;
+      const successMessage =
+        totalAttachments > 0
+          ? `Postagem criada com sucesso! ${totalAttachments} arquivos associados.`
+          : "Postagem criada com sucesso!";
+
+      toastUtil.success(successMessage);
       router.push(`/postagens/${createdPostagem.id}`);
     } catch (err: any) {
       console.error("Erro ao criar postagem:", err);

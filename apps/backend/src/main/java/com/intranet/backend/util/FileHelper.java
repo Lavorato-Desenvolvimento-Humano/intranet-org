@@ -178,4 +178,31 @@ public class FileHelper {
             return "files/";
         }
     }
+
+    /**
+     * Limita o tamanho do tipo MIME para o máximo permitido pelo banco de dados
+     * @param contentType O tipo MIME original
+     * @param maxLength O tamanho máximo permitido (padrão 50)
+     * @return O tipo MIME truncado se necessário
+     */
+    public static String limitContentType(String contentType, int maxLength) {
+        if (contentType == null) {
+            return null;
+        }
+
+        // Se o contentType exceder o tamanho máximo, truncar
+        if (contentType.length() > maxLength) {
+            // Tentar extrair apenas a parte principal do tipo MIME
+            int semicolonIndex = contentType.indexOf(';');
+            if (semicolonIndex > 0 && semicolonIndex < maxLength) {
+                // Se houver parâmetros adicionais, manter apenas o tipo principal
+                return contentType.substring(0, semicolonIndex);
+            }
+
+            // Caso contrário, simplesmente truncar
+            return contentType.substring(0, maxLength);
+        }
+
+        return contentType;
+    }
 }

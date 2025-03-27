@@ -239,24 +239,26 @@ const postagemService = {
       const formData = new FormData();
       formData.append("file", file);
 
-      const response = await api.post<AnexoDto>(
-        "/api/temp/anexos", // Novo endpoint
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-          timeout: 30000, // 30 segundos
-        }
-      );
+      const response = await api.post<AnexoDto>("/api/temp/anexos", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+        timeout: 30000, // 30 segundos
+      });
       return response.data;
     } catch (error: any) {
       console.error(`Erro ao adicionar anexo temporário:`, error);
 
-      // Tratamento de erro melhorado
+      // Tratamento de erro específico para o problema de tamanho do campo
       let message = "Erro ao fazer upload do arquivo";
       if (error.response?.data?.message) {
         message = error.response.data.message;
+
+        // Se for o erro específico de tamanho de campo, dar uma mensagem mais amigável
+        if (message.includes("character varying(50)")) {
+          message =
+            "O tipo do arquivo é muito longo para o sistema. Por favor, escolha outro formato de arquivo.";
+        }
       }
 
       throw new Error(message);
@@ -406,6 +408,48 @@ const postagemService = {
       await api.delete(`/api/postagens/tabelas/${id}`);
     } catch (error) {
       console.error(`Erro ao excluir tabela ${id}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Associa um anexo temporário a uma postagem
+   */
+  associarAnexo: async (
+    postagemId: string,
+    anexoId: string
+  ): Promise<AnexoDto> => {
+    try {
+      const response = await api.post<AnexoDto>(
+        `/api/postagens/${postagemId}/associar-anexo/${anexoId}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Erro ao associar anexo ${anexoId} à postagem ${postagemId}:`,
+        error
+      );
+      throw error;
+    }
+  },
+
+  /**
+   * Associa uma imagem temporária a uma postagem
+   */
+  associarImagem: async (
+    postagemId: string,
+    imagemId: string
+  ): Promise<ImagemDto> => {
+    try {
+      const response = await api.post<ImagemDto>(
+        `/api/postagens/${postagemId}/associar-imagem/${imagemId}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Erro ao associar imagem ${imagemId} à postagem ${postagemId}:`,
+        error
+      );
       throw error;
     }
   },

@@ -12,6 +12,7 @@ import com.intranet.backend.repository.PostagemRepository;
 import com.intranet.backend.repository.UserRepository;
 import com.intranet.backend.service.FileStorageService;
 import com.intranet.backend.service.PostagemService;
+import com.intranet.backend.util.DTOMapperUtil;
 import com.intranet.backend.util.FileHelper;
 import com.intranet.backend.util.ResponseUtil;
 import jakarta.validation.Valid;
@@ -22,6 +23,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -135,8 +137,45 @@ public class PostagemController {
             return ResponseEntity.badRequest().build();
         }
 
-        AnexoDto anexo = postagemService.addAnexo(id, file);
-        return ResponseUtil.created(anexo);
+        try {
+            Postagem postagem = postagemRepository.findById(id)
+                    .orElseThrow(() -> new ResourceNotFoundException("Postagem não encontrada com ID: " + id));
+
+            // Verificar se o usuário atual é o criador da postagem
+            User currentUser = getCurrentUser();
+            if (!postagem.getCreatedBy().getId().equals(currentUser.getId())) {
+                throw new IllegalStateException("Apenas o criador da postagem pode adicionar anexos");
+            }
+
+            // Salvar arquivo e obter URL
+            String fileName = fileStorageService.storeFile(file);
+            String fileUrl = "/uploads/files/" + fileName;
+
+            Anexo anexo = new Anexo();
+            anexo.setPostagem(postagem);
+            anexo.setNameFile(file.getOriginalFilename());
+
+            // Limitar o tamanho do tipo de arquivo para 50 caracteres
+            String contentType = FileHelper.limitContentType(file.getContentType(), 50);
+            anexo.setTypeFile(contentType);
+
+            anexo.setUrl(fileUrl);
+
+            Anexo savedAnexo = anexoRepository.save(anexo);
+            postagem.getAnexos().add(savedAnexo);
+
+            logger.info("Anexo adicionado com sucesso. ID: {}", savedAnexo.getId());
+
+            // Converter para DTO e embrulhar em ResponseEntity
+            AnexoDto anexoDto = DTOMapperUtil.mapToAnexoDto(savedAnexo);
+            return ResponseUtil.created(anexoDto);
+        } catch (ResourceNotFoundException | IllegalStateException e) {
+            logger.error("Erro ao adicionar anexo: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(null);
+        } catch (Exception e) {
+            logger.error("Erro ao adicionar anexo: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
     }
 
     @DeleteMapping("/anexos/{id}")
@@ -239,35 +278,7 @@ public class PostagemController {
         logger.info("Requisição para associar anexo {} à postagem {}", anexoId, id);
 
         try {
-            // Verificar se a postagem existe
-            Postagem postagem = postagemRepository.findById(id)
-                    .orElseThrow(() -> new ResourceNotFoundException("Postagem não encontrada"));
-
-            // Verificar se o usuário atual é o criador da postagem
-            User currentUser = getCurrentUser();
-            if (!postagem.getCreatedBy().getId().equals(currentUser.getId())) {
-                return ResponseUtil.<AnexoDto>forbidden("Apenas o criador da postagem pode associar anexos");
-            }
-
-            // Buscar anexo
-            Anexo anexo = anexoRepository.findById(anexoId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Anexo não encontrado"));
-
-            // Associar anexo à postagem
-            anexo.setPostagem(postagem);
-            postagem.getAnexos().add(anexo);
-
-            // Salvar
-            Anexo savedAnexo = anexoRepository.save(anexo);
-
-            // Retornar DTO atualizado
-            AnexoDto anexoDto = new AnexoDto();
-            anexoDto.setId(savedAnexo.getId());
-            anexoDto.setPostagemId(postagem.getId());
-            anexoDto.setNameFile(savedAnexo.getNameFile());
-            anexoDto.setTypeFile(savedAnexo.getTypeFile());
-            anexoDto.setUrl(savedAnexo.getUrl());
-
+            AnexoDto anexoDto = postagemService.associarAnexo(id, anexoId);
             return ResponseUtil.success(anexoDto);
         } catch (ResourceNotFoundException e) {
             return ResponseUtil.<AnexoDto>notFound(e.getMessage());
