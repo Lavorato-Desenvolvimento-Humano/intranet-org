@@ -29,7 +29,7 @@ public class Anexo {
     @Column(name = "name_file", nullable = false, length = 255)
     private String nameFile;
 
-    @Column(name = "type_file", length = 50)
+    @Column(name = "type_file", length = 100)
     private String typeFile;
 
     @Column(name = "url", nullable = false, columnDefinition = "TEXT")

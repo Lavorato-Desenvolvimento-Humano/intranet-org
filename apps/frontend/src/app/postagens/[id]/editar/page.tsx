@@ -156,7 +156,12 @@ export default function EditarPostagemPage() {
 
   // Função para lidar com mudanças no editor rico
   const handleEditorChange = (content: string) => {
-    setFormData((prev) => ({ ...prev, text: content }));
+    //Garantir que as quebras de linha HTML sejam preservadas
+    const processedContent = content
+      .replace(/<p>\s*<\/p>/g, "<br />")
+      .replace(/\n/g, "<br />");
+
+    setFormData((prev) => ({ ...prev, text: processedContent }));
   };
 
   // Função para lidar com o envio do formulário
