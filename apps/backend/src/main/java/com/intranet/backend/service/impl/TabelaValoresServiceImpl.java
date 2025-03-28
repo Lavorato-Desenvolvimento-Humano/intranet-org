@@ -19,6 +19,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.List;
 import java.util.UUID;
@@ -118,8 +119,11 @@ public class TabelaValoresServiceImpl implements TabelaValoresService {
 
         // Verificar se o usuário atual é o criador da tabela ou um administrador
         User currentUser = getCurrentUser();
-        boolean isAdmin = currentUser.getUserRoles().stream()
-                .anyMatch(role -> role.getRole().getName().equals("ADMIN"));
+
+        // Usar o método do repositório em vez de acessar a coleção diretamente
+        List<String> userRoles = userRepository.findRoleNamesByUserId(currentUser.getId());
+        boolean isAdmin = userRoles.stream()
+                .anyMatch(role -> role.equalsIgnoreCase("ADMIN") || role.equalsIgnoreCase("ROLE_ADMIN"));
 
         if (!tabela.getCreatedBy().getId().equals(currentUser.getId()) && !isAdmin) {
             throw new IllegalStateException("Apenas o criador da tabela ou um administrador pode atualizá-la");
@@ -133,6 +137,12 @@ public class TabelaValoresServiceImpl implements TabelaValoresService {
         }
 
         // Validar se o JSON está bem formado (você pode adicionar validação de JSON aqui)
+        try {
+            // Tentar verificar se é um JSON válido
+            new ObjectMapper().readTree(tabelaUpdateDto.getConteudo());
+        } catch (Exception e) {
+            throw new IllegalArgumentException("O conteúdo da tabela não é um JSON válido: " + e.getMessage());
+        }
 
         tabela.setNome(tabelaUpdateDto.getNome());
         tabela.setDescricao(tabelaUpdateDto.getDescricao());
@@ -154,13 +164,17 @@ public class TabelaValoresServiceImpl implements TabelaValoresService {
 
         // Verificar se o usuário atual é o criador da tabela ou um administrador
         User currentUser = getCurrentUser();
-        boolean isAdmin = currentUser.getUserRoles().stream()
-                .anyMatch(role -> role.getRole().getName().equals("ADMIN"));
+
+        // Usar o método do repositório em vez de acessar a coleção diretamente
+        List<String> userRoles = userRepository.findRoleNamesByUserId(currentUser.getId());
+        boolean isAdmin = userRoles.stream()
+                .anyMatch(role -> role.equalsIgnoreCase("ADMIN") || role.equalsIgnoreCase("ROLE_ADMIN"));
 
         if (!tabela.getCreatedBy().getId().equals(currentUser.getId()) && !isAdmin) {
             throw new IllegalStateException("Apenas o criador da tabela ou um administrador pode excluí-la");
         }
 
+        // Excluir a tabela
         tabelaValoresRepository.delete(tabela);
         logger.info("Tabela de valores excluída com sucesso. ID: {}", id);
     }
