@@ -4,6 +4,9 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcType;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -29,8 +32,9 @@ public class TabelaValores {
     @Column(name = "descricao", columnDefinition = "TEXT")
     private String descricao;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "conteudo", nullable = false, columnDefinition = "jsonb")
-    private String conteudo; // Armazenará o JSON com os valores
+    private String conteudo;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "convenio_id", nullable = false)
