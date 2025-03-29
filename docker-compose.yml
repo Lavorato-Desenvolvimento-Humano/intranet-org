@@ -2,68 +2,82 @@ version: "3.8"
 
 services:
   backend:
-    build:
-      context: ./apps/backend
-      dockerfile: Dockerfile.dev
-    volumes:
-      - ./apps/backend:/app
-      - backend_maven_cache:/root/.m2
-    depends_on:
-      postgres:
-        condition: service_healthy
+    image: ghcr.io/${GITHUB_REPOSITORY}/backend:${DEPLOY_ENV}
+    restart: always
     ports:
       - "8080:8080"
-      - "5005:5005" # Porta para debug
+      - "8443:8443"
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/tiratec
       SPRING_DATASOURCE_USERNAME: ${DB_USER}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASS}
-      SPRING_PROFILES_ACTIVE: development
+      SPRING_PROFILES_ACTIVE: production
+    volumes:
+      - /opt/deploy/develop/certbot/conf/live/dev.lavorato.app.br/:/certs
+      - /upload-data:/app/uploads/images
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
-      - backend-network
+      - app-network
 
   frontend:
-    build:
-      context: ./apps/frontend
-      dockerfile: Dockerfile.dev
-    volumes:
-      - ./apps/frontend:/app
-      - /app/node_modules
-    depends_on:
-      - backend
+    image: ghcr.io/${GITHUB_REPOSITORY}/frontend:${DEPLOY_ENV}
+    restart: always
     ports:
       - "3000:3000"
     environment:
-      - NODE_ENV=development
-      - VITE_API_URL=http://localhost:8080
-      - WATCHPACK_POLLING=true # Habilita polling para hot reload no Windows/Docker
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=https://${DOMAIN_NAME}/api
+    depends_on:
+      - backend
     networks:
-      - backend-network
-    stdin_open: true # docker run -i
-    tty: true # docker run -t
+      - app-network
 
   postgres:
     image: postgres:15-alpine
+    restart: always
+    ports:
+      - "5432:5432"
     environment:
       POSTGRES_DB: tiratec
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASS}
-    ports:
-      - "5432:5432"
-    networks:
-      - backend-network
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s
       retries: 5
       start_period: 20s
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
 
+  nginx:
+    image: nginx:alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - app-network
+
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
 networks:
-  backend-network:
+  app-network:
     driver: bridge
 
 volumes:
   postgres_data:
-  backend_maven_cache:
