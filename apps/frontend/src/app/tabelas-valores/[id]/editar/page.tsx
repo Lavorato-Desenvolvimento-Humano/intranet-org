@@ -320,7 +320,7 @@ export default function EditarTabelaValoresPage() {
             <div className="flex justify-end space-x-3">
               <CustomButton
                 type="button"
-                variant="secondary"
+                variant="primary"
                 icon={X}
                 onClick={handleCancel}
                 disabled={submitting}
