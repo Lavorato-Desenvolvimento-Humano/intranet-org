@@ -1,7 +1,5 @@
-// src/components/layout/Navbar.tsx
 import React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import Image from "next/image";
 import {
@@ -15,16 +13,10 @@ import {
 
 export default function Navbar() {
   const { user, logout } = useAuth();
-  const router = useRouter();
 
   const hasAdminRole = user?.roles?.some(
     (role) => role === "ROLE_ADMIN" || role === "ADMIN"
   );
-
-  // Função de navegação programática como fallback
-  const navigateTo = (path: string) => {
-    router.push(path);
-  };
 
   return (
     <nav className="bg-primary shadow-md text-white">
@@ -32,13 +24,7 @@ export default function Navbar() {
         <div className="flex justify-between items-center h-16">
           {/* Logo e Brand */}
           <div className="flex items-center">
-            <Link
-              href="/"
-              className="flex items-center"
-              onClick={(e: { preventDefault: () => void }) => {
-                e.preventDefault();
-                navigateTo("/");
-              }}>
+            <Link href="/" className="flex items-center">
               <Image
                 src="/logo_branca.png"
                 alt="Lavorato Saúde Integrada"
@@ -54,33 +40,21 @@ export default function Navbar() {
           <div className="hidden md:flex items-center space-x-6">
             <Link
               href="/dashboard"
-              className="text-white hover:text-gray-200 flex items-center"
-              onClick={(e: { preventDefault: () => void }) => {
-                e.preventDefault();
-                navigateTo("/dashboard");
-              }}>
+              className="text-white hover:text-gray-200 flex items-center">
               <HomeIcon className="mr-1" size={18} />
               <span>Dashboard</span>
             </Link>
 
             <Link
               href="/convenios"
-              className="text-white hover:text-gray-200 flex items-center"
-              onClick={(e: { preventDefault: () => void }) => {
-                e.preventDefault();
-                navigateTo("/convenios");
-              }}>
+              className="text-white hover:text-gray-200 flex items-center">
               <FileTextIcon className="mr-1" size={18} />
               <span>Convênios</span>
             </Link>
 
             <Link
               href="/tabelas-valores"
-              className="text-white hover:text-gray-200 flex items-center"
-              onClick={(e: { preventDefault: () => void }) => {
-                e.preventDefault();
-                navigateTo("/tabelas-valores");
-              }}>
+              className="text-white hover:text-gray-200 flex items-center">
               <Table className="mr-1" size={18} />
               <span>Tabelas</span>
             </Link>
@@ -88,11 +62,7 @@ export default function Navbar() {
             {hasAdminRole && (
               <Link
                 href="/admin"
-                className="text-white hover:text-gray-200 flex items-center"
-                onClick={(e: { preventDefault: () => void }) => {
-                  e.preventDefault();
-                  navigateTo("/admin");
-                }}>
+                className="text-white hover:text-gray-200 flex items-center">
                 <SettingsIcon className="mr-1" size={18} />
                 <span>Painel Administrativo</span>
               </Link>
@@ -103,11 +73,7 @@ export default function Navbar() {
           <div className="flex items-center space-x-4">
             <Link
               href="/profile"
-              className="text-white hover:text-gray-200 flex items-center"
-              onClick={(e: { preventDefault: () => void }) => {
-                e.preventDefault();
-                navigateTo("/profile");
-              }}>
+              className="text-white hover:text-gray-200 flex items-center">
               <UserIcon className="mr-1" size={18} />
               <span className="hidden md:inline">
                 {user?.fullName || "Perfil"}
