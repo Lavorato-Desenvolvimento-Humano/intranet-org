@@ -1,7 +1,6 @@
-// apps/frontend/src/app/tabelas-valores/[id]/editar/page.tsx (atualizado)
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Save, X, ArrowLeft } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
@@ -17,7 +16,7 @@ import toastUtil from "@/utils/toast";
 import { CustomButton } from "@/components/ui/custom-button";
 import TabelaValoresEditor from "@/components/ui/tabela-valores-editor";
 
-function EditarTabelaContent() {
+export default function EditarTabelaValoresPage() {
   const router = useRouter();
   const params = useParams();
   const { user } = useAuth();
@@ -138,6 +137,7 @@ function EditarTabelaContent() {
 
   // Função para lidar com o envio do formulário
   const handleSubmit = async (e: React.FormEvent) => {
+    console.log("Teste de deploy!!!");
     e.preventDefault();
 
     if (!validateForm()) {
@@ -148,7 +148,7 @@ function EditarTabelaContent() {
     try {
       await tabelaValoresService.updateTabela(tabelaId, tabela);
       toastUtil.success("Tabela de valores atualizada com sucesso!");
-      router.push(`/tabelas-valores/${tabelaId}`);
+      router.push(`/tabelas-valores/`);
     } catch (err: any) {
       console.error("Erro ao atualizar tabela de valores:", err);
       toastUtil.error(
@@ -160,144 +160,54 @@ function EditarTabelaContent() {
     }
   };
 
+  // Renderização condicional para carregamento
   if (loading) {
-    return <Loading message="Carregando dados da tabela..." />;
-  }
-
-  if (error || !originalTabela) {
     return (
-      <div>
-        <div className="bg-red-50 text-red-700 p-4 rounded-md mb-4">
-          {error || "Tabela não encontrada."}
-        </div>
-        <button
-          onClick={() => router.push("/tabelas-valores")}
-          className="flex items-center text-primary hover:text-primary-dark">
-          <ArrowLeft size={16} className="mr-1" />
-          Voltar para a lista de tabelas
-        </button>
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <Navbar />
+        <main className="flex-grow container mx-auto p-6">
+          <Breadcrumb
+            items={[
+              { label: "Tabelas de Valores", href: "/tabelas-valores" },
+              { label: "Editar Tabela", href: `/tabelas-valores/${tabelaId}` },
+            ]}
+          />
+          <Loading message="Carregando dados da tabela..." />
+        </main>
       </div>
     );
   }
 
-  return (
-    <div className="bg-white rounded-lg shadow-md p-6">
-      <form onSubmit={handleSubmit}>
-        <div className="mb-4">
-          <label
-            htmlFor="nome"
-            className="block text-sm font-medium text-gray-700 mb-1">
-            Nome *
-          </label>
-          <input
-            type="text"
-            id="nome"
-            name="nome"
-            value={tabela.nome}
-            onChange={handleChange}
-            className={`w-full px-3 py-2 border rounded-md ${
-              errors.nome ? "border-red-500" : "border-gray-300"
-            } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
-            placeholder="Digite o nome da tabela"
-            disabled={submitting}
+  // Renderização condicional para erro
+  if (error || !originalTabela) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <Navbar />
+        <main className="flex-grow container mx-auto p-6">
+          <Breadcrumb
+            items={[
+              { label: "Tabelas de Valores", href: "/tabelas-valores" },
+              { label: "Editar Tabela", href: `/tabelas-valores/${tabelaId}` },
+            ]}
           />
-          {errors.nome && (
-            <p className="mt-1 text-sm text-red-500">{errors.nome}</p>
-          )}
-        </div>
+          <div className="bg-red-50 text-red-700 p-4 rounded-md mb-4">
+            {error || "Tabela não encontrada."}
+          </div>
+          <button
+            onClick={() => router.push("/tabelas-valores")}
+            className="flex items-center text-primary hover:text-primary-dark">
+            <ArrowLeft size={16} className="mr-1" />
+            Voltar para a lista de tabelas
+          </button>
+        </main>
+      </div>
+    );
+  }
 
-        <div className="mb-4">
-          <label
-            htmlFor="convenioId"
-            className="block text-sm font-medium text-gray-700 mb-1">
-            Convênio *
-          </label>
-          <select
-            id="convenioId"
-            name="convenioId"
-            value={tabela.convenioId}
-            onChange={handleChange}
-            className={`w-full px-3 py-2 border rounded-md ${
-              errors.convenioId ? "border-red-500" : "border-gray-300"
-            } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
-            disabled={submitting}>
-            {convenios.map((convenio) => (
-              <option key={convenio.id} value={convenio.id}>
-                {convenio.name}
-              </option>
-            ))}
-          </select>
-          {errors.convenioId && (
-            <p className="mt-1 text-sm text-red-500">{errors.convenioId}</p>
-          )}
-        </div>
-
-        <div className="mb-4">
-          <label
-            htmlFor="descricao"
-            className="block text-sm font-medium text-gray-700 mb-1">
-            Descrição
-          </label>
-          <textarea
-            id="descricao"
-            name="descricao"
-            value={tabela.descricao}
-            onChange={handleChange}
-            rows={3}
-            className={`w-full px-3 py-2 border rounded-md ${
-              errors.descricao ? "border-red-500" : "border-gray-300"
-            } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
-            placeholder="Digite uma descrição para a tabela (opcional)"
-            disabled={submitting}></textarea>
-          {errors.descricao && (
-            <p className="mt-1 text-sm text-red-500">{errors.descricao}</p>
-          )}
-        </div>
-
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Valores *
-          </label>
-
-          <TabelaValoresEditor
-            value={tabela.conteudo}
-            onChange={handleTabelaChange}
-            disabled={submitting}
-            error={errors.conteudo}
-          />
-        </div>
-
-        <div className="flex justify-end space-x-3">
-          <CustomButton
-            type="button"
-            variant="secondary"
-            icon={X}
-            onClick={() => router.push(`/tabelas-valores/${tabelaId}`)}
-            disabled={submitting}>
-            Cancelar
-          </CustomButton>
-          <CustomButton
-            type="submit"
-            variant="primary"
-            icon={Save}
-            disabled={submitting}>
-            {submitting ? "Salvando..." : "Salvar Alterações"}
-          </CustomButton>
-        </div>
-      </form>
-    </div>
-  );
-}
-
-// Componente principal que encapsula tudo com Suspense
-export default function EditarTabelaValoresPage() {
-  const params = useParams();
-  const tabelaId = params?.id as string;
-
+  // Renderização principal
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Navbar />
-
       <main className="flex-grow container mx-auto p-6">
         <Breadcrumb
           items={[
@@ -312,9 +222,108 @@ export default function EditarTabelaValoresPage() {
           </h1>
         </div>
 
-        <Suspense fallback={<Loading message="Carregando..." />}>
-          <EditarTabelaContent />
-        </Suspense>
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <form onSubmit={handleSubmit}>
+            <div className="mb-4">
+              <label
+                htmlFor="nome"
+                className="block text-sm font-medium text-gray-700 mb-1">
+                Nome *
+              </label>
+              <input
+                type="text"
+                id="nome"
+                name="nome"
+                value={tabela.nome}
+                onChange={handleChange}
+                className={`w-full px-3 py-2 border rounded-md ${
+                  errors.nome ? "border-red-500" : "border-gray-300"
+                } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
+                placeholder="Digite o nome da tabela"
+                disabled={submitting}
+              />
+              {errors.nome && (
+                <p className="mt-1 text-sm text-red-500">{errors.nome}</p>
+              )}
+            </div>
+            <div className="mb-4">
+              <label
+                htmlFor="convenioId"
+                className="block text-sm font-medium text-gray-700 mb-1">
+                Convênio *
+              </label>
+              <select
+                id="convenioId"
+                name="convenioId"
+                value={tabela.convenioId}
+                onChange={handleChange}
+                className={`w-full px-3 py-2 border rounded-md ${
+                  errors.convenioId ? "border-red-500" : "border-gray-300"
+                } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
+                disabled={submitting}>
+                {convenios.map((convenio) => (
+                  <option key={convenio.id} value={convenio.id}>
+                    {convenio.name}
+                  </option>
+                ))}
+              </select>
+              {errors.convenioId && (
+                <p className="mt-1 text-sm text-red-500">{errors.convenioId}</p>
+              )}
+            </div>
+            <div className="mb-4">
+              <label
+                htmlFor="descricao"
+                className="block text-sm font-medium text-gray-700 mb-1">
+                Descrição
+              </label>
+              <textarea
+                id="descricao"
+                name="descricao"
+                value={tabela.descricao}
+                onChange={handleChange}
+                rows={3}
+                className={`w-full px-3 py-2 border rounded-md ${
+                  errors.descricao ? "border-red-500" : "border-gray-300"
+                } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
+                placeholder="Digite uma descrição para a tabela (opcional)"
+                disabled={submitting}></textarea>
+              {errors.descricao && (
+                <p className="mt-1 text-sm text-red-500">{errors.descricao}</p>
+              )}
+            </div>
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Valores *
+              </label>
+
+              <TabelaValoresEditor
+                value={tabela.conteudo}
+                onChange={handleTabelaChange}
+                disabled={submitting}
+                error={errors.conteudo}
+              />
+            </div>
+            <div className="flex justify-end space-x-3">
+              <CustomButton
+                type="button"
+                variant="secondary"
+                icon={X}
+                className="bg-red-500 hover:bg-red-700 text-white border-none"
+                onClick={() => router.push(`/tabelas-valores/${tabelaId}`)}
+                disabled={submitting}>
+                Cancelar
+              </CustomButton>
+              <CustomButton
+                type="submit"
+                variant="primary"
+                icon={Save}
+                disabled={submitting}>
+                {submitting ? "Salvando..." : "Salvar Alterações"}
+              </CustomButton>
+            </div>
+          </form>
+        </div>
       </main>
     </div>
   );
