@@ -147,7 +147,7 @@ export default function EditarTabelaValoresPage() {
     try {
       await tabelaValoresService.updateTabela(tabelaId, tabela);
       toastUtil.success("Tabela de valores atualizada com sucesso!");
-      router.push(`/tabelas-valores/${tabelaId}`);
+      router.push(`/tabelas-valores/`);
     } catch (err: any) {
       console.error("Erro ao atualizar tabela de valores:", err);
       toastUtil.error(
@@ -312,6 +312,7 @@ export default function EditarTabelaValoresPage() {
                 type="button"
                 variant="secondary"
                 icon={X}
+                className="bg-red-500 hover:bg-red-700 text-white border-none"
                 onClick={() => router.push(`/tabelas-valores/${tabelaId}`)}
                 disabled={submitting}>
                 Cancelar
