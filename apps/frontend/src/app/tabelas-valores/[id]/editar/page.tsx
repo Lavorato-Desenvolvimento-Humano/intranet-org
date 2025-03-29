@@ -137,6 +137,7 @@ export default function EditarTabelaValoresPage() {
 
   // Função para lidar com o envio do formulário
   const handleSubmit = async (e: React.FormEvent) => {
+    console.log("Teste de deploy!!!");
     e.preventDefault();
 
     if (!validateForm()) {
@@ -245,7 +246,6 @@ export default function EditarTabelaValoresPage() {
                 <p className="mt-1 text-sm text-red-500">{errors.nome}</p>
               )}
             </div>
-
             <div className="mb-4">
               <label
                 htmlFor="convenioId"
@@ -271,7 +271,6 @@ export default function EditarTabelaValoresPage() {
                 <p className="mt-1 text-sm text-red-500">{errors.convenioId}</p>
               )}
             </div>
-
             <div className="mb-4">
               <label
                 htmlFor="descricao"
@@ -293,7 +292,6 @@ export default function EditarTabelaValoresPage() {
                 <p className="mt-1 text-sm text-red-500">{errors.descricao}</p>
               )}
             </div>
-
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Valores *
@@ -306,7 +304,6 @@ export default function EditarTabelaValoresPage() {
                 error={errors.conteudo}
               />
             </div>
-
             <div className="flex justify-end space-x-3">
               <CustomButton
                 type="button"
