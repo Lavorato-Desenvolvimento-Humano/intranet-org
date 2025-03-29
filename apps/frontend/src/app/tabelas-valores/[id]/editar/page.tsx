@@ -225,9 +225,7 @@ export default function EditarTabelaValoresPage() {
         />
 
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">
-            Editar Tabela de Valores
-          </h1>
+          <h1 className="text-2xl font-bold text-gray-800">Teste de upload</h1>
         </div>
 
         <div className="bg-white rounded-lg shadow-md p-6">
