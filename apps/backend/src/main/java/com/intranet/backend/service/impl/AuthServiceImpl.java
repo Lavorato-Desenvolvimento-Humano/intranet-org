@@ -72,6 +72,12 @@ public class AuthServiceImpl implements AuthService {
                 throw new EmailNotVerifiedException("Por favor, verifique seu email antes de fazer login.");
             }
 
+            // Verificar se o usuário está ativo
+            if (!user.isActive()) {
+                logger.warn("[{}] Tentativa de login com conta desativada: {}", requestId, loginRequest.getEmail());
+                throw new RuntimeException("Sua conta está desativada. Entre em contato com o administrador.");
+            }
+
             // Tentar autenticar
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
@@ -181,27 +187,15 @@ public class AuthServiceImpl implements AuthService {
         // Enviar email de verificação
         tokenService.createOrReuseEmailVerificationToken(savedUser);
 
-        // Autenticar o novo usuário para gerar token JWT
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        registerRequest.getEmail(),
-                        registerRequest.getPassword()
-                )
-        );
-
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        String jwt = jwtUtils.generateJwtToken(authentication);
-
-        // Criar e retornar resposta JWT
-        JwtResponse response = new JwtResponse(
-                jwt,
-                savedUser.getId(),
-                savedUser.getFullName(),
-                savedUser.getEmail(),
-                savedUser.getProfileImage(),
-                List.of("ROLE_USER")
-        );
+        // Criar resposta sem autenticar o usuário
+        JwtResponse response = new JwtResponse();
+        response.setId(savedUser.getId());
+        response.setFullName(savedUser.getFullName());
+        response.setEmail(savedUser.getEmail());
+        response.setProfileImage(savedUser.getProfileImage());
+        response.setRoles(List.of("ROLE_USER"));
         response.setEmailVerified(false);
+        response.setToken(null); // Não incluir token para não autenticar automaticamente
 
         return response;
     }

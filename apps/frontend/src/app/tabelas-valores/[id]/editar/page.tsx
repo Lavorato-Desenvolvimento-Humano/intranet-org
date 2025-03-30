@@ -137,7 +137,6 @@ export default function EditarTabelaValoresPage() {
 
   // Função para lidar com o envio do formulário
   const handleSubmit = async (e: React.FormEvent) => {
-    console.log("Teste de deploy!!!");
     e.preventDefault();
 
     if (!validateForm()) {
@@ -148,7 +147,7 @@ export default function EditarTabelaValoresPage() {
     try {
       await tabelaValoresService.updateTabela(tabelaId, tabela);
       toastUtil.success("Tabela de valores atualizada com sucesso!");
-      router.push(`/tabelas-valores/`);
+      router.push("/tabelas-valores");
     } catch (err: any) {
       console.error("Erro ao atualizar tabela de valores:", err);
       toastUtil.error(
@@ -158,6 +157,10 @@ export default function EditarTabelaValoresPage() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleCancel = () => {
+    router.push(`/tabelas-valores/${tabelaId}`);
   };
 
   // Renderização condicional para carregamento
@@ -195,7 +198,8 @@ export default function EditarTabelaValoresPage() {
           </div>
           <button
             onClick={() => router.push("/tabelas-valores")}
-            className="flex items-center text-primary hover:text-primary-dark">
+            className="flex items-center text-primary hover:text-primary-dark"
+          >
             <ArrowLeft size={16} className="mr-1" />
             Voltar para a lista de tabelas
           </button>
@@ -212,7 +216,11 @@ export default function EditarTabelaValoresPage() {
         <Breadcrumb
           items={[
             { label: "Tabelas de Valores", href: "/tabelas-valores" },
-            { label: "Editar Tabela", href: `/tabelas-valores/${tabelaId}` },
+            {
+              label: originalTabela.nome,
+              href: `/tabelas-valores/${tabelaId}`,
+            },
+            { label: "Editar" },
           ]}
         />
 
@@ -227,7 +235,8 @@ export default function EditarTabelaValoresPage() {
             <div className="mb-4">
               <label
                 htmlFor="nome"
-                className="block text-sm font-medium text-gray-700 mb-1">
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Nome *
               </label>
               <input
@@ -249,7 +258,8 @@ export default function EditarTabelaValoresPage() {
             <div className="mb-4">
               <label
                 htmlFor="convenioId"
-                className="block text-sm font-medium text-gray-700 mb-1">
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Convênio *
               </label>
               <select
@@ -260,7 +270,8 @@ export default function EditarTabelaValoresPage() {
                 className={`w-full px-3 py-2 border rounded-md ${
                   errors.convenioId ? "border-red-500" : "border-gray-300"
                 } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
-                disabled={submitting}>
+                disabled={submitting}
+              >
                 {convenios.map((convenio) => (
                   <option key={convenio.id} value={convenio.id}>
                     {convenio.name}
@@ -274,7 +285,8 @@ export default function EditarTabelaValoresPage() {
             <div className="mb-4">
               <label
                 htmlFor="descricao"
-                className="block text-sm font-medium text-gray-700 mb-1">
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Descrição
               </label>
               <textarea
@@ -287,7 +299,8 @@ export default function EditarTabelaValoresPage() {
                   errors.descricao ? "border-red-500" : "border-gray-300"
                 } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
                 placeholder="Digite uma descrição para a tabela (opcional)"
-                disabled={submitting}></textarea>
+                disabled={submitting}
+              ></textarea>
               {errors.descricao && (
                 <p className="mt-1 text-sm text-red-500">{errors.descricao}</p>
               )}
@@ -307,18 +320,20 @@ export default function EditarTabelaValoresPage() {
             <div className="flex justify-end space-x-3">
               <CustomButton
                 type="button"
-                variant="secondary"
+                variant="primary"
                 icon={X}
+                onClick={handleCancel}
+                disabled={submitting}
                 className="bg-red-500 hover:bg-red-700 text-white border-none"
-                onClick={() => router.push(`/tabelas-valores/${tabelaId}`)}
-                disabled={submitting}>
+              >
                 Cancelar
               </CustomButton>
               <CustomButton
                 type="submit"
                 variant="primary"
                 icon={Save}
-                disabled={submitting}>
+                disabled={submitting}
+              >
                 {submitting ? "Salvando..." : "Salvar Alterações"}
               </CustomButton>
             </div>

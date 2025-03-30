@@ -73,14 +73,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (err: any) {
       toastUtil.dismiss(loadingToastId);
 
+      // Verificar se é erro de email não verificado
       if (
         err.response &&
         err.response.status === 403 &&
         err.response.data &&
-        err.response.data.error === "Email não verificado"
+        (err.response.data.error === "Email não verificado" ||
+          err.response.data.message ===
+            "Por favor, verifique seu email antes de fazer login.")
       ) {
         toastUtil.error(
-          "Email não verificado. Por favor, verifique seu email."
+          "Email não verificado. Por favor, verifique seu email antes de fazer login."
         );
         // Redirecionar para página de verificação
         window.location.href = `/auth/verify-email?email=${encodeURIComponent(credentials.email)}`;
@@ -120,7 +123,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     if (!data.email.endsWith("@lavorato.com.br")) {
       toastUtil.error(
-        "Apenas email com domínio @lavorato.com.br são permitidos"
+        "Apenas emails com domínio @lavorato.com.br são permitidos"
       );
       return;
     }
@@ -129,12 +132,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     try {
       setLoading(true);
-      const userData = await authService.register(data);
-      setUser(userData);
+      await authService.register(data);
 
       toastUtil.dismiss(loadingToastId);
-      toastUtil.success("Conta criada com sucesso!");
-      window.location.href = "/";
+      toastUtil.success(
+        "Conta criada com sucesso! Por favor, verifique seu email para ativar sua conta."
+      );
+
+      // Redirecionar para a página de verificação de email
+      window.location.href = `/auth/verify-email?email=${encodeURIComponent(data.email)}`;
     } catch (err: any) {
       toastUtil.dismiss(loadingToastId);
 
