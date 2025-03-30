@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
@@ -40,21 +42,24 @@ export default function Navbar() {
           <div className="hidden md:flex items-center space-x-6">
             <Link
               href="/dashboard"
-              className="text-white hover:text-gray-200 flex items-center">
+              className="text-white hover:text-gray-200 flex items-center"
+            >
               <HomeIcon className="mr-1" size={18} />
               <span>Dashboard</span>
             </Link>
 
             <Link
               href="/convenios"
-              className="text-white hover:text-gray-200 flex items-center">
+              className="text-white hover:text-gray-200 flex items-center"
+            >
               <FileTextIcon className="mr-1" size={18} />
               <span>Convênios</span>
             </Link>
 
             <Link
               href="/tabelas-valores"
-              className="text-white hover:text-gray-200 flex items-center">
+              className="text-white hover:text-gray-200 flex items-center"
+            >
               <Table className="mr-1" size={18} />
               <span>Tabelas</span>
             </Link>
@@ -62,7 +67,8 @@ export default function Navbar() {
             {hasAdminRole && (
               <Link
                 href="/admin"
-                className="text-white hover:text-gray-200 flex items-center">
+                className="text-white hover:text-gray-200 flex items-center"
+              >
                 <SettingsIcon className="mr-1" size={18} />
                 <span>Painel Administrativo</span>
               </Link>
@@ -73,7 +79,8 @@ export default function Navbar() {
           <div className="flex items-center space-x-4">
             <Link
               href="/profile"
-              className="text-white hover:text-gray-200 flex items-center">
+              className="text-white hover:text-gray-200 flex items-center"
+            >
               <UserIcon className="mr-1" size={18} />
               <span className="hidden md:inline">
                 {user?.fullName || "Perfil"}
@@ -82,7 +89,8 @@ export default function Navbar() {
 
             <button
               onClick={logout}
-              className="text-white hover:text-gray-200 flex items-center">
+              className="text-white hover:text-gray-200 flex items-center"
+            >
               <LogOutIcon className="mr-1" size={18} />
               <span className="hidden md:inline">Sair</span>
             </button>
