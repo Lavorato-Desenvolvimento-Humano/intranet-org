@@ -3,15 +3,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Plus,
-  Calendar,
-  FileText,
-  Eye,
-  Pencil,
-  Trash,
-  Table,
-} from "lucide-react";
+import { Plus, Calendar, Eye, Pencil, Trash } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Breadcrumb from "@/components/ui/breadcrumb";
 import { Loading } from "@/components/ui/loading";
@@ -22,6 +14,7 @@ import tabelaValoresService, {
   TabelaValoresDto,
 } from "@/services/tabelaValores";
 import toastUtil from "@/utils/toast";
+import { CustomButton } from "@/components/ui/custom-button";
 
 export default function TabelasValoresPage() {
   const router = useRouter();
@@ -121,7 +114,9 @@ export default function TabelasValoresPage() {
       width: "25%",
       sortable: true,
       render: (value: string, record: TabelaValoresDto) => (
-        <div className="font-medium text-gray-900">{value}</div>
+        <div className="font-medium text-primary hover:text-primary-dark">
+          {value}
+        </div>
       ),
     },
     {
@@ -200,19 +195,24 @@ export default function TabelasValoresPage() {
       <Navbar />
 
       <main className="flex-grow container mx-auto p-6">
-        <Breadcrumb items={[{ label: "Tabelas de Valores" }]} />
+        <Breadcrumb
+          items={[
+            { label: "Dashboard", href: "/dashboard" },
+            { label: "Tabelas de Valores" },
+          ]}
+        />
 
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-800">
             Tabelas de Valores
           </h1>
           {canCreate && (
-            <button
-              onClick={() => router.push("/tabelas-valores/nova")}
-              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark flex items-center">
-              <Plus size={16} className="mr-1" />
+            <CustomButton
+              variant="primary"
+              icon={Plus}
+              onClick={() => router.push("/tabelas-valores/nova")}>
               Nova Tabela
-            </button>
+            </CustomButton>
           )}
         </div>
 

@@ -207,6 +207,7 @@ export default function TabelaValoresViewPage() {
       <main className="flex-grow container mx-auto p-6">
         <Breadcrumb
           items={[
+            { label: "Dashboard", href: "/dashboard" },
             { label: "Tabelas de Valores", href: "/tabelas-valores" },
             { label: tabela.nome },
           ]}

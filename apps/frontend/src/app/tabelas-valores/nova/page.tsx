@@ -1,6 +1,7 @@
+// apps/frontend/src/app/tabelas-valores/nova/page.tsx
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { Save, X } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
@@ -14,44 +15,11 @@ import convenioService, { ConvenioDto } from "@/services/convenio";
 import toastUtil from "@/utils/toast";
 import { CustomButton } from "@/components/ui/custom-button";
 import TabelaValoresEditor from "@/components/ui/tabela-valores-editor";
-import { Suspense } from "react";
 
-// Componente principal estável para navegação
-export default function NovaTabelaValoresPage() {
-  const router = useRouter(); // Router no componente pai para garantir navegação
-
-  return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Navbar />
-      <main className="flex-grow container mx-auto p-6">
-        <Breadcrumb
-          items={[
-            { label: "Tabelas de Valores", href: "/tabelas-valores" },
-            { label: "Nova Tabela" },
-          ]}
-        />
-
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">
-            Nova Tabela de Valores
-          </h1>
-        </div>
-
-        <Suspense fallback={<Loading message="Carregando..." />}>
-          <NovaTabelaContent router={router} />
-        </Suspense>
-      </main>
-    </div>
-  );
-}
-
-// Componente interno com acesso ao router via props
-function NovaTabelaContent({
-  router,
-}: {
-  router: ReturnType<typeof useRouter>;
-}) {
-  // Agora recebemos o router via props em vez de usar useRouter()
+// Componente que usa o useSearchParams
+function NovaTabelaContent() {
+  const router = useRouter();
+  // Importamos o useSearchParams apenas quando o componente for renderizado no cliente
   const { useSearchParams } = require("next/navigation");
   const searchParams = useSearchParams();
   const { user } = useAuth();
@@ -63,10 +31,10 @@ function NovaTabelaContent({
     ]),
     convenioId: "",
   });
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [convenios, setConvenios] = useState<ConvenioDto[]>([]);
-  const [loadingConvenios, setLoadingConvenios] = useState<boolean>(true);
+  const [loadingConvenios, setLoadingConvenios] = useState(true);
 
   // Verificar se o usuário tem permissão para criar tabelas
   const isAdmin =
@@ -109,7 +77,7 @@ function NovaTabelaContent({
   }, [searchParams]);
 
   // Função para validar o formulário
-  const validateForm = (): boolean => {
+  const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
     if (!tabela.nome.trim()) {
@@ -146,18 +114,18 @@ function NovaTabelaContent({
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
     >
-  ): void => {
+  ) => {
     const { name, value } = e.target;
     setTabela((prev) => ({ ...prev, [name]: value }));
   };
 
   // Função para lidar com mudanças no conteúdo da tabela
-  const handleTabelaChange = (value: string): void => {
+  const handleTabelaChange = (value: string) => {
     setTabela((prev) => ({ ...prev, conteudo: value }));
   };
 
   // Função para lidar com o envio do formulário
-  const handleSubmit = async (e: React.FormEvent): Promise<void> => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateForm()) {
@@ -178,11 +146,6 @@ function NovaTabelaContent({
     } finally {
       setLoading(false);
     }
-  };
-
-  // Função para cancelar usando o router passado via props
-  const handleCancel = (): void => {
-    router.push("/tabelas-valores");
   };
 
   // Redirecionar se não tem permissão
@@ -293,7 +256,7 @@ function NovaTabelaContent({
             type="button"
             variant="secondary"
             icon={X}
-            onClick={handleCancel} // Usando o método handleCancel que usa o router via props
+            onClick={() => router.push("/tabelas-valores")}
             disabled={loading}>
             Cancelar
           </CustomButton>
@@ -306,6 +269,35 @@ function NovaTabelaContent({
           </CustomButton>
         </div>
       </form>
+    </div>
+  );
+}
+
+// Componente principal que encapsula tudo com Suspense
+export default function NovaTabelaValoresPage() {
+  return (
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <Navbar />
+
+      <main className="flex-grow container mx-auto p-6">
+        <Breadcrumb
+          items={[
+            { label: "Dashboard", href: "/dashboard" },
+            { label: "Tabelas de Valores", href: "/tabelas-valores" },
+            { label: "Nova Tabela" },
+          ]}
+        />
+
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold text-gray-800">
+            Nova Tabela de Valores
+          </h1>
+        </div>
+
+        <Suspense fallback={<Loading message="Carregando..." />}>
+          <NovaTabelaContent />
+        </Suspense>
+      </main>
     </div>
   );
 }
