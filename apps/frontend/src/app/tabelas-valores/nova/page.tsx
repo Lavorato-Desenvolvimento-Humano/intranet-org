@@ -35,6 +35,7 @@ function NovaTabelaContent() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [convenios, setConvenios] = useState<ConvenioDto[]>([]);
   const [loadingConvenios, setLoadingConvenios] = useState(true);
+  const [redirected, setRedirected] = useState(false);
 
   // Verificar se o usuário tem permissão para criar tabelas
   const isAdmin =
@@ -75,6 +76,15 @@ function NovaTabelaContent() {
 
     fetchConvenios();
   }, [searchParams]);
+
+  // Redirecionar se não tem permissão - com controle para evitar redirecionamentos infinitos
+  useEffect(() => {
+    if (!canCreate && !redirected && !loadingConvenios) {
+      setRedirected(true);
+      toastUtil.error("Você não tem permissão para criar tabelas de valores.");
+      router.push("/tabelas-valores");
+    }
+  }, [canCreate, redirected, router, loadingConvenios]);
 
   // Função para validar o formulário
   const validateForm = () => {
@@ -148,13 +158,11 @@ function NovaTabelaContent() {
     }
   };
 
-  // Redirecionar se não tem permissão
-  useEffect(() => {
-    if (!canCreate) {
-      toastUtil.error("Você não tem permissão para criar tabelas de valores.");
-      router.push("/tabelas-valores");
-    }
-  }, [canCreate, router]);
+  // Função para cancelar e voltar à listagem
+  const handleCancel = (e: React.MouseEvent) => {
+    e.preventDefault();
+    router.push("/tabelas-valores");
+  };
 
   if (loadingConvenios) {
     return <Loading message="Carregando..." />;
@@ -256,7 +264,7 @@ function NovaTabelaContent() {
             type="button"
             variant="secondary"
             icon={X}
-            onClick={() => router.push("/tabelas-valores")}
+            onClick={handleCancel}
             disabled={loading}>
             Cancelar
           </CustomButton>

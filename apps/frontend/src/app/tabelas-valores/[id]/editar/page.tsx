@@ -34,6 +34,7 @@ export default function EditarTabelaValoresPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [convenios, setConvenios] = useState<ConvenioDto[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [redirected, setRedirected] = useState(false);
 
   const tabelaId = params?.id as string;
 
@@ -79,13 +80,14 @@ export default function EditarTabelaValoresPage() {
     }
   }, [tabelaId]);
 
-  // Redirecionar se não tem permissão
+  // Redirecionar se não tem permissão com controle para evitar loops infinitos
   useEffect(() => {
-    if (!loading && !canEdit) {
+    if (!loading && !canEdit && !redirected) {
+      setRedirected(true);
       toastUtil.error("Você não tem permissão para editar tabelas de valores.");
       router.push(`/tabelas-valores/${tabelaId}`);
     }
-  }, [loading, canEdit, tabelaId, router]);
+  }, [loading, canEdit, tabelaId, router, redirected]);
 
   // Função para validar o formulário
   const validateForm = () => {
@@ -159,7 +161,9 @@ export default function EditarTabelaValoresPage() {
     }
   };
 
-  const handleCancel = () => {
+  // Função melhorada para cancelar e voltar à página anterior
+  const handleCancel = (e: React.MouseEvent) => {
+    e.preventDefault(); // Evitar comportamento padrão
     router.push(`/tabelas-valores/${tabelaId}`);
   };
 
@@ -185,7 +189,10 @@ export default function EditarTabelaValoresPage() {
             {error || "Tabela não encontrada."}
           </div>
           <button
-            onClick={() => router.push("/tabelas-valores")}
+            onClick={(e) => {
+              e.preventDefault();
+              router.push("/tabelas-valores");
+            }}
             className="flex items-center text-primary hover:text-primary-dark">
             <ArrowLeft size={16} className="mr-1" />
             Voltar para a lista de tabelas
