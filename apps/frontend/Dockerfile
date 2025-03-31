@@ -32,7 +32,7 @@ COPY apps/frontend ./apps/frontend
 WORKDIR /app/apps/frontend
 RUN npm run build
 
-# Estágio de produção - imagem final mínima
+# Estágio de produção - imagem final
 FROM node:18-alpine AS runner
 WORKDIR /app
 
@@ -42,10 +42,16 @@ ENV NODE_ENV production
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# Aproveitar o modo standalone do Next.js que inclui tudo necessário para rodar a app
+# Copiar o resultado do build e os arquivos necessários
+COPY --from=builder /app/apps/frontend/next.config.js ./
+COPY --from=builder /app/apps/frontend/package.json ./package.json
+
+# Instalar apenas as dependências de produção necessárias, incluindo next
+RUN npm install next react react-dom
+
+# Copiar o build do Next.js e arquivos públicos
 COPY --from=builder /app/apps/frontend/public ./public
-COPY --from=builder /app/apps/frontend/.next/static ./.next/static
-COPY --from=builder /app/apps/frontend/.next/standalone ./
+COPY --from=builder /app/apps/frontend/.next ./.next
 
 # Configurar permissões corretas
 RUN chown -R nextjs:nodejs /app
@@ -55,5 +61,5 @@ USER nextjs
 
 EXPOSE 3000
 
-# Usar diretamente o server.js gerado pelo modo standalone do Next.js
-CMD ["node", "server.js"]
+# Comando para iniciar a aplicação
+CMD ["npm", "start"]
