@@ -12,13 +12,28 @@ import {
   LogOutIcon,
   Table,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export default function Navbar() {
+  const router = useRouter();
   const { user, logout } = useAuth();
 
   const hasAdminRole = user?.roles?.some(
     (role) => role === "ROLE_ADMIN" || role === "ADMIN"
   );
+
+  // Função para lidar com o logout
+  const handleLogout = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    await logout();
+    router.replace("/login");
+  };
+
+  // Função auxiliar para navegação com router
+  const handleNavigate = (path: string) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    router.push(path);
+  };
 
   return (
     <nav className="bg-primary shadow-md text-white">
@@ -26,7 +41,10 @@ export default function Navbar() {
         <div className="flex justify-between items-center h-16">
           {/* Logo e Brand */}
           <div className="flex items-center">
-            <Link href="/" className="flex items-center">
+            <Link
+              href="/"
+              className="flex items-center"
+              onClick={handleNavigate("/")}>
               <Image
                 src="/logo_branca.png"
                 alt="Lavorato Saúde Integrada"
@@ -43,7 +61,7 @@ export default function Navbar() {
             <Link
               href="/dashboard"
               className="text-white hover:text-gray-200 flex items-center"
-            >
+              onClick={handleNavigate("/dashboard")}>
               <HomeIcon className="mr-1" size={18} />
               <span>Dashboard</span>
             </Link>
@@ -51,7 +69,7 @@ export default function Navbar() {
             <Link
               href="/convenios"
               className="text-white hover:text-gray-200 flex items-center"
-            >
+              onClick={handleNavigate("/convenios")}>
               <FileTextIcon className="mr-1" size={18} />
               <span>Convênios</span>
             </Link>
@@ -59,7 +77,7 @@ export default function Navbar() {
             <Link
               href="/tabelas-valores"
               className="text-white hover:text-gray-200 flex items-center"
-            >
+              onClick={handleNavigate("/tabelas-valores")}>
               <Table className="mr-1" size={18} />
               <span>Tabelas</span>
             </Link>
@@ -68,7 +86,7 @@ export default function Navbar() {
               <Link
                 href="/admin"
                 className="text-white hover:text-gray-200 flex items-center"
-              >
+                onClick={handleNavigate("/admin")}>
                 <SettingsIcon className="mr-1" size={18} />
                 <span>Painel Administrativo</span>
               </Link>
@@ -80,7 +98,7 @@ export default function Navbar() {
             <Link
               href="/profile"
               className="text-white hover:text-gray-200 flex items-center"
-            >
+              onClick={handleNavigate("/profile")}>
               <UserIcon className="mr-1" size={18} />
               <span className="hidden md:inline">
                 {user?.fullName || "Perfil"}
@@ -88,9 +106,8 @@ export default function Navbar() {
             </Link>
 
             <button
-              onClick={logout}
-              className="text-white hover:text-gray-200 flex items-center"
-            >
+              onClick={handleLogout}
+              className="text-white hover:text-gray-200 flex items-center">
               <LogOutIcon className="mr-1" size={18} />
               <span className="hidden md:inline">Sair</span>
             </button>

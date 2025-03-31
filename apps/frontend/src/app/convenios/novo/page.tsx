@@ -163,7 +163,8 @@ export default function NovoConvenioPage() {
             <div className="flex justify-end space-x-3">
               <CustomButton
                 type="button"
-                variant="secondary"
+                variant="primary"
+                className="bg-red-600 hover:bg-red-700 text-white border-none"
                 icon={X}
                 onClick={() => router.push("/convenios")}
                 disabled={loading}>
