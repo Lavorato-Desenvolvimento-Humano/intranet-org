@@ -29,13 +29,22 @@ export default function Navbar() {
     router.replace("/login");
   };
 
+  // Função auxiliar para navegação com router
+  const handleNavigate = (path: string) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    router.push(path);
+  };
+
   return (
     <nav className="bg-primary shadow-md text-white">
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center h-16">
           {/* Logo e Brand */}
           <div className="flex items-center">
-            <Link href="/" className="flex items-center">
+            <Link
+              href="/"
+              className="flex items-center"
+              onClick={handleNavigate("/")}>
               <Image
                 src="/logo_branca.png"
                 alt="Lavorato Saúde Integrada"
@@ -51,14 +60,16 @@ export default function Navbar() {
           <div className="hidden md:flex items-center space-x-6">
             <Link
               href="/dashboard"
-              className="text-white hover:text-gray-200 flex items-center">
+              className="text-white hover:text-gray-200 flex items-center"
+              onClick={handleNavigate("/dashboard")}>
               <HomeIcon className="mr-1" size={18} />
               <span>Dashboard</span>
             </Link>
 
             <Link
               href="/convenios"
-              className="text-white hover:text-gray-200 flex items-center">
+              className="text-white hover:text-gray-200 flex items-center"
+              onClick={handleNavigate("/convenios")}>
               <FileTextIcon className="mr-1" size={18} />
               <span>Convênios</span>
             </Link>
@@ -66,7 +77,7 @@ export default function Navbar() {
             <Link
               href="/tabelas-valores"
               className="text-white hover:text-gray-200 flex items-center"
-              prefetch>
+              onClick={handleNavigate("/tabelas-valores")}>
               <Table className="mr-1" size={18} />
               <span>Tabelas</span>
             </Link>
@@ -74,7 +85,8 @@ export default function Navbar() {
             {hasAdminRole && (
               <Link
                 href="/admin"
-                className="text-white hover:text-gray-200 flex items-center">
+                className="text-white hover:text-gray-200 flex items-center"
+                onClick={handleNavigate("/admin")}>
                 <SettingsIcon className="mr-1" size={18} />
                 <span>Painel Administrativo</span>
               </Link>
@@ -85,7 +97,8 @@ export default function Navbar() {
           <div className="flex items-center space-x-4">
             <Link
               href="/profile"
-              className="text-white hover:text-gray-200 flex items-center">
+              className="text-white hover:text-gray-200 flex items-center"
+              onClick={handleNavigate("/profile")}>
               <UserIcon className="mr-1" size={18} />
               <span className="hidden md:inline">
                 {user?.fullName || "Perfil"}

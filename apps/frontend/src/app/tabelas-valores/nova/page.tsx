@@ -19,7 +19,6 @@ import TabelaValoresEditor from "@/components/ui/tabela-valores-editor";
 // Componente que usa o useSearchParams
 function NovaTabelaContent() {
   const router = useRouter();
-  // Importamos o useSearchParams apenas quando o componente for renderizado no cliente
   const { useSearchParams } = require("next/navigation");
   const searchParams = useSearchParams();
   const { user } = useAuth();
