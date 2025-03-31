@@ -1,4 +1,4 @@
-// apps/frontend/src/app/tabelas-valores/nova/page.tsx (atualizado)
+// apps/frontend/src/app/tabelas-valores/nova/page.tsx
 "use client";
 
 import React, { useState, useEffect, Suspense } from "react";
@@ -19,7 +19,6 @@ import TabelaValoresEditor from "@/components/ui/tabela-valores-editor";
 // Componente que usa o useSearchParams
 function NovaTabelaContent() {
   const router = useRouter();
-  // Importamos o useSearchParams apenas quando o componente for renderizado no cliente
   const { useSearchParams } = require("next/navigation");
   const searchParams = useSearchParams();
   const { user } = useAuth();
@@ -35,6 +34,7 @@ function NovaTabelaContent() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [convenios, setConvenios] = useState<ConvenioDto[]>([]);
   const [loadingConvenios, setLoadingConvenios] = useState(true);
+  const [redirected, setRedirected] = useState(false);
 
   // Verificar se o usuário tem permissão para criar tabelas
   const isAdmin =
@@ -75,6 +75,15 @@ function NovaTabelaContent() {
 
     fetchConvenios();
   }, [searchParams]);
+
+  // Redirecionar se não tem permissão - com controle para evitar redirecionamentos infinitos
+  useEffect(() => {
+    if (!canCreate && !redirected && !loadingConvenios) {
+      setRedirected(true);
+      toastUtil.error("Você não tem permissão para criar tabelas de valores.");
+      router.push("/tabelas-valores");
+    }
+  }, [canCreate, redirected, router, loadingConvenios]);
 
   // Função para validar o formulário
   const validateForm = () => {
@@ -136,7 +145,7 @@ function NovaTabelaContent() {
     try {
       await tabelaValoresService.createTabela(tabela);
       toastUtil.success("Tabela de valores criada com sucesso!");
-      router.push("/tabelas-valores");
+      router.replace("/tabelas-valores");
     } catch (err: any) {
       console.error("Erro ao criar tabela de valores:", err);
       toastUtil.error(
@@ -148,13 +157,11 @@ function NovaTabelaContent() {
     }
   };
 
-  // Redirecionar se não tem permissão
-  useEffect(() => {
-    if (!canCreate) {
-      toastUtil.error("Você não tem permissão para criar tabelas de valores.");
-      router.push("/tabelas-valores");
-    }
-  }, [canCreate, router]);
+  // Função para cancelar e voltar à listagem
+  const handleCancel = (e: React.MouseEvent) => {
+    e.preventDefault();
+    router.back();
+  };
 
   if (loadingConvenios) {
     return <Loading message="Carregando..." />;
@@ -254,9 +261,10 @@ function NovaTabelaContent() {
         <div className="flex justify-end space-x-3">
           <CustomButton
             type="button"
-            variant="secondary"
+            variant="primary"
+            className="bg-red-600 hover:bg-red-700 text-white border-none"
             icon={X}
-            onClick={() => router.push("/tabelas-valores")}
+            onClick={handleCancel}
             disabled={loading}>
             Cancelar
           </CustomButton>
@@ -282,6 +290,7 @@ export default function NovaTabelaValoresPage() {
       <main className="flex-grow container mx-auto p-6">
         <Breadcrumb
           items={[
+            { label: "Dashboard", href: "/dashboard" },
             { label: "Tabelas de Valores", href: "/tabelas-valores" },
             { label: "Nova Tabela" },
           ]}
