@@ -145,7 +145,7 @@ function NovaTabelaContent() {
     try {
       await tabelaValoresService.createTabela(tabela);
       toastUtil.success("Tabela de valores criada com sucesso!");
-      router.push("/tabelas-valores");
+      router.replace("/tabelas-valores");
     } catch (err: any) {
       console.error("Erro ao criar tabela de valores:", err);
       toastUtil.error(
@@ -160,7 +160,7 @@ function NovaTabelaContent() {
   // Função para cancelar e voltar à listagem
   const handleCancel = (e: React.MouseEvent) => {
     e.preventDefault();
-    router.push("/tabelas-valores");
+    router.back();
   };
 
   if (loadingConvenios) {
