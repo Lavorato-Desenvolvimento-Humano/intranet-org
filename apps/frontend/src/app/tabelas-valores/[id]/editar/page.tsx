@@ -149,7 +149,7 @@ export default function EditarTabelaValoresPage() {
     try {
       await tabelaValoresService.updateTabela(tabelaId, tabela);
       toastUtil.success("Tabela de valores atualizada com sucesso!");
-      router.push(`/tabelas-valores/${tabelaId}`);
+      router.replace(`/tabelas-valores/${tabelaId}`);
     } catch (err: any) {
       console.error("Erro ao atualizar tabela de valores:", err);
       toastUtil.error(
@@ -164,7 +164,7 @@ export default function EditarTabelaValoresPage() {
   // Função melhorada para cancelar e voltar à página anterior
   const handleCancel = (e: React.MouseEvent) => {
     e.preventDefault(); // Evitar comportamento padrão
-    router.push(`/tabelas-valores/${tabelaId}`);
+    router.back();
   };
 
   // Renderização condicional para carregamento
