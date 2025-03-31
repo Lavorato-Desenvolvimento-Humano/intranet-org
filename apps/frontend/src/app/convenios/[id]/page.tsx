@@ -26,6 +26,7 @@ import tabelaValoresService, {
 } from "@/services/tabelaValores";
 import toastUtil from "@/utils/toast";
 import { CustomButton } from "@/components/ui/custom-button";
+import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
 
 export default function ConvenioViewPage() {
   const router = useRouter();
@@ -202,117 +203,100 @@ export default function ConvenioViewPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Navbar />
+    <ProtectedRoute>
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <Navbar />
 
-      <main className="flex-grow container mx-auto p-6">
-        <Breadcrumb
-          items={[
-            { label: "Convênios", href: "/convenios" },
-            { label: convenio.name },
-          ]}
-        />
+        <main className="flex-grow container mx-auto p-6">
+          <Breadcrumb
+            items={[
+              { label: "Convênios", href: "/convenios" },
+              { label: convenio.name },
+            ]}
+          />
 
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">{convenio.name}</h1>
-          {canEdit && (
-            <CustomButton
-              variant="primary"
-              icon={Edit}
-              onClick={() => router.push(`/convenios/${convenioId}/editar`)}>
-              Editar
-            </CustomButton>
-          )}
-        </div>
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold text-gray-800">
+              {convenio.name}
+            </h1>
+            {canEdit && (
+              <CustomButton
+                variant="primary"
+                icon={Edit}
+                onClick={() => router.push(`/convenios/${convenioId}/editar`)}>
+                Editar
+              </CustomButton>
+            )}
+          </div>
 
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold text-gray-800 mb-2">
-              Detalhes do Convênio
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-gray-500">Nome:</p>
-                <p className="text-gray-800">{convenio.name}</p>
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-gray-800 mb-2">
+                Detalhes do Convênio
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-gray-500">Nome:</p>
+                  <p className="text-gray-800">{convenio.name}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Data de Criação:</p>
+                  <p className="text-gray-800">
+                    {formatDate(convenio.createdAt)} às{" "}
+                    {formatTime(convenio.createdAt)}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-gray-500">Data de Criação:</p>
-                <p className="text-gray-800">
-                  {formatDate(convenio.createdAt)} às{" "}
-                  {formatTime(convenio.createdAt)}
+            </div>
+
+            {convenio.description && (
+              <div className="mt-4">
+                <p className="text-sm text-gray-500">Descrição:</p>
+                <p className="text-gray-800 whitespace-pre-line">
+                  {convenio.description}
                 </p>
               </div>
-            </div>
+            )}
           </div>
 
-          {convenio.description && (
-            <div className="mt-4">
-              <p className="text-sm text-gray-500">Descrição:</p>
-              <p className="text-gray-800 whitespace-pre-line">
-                {convenio.description}
-              </p>
+          {/* Abas para Postagens e Tabelas de Valores */}
+          <div className="bg-white rounded-lg shadow-md overflow-hidden">
+            <div className="border-b border-gray-200">
+              <nav className="flex -mb-px">
+                <button
+                  onClick={() => setActiveTab("postagens")}
+                  className={`py-4 px-6 border-b-2 font-medium text-sm ${
+                    activeTab === "postagens"
+                      ? "border-primary text-primary"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}>
+                  <div className="flex items-center">
+                    <FileText size={16} className="mr-2" />
+                    Postagens ({postagens.length})
+                  </div>
+                </button>
+                <button
+                  onClick={() => setActiveTab("tabelas")}
+                  className={`py-4 px-6 border-b-2 font-medium text-sm ${
+                    activeTab === "tabelas"
+                      ? "border-primary text-primary"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}>
+                  <div className="flex items-center">
+                    <Table size={16} className="mr-2" />
+                    Tabelas de Valores ({tabelas.length})
+                  </div>
+                </button>
+              </nav>
             </div>
-          )}
-        </div>
 
-        {/* Abas para Postagens e Tabelas de Valores */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="border-b border-gray-200">
-            <nav className="flex -mb-px">
-              <button
-                onClick={() => setActiveTab("postagens")}
-                className={`py-4 px-6 border-b-2 font-medium text-sm ${
-                  activeTab === "postagens"
-                    ? "border-primary text-primary"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}>
-                <div className="flex items-center">
-                  <FileText size={16} className="mr-2" />
-                  Postagens ({postagens.length})
-                </div>
-              </button>
-              <button
-                onClick={() => setActiveTab("tabelas")}
-                className={`py-4 px-6 border-b-2 font-medium text-sm ${
-                  activeTab === "tabelas"
-                    ? "border-primary text-primary"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}>
-                <div className="flex items-center">
-                  <Table size={16} className="mr-2" />
-                  Tabelas de Valores ({tabelas.length})
-                </div>
-              </button>
-            </nav>
-          </div>
-
-          <div className="p-6">
-            {activeTab === "postagens" && (
-              <div>
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-lg font-semibold text-gray-800">
-                    Postagens
-                  </h2>
-                  {canCreatePostagem && (
-                    <CustomButton
-                      onClick={() =>
-                        router.push(`/postagens/nova?convenioId=${convenioId}`)
-                      }
-                      variant="primary"
-                      icon={FilePlus}>
-                      Nova Postagem
-                    </CustomButton>
-                  )}
-                </div>
-                {postagens.length === 0 ? (
-                  <div className="bg-gray-50 p-8 text-center rounded-md">
-                    <FileText
-                      size={48}
-                      className="mx-auto text-gray-400 mb-2"
-                    />
-                    <p className="text-gray-600 mb-4">
-                      Nenhuma postagem encontrada para este convênio.
-                    </p>
+            <div className="p-6">
+              {activeTab === "postagens" && (
+                <div>
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-lg font-semibold text-gray-800">
+                      Postagens
+                    </h2>
                     {canCreatePostagem && (
                       <CustomButton
                         onClick={() =>
@@ -322,52 +306,55 @@ export default function ConvenioViewPage() {
                         }
                         variant="primary"
                         icon={FilePlus}>
-                        Criar Primeira Postagem
+                        Nova Postagem
                       </CustomButton>
                     )}
                   </div>
-                ) : (
-                  <DataTable
-                    data={postagens}
-                    columns={postagensColumns}
-                    keyExtractor={(item) => item.id}
-                    searchable
-                    searchKeys={["title", "createdByName"]}
-                    onRowClick={(postagem) =>
-                      router.push(`/postagens/${postagem.id}`)
-                    }
-                    emptyMessage="Nenhuma postagem encontrada."
-                    showHeader={false}
-                  />
-                )}
-              </div>
-            )}
-
-            {activeTab === "tabelas" && (
-              <div>
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-lg font-semibold text-gray-800">
-                    Tabelas de Valores
-                  </h2>
-                  {canCreateTabela && (
-                    <CustomButton
-                      onClick={() =>
-                        router.push(
-                          `/tabelas-valores/nova?convenioId=${convenioId}`
-                        )
+                  {postagens.length === 0 ? (
+                    <div className="bg-gray-50 p-8 text-center rounded-md">
+                      <FileText
+                        size={48}
+                        className="mx-auto text-gray-400 mb-2"
+                      />
+                      <p className="text-gray-600 mb-4">
+                        Nenhuma postagem encontrada para este convênio.
+                      </p>
+                      {canCreatePostagem && (
+                        <CustomButton
+                          onClick={() =>
+                            router.push(
+                              `/postagens/nova?convenioId=${convenioId}`
+                            )
+                          }
+                          variant="primary"
+                          icon={FilePlus}>
+                          Criar Primeira Postagem
+                        </CustomButton>
+                      )}
+                    </div>
+                  ) : (
+                    <DataTable
+                      data={postagens}
+                      columns={postagensColumns}
+                      keyExtractor={(item) => item.id}
+                      searchable
+                      searchKeys={["title", "createdByName"]}
+                      onRowClick={(postagem) =>
+                        router.push(`/postagens/${postagem.id}`)
                       }
-                      variant="primary"
-                      icon={FilePlus}>
-                      Nova Tabela
-                    </CustomButton>
+                      emptyMessage="Nenhuma postagem encontrada."
+                      showHeader={false}
+                    />
                   )}
                 </div>
-                {tabelas.length === 0 ? (
-                  <div className="bg-gray-50 p-8 text-center rounded-md">
-                    <Table size={48} className="mx-auto text-gray-400 mb-2" />
-                    <p className="text-gray-600 mb-4">
-                      Nenhuma tabela de valores encontrada para este convênio.
-                    </p>
+              )}
+
+              {activeTab === "tabelas" && (
+                <div>
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-lg font-semibold text-gray-800">
+                      Tabelas de Valores
+                    </h2>
                     {canCreateTabela && (
                       <CustomButton
                         onClick={() =>
@@ -377,29 +364,49 @@ export default function ConvenioViewPage() {
                         }
                         variant="primary"
                         icon={FilePlus}>
-                        Criar Primeira Tabela
+                        Nova Tabela
                       </CustomButton>
                     )}
                   </div>
-                ) : (
-                  <DataTable
-                    data={tabelas}
-                    columns={tabelasColumns}
-                    keyExtractor={(item) => item.id}
-                    searchable
-                    searchKeys={["nome", "createdByName"]}
-                    onRowClick={(tabela) =>
-                      router.push(`/tabelas-valores/${tabela.id}`)
-                    }
-                    emptyMessage="Nenhuma tabela de valores encontrada."
-                    showHeader={false}
-                  />
-                )}
-              </div>
-            )}
+                  {tabelas.length === 0 ? (
+                    <div className="bg-gray-50 p-8 text-center rounded-md">
+                      <Table size={48} className="mx-auto text-gray-400 mb-2" />
+                      <p className="text-gray-600 mb-4">
+                        Nenhuma tabela de valores encontrada para este convênio.
+                      </p>
+                      {canCreateTabela && (
+                        <CustomButton
+                          onClick={() =>
+                            router.push(
+                              `/tabelas-valores/nova?convenioId=${convenioId}`
+                            )
+                          }
+                          variant="primary"
+                          icon={FilePlus}>
+                          Criar Primeira Tabela
+                        </CustomButton>
+                      )}
+                    </div>
+                  ) : (
+                    <DataTable
+                      data={tabelas}
+                      columns={tabelasColumns}
+                      keyExtractor={(item) => item.id}
+                      searchable
+                      searchKeys={["nome", "createdByName"]}
+                      onRowClick={(tabela) =>
+                        router.push(`/tabelas-valores/${tabela.id}`)
+                      }
+                      emptyMessage="Nenhuma tabela de valores encontrada."
+                      showHeader={false}
+                    />
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      </main>
-    </div>
+        </main>
+      </div>
+    </ProtectedRoute>
   );
 }

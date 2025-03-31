@@ -18,6 +18,7 @@ import toastUtil from "@/utils/toast";
 import { CustomButton } from "@/components/ui/custom-button";
 import dynamic from "next/dynamic";
 import RichTextPreview from "@/components/ui/rich-text-preview";
+import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
 
 // Importando o editor melhorado com carregamento dinâmico
 const SimpleRichEditor = dynamic(
@@ -221,182 +222,186 @@ export default function NovaPostagemPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Navbar />
+    <ProtectedRoute>
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <Navbar />
 
-      <main className="flex-grow container mx-auto p-6">
-        <Breadcrumb
-          items={[
-            { label: "Convênios", href: "/convenios" },
-            { label: "Nova Postagem" },
-          ]}
-        />
+        <main className="flex-grow container mx-auto p-6">
+          <Breadcrumb
+            items={[
+              { label: "Convênios", href: "/convenios" },
+              { label: "Nova Postagem" },
+            ]}
+          />
 
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">Nova Postagem</h1>
-        </div>
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold text-gray-800">Nova Postagem</h1>
+          </div>
 
-        <div className="bg-white rounded-lg shadow-md p-6">
-          {error && (
-            <div className="bg-red-50 text-red-700 p-4 rounded-md mb-4">
-              {error}
-            </div>
-          )}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            {error && (
+              <div className="bg-red-50 text-red-700 p-4 rounded-md mb-4">
+                {error}
+              </div>
+            )}
 
-          <form onSubmit={handleSubmit}>
-            <div className="mb-4">
-              <label
-                htmlFor="title"
-                className="block text-sm font-medium text-gray-700 mb-1">
-                Título *
-              </label>
-              <input
-                type="text"
-                id="title"
-                name="title"
-                value={formData.title}
-                onChange={handleChange}
-                className={`w-full px-3 py-2 border rounded-md ${
-                  errors.title ? "border-red-500" : "border-gray-300"
-                } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
-                placeholder="Digite o título da postagem"
-                disabled={submitting}
-              />
-              {errors.title && (
-                <p className="mt-1 text-sm text-red-500">{errors.title}</p>
-              )}
-            </div>
+            <form onSubmit={handleSubmit}>
+              <div className="mb-4">
+                <label
+                  htmlFor="title"
+                  className="block text-sm font-medium text-gray-700 mb-1">
+                  Título *
+                </label>
+                <input
+                  type="text"
+                  id="title"
+                  name="title"
+                  value={formData.title}
+                  onChange={handleChange}
+                  className={`w-full px-3 py-2 border rounded-md ${
+                    errors.title ? "border-red-500" : "border-gray-300"
+                  } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
+                  placeholder="Digite o título da postagem"
+                  disabled={submitting}
+                />
+                {errors.title && (
+                  <p className="mt-1 text-sm text-red-500">{errors.title}</p>
+                )}
+              </div>
 
-            <div className="mb-4">
-              <label
-                htmlFor="convenioId"
-                className="block text-sm font-medium text-gray-700 mb-1">
-                Convênio *
-              </label>
-              <select
-                id="convenioId"
-                name="convenioId"
-                value={formData.convenioId}
-                onChange={handleChange}
-                className={`w-full px-3 py-2 border rounded-md ${
-                  errors.convenioId ? "border-red-500" : "border-gray-300"
-                } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
-                disabled={submitting}>
-                <option value="">Selecione um convênio</option>
-                {convenios.map((convenio) => (
-                  <option key={convenio.id} value={convenio.id}>
-                    {convenio.name}
-                  </option>
-                ))}
-              </select>
-              {errors.convenioId && (
-                <p className="mt-1 text-sm text-red-500">{errors.convenioId}</p>
-              )}
-            </div>
+              <div className="mb-4">
+                <label
+                  htmlFor="convenioId"
+                  className="block text-sm font-medium text-gray-700 mb-1">
+                  Convênio *
+                </label>
+                <select
+                  id="convenioId"
+                  name="convenioId"
+                  value={formData.convenioId}
+                  onChange={handleChange}
+                  className={`w-full px-3 py-2 border rounded-md ${
+                    errors.convenioId ? "border-red-500" : "border-gray-300"
+                  } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
+                  disabled={submitting}>
+                  <option value="">Selecione um convênio</option>
+                  {convenios.map((convenio) => (
+                    <option key={convenio.id} value={convenio.id}>
+                      {convenio.name}
+                    </option>
+                  ))}
+                </select>
+                {errors.convenioId && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {errors.convenioId}
+                  </p>
+                )}
+              </div>
 
-            <div className="mb-6">
-              <label
-                htmlFor="text"
-                className="block text-sm font-medium text-gray-700 mb-1">
-                Conteúdo *
-              </label>
-              <SimpleRichEditor
-                value={formData.text}
-                onChange={handleEditorChange}
-                placeholder="Digite o conteúdo da postagem..."
-                height="400px"
-                error={errors.text}
-                disabled={submitting}
-                onImageUpload={async (file: File) => {
-                  try {
-                    // Usar o endpoint temporário com tratamento de erros aprimorado
-                    const imagem = await postagemService.addTempImagem(file);
-
-                    // Rastrear o upload para associação posterior quando a postagem for criada
-                    setTempUploads((prev) => ({
-                      ...prev,
-                      images: [...prev.images, imagem],
-                    }));
-
-                    // Se a URL não começar com http ou /, adicionar / no início
-                    let url = imagem.url;
-                    if (!url.startsWith("http") && !url.startsWith("/")) {
-                      url = "/" + url;
-                    }
-
-                    // Verificar se a URL existe e é acessível
+              <div className="mb-6">
+                <label
+                  htmlFor="text"
+                  className="block text-sm font-medium text-gray-700 mb-1">
+                  Conteúdo *
+                </label>
+                <SimpleRichEditor
+                  value={formData.text}
+                  onChange={handleEditorChange}
+                  placeholder="Digite o conteúdo da postagem..."
+                  height="400px"
+                  error={errors.text}
+                  disabled={submitting}
+                  onImageUpload={async (file: File) => {
                     try {
-                      const response = await fetch(url, { method: "HEAD" });
-                      if (!response.ok) {
+                      // Usar o endpoint temporário com tratamento de erros aprimorado
+                      const imagem = await postagemService.addTempImagem(file);
+
+                      // Rastrear o upload para associação posterior quando a postagem for criada
+                      setTempUploads((prev) => ({
+                        ...prev,
+                        images: [...prev.images, imagem],
+                      }));
+
+                      // Se a URL não começar com http ou /, adicionar / no início
+                      let url = imagem.url;
+                      if (!url.startsWith("http") && !url.startsWith("/")) {
+                        url = "/" + url;
+                      }
+
+                      // Verificar se a URL existe e é acessível
+                      try {
+                        const response = await fetch(url, { method: "HEAD" });
+                        if (!response.ok) {
+                          console.warn(
+                            `A URL da imagem ${url} não está acessível diretamente. Tentando URL alternativa.`
+                          );
+                          // Tentar URL alternativa
+                          url = `/api${url}`;
+                        }
+                      } catch (err) {
                         console.warn(
-                          `A URL da imagem ${url} não está acessível diretamente. Tentando URL alternativa.`
+                          `Erro ao verificar URL da imagem: ${err}. Tentando URL alternativa.`
                         );
-                        // Tentar URL alternativa
                         url = `/api${url}`;
                       }
-                    } catch (err) {
-                      console.warn(
-                        `Erro ao verificar URL da imagem: ${err}. Tentando URL alternativa.`
+
+                      return url;
+                    } catch (err: any) {
+                      console.error("Erro ao fazer upload da imagem:", err);
+                      toastUtil.error(
+                        err.message || "Erro ao fazer upload da imagem"
                       );
-                      url = `/api${url}`;
+                      throw err;
                     }
+                  }}
+                  onFileUpload={async (file: File) => {
+                    try {
+                      // Usar o endpoint temporário
+                      const anexo = await postagemService.addTempAnexo(file);
 
-                    return url;
-                  } catch (err: any) {
-                    console.error("Erro ao fazer upload da imagem:", err);
-                    toastUtil.error(
-                      err.message || "Erro ao fazer upload da imagem"
-                    );
-                    throw err;
-                  }
-                }}
-                onFileUpload={async (file: File) => {
-                  try {
-                    // Usar o endpoint temporário
-                    const anexo = await postagemService.addTempAnexo(file);
+                      // Rastrear o upload
+                      setTempUploads((prev) => ({
+                        ...prev,
+                        attachments: [...prev.attachments, anexo],
+                      }));
 
-                    // Rastrear o upload
-                    setTempUploads((prev) => ({
-                      ...prev,
-                      attachments: [...prev.attachments, anexo],
-                    }));
+                      return anexo.url;
+                    } catch (err) {
+                      console.error("Erro ao fazer upload do arquivo:", err);
+                      throw err;
+                    }
+                  }}
+                />
+                {errors.text && (
+                  <p className="mt-1 text-sm text-red-500">{errors.text}</p>
+                )}
 
-                    return anexo.url;
-                  } catch (err) {
-                    console.error("Erro ao fazer upload do arquivo:", err);
-                    throw err;
-                  }
-                }}
-              />
-              {errors.text && (
-                <p className="mt-1 text-sm text-red-500">{errors.text}</p>
-              )}
+                {/* Adicionar componente de pré-visualização */}
+                <RichTextPreview content={formData.text} />
+              </div>
 
-              {/* Adicionar componente de pré-visualização */}
-              <RichTextPreview content={formData.text} />
-            </div>
-
-            <div className="flex justify-end space-x-3">
-              <CustomButton
-                type="button"
-                variant="primary"
-                className="bg-red-600 hover:bg-red-700 text-white border-none"
-                icon={X}
-                onClick={() => router.push("/convenios")}
-                disabled={submitting}>
-                Cancelar
-              </CustomButton>
-              <CustomButton
-                type="submit"
-                variant="primary"
-                icon={Save}
-                disabled={submitting}>
-                {submitting ? "Salvando..." : "Salvar"}
-              </CustomButton>
-            </div>
-          </form>
-        </div>
-      </main>
-    </div>
+              <div className="flex justify-end space-x-3">
+                <CustomButton
+                  type="button"
+                  variant="primary"
+                  className="bg-red-600 hover:bg-red-700 text-white border-none"
+                  icon={X}
+                  onClick={() => router.push("/convenios")}
+                  disabled={submitting}>
+                  Cancelar
+                </CustomButton>
+                <CustomButton
+                  type="submit"
+                  variant="primary"
+                  icon={Save}
+                  disabled={submitting}>
+                  {submitting ? "Salvando..." : "Salvar"}
+                </CustomButton>
+              </div>
+            </form>
+          </div>
+        </main>
+      </div>
+    </ProtectedRoute>
   );
 }

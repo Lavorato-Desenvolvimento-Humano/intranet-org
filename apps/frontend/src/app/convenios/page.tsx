@@ -12,6 +12,7 @@ import ConfirmDialog from "@/components/ui/confirm-dialog";
 import { useAuth } from "@/context/AuthContext";
 import convenioService, { ConvenioDto } from "@/services/convenio";
 import toastUtil from "@/utils/toast";
+import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
 
 export default function ConveniosPage() {
   const router = useRouter();
@@ -196,60 +197,68 @@ export default function ConveniosPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Navbar />
+    <ProtectedRoute>
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <Navbar />
 
-      <main className="flex-grow container mx-auto p-6">
-        <Breadcrumb items={[{ label: "Convênios" }]} />
+        <main className="flex-grow container mx-auto p-6">
+          <Breadcrumb items={[{ label: "Convênios" }]} />
 
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">Convênios</h1>
-          {canCreate && (
-            <button
-              onClick={() => router.push("/convenios/novo")}
-              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark flex items-center">
-              <Plus size={16} className="mr-1" />
-              Novo Convênio
-            </button>
-          )}
-        </div>
-
-        {loading ? (
-          <Loading message="Carregando convênios..." />
-        ) : error ? (
-          <div className="bg-red-50 text-red-700 p-4 rounded-md mb-4">
-            {error}
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold text-gray-800">Convênios</h1>
+            {canCreate && (
+              <button
+                onClick={() => router.push("/convenios/novo")}
+                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark flex items-center">
+                <Plus size={16} className="mr-1" />
+                Novo Convênio
+              </button>
+            )}
           </div>
-        ) : (
-          <DataTable
-            data={convenios}
-            columns={columns}
-            keyExtractor={(item) => item.id}
-            searchable
-            searchKeys={["name", "description"]}
-            onRowClick={(convenio) => router.push(`/convenios/${convenio.id}`)}
-            emptyMessage="Nenhum convênio encontrado."
-            title="Lista de Convênios"
+
+          {loading ? (
+            <Loading message="Carregando convênios..." />
+          ) : error ? (
+            <div className="bg-red-50 text-red-700 p-4 rounded-md mb-4">
+              {error}
+            </div>
+          ) : (
+            <DataTable
+              data={convenios}
+              columns={columns}
+              keyExtractor={(item) => item.id}
+              searchable
+              searchKeys={["name", "description"]}
+              onRowClick={(convenio) =>
+                router.push(`/convenios/${convenio.id}`)
+              }
+              emptyMessage="Nenhum convênio encontrado."
+              title="Lista de Convênios"
+            />
+          )}
+        </main>
+
+        {/* Diálogo de confirmação de exclusão */}
+        {confirmDelete.show && (
+          <ConfirmDialog
+            isOpen={confirmDelete.show}
+            title="Excluir Convênio"
+            message={`Tem certeza que deseja excluir o convênio "${confirmDelete.convenio?.name}"? Esta ação não pode ser desfeita.`}
+            confirmText="Excluir"
+            cancelText="Cancelar"
+            onConfirm={handleConfirmDelete}
+            onCancel={() =>
+              setConfirmDelete({
+                show: false,
+                convenio: null,
+                isDeleting: false,
+              })
+            }
+            isLoading={confirmDelete.isDeleting}
+            variant="danger"
           />
         )}
-      </main>
-
-      {/* Diálogo de confirmação de exclusão */}
-      {confirmDelete.show && (
-        <ConfirmDialog
-          isOpen={confirmDelete.show}
-          title="Excluir Convênio"
-          message={`Tem certeza que deseja excluir o convênio "${confirmDelete.convenio?.name}"? Esta ação não pode ser desfeita.`}
-          confirmText="Excluir"
-          cancelText="Cancelar"
-          onConfirm={handleConfirmDelete}
-          onCancel={() =>
-            setConfirmDelete({ show: false, convenio: null, isDeleting: false })
-          }
-          isLoading={confirmDelete.isDeleting}
-          variant="danger"
-        />
-      )}
-    </div>
+      </div>
+    </ProtectedRoute>
   );
 }

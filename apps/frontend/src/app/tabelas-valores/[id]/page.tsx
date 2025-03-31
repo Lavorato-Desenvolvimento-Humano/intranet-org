@@ -14,6 +14,7 @@ import tabelaValoresService, {
 import { CustomButton } from "@/components/ui/custom-button";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
 import toastUtil from "@/utils/toast";
+import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
 
 export default function TabelaValoresViewPage() {
   const router = useRouter();
@@ -172,131 +173,139 @@ export default function TabelaValoresViewPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-        <Navbar />
-        <main className="flex-grow container mx-auto p-6">
-          <Loading message="Carregando dados da tabela..." />
-        </main>
-      </div>
+      <ProtectedRoute>
+        <div className="min-h-screen bg-gray-50 flex flex-col">
+          <Navbar />
+          <main className="flex-grow container mx-auto p-6">
+            <Loading message="Carregando dados da tabela..." />
+          </main>
+        </div>
+      </ProtectedRoute>
     );
   }
 
   if (error || !tabela) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-        <Navbar />
-        <main className="flex-grow container mx-auto p-6">
-          <div className="bg-red-50 text-red-700 p-4 rounded-md mb-4">
-            {error || "Tabela não encontrada."}
-          </div>
-          <button
-            onClick={() => router.push("/tabelas-valores")}
-            className="flex items-center text-primary hover:text-primary-dark">
-            <ArrowLeft size={16} className="mr-1" />
-            Voltar para a lista de tabelas
-          </button>
-        </main>
-      </div>
+      <ProtectedRoute>
+        <div className="min-h-screen bg-gray-50 flex flex-col">
+          <Navbar />
+          <main className="flex-grow container mx-auto p-6">
+            <div className="bg-red-50 text-red-700 p-4 rounded-md mb-4">
+              {error || "Tabela não encontrada."}
+            </div>
+            <button
+              onClick={() => router.push("/tabelas-valores")}
+              className="flex items-center text-primary hover:text-primary-dark">
+              <ArrowLeft size={16} className="mr-1" />
+              Voltar para a lista de tabelas
+            </button>
+          </main>
+        </div>
+      </ProtectedRoute>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Navbar />
+    <ProtectedRoute>
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <Navbar />
 
-      <main className="flex-grow container mx-auto p-6">
-        <Breadcrumb
-          items={[
-            { label: "Dashboard", href: "/dashboard" },
-            { label: "Tabelas de Valores", href: "/tabelas-valores" },
-            { label: tabela.nome },
-          ]}
-        />
+        <main className="flex-grow container mx-auto p-6">
+          <Breadcrumb
+            items={[
+              { label: "Dashboard", href: "/dashboard" },
+              { label: "Tabelas de Valores", href: "/tabelas-valores" },
+              { label: tabela.nome },
+            ]}
+          />
 
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">{tabela.nome}</h1>
-          <div className="flex space-x-2">
-            {canEdit && (
-              <CustomButton
-                variant="primary"
-                icon={Edit}
-                onClick={() =>
-                  router.push(`/tabelas-valores/${tabelaId}/editar`)
-                }>
-                Editar
-              </CustomButton>
-            )}
-            {canDelete && (
-              <CustomButton
-                variant="primary"
-                icon={Trash}
-                className="bg-red-500 hover:bg-red-700 text-white border-none"
-                onClick={handleDeleteClick}>
-                Excluir
-              </CustomButton>
-            )}
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold text-gray-800">{tabela.nome}</h1>
+            <div className="flex space-x-2">
+              {canEdit && (
+                <CustomButton
+                  variant="primary"
+                  icon={Edit}
+                  onClick={() =>
+                    router.push(`/tabelas-valores/${tabelaId}/editar`)
+                  }>
+                  Editar
+                </CustomButton>
+              )}
+              {canDelete && (
+                <CustomButton
+                  variant="primary"
+                  icon={Trash}
+                  className="bg-red-500 hover:bg-red-700 text-white border-none"
+                  onClick={handleDeleteClick}>
+                  Excluir
+                </CustomButton>
+              )}
+            </div>
           </div>
-        </div>
 
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold text-gray-800 mb-2">
-              Detalhes da Tabela
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-gray-500">Nome:</p>
-                <p className="text-gray-800">{tabela.nome}</p>
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-gray-800 mb-2">
+                Detalhes da Tabela
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-gray-500">Nome:</p>
+                  <p className="text-gray-800">{tabela.nome}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Convênio:</p>
+                  <p className="text-gray-800">{tabela.convenioNome}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Criado por:</p>
+                  <p className="text-gray-800">{tabela.createdByName}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Data de Criação:</p>
+                  <p className="text-gray-800">
+                    {formatDate(tabela.createdAt)} às{" "}
+                    {formatTime(tabela.createdAt)}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-gray-500">Convênio:</p>
-                <p className="text-gray-800">{tabela.convenioNome}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Criado por:</p>
-                <p className="text-gray-800">{tabela.createdByName}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Data de Criação:</p>
-                <p className="text-gray-800">
-                  {formatDate(tabela.createdAt)} às{" "}
-                  {formatTime(tabela.createdAt)}
+            </div>
+
+            {tabela.descricao && (
+              <div className="mt-4">
+                <p className="text-sm text-gray-500">Descrição:</p>
+                <p className="text-gray-800 whitespace-pre-line">
+                  {tabela.descricao}
                 </p>
               </div>
-            </div>
+            )}
           </div>
 
-          {tabela.descricao && (
-            <div className="mt-4">
-              <p className="text-sm text-gray-500">Descrição:</p>
-              <p className="text-gray-800 whitespace-pre-line">
-                {tabela.descricao}
-              </p>
-            </div>
-          )}
-        </div>
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4">
+              Conteúdo da Tabela
+            </h2>
+            {renderTableContent()}
+          </div>
+        </main>
 
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">
-            Conteúdo da Tabela
-          </h2>
-          {renderTableContent()}
-        </div>
-      </main>
-
-      {confirmDelete.show && (
-        <ConfirmDialog
-          isOpen={confirmDelete.show}
-          title="Excluir Tabela de Valores"
-          message={`Tem certeza que deseja excluir a tabela "${tabela.nome}"? Esta ação não pode ser desfeita.`}
-          confirmText="Excluir"
-          cancelText="Cancelar"
-          onConfirm={handleConfirmDelete}
-          onCancel={() => setConfirmDelete({ show: false, isDeleting: false })}
-          isLoading={confirmDelete.isDeleting}
-          variant="danger"
-        />
-      )}
-    </div>
+        {confirmDelete.show && (
+          <ConfirmDialog
+            isOpen={confirmDelete.show}
+            title="Excluir Tabela de Valores"
+            message={`Tem certeza que deseja excluir a tabela "${tabela.nome}"? Esta ação não pode ser desfeita.`}
+            confirmText="Excluir"
+            cancelText="Cancelar"
+            onConfirm={handleConfirmDelete}
+            onCancel={() =>
+              setConfirmDelete({ show: false, isDeleting: false })
+            }
+            isLoading={confirmDelete.isDeleting}
+            variant="danger"
+          />
+        )}
+      </div>
+    </ProtectedRoute>
   );
 }

@@ -29,6 +29,7 @@ import { CustomButton } from "@/components/ui/custom-button";
 import dynamic from "next/dynamic";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
 import RichTextPreview from "@/components/ui/rich-text-preview";
+import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
 
 // Importar o editor de texto rico dinamicamente para evitar problemas de SSR
 const SimpleRichEditor = dynamic(
@@ -470,528 +471,537 @@ export default function EditarPostagemPage() {
   const hasTabelas = postagem.tabelas && postagem.tabelas.length > 0;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Navbar />
+    <ProtectedRoute>
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <Navbar />
 
-      <main className="flex-grow container mx-auto p-6">
-        <Breadcrumb
-          items={[
-            { label: "Convênios", href: "/convenios" },
-            {
-              label: postagem.convenioName,
-              href: `/convenios/${postagem.convenioId}`,
-            },
-            {
-              label: postagem.title,
-              href: `/postagens/${postagemId}`,
-            },
-            { label: "Editar" },
-          ]}
-        />
+        <main className="flex-grow container mx-auto p-6">
+          <Breadcrumb
+            items={[
+              { label: "Convênios", href: "/convenios" },
+              {
+                label: postagem.convenioName,
+                href: `/convenios/${postagem.convenioId}`,
+              },
+              {
+                label: postagem.title,
+                href: `/postagens/${postagemId}`,
+              },
+              { label: "Editar" },
+            ]}
+          />
 
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">Editar Postagem</h1>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          {/* Navegação entre abas de edição */}
-          <div className="border-b border-gray-200">
-            <nav className="flex flex-wrap -mb-px">
-              <button
-                onClick={() => setActiveTab("conteudo")}
-                className={`py-4 px-6 border-b-2 font-medium text-sm ${
-                  activeTab === "conteudo"
-                    ? "border-primary text-primary"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}>
-                Conteúdo
-              </button>
-              <button
-                onClick={() => setActiveTab("imagens")}
-                className={`py-4 px-6 border-b-2 font-medium text-sm ${
-                  activeTab === "imagens"
-                    ? "border-primary text-primary"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}>
-                <div className="flex items-center">
-                  <ImageIcon size={16} className="mr-2" />
-                  Imagens {hasImagens && `(${postagem.imagens.length})`}
-                </div>
-              </button>
-              <button
-                onClick={() => setActiveTab("anexos")}
-                className={`py-4 px-6 border-b-2 font-medium text-sm ${
-                  activeTab === "anexos"
-                    ? "border-primary text-primary"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}>
-                <div className="flex items-center">
-                  <Paperclip size={16} className="mr-2" />
-                  Anexos {hasAnexos && `(${postagem.anexos.length})`}
-                </div>
-              </button>
-              <button
-                onClick={() => setActiveTab("tabelas")}
-                className={`py-4 px-6 border-b-2 font-medium text-sm ${
-                  activeTab === "tabelas"
-                    ? "border-primary text-primary"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}>
-                <div className="flex items-center">
-                  <TableIcon size={16} className="mr-2" />
-                  Tabelas {hasTabelas && `(${postagem.tabelas.length})`}
-                </div>
-              </button>
-            </nav>
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold text-gray-800">
+              Editar Postagem
+            </h1>
           </div>
 
-          {/* Conteúdo da aba selecionada */}
-          <div className="p-6">
-            {activeTab === "conteudo" && (
-              <form onSubmit={handleSubmit}>
-                <div className="mb-4">
-                  <label
-                    htmlFor="title"
-                    className="block text-sm font-medium text-gray-700 mb-1">
-                    Título *
-                  </label>
-                  <input
-                    type="text"
-                    id="title"
-                    name="title"
-                    value={formData.title}
-                    onChange={handleChange}
-                    className={`w-full px-3 py-2 border rounded-md ${
-                      errors.title ? "border-red-500" : "border-gray-300"
-                    } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
-                    placeholder="Digite o título da postagem"
-                    disabled={submitting}
-                  />
-                  {errors.title && (
-                    <p className="mt-1 text-sm text-red-500">{errors.title}</p>
-                  )}
-                </div>
+          <div className="bg-white rounded-lg shadow-md overflow-hidden">
+            {/* Navegação entre abas de edição */}
+            <div className="border-b border-gray-200">
+              <nav className="flex flex-wrap -mb-px">
+                <button
+                  onClick={() => setActiveTab("conteudo")}
+                  className={`py-4 px-6 border-b-2 font-medium text-sm ${
+                    activeTab === "conteudo"
+                      ? "border-primary text-primary"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}>
+                  Conteúdo
+                </button>
+                <button
+                  onClick={() => setActiveTab("imagens")}
+                  className={`py-4 px-6 border-b-2 font-medium text-sm ${
+                    activeTab === "imagens"
+                      ? "border-primary text-primary"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}>
+                  <div className="flex items-center">
+                    <ImageIcon size={16} className="mr-2" />
+                    Imagens {hasImagens && `(${postagem.imagens.length})`}
+                  </div>
+                </button>
+                <button
+                  onClick={() => setActiveTab("anexos")}
+                  className={`py-4 px-6 border-b-2 font-medium text-sm ${
+                    activeTab === "anexos"
+                      ? "border-primary text-primary"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}>
+                  <div className="flex items-center">
+                    <Paperclip size={16} className="mr-2" />
+                    Anexos {hasAnexos && `(${postagem.anexos.length})`}
+                  </div>
+                </button>
+                <button
+                  onClick={() => setActiveTab("tabelas")}
+                  className={`py-4 px-6 border-b-2 font-medium text-sm ${
+                    activeTab === "tabelas"
+                      ? "border-primary text-primary"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}>
+                  <div className="flex items-center">
+                    <TableIcon size={16} className="mr-2" />
+                    Tabelas {hasTabelas && `(${postagem.tabelas.length})`}
+                  </div>
+                </button>
+              </nav>
+            </div>
 
-                <div className="mb-4">
-                  <label
-                    htmlFor="convenioId"
-                    className="block text-sm font-medium text-gray-700 mb-1">
-                    Convênio *
-                  </label>
-                  <select
-                    id="convenioId"
-                    name="convenioId"
-                    value={formData.convenioId}
-                    onChange={handleChange}
-                    className={`w-full px-3 py-2 border rounded-md ${
-                      errors.convenioId ? "border-red-500" : "border-gray-300"
-                    } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
-                    disabled={submitting}>
-                    <option value="" disabled>
-                      Selecione um convênio
-                    </option>
-                    {convenios.map((convenio) => (
-                      <option key={convenio.id} value={convenio.id}>
-                        {convenio.name}
+            {/* Conteúdo da aba selecionada */}
+            <div className="p-6">
+              {activeTab === "conteudo" && (
+                <form onSubmit={handleSubmit}>
+                  <div className="mb-4">
+                    <label
+                      htmlFor="title"
+                      className="block text-sm font-medium text-gray-700 mb-1">
+                      Título *
+                    </label>
+                    <input
+                      type="text"
+                      id="title"
+                      name="title"
+                      value={formData.title}
+                      onChange={handleChange}
+                      className={`w-full px-3 py-2 border rounded-md ${
+                        errors.title ? "border-red-500" : "border-gray-300"
+                      } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
+                      placeholder="Digite o título da postagem"
+                      disabled={submitting}
+                    />
+                    {errors.title && (
+                      <p className="mt-1 text-sm text-red-500">
+                        {errors.title}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="mb-4">
+                    <label
+                      htmlFor="convenioId"
+                      className="block text-sm font-medium text-gray-700 mb-1">
+                      Convênio *
+                    </label>
+                    <select
+                      id="convenioId"
+                      name="convenioId"
+                      value={formData.convenioId}
+                      onChange={handleChange}
+                      className={`w-full px-3 py-2 border rounded-md ${
+                        errors.convenioId ? "border-red-500" : "border-gray-300"
+                      } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
+                      disabled={submitting}>
+                      <option value="" disabled>
+                        Selecione um convênio
                       </option>
-                    ))}
-                  </select>
-                  {errors.convenioId && (
-                    <p className="mt-1 text-sm text-red-500">
-                      {errors.convenioId}
-                    </p>
-                  )}
-                </div>
+                      {convenios.map((convenio) => (
+                        <option key={convenio.id} value={convenio.id}>
+                          {convenio.name}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.convenioId && (
+                      <p className="mt-1 text-sm text-red-500">
+                        {errors.convenioId}
+                      </p>
+                    )}
+                  </div>
 
-                <div className="mb-6">
-                  <label
-                    htmlFor="text"
-                    className="block text-sm font-medium text-gray-700 mb-1">
-                    Conteúdo *
-                  </label>
-                  <SimpleRichEditor
-                    value={formData.text}
-                    onChange={handleEditorChange}
-                    placeholder="Digite o conteúdo da postagem..."
-                    height="400px"
-                    error={errors.text}
-                    disabled={submitting}
-                    onImageUpload={async (file: File) => {
-                      try {
-                        const imagem = await postagemService.addImagem(
-                          postagemId,
-                          file
-                        );
-                        // Atualizar a lista de imagens localmente
-                        if (postagem) {
-                          setPostagem({
-                            ...postagem,
-                            imagens: [...postagem.imagens, imagem],
-                          });
-                        }
-                        // Retornar a URL da imagem para inserir no editor
-                        return imagem.url;
-                      } catch (err) {
-                        console.error("Erro ao fazer upload da imagem:", err);
-                        throw err;
-                      }
-                    }}
-                    onFileUpload={async (file: File) => {
-                      try {
-                        const anexo = await postagemService.addAnexo(
-                          postagemId,
-                          file
-                        );
-                        // Atualizar a lista de anexos localmente
-                        if (postagem) {
-                          setPostagem({
-                            ...postagem,
-                            anexos: [...postagem.anexos, anexo],
-                          });
-                        }
-                        // Retornar a URL do anexo para inserir no editor
-                        return anexo.url;
-                      } catch (err) {
-                        console.error("Erro ao fazer upload do anexo:", err);
-                        throw err;
-                      }
-                    }}
-                  />
-                  {errors.text && (
-                    <p className="mt-1 text-sm text-red-500">{errors.text}</p>
-                  )}
-
-                  {/* Componente de pré-visualização */}
-                  <RichTextPreview content={formData.text} />
-                </div>
-
-                <div className="flex justify-end space-x-3">
-                  <CustomButton
-                    type="button"
-                    variant="primary"
-                    className="bg-red-600 hover:bg-red-700 text-white border-none"
-                    icon={X}
-                    onClick={() => router.push(`/postagens/${postagemId}`)}
-                    disabled={submitting}>
-                    Cancelar
-                  </CustomButton>
-                  <CustomButton
-                    type="submit"
-                    variant="primary"
-                    icon={Save}
-                    disabled={submitting}>
-                    {submitting ? "Salvando..." : "Salvar Alterações"}
-                  </CustomButton>
-                </div>
-              </form>
-            )}
-
-            {activeTab === "imagens" && (
-              <div>
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-lg font-semibold text-gray-800">
-                    Imagens
-                  </h2>
-                  <div>
-                    <input
-                      type="file"
-                      id="image-upload"
-                      accept="image/*"
-                      onChange={handleAddImage}
-                      className="hidden"
-                      disabled={uploadingImage}
-                    />
-                    <label htmlFor="image-upload">
-                      <CustomButton
-                        type="button"
-                        variant="primary"
-                        icon={Plus}
-                        className="cursor-pointer"
-                        disabled={uploadingImage}
-                        onClick={() =>
-                          document.getElementById("image-upload")?.click()
-                        }>
-                        {uploadingImage ? "Enviando..." : "Adicionar Imagem"}
-                      </CustomButton>
+                  <div className="mb-6">
+                    <label
+                      htmlFor="text"
+                      className="block text-sm font-medium text-gray-700 mb-1">
+                      Conteúdo *
                     </label>
-                  </div>
-                </div>
-
-                {!hasImagens ? (
-                  <div className="bg-gray-50 p-8 text-center rounded-md">
-                    <ImageIcon
-                      size={48}
-                      className="mx-auto text-gray-400 mb-2"
-                    />
-                    <p className="text-gray-600 mb-4">
-                      Esta postagem ainda não possui imagens.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {postagem.imagens.map((imagem) => (
-                      <div
-                        key={imagem.id}
-                        className="bg-gray-50 p-4 rounded-lg relative group">
-                        <button
-                          onClick={() =>
-                            confirmDeleteItemAction(
-                              "imagem",
-                              imagem.id,
-                              `Imagem ${imagem.description || ""}`
-                            )
+                    <SimpleRichEditor
+                      value={formData.text}
+                      onChange={handleEditorChange}
+                      placeholder="Digite o conteúdo da postagem..."
+                      height="400px"
+                      error={errors.text}
+                      disabled={submitting}
+                      onImageUpload={async (file: File) => {
+                        try {
+                          const imagem = await postagemService.addImagem(
+                            postagemId,
+                            file
+                          );
+                          // Atualizar a lista de imagens localmente
+                          if (postagem) {
+                            setPostagem({
+                              ...postagem,
+                              imagens: [...postagem.imagens, imagem],
+                            });
                           }
-                          className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                          title="Excluir imagem">
-                          <Trash size={16} />
-                        </button>
-                        <img
-                          src={imagem.url}
-                          alt={imagem.description || "Imagem"}
-                          className="w-full h-48 object-cover rounded-lg mb-2"
-                        />
-                        {imagem.description && (
-                          <p className="text-sm text-gray-600 text-center">
-                            {imagem.description}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {activeTab === "anexos" && (
-              <div>
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-lg font-semibold text-gray-800">
-                    Anexos
-                  </h2>
-                  <div>
-                    <input
-                      type="file"
-                      id="anexo-upload"
-                      onChange={handleAddAnexo}
-                      className="hidden"
-                      disabled={uploadingAnexo}
+                          // Retornar a URL da imagem para inserir no editor
+                          return imagem.url;
+                        } catch (err) {
+                          console.error("Erro ao fazer upload da imagem:", err);
+                          throw err;
+                        }
+                      }}
+                      onFileUpload={async (file: File) => {
+                        try {
+                          const anexo = await postagemService.addAnexo(
+                            postagemId,
+                            file
+                          );
+                          // Atualizar a lista de anexos localmente
+                          if (postagem) {
+                            setPostagem({
+                              ...postagem,
+                              anexos: [...postagem.anexos, anexo],
+                            });
+                          }
+                          // Retornar a URL do anexo para inserir no editor
+                          return anexo.url;
+                        } catch (err) {
+                          console.error("Erro ao fazer upload do anexo:", err);
+                          throw err;
+                        }
+                      }}
                     />
-                    <label htmlFor="anexo-upload">
-                      <CustomButton
-                        type="button"
-                        variant="primary"
-                        icon={Plus}
-                        className="cursor-pointer"
-                        disabled={uploadingAnexo}
-                        onClick={() =>
-                          document.getElementById("anexo-upload")?.click()
-                        }>
-                        {uploadingAnexo ? "Enviando..." : "Adicionar Anexo"}
-                      </CustomButton>
-                    </label>
-                  </div>
-                </div>
+                    {errors.text && (
+                      <p className="mt-1 text-sm text-red-500">{errors.text}</p>
+                    )}
 
-                {!hasAnexos ? (
-                  <div className="bg-gray-50 p-8 text-center rounded-md">
-                    <Paperclip
-                      size={48}
-                      className="mx-auto text-gray-400 mb-2"
-                    />
-                    <p className="text-gray-600 mb-4">
-                      Esta postagem ainda não possui anexos.
-                    </p>
+                    {/* Componente de pré-visualização */}
+                    <RichTextPreview content={formData.text} />
                   </div>
-                ) : (
-                  <div className="space-y-2">
-                    {postagem.anexos.map((anexo) => (
-                      <div
-                        key={anexo.id}
-                        className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 group">
-                        <div className="mr-3 text-gray-400">
-                          <Paperclip size={20} />
-                        </div>
-                        <div className="flex-grow">
-                          <p className="text-sm font-medium text-gray-700">
-                            {anexo.nameFile}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {anexo.typeFile}
-                          </p>
-                        </div>
-                        <div className="flex">
-                          <a
-                            href={anexo.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-2 text-primary hover:text-primary-dark"
-                            title="Baixar anexo">
-                            <Save size={18} />
-                          </a>
+
+                  <div className="flex justify-end space-x-3">
+                    <CustomButton
+                      type="button"
+                      variant="primary"
+                      className="bg-red-600 hover:bg-red-700 text-white border-none"
+                      icon={X}
+                      onClick={() => router.push(`/postagens/${postagemId}`)}
+                      disabled={submitting}>
+                      Cancelar
+                    </CustomButton>
+                    <CustomButton
+                      type="submit"
+                      variant="primary"
+                      icon={Save}
+                      disabled={submitting}>
+                      {submitting ? "Salvando..." : "Salvar Alterações"}
+                    </CustomButton>
+                  </div>
+                </form>
+              )}
+
+              {activeTab === "imagens" && (
+                <div>
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-lg font-semibold text-gray-800">
+                      Imagens
+                    </h2>
+                    <div>
+                      <input
+                        type="file"
+                        id="image-upload"
+                        accept="image/*"
+                        onChange={handleAddImage}
+                        className="hidden"
+                        disabled={uploadingImage}
+                      />
+                      <label htmlFor="image-upload">
+                        <CustomButton
+                          type="button"
+                          variant="primary"
+                          icon={Plus}
+                          className="cursor-pointer"
+                          disabled={uploadingImage}
+                          onClick={() =>
+                            document.getElementById("image-upload")?.click()
+                          }>
+                          {uploadingImage ? "Enviando..." : "Adicionar Imagem"}
+                        </CustomButton>
+                      </label>
+                    </div>
+                  </div>
+
+                  {!hasImagens ? (
+                    <div className="bg-gray-50 p-8 text-center rounded-md">
+                      <ImageIcon
+                        size={48}
+                        className="mx-auto text-gray-400 mb-2"
+                      />
+                      <p className="text-gray-600 mb-4">
+                        Esta postagem ainda não possui imagens.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {postagem.imagens.map((imagem) => (
+                        <div
+                          key={imagem.id}
+                          className="bg-gray-50 p-4 rounded-lg relative group">
                           <button
                             onClick={() =>
                               confirmDeleteItemAction(
-                                "anexo",
-                                anexo.id,
-                                anexo.nameFile
+                                "imagem",
+                                imagem.id,
+                                `Imagem ${imagem.description || ""}`
                               )
                             }
-                            className="p-2 text-red-500 hover:text-red-700"
-                            title="Excluir anexo">
-                            <Trash size={18} />
+                            className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Excluir imagem">
+                            <Trash size={16} />
                           </button>
+                          <img
+                            src={imagem.url}
+                            alt={imagem.description || "Imagem"}
+                            className="w-full h-48 object-cover rounded-lg mb-2"
+                          />
+                          {imagem.description && (
+                            <p className="text-sm text-gray-600 text-center">
+                              {imagem.description}
+                            </p>
+                          )}
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {activeTab === "tabelas" && (
-              <div>
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-lg font-semibold text-gray-800">
-                    Tabelas
-                  </h2>
-                  <CustomButton
-                    type="button"
-                    variant="primary"
-                    icon={Plus}
-                    onClick={handleAddTabela}>
-                    Adicionar Tabela
-                  </CustomButton>
+                      ))}
+                    </div>
+                  )}
                 </div>
+              )}
 
-                {!hasTabelas ? (
-                  <div className="bg-gray-50 p-8 text-center rounded-md">
-                    <TableIcon
-                      size={48}
-                      className="mx-auto text-gray-400 mb-2"
-                    />
-                    <p className="text-gray-600 mb-4">
-                      Esta postagem ainda não possui tabelas.
-                    </p>
+              {activeTab === "anexos" && (
+                <div>
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-lg font-semibold text-gray-800">
+                      Anexos
+                    </h2>
+                    <div>
+                      <input
+                        type="file"
+                        id="anexo-upload"
+                        onChange={handleAddAnexo}
+                        className="hidden"
+                        disabled={uploadingAnexo}
+                      />
+                      <label htmlFor="anexo-upload">
+                        <CustomButton
+                          type="button"
+                          variant="primary"
+                          icon={Plus}
+                          className="cursor-pointer"
+                          disabled={uploadingAnexo}
+                          onClick={() =>
+                            document.getElementById("anexo-upload")?.click()
+                          }>
+                          {uploadingAnexo ? "Enviando..." : "Adicionar Anexo"}
+                        </CustomButton>
+                      </label>
+                    </div>
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    {postagem.tabelas.map((tabela, index) => (
-                      <div
-                        key={tabela.id}
-                        className="border border-gray-300 rounded-lg p-4 relative group">
-                        <div className="flex justify-between items-center mb-2">
-                          <h3 className="font-medium text-gray-800">
-                            Tabela {index + 1}
-                          </h3>
-                          <div className="flex space-x-2">
-                            <button
-                              onClick={() => {
-                                // Implementação para edição da tabela (simplificada)
-                                try {
-                                  const tabelaJson = JSON.parse(
-                                    tabela.conteudo
-                                  );
-                                  const editedJson = window.prompt(
-                                    "Edite o JSON da tabela:",
-                                    JSON.stringify(tabelaJson, null, 2)
-                                  );
 
-                                  if (editedJson) {
-                                    // Validar JSON
-                                    const parsedJson = JSON.parse(editedJson);
-                                    // Atualizar tabela
-                                    postagemService
-                                      .updateTabela(tabela.id, editedJson)
-                                      .then((updatedTabela) => {
-                                        // Atualizar localmente
-                                        if (postagem) {
-                                          const updatedTabelas =
-                                            postagem.tabelas.map((t) =>
-                                              t.id === updatedTabela.id
-                                                ? updatedTabela
-                                                : t
-                                            );
-                                          setPostagem({
-                                            ...postagem,
-                                            tabelas: updatedTabelas,
-                                          });
-                                        }
-                                        toastUtil.success(
-                                          "Tabela atualizada com sucesso!"
-                                        );
-                                      })
-                                      .catch((err) => {
-                                        console.error(
-                                          "Erro ao atualizar tabela:",
-                                          err
-                                        );
-                                        toastUtil.error(
-                                          "Erro ao atualizar tabela."
-                                        );
-                                      });
-                                  }
-                                } catch (err) {
-                                  console.error("Erro ao editar tabela:", err);
-                                  toastUtil.error(
-                                    "Erro ao processar JSON da tabela."
-                                  );
-                                }
-                              }}
-                              className="p-1 text-blue-500 hover:text-blue-700"
-                              title="Editar tabela">
-                              <Edit size={18} />
-                            </button>
+                  {!hasAnexos ? (
+                    <div className="bg-gray-50 p-8 text-center rounded-md">
+                      <Paperclip
+                        size={48}
+                        className="mx-auto text-gray-400 mb-2"
+                      />
+                      <p className="text-gray-600 mb-4">
+                        Esta postagem ainda não possui anexos.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {postagem.anexos.map((anexo) => (
+                        <div
+                          key={anexo.id}
+                          className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 group">
+                          <div className="mr-3 text-gray-400">
+                            <Paperclip size={20} />
+                          </div>
+                          <div className="flex-grow">
+                            <p className="text-sm font-medium text-gray-700">
+                              {anexo.nameFile}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {anexo.typeFile}
+                            </p>
+                          </div>
+                          <div className="flex">
+                            <a
+                              href={anexo.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-2 text-primary hover:text-primary-dark"
+                              title="Baixar anexo">
+                              <Save size={18} />
+                            </a>
                             <button
                               onClick={() =>
                                 confirmDeleteItemAction(
-                                  "tabela",
-                                  tabela.id,
-                                  `Tabela ${index + 1}`
+                                  "anexo",
+                                  anexo.id,
+                                  anexo.nameFile
                                 )
                               }
-                              className="p-1 text-red-500 hover:text-red-700"
-                              title="Excluir tabela">
+                              className="p-2 text-red-500 hover:text-red-700"
+                              title="Excluir anexo">
                               <Trash size={18} />
                             </button>
                           </div>
                         </div>
-                        {renderTabelaPreview(tabela)}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      </main>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
-      {/* Diálogo de confirmação de exclusão de item */}
-      {confirmDeleteItem && (
-        <ConfirmDialog
-          isOpen={true}
-          title={`Excluir ${
-            confirmDeleteItem.type === "imagem"
-              ? "Imagem"
-              : confirmDeleteItem.type === "anexo"
-                ? "Anexo"
-                : "Tabela"
-          }`}
-          message={`Tem certeza que deseja excluir ${
-            confirmDeleteItem.type === "imagem"
-              ? "esta imagem"
-              : confirmDeleteItem.type === "anexo"
-                ? `o anexo "${confirmDeleteItem.name}"`
-                : `a ${confirmDeleteItem.name}`
-          }? Esta ação não pode ser desfeita.`}
-          confirmText="Excluir"
-          cancelText="Cancelar"
-          onConfirm={handleDeleteItem}
-          onCancel={() => setConfirmDeleteItem(null)}
-          isLoading={confirmDeleteItem.isDeleting}
-          variant="danger"
-        />
-      )}
-    </div>
+              {activeTab === "tabelas" && (
+                <div>
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-lg font-semibold text-gray-800">
+                      Tabelas
+                    </h2>
+                    <CustomButton
+                      type="button"
+                      variant="primary"
+                      icon={Plus}
+                      onClick={handleAddTabela}>
+                      Adicionar Tabela
+                    </CustomButton>
+                  </div>
+
+                  {!hasTabelas ? (
+                    <div className="bg-gray-50 p-8 text-center rounded-md">
+                      <TableIcon
+                        size={48}
+                        className="mx-auto text-gray-400 mb-2"
+                      />
+                      <p className="text-gray-600 mb-4">
+                        Esta postagem ainda não possui tabelas.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {postagem.tabelas.map((tabela, index) => (
+                        <div
+                          key={tabela.id}
+                          className="border border-gray-300 rounded-lg p-4 relative group">
+                          <div className="flex justify-between items-center mb-2">
+                            <h3 className="font-medium text-gray-800">
+                              Tabela {index + 1}
+                            </h3>
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => {
+                                  // Implementação para edição da tabela (simplificada)
+                                  try {
+                                    const tabelaJson = JSON.parse(
+                                      tabela.conteudo
+                                    );
+                                    const editedJson = window.prompt(
+                                      "Edite o JSON da tabela:",
+                                      JSON.stringify(tabelaJson, null, 2)
+                                    );
+
+                                    if (editedJson) {
+                                      // Validar JSON
+                                      const parsedJson = JSON.parse(editedJson);
+                                      // Atualizar tabela
+                                      postagemService
+                                        .updateTabela(tabela.id, editedJson)
+                                        .then((updatedTabela) => {
+                                          // Atualizar localmente
+                                          if (postagem) {
+                                            const updatedTabelas =
+                                              postagem.tabelas.map((t) =>
+                                                t.id === updatedTabela.id
+                                                  ? updatedTabela
+                                                  : t
+                                              );
+                                            setPostagem({
+                                              ...postagem,
+                                              tabelas: updatedTabelas,
+                                            });
+                                          }
+                                          toastUtil.success(
+                                            "Tabela atualizada com sucesso!"
+                                          );
+                                        })
+                                        .catch((err) => {
+                                          console.error(
+                                            "Erro ao atualizar tabela:",
+                                            err
+                                          );
+                                          toastUtil.error(
+                                            "Erro ao atualizar tabela."
+                                          );
+                                        });
+                                    }
+                                  } catch (err) {
+                                    console.error(
+                                      "Erro ao editar tabela:",
+                                      err
+                                    );
+                                    toastUtil.error(
+                                      "Erro ao processar JSON da tabela."
+                                    );
+                                  }
+                                }}
+                                className="p-1 text-blue-500 hover:text-blue-700"
+                                title="Editar tabela">
+                                <Edit size={18} />
+                              </button>
+                              <button
+                                onClick={() =>
+                                  confirmDeleteItemAction(
+                                    "tabela",
+                                    tabela.id,
+                                    `Tabela ${index + 1}`
+                                  )
+                                }
+                                className="p-1 text-red-500 hover:text-red-700"
+                                title="Excluir tabela">
+                                <Trash size={18} />
+                              </button>
+                            </div>
+                          </div>
+                          {renderTabelaPreview(tabela)}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </main>
+
+        {/* Diálogo de confirmação de exclusão de item */}
+        {confirmDeleteItem && (
+          <ConfirmDialog
+            isOpen={true}
+            title={`Excluir ${
+              confirmDeleteItem.type === "imagem"
+                ? "Imagem"
+                : confirmDeleteItem.type === "anexo"
+                  ? "Anexo"
+                  : "Tabela"
+            }`}
+            message={`Tem certeza que deseja excluir ${
+              confirmDeleteItem.type === "imagem"
+                ? "esta imagem"
+                : confirmDeleteItem.type === "anexo"
+                  ? `o anexo "${confirmDeleteItem.name}"`
+                  : `a ${confirmDeleteItem.name}`
+            }? Esta ação não pode ser desfeita.`}
+            confirmText="Excluir"
+            cancelText="Cancelar"
+            onConfirm={handleDeleteItem}
+            onCancel={() => setConfirmDeleteItem(null)}
+            isLoading={confirmDeleteItem.isDeleting}
+            variant="danger"
+          />
+        )}
+      </div>
+    </ProtectedRoute>
   );
 }
