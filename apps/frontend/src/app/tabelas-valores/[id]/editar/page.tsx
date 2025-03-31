@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Save, X, ArrowLeft } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
@@ -12,9 +12,13 @@ import tabelaValoresService, {
   TabelaValoresCreateDto,
 } from "@/services/tabelaValores";
 import convenioService, { ConvenioDto } from "@/services/convenio";
+import toastUtil from "@/utils/toast";
 import { CustomButton } from "@/components/ui/custom-button";
+import { Suspense } from "react";
 
 export default function EditarTabelaValoresPage() {
+  const router = useRouter(); // Router no componente pai
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Navbar />
@@ -28,36 +32,39 @@ export default function EditarTabelaValoresPage() {
 
         <Suspense
           fallback={<Loading message="Carregando dados da tabela..." />}>
-          <EditarTabelaContent />
+          <EditarTabelaContent router={router} />
         </Suspense>
       </main>
     </div>
   );
 }
 
-function EditarTabelaContent() {
-  const router = useRouter();
+function EditarTabelaContent({
+  router,
+}: {
+  router: ReturnType<typeof useRouter>;
+}) {
+  // Recebemos o router via props
   const { useParams } = require("next/navigation");
   const params = useParams();
   const { user } = useAuth();
-  const [tabela, setTabela] = React.useState<TabelaValoresCreateDto>({
+  const [tabela, setTabela] = useState<TabelaValoresCreateDto>({
     nome: "",
     descricao: "",
     conteudo: "",
     convenioId: "",
   });
-  const [originalTabela, setOriginalTabela] =
-    React.useState<TabelaValoresDto | null>(null);
-  const [loading, setLoading] = React.useState<boolean>(true);
-  const [submitting, setSubmitting] = React.useState<boolean>(false);
-  const [errors, setErrors] = React.useState<Record<string, string>>({});
-  const [convenios, setConvenios] = React.useState<ConvenioDto[]>([]);
-  const [error, setError] = React.useState<string | null>(null);
+  const [originalTabela, setOriginalTabela] = useState<TabelaValoresDto | null>(
+    null
+  );
+  const [loading, setLoading] = useState<boolean>(true);
+  const [submitting, setSubmitting] = useState<boolean>(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [convenios, setConvenios] = useState<ConvenioDto[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
-  // Importação dinâmica
   const TabelaValoresEditor =
     require("@/components/ui/tabela-valores-editor").default;
-  const toastUtil = require("@/utils/toast").default;
 
   const tabelaId = params?.id as string;
 
@@ -69,7 +76,7 @@ function EditarTabelaContent() {
   const canEdit = isAdmin || isEditor;
 
   // Buscar dados da tabela e convênios
-  React.useEffect(() => {
+  useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       setError(null);
@@ -104,7 +111,7 @@ function EditarTabelaContent() {
   }, [tabelaId]);
 
   // Redirecionar se não tem permissão
-  React.useEffect(() => {
+  useEffect(() => {
     if (!loading && !canEdit) {
       toastUtil.error("Você não tem permissão para editar tabelas de valores.");
       router.push(`/tabelas-valores/${tabelaId}`);
@@ -183,8 +190,15 @@ function EditarTabelaContent() {
     }
   };
 
+  // Função de cancelamento utilizando o router corretamente
   const handleCancel = (): void => {
+    // Navegar usando o router via props para garantir que funcione
     router.push(`/tabelas-valores/${tabelaId}`);
+  };
+
+  // Função para voltar à lista em caso de erro
+  const handleBackToList = (): void => {
+    router.push("/tabelas-valores");
   };
 
   // Renderização condicional para carregamento
@@ -200,7 +214,7 @@ function EditarTabelaContent() {
           {error || "Tabela não encontrada."}
         </div>
         <button
-          onClick={() => router.push("/tabelas-valores")}
+          onClick={handleBackToList}
           className="flex items-center text-primary hover:text-primary-dark">
           <ArrowLeft size={16} className="mr-1" />
           Voltar para a lista de tabelas
@@ -305,7 +319,7 @@ function EditarTabelaContent() {
               type="button"
               variant="primary"
               icon={X}
-              onClick={handleCancel}
+              onClick={handleCancel} // Usando nossa função de cancelamento
               disabled={submitting}
               className="bg-red-500 hover:bg-red-700 text-white border-none">
               Cancelar

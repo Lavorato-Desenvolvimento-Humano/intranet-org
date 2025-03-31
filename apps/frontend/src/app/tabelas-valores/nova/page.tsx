@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Save, X } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
@@ -10,11 +10,16 @@ import { useAuth } from "@/context/AuthContext";
 import tabelaValoresService, {
   TabelaValoresCreateDto,
 } from "@/services/tabelaValores";
-import { CustomButton } from "@/components/ui/custom-button";
 import convenioService, { ConvenioDto } from "@/services/convenio";
+import toastUtil from "@/utils/toast";
+import { CustomButton } from "@/components/ui/custom-button";
+import TabelaValoresEditor from "@/components/ui/tabela-valores-editor";
+import { Suspense } from "react";
 
-// Componente principal para a estrutura da página
+// Componente principal estável para navegação
 export default function NovaTabelaValoresPage() {
+  const router = useRouter(); // Router no componente pai para garantir navegação
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Navbar />
@@ -33,21 +38,24 @@ export default function NovaTabelaValoresPage() {
         </div>
 
         <Suspense fallback={<Loading message="Carregando..." />}>
-          <NovaTabelaContent />
+          <NovaTabelaContent router={router} />
         </Suspense>
       </main>
     </div>
   );
 }
 
-// Componente interno que usa useSearchParams
-function NovaTabelaContent() {
-  const router = useRouter();
-  // Importamos o useSearchParams aqui para garantir que esteja dentro do Suspense boundary
+// Componente interno com acesso ao router via props
+function NovaTabelaContent({
+  router,
+}: {
+  router: ReturnType<typeof useRouter>;
+}) {
+  // Agora recebemos o router via props em vez de usar useRouter()
   const { useSearchParams } = require("next/navigation");
   const searchParams = useSearchParams();
   const { user } = useAuth();
-  const [tabela, setTabela] = React.useState<TabelaValoresCreateDto>({
+  const [tabela, setTabela] = useState<TabelaValoresCreateDto>({
     nome: "",
     descricao: "",
     conteudo: JSON.stringify([
@@ -55,10 +63,10 @@ function NovaTabelaContent() {
     ]),
     convenioId: "",
   });
-  const [loading, setLoading] = React.useState<boolean>(false);
-  const [errors, setErrors] = React.useState<Record<string, string>>({});
-  const [convenios, setConvenios] = React.useState<ConvenioDto[]>([]);
-  const [loadingConvenios, setLoadingConvenios] = React.useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [convenios, setConvenios] = useState<ConvenioDto[]>([]);
+  const [loadingConvenios, setLoadingConvenios] = useState<boolean>(true);
 
   // Verificar se o usuário tem permissão para criar tabelas
   const isAdmin =
@@ -67,13 +75,8 @@ function NovaTabelaContent() {
     user?.roles?.includes("ROLE_EDITOR") || user?.roles?.includes("EDITOR");
   const canCreate = isAdmin || isEditor;
 
-  // Importação dinâmica de serviços e componentes
-  const TabelaValoresEditor =
-    require("@/components/ui/tabela-valores-editor").default;
-  const toastUtil = require("@/utils/toast").default;
-
   // Carregar convênios e inicializar com o convenioId da URL se existir
-  React.useEffect(() => {
+  useEffect(() => {
     const fetchConvenios = async () => {
       setLoadingConvenios(true);
       try {
@@ -177,8 +180,13 @@ function NovaTabelaContent() {
     }
   };
 
+  // Função para cancelar usando o router passado via props
+  const handleCancel = (): void => {
+    router.push("/tabelas-valores");
+  };
+
   // Redirecionar se não tem permissão
-  React.useEffect(() => {
+  useEffect(() => {
     if (!canCreate) {
       toastUtil.error("Você não tem permissão para criar tabelas de valores.");
       router.push("/tabelas-valores");
@@ -285,7 +293,7 @@ function NovaTabelaContent() {
             type="button"
             variant="secondary"
             icon={X}
-            onClick={() => router.push("/tabelas-valores")}
+            onClick={handleCancel} // Usando o método handleCancel que usa o router via props
             disabled={loading}>
             Cancelar
           </CustomButton>
