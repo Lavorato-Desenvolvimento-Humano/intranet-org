@@ -75,11 +75,20 @@ jobs:
         run: |
           IMAGE_TAG=${{ github.ref_name }}
           REPO_LOWERCASE=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-            
-          # Especificar o caminho do Dockerfile usando a flag -f
-          docker build -t ghcr.io/$REPO_LOWERCASE/frontend:$IMAGE_TAG -f apps/frontend/Dockerfile .
-            
+
+          # Usar BuildKit para build mais rápido e eficiente
+          DOCKER_BUILDKIT=1 docker build \
+            --cache-from ghcr.io/$REPO_LOWERCASE/frontend:$IMAGE_TAG \
+            -t ghcr.io/$REPO_LOWERCASE/frontend:$IMAGE_TAG \
+            -f apps/frontend/Dockerfile .
+
+          # Adicionar tag de data para referência
+          BUILD_DATE=$(date +%Y%m%d-%H%M%S)
+          docker tag ghcr.io/$REPO_LOWERCASE/frontend:$IMAGE_TAG ghcr.io/$REPO_LOWERCASE/frontend:$IMAGE_TAG-$BUILD_DATE
+
+          # Push das imagens
           docker push ghcr.io/$REPO_LOWERCASE/frontend:$IMAGE_TAG
+          docker push ghcr.io/$REPO_LOWERCASE/frontend:$IMAGE_TAG-$BUILD_DATE
 
   deploy:
     name: Deploy Frontend
@@ -95,7 +104,6 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
 
-      # Deploy com resolução do problema da caixa alta vs baixa
       - name: Deploy no Servidor
         run: |
           ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
@@ -105,9 +113,9 @@ jobs:
 
           # Garantir que o arquivo .env existe
           if [ ! -f "/opt/deploy/${{ github.ref_name }}/.env" ]; then
-          # Pode copiar do develop ou criar um novo
-          cp /opt/deploy/develop/.env /opt/deploy/${{ github.ref_name }}/ 2>/dev/null || echo "GITHUB_REPOSITORY=${{ github.repository }}" > /opt/deploy/${{ github.ref_name }}/.env
-          echo "DEPLOY_ENV=${{ github.ref_name }}" >> /opt/deploy/${{ github.ref_name }}/.env
+            # Pode copiar do develop ou criar um novo
+            cp /opt/deploy/develop/.env /opt/deploy/${{ github.ref_name }}/ 2>/dev/null || echo "GITHUB_REPOSITORY=${{ github.repository }}" > /opt/deploy/${{ github.ref_name }}/.env
+            echo "DEPLOY_ENV=${{ github.ref_name }}" >> /opt/deploy/${{ github.ref_name }}/.env
           fi
 
           cd /opt/deploy/${{ github.ref_name }}
@@ -123,4 +131,7 @@ jobs:
           docker-compose stop frontend || true
           docker-compose rm -f frontend || true
           docker-compose up -d frontend
+
+          # Remover imagens antigas não utilizadas (manter apenas as últimas 5)
+          docker image prune -af --filter "until=168h" || true
           ENDSSH

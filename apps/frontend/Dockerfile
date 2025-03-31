@@ -1,44 +1,59 @@
+# Estágio de dependências - apenas para instalar pacotes
+FROM node:18-alpine AS deps
+WORKDIR /app
+
+# Copiar apenas os arquivos necessários para instalar dependências
+COPY package.json package-lock.json ./
+COPY apps/frontend/package.json ./apps/frontend/
+COPY turbo.json ./
+
+# Instalar dependências usando ci para garantir reprodutibilidade
+# Adicionando dependências explícitas mencionadas no CI/CD
+RUN npm ci && \
+    cd apps/frontend && \
+    npm install lucide-react react-hot-toast axios && \
+    npm install --save @ckeditor/ckeditor5-react @ckeditor/ckeditor5-build-classic && \
+    npm install -D @tailwindcss/typography
+
 # Estágio de build
 FROM node:18-alpine AS builder
 WORKDIR /app
 
-# Copiar arquivos de package.json para instalação eficiente de dependências
+# Copiar dependências do estágio anterior
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/frontend/node_modules ./apps/frontend/node_modules
+
+# Copiar apenas os arquivos necessários para o build
+COPY turbo.json ./
 COPY package.json package-lock.json ./
-COPY apps/frontend/package.json ./apps/frontend/
+COPY apps/frontend ./apps/frontend
 
-# Instalar dependências
-RUN npm install
+# Executar o build da aplicação
+WORKDIR /app/apps/frontend
+RUN npm run build
 
-COPY . .
-
-# Build do aplicativo Next.js
-RUN cd apps/frontend && npm run build
-
-# Estágio de produção
+# Estágio de produção - imagem final mínima
 FROM node:18-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV production
 
-# Adicionar um usuário não-root para segurança
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+# Adicionar usuário não-root para segurança (agrupando comandos RUN)
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
 
-# Copiar apenas os arquivos necessários para produção
-COPY --from=builder /app/apps/frontend/package.json ./package.json
+# Aproveitar o modo standalone do Next.js que inclui tudo necessário para rodar a app
 COPY --from=builder /app/apps/frontend/public ./public
-COPY --from=builder /app/apps/frontend/.next ./.next
-RUN npm install --omit=dev
+COPY --from=builder /app/apps/frontend/.next/static ./.next/static
+COPY --from=builder /app/apps/frontend/.next/standalone ./
 
-# Configurar permissões APÓS copiar os arquivos
-RUN mkdir -p /app/.next/cache/images && \
-    chown -R nextjs:nodejs /app/.next && \
-    chmod -R 755 /app/.next/cache
+# Configurar permissões corretas
+RUN chown -R nextjs:nodejs /app
 
-# Definir usuário correto para aplicação
+# Mudar para usuário não-root
 USER nextjs
 
 EXPOSE 3000
 
-# Comando para iniciar a aplicação
-CMD ["npm", "start"]
+# Usar diretamente o server.js gerado pelo modo standalone do Next.js
+CMD ["node", "server.js"]
