@@ -12,8 +12,10 @@ import {
   LogOutIcon,
   Table,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export default function Navbar() {
+  const router = useRouter();
   const { user, logout } = useAuth();
 
   const hasAdminRole = user?.roles?.some(
@@ -21,9 +23,10 @@ export default function Navbar() {
   );
 
   // Função para lidar com o logout
-  const handleLogout = (e: React.MouseEvent) => {
+  const handleLogout = async (e: React.MouseEvent) => {
     e.preventDefault();
-    logout();
+    await logout();
+    router.replace("/login");
   };
 
   return (
