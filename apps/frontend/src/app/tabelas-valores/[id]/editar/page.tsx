@@ -198,8 +198,7 @@ export default function EditarTabelaValoresPage() {
           </div>
           <button
             onClick={() => router.push("/tabelas-valores")}
-            className="flex items-center text-primary hover:text-primary-dark"
-          >
+            className="flex items-center text-primary hover:text-primary-dark">
             <ArrowLeft size={16} className="mr-1" />
             Voltar para a lista de tabelas
           </button>
@@ -235,8 +234,7 @@ export default function EditarTabelaValoresPage() {
             <div className="mb-4">
               <label
                 htmlFor="nome"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
+                className="block text-sm font-medium text-gray-700 mb-1">
                 Nome *
               </label>
               <input
@@ -258,8 +256,7 @@ export default function EditarTabelaValoresPage() {
             <div className="mb-4">
               <label
                 htmlFor="convenioId"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
+                className="block text-sm font-medium text-gray-700 mb-1">
                 Convênio *
               </label>
               <select
@@ -270,8 +267,7 @@ export default function EditarTabelaValoresPage() {
                 className={`w-full px-3 py-2 border rounded-md ${
                   errors.convenioId ? "border-red-500" : "border-gray-300"
                 } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
-                disabled={submitting}
-              >
+                disabled={submitting}>
                 {convenios.map((convenio) => (
                   <option key={convenio.id} value={convenio.id}>
                     {convenio.name}
@@ -285,8 +281,7 @@ export default function EditarTabelaValoresPage() {
             <div className="mb-4">
               <label
                 htmlFor="descricao"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
+                className="block text-sm font-medium text-gray-700 mb-1">
                 Descrição
               </label>
               <textarea
@@ -299,8 +294,7 @@ export default function EditarTabelaValoresPage() {
                   errors.descricao ? "border-red-500" : "border-gray-300"
                 } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
                 placeholder="Digite uma descrição para a tabela (opcional)"
-                disabled={submitting}
-              ></textarea>
+                disabled={submitting}></textarea>
               {errors.descricao && (
                 <p className="mt-1 text-sm text-red-500">{errors.descricao}</p>
               )}
@@ -324,16 +318,14 @@ export default function EditarTabelaValoresPage() {
                 icon={X}
                 onClick={handleCancel}
                 disabled={submitting}
-                className="bg-red-500 hover:bg-red-700 text-white border-none"
-              >
+                className="bg-red-500 hover:bg-red-700 text-white border-none">
                 Cancelar
               </CustomButton>
               <CustomButton
                 type="submit"
                 variant="primary"
                 icon={Save}
-                disabled={submitting}
-              >
+                disabled={submitting}>
                 {submitting ? "Salvando..." : "Salvar Alterações"}
               </CustomButton>
             </div>
