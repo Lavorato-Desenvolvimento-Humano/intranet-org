@@ -1,44 +1,58 @@
-# Estágio de build
+# Estágio de build usando uma imagem completa
 FROM node:18-alpine AS builder
 WORKDIR /app
 
-# Copiar arquivos de package.json para instalação eficiente de dependências
-COPY package.json package-lock.json ./
-COPY apps/frontend/package.json ./apps/frontend/
+# Copiar todo o projeto para o estágio de build
+COPY apps/frontend ./
 
-# Instalar dependências
+# Instalar todas as dependências (incluindo dev)
+# Usando 'npm install' em vez de 'npm ci' para evitar problemas de sincronização
 RUN npm install
 
-COPY . .
+# Garantir que o Next.js use o modo standalone
+RUN grep -q '"output": *"standalone"' next.config.js || \
+    sed -i 's/const nextConfig = {/const nextConfig = {\n  output: "standalone",/' next.config.js
 
-# Build do aplicativo Next.js
-RUN cd apps/frontend && npm run build
+# Executar o build da aplicação
+ENV NODE_ENV=production
+RUN npm run build
 
-# Estágio de produção
+# Estágio de produção - imagem mínima
 FROM node:18-alpine AS runner
 WORKDIR /app
 
-ENV NODE_ENV production
+# Variáveis de ambiente
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 
-# Adicionar um usuário não-root para segurança
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+# Criar usuário não-root
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
 
-# Copiar apenas os arquivos necessários para produção
-COPY --from=builder /app/apps/frontend/package.json ./package.json
-COPY --from=builder /app/apps/frontend/public ./public
-COPY --from=builder /app/apps/frontend/.next ./.next
-RUN npm install --omit=dev
+# Copiar apenas o necessário do estágio de build
+# Se standalone estiver funcionando, use:
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
-# Configurar permissões APÓS copiar os arquivos
-RUN mkdir -p /app/.next/cache/images && \
-    chown -R nextjs:nodejs /app/.next && \
-    chmod -R 755 /app/.next/cache
+# Se standalone não estiver funcionando, descomente estas linhas e comente as de cima
+# COPY --from=builder --chown=nextjs:nodejs /app/next.config.js ./
+# COPY --from=builder --chown=nextjs:nodejs /app/package.json ./
+# COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
+# COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+# COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 
-# Definir usuário correto para aplicação
+# Usuário não-root
 USER nextjs
 
 EXPOSE 3000
 
+ENV PORT 3000
+ENV HOSTNAME "0.0.0.0"
+
 # Comando para iniciar a aplicação
-CMD ["npm", "start"]
+# Use este para modo standalone:
+CMD ["node", "server.js"]
+
+# Use este se standalone não estiver funcionando:
+# CMD ["npm", "start"]
