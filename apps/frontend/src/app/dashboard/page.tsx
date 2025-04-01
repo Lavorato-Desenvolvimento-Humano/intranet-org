@@ -234,49 +234,6 @@ export default function DashboardPage() {
                 </p>
               </div>
             </div>
-
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                Postagens por Tipo
-              </h3>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="rounded-full p-2 bg-blue-100 mr-2">
-                      <Building className="h-4 w-4 text-blue-600" />
-                    </div>
-                    <span className="text-sm text-gray-700">Convênios</span>
-                  </div>
-                  <span className="font-semibold">
-                    {stats.postagensByType?.convenio || 0}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="rounded-full p-2 bg-green-100 mr-2">
-                      <Users className="h-4 w-4 text-green-600" />
-                    </div>
-                    <span className="text-sm text-gray-700">Equipes</span>
-                  </div>
-                  <span className="font-semibold">
-                    {stats.postagensByType?.equipe || 0}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="rounded-full p-2 bg-purple-100 mr-2">
-                      <Globe className="h-4 w-4 text-purple-600" />
-                    </div>
-                    <span className="text-sm text-gray-700">Gerais</span>
-                  </div>
-                  <span className="font-semibold">
-                    {stats.postagensByType?.geral || 0}
-                  </span>
-                </div>
-              </div>
-            </div>
           </div>
 
           {/* Layout principal de dois painéis */}
