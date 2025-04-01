@@ -159,6 +159,8 @@ public class PostagemServiceImpl implements PostagemService {
 
             case "geral":
                 // Não precisa de configuração adicional
+                postagem.setConvenio(null);  // Explicitamente definir como null para garantir
+                postagem.setEquipe(null);    // Explicitamente definir como null para garantir
                 break;
 
             default:
@@ -225,7 +227,9 @@ public class PostagemServiceImpl implements PostagemService {
 
             case "geral":
                 // Não precisa de configuração adicional
-                break;
+                postagem.setConvenio(null);  // Explicitamente definir como null para garantir
+                postagem.setEquipe(null);    // Explicitamente definir como null para garantir
+                break; 
 
             default:
                 throw new IllegalArgumentException("Tipo de destino inválido: " + tipoDestino);
@@ -256,10 +260,14 @@ public class PostagemServiceImpl implements PostagemService {
         User currentUser = getCurrentUser();
         logger.info("Buscando postagens visíveis para o usuário: {}", currentUser.getId());
 
-        // Buscar postagens visíveis para o usuário atual:
-        // Como todas as postagens de convênios são visíveis para todos, não é necessário
-        // passar o convenioId como parâmetro. O parâmetro pode ser null ou removido da query.
+        // Buscar postagens visíveis para o usuário atual
         List<Postagem> postagens = postagemRepository.findVisibleToUserOrderByCreatedAtDesc(currentUser.getId());
+
+        // Log para depuração
+        logger.debug("Total de postagens visíveis: {}", postagens.size());
+        for (Postagem p : postagens) {
+            logger.debug("Postagem: id={}, título={}, tipo={}", p.getId(), p.getTitle(), p.getTipoDestino());
+        }
 
         return postagens.stream()
                 .map(DTOMapperUtil::mapToPostagemSummaryDto)

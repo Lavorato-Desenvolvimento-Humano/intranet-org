@@ -13,6 +13,9 @@ import {
   Paperclip,
   Table,
   AlertTriangle,
+  Globe,
+  Users,
+  Building,
 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Breadcrumb from "@/components/ui/breadcrumb";
@@ -348,8 +351,30 @@ export default function PostagemViewPage() {
                   <p className="text-gray-800">{postagem.createdByName}</p>
                 </div>
                 <div className="w-full md:w-1/2">
-                  <p className="text-sm text-gray-500">Convênio:</p>
-                  <p className="text-gray-800">{postagem.convenioName}</p>
+                  <p className="text-sm text-gray-500">Visibilidade:</p>
+                  {postagem.tipoDestino === "convenio" &&
+                    postagem.convenioName && (
+                      <div className="flex items-center">
+                        <Building size={16} className="mr-1 text-blue-600" />
+                        <p className="text-gray-800">
+                          Convênio: {postagem.convenioName}
+                        </p>
+                      </div>
+                    )}
+                  {postagem.tipoDestino === "equipe" && postagem.equipeName && (
+                    <div className="flex items-center">
+                      <Users size={16} className="mr-1 text-green-600" />
+                      <p className="text-gray-800">
+                        Equipe: {postagem.equipeName}
+                      </p>
+                    </div>
+                  )}
+                  {postagem.tipoDestino === "geral" && (
+                    <div className="flex items-center">
+                      <Globe size={16} className="mr-1 text-purple-600" />
+                      <p className="text-gray-800">Visível para todos</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

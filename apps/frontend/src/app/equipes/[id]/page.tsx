@@ -24,6 +24,7 @@ import userService, { UserDto } from "@/services/user";
 import toastUtil from "@/utils/toast";
 import { CustomButton } from "@/components/ui/custom-button";
 import DataTable from "@/components/ui/data-table";
+import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
 
 export default function EquipeDetailPage() {
   const router = useRouter();
@@ -76,8 +77,6 @@ export default function EquipeDetailPage() {
 
         setEquipe(equipeData);
 
-        // Como o backend já está retornando objetos UserDto formatados,
-        // podemos usar diretamente sem precisar mapear novamente
         if (Array.isArray(membrosEquipeData)) {
           // Garantir que cada membro tem um ID válido
           const membrosValidados = membrosEquipeData.filter(
@@ -326,241 +325,245 @@ export default function EquipeDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Navbar />
+    <ProtectedRoute>
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <Navbar />
 
-      <main className="flex-grow container mx-auto p-6">
-        <Breadcrumb
-          items={[
-            { label: "Equipes", href: "/equipes" },
-            { label: equipe.nome },
-          ]}
-        />
+        <main className="flex-grow container mx-auto p-6">
+          <Breadcrumb
+            items={[
+              { label: "Equipes", href: "/equipes" },
+              { label: equipe.nome },
+            ]}
+          />
 
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">{equipe.nome}</h1>
-          {canEditEquipe && (
-            <div className="flex space-x-2">
-              <CustomButton
-                variant="primary"
-                icon={Edit}
-                onClick={() => router.push(`/equipes/${equipeId}/editar`)}>
-                Editar
-              </CustomButton>
-              {isAdmin && (
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold text-gray-800">{equipe.nome}</h1>
+            {canEditEquipe && (
+              <div className="flex space-x-2">
                 <CustomButton
                   variant="primary"
-                  icon={Trash}
-                  onClick={() =>
-                    setConfirmDelete({ show: true, isDeleting: false })
-                  }
-                  className="bg-red-600 hover:bg-red-700 text-white border-none">
-                  Excluir
+                  icon={Edit}
+                  onClick={() => router.push(`/equipes/${equipeId}/editar`)}>
+                  Editar
+                </CustomButton>
+                {isAdmin && (
+                  <CustomButton
+                    variant="primary"
+                    icon={Trash}
+                    onClick={() =>
+                      setConfirmDelete({ show: true, isDeleting: false })
+                    }
+                    className="bg-red-600 hover:bg-red-700 text-white border-none">
+                    Excluir
+                  </CustomButton>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Card de informações da equipe */}
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4">
+              Informações da Equipe
+            </h2>
+
+            <div className="flex flex-col md:flex-row md:items-center mb-4">
+              <div className="md:w-1/2 mb-2 md:mb-0">
+                <p className="text-sm text-gray-500">Nome:</p>
+                <p className="text-gray-800">{equipe.nome}</p>
+              </div>
+              <div className="md:w-1/2">
+                <p className="text-sm text-gray-500">Data de Criação:</p>
+                <p className="text-gray-800">{formatDate(equipe.createdAt)}</p>
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-sm text-gray-500">Descrição:</p>
+              <p className="text-gray-800">
+                {equipe.descricao || "Sem descrição"}
+              </p>
+            </div>
+
+            <div className="flex items-center">
+              <div className="bg-blue-50 rounded-full px-3 py-1 text-blue-700 text-sm flex items-center">
+                <Users size={14} className="mr-1" />
+                {equipe.membroCount} membro{equipe.membroCount !== 1 ? "s" : ""}
+              </div>
+            </div>
+          </div>
+
+          {/* Seção de membros */}
+          <div className="mb-8">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold text-gray-800">
+                Membros da Equipe
+              </h2>
+              {canEditEquipe && (
+                <CustomButton
+                  variant="primary"
+                  icon={UserPlus}
+                  onClick={() => {
+                    loadAvailableUsers();
+                    setShowAddMembroModal(true);
+                  }}>
+                  Adicionar Membro
                 </CustomButton>
               )}
             </div>
-          )}
-        </div>
 
-        {/* Card de informações da equipe */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">
-            Informações da Equipe
-          </h2>
-
-          <div className="flex flex-col md:flex-row md:items-center mb-4">
-            <div className="md:w-1/2 mb-2 md:mb-0">
-              <p className="text-sm text-gray-500">Nome:</p>
-              <p className="text-gray-800">{equipe.nome}</p>
-            </div>
-            <div className="md:w-1/2">
-              <p className="text-sm text-gray-500">Data de Criação:</p>
-              <p className="text-gray-800">{formatDate(equipe.createdAt)}</p>
-            </div>
-          </div>
-
-          <div className="mb-4">
-            <p className="text-sm text-gray-500">Descrição:</p>
-            <p className="text-gray-800">
-              {equipe.descricao || "Sem descrição"}
-            </p>
-          </div>
-
-          <div className="flex items-center">
-            <div className="bg-blue-50 rounded-full px-3 py-1 text-blue-700 text-sm flex items-center">
-              <Users size={14} className="mr-1" />
-              {equipe.membroCount} membro{equipe.membroCount !== 1 ? "s" : ""}
-            </div>
-          </div>
-        </div>
-
-        {/* Seção de membros */}
-        <div className="mb-8">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-gray-800">
-              Membros da Equipe
-            </h2>
-            {canEditEquipe && (
-              <CustomButton
-                variant="primary"
-                icon={UserPlus}
-                onClick={() => {
-                  loadAvailableUsers();
-                  setShowAddMembroModal(true);
-                }}>
-                Adicionar Membro
-              </CustomButton>
-            )}
-          </div>
-
-          {membros.length === 0 ? (
-            <div className="bg-gray-50 p-8 text-center rounded-lg shadow-sm">
-              <User size={32} className="mx-auto text-gray-400 mb-2" />
-              <p className="text-gray-600">Esta equipe não possui membros.</p>
-            </div>
-          ) : (
-            <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              <DataTable
-                data={membros}
-                columns={membroColumns}
-                keyExtractor={(item) => item.id}
-                showHeader={true}
-                showActions={canEditEquipe}
-                onDelete={
-                  canEditEquipe
-                    ? (membro) => handleRemoveMemberConfirmation(membro)
-                    : undefined
-                }
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Seção de postagens da equipe */}
-        <div>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-gray-800">
-              Postagens da Equipe
-            </h2>
-            {canEditEquipe && (
-              <CustomButton
-                variant="primary"
-                icon={FileText}
-                onClick={() =>
-                  router.push(
-                    `/postagens/nova?tipoDestino=equipe&equipeId=${equipeId}`
-                  )
-                }>
-                Nova Postagem
-              </CustomButton>
-            )}
-          </div>
-
-          {postagens.length === 0 ? (
-            <div className="bg-gray-50 p-8 text-center rounded-lg shadow-sm">
-              <FileText size={32} className="mx-auto text-gray-400 mb-2" />
-              <p className="text-gray-600">
-                Ainda não há postagens para esta equipe.
-              </p>
-            </div>
-          ) : (
-            <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              <DataTable
-                data={postagens}
-                columns={postagemColumns}
-                keyExtractor={(item) => item.id}
-                showHeader={true}
-                onRowClick={(postagem) =>
-                  router.push(`/postagens/${postagem.id}`)
-                }
-              />
-            </div>
-          )}
-        </div>
-      </main>
-
-      {/* Modal para adicionar membro */}
-      {showAddMembroModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
-            <h3 className="text-lg font-bold mb-4">
-              Adicionar Membro à Equipe
-            </h3>
-
-            {availableUsers.length === 0 ? (
-              <p className="text-gray-600 mb-4">
-                Não há usuários disponíveis para adicionar.
-              </p>
+            {membros.length === 0 ? (
+              <div className="bg-gray-50 p-8 text-center rounded-lg shadow-sm">
+                <User size={32} className="mx-auto text-gray-400 mb-2" />
+                <p className="text-gray-600">Esta equipe não possui membros.</p>
+              </div>
             ) : (
-              <>
-                <div className="mb-4">
-                  <label
-                    htmlFor="userId"
-                    className="block text-sm font-medium text-gray-700 mb-1">
-                    Selecione um usuário:
-                  </label>
-                  <select
-                    id="userId"
-                    value={selectedUserId}
-                    onChange={(e) => setSelectedUserId(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
-                    <option value="">Selecione um usuário</option>
-                    {availableUsers.map((user) => (
-                      <option key={user.id} value={user.id}>
-                        {user.fullName} ({user.email})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </>
+              <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                <DataTable
+                  data={membros}
+                  columns={membroColumns}
+                  keyExtractor={(item) => item.id}
+                  showHeader={true}
+                  showActions={canEditEquipe}
+                  onDelete={
+                    canEditEquipe
+                      ? (membro) => handleRemoveMemberConfirmation(membro)
+                      : undefined
+                  }
+                />
+              </div>
             )}
+          </div>
 
-            <div className="flex justify-end space-x-3 mt-4">
-              <button
-                onClick={() => setShowAddMembroModal(false)}
-                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md">
-                Cancelar
-              </button>
-              <button
-                onClick={handleAddMembro}
-                disabled={availableUsers.length === 0 || !selectedUserId}
-                className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed">
-                Adicionar
-              </button>
+          {/* Seção de postagens da equipe */}
+          <div>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold text-gray-800">
+                Postagens da Equipe
+              </h2>
+              {canEditEquipe && (
+                <CustomButton
+                  variant="primary"
+                  icon={FileText}
+                  onClick={() =>
+                    router.push(
+                      `/postagens/nova?tipoDestino=equipe&equipeId=${equipeId}`
+                    )
+                  }>
+                  Nova Postagem
+                </CustomButton>
+              )}
+            </div>
+
+            {postagens.length === 0 ? (
+              <div className="bg-gray-50 p-8 text-center rounded-lg shadow-sm">
+                <FileText size={32} className="mx-auto text-gray-400 mb-2" />
+                <p className="text-gray-600">
+                  Ainda não há postagens para esta equipe.
+                </p>
+              </div>
+            ) : (
+              <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                <DataTable
+                  data={postagens}
+                  columns={postagemColumns}
+                  keyExtractor={(item) => item.id}
+                  showHeader={true}
+                  onRowClick={(postagem) =>
+                    router.push(`/postagens/${postagem.id}`)
+                  }
+                />
+              </div>
+            )}
+          </div>
+        </main>
+
+        {/* Modal para adicionar membro */}
+        {showAddMembroModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
+              <h3 className="text-lg font-bold mb-4">
+                Adicionar Membro à Equipe
+              </h3>
+
+              {availableUsers.length === 0 ? (
+                <p className="text-gray-600 mb-4">
+                  Não há usuários disponíveis para adicionar.
+                </p>
+              ) : (
+                <>
+                  <div className="mb-4">
+                    <label
+                      htmlFor="userId"
+                      className="block text-sm font-medium text-gray-700 mb-1">
+                      Selecione um usuário:
+                    </label>
+                    <select
+                      id="userId"
+                      value={selectedUserId}
+                      onChange={(e) => setSelectedUserId(e.target.value)}
+                      className="w-full px-3 py-2 border rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                      <option value="">Selecione um usuário</option>
+                      {availableUsers.map((user) => (
+                        <option key={user.id} value={user.id}>
+                          {user.fullName} ({user.email})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              )}
+
+              <div className="flex justify-end space-x-3 mt-4">
+                <button
+                  onClick={() => setShowAddMembroModal(false)}
+                  className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md">
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleAddMembro}
+                  disabled={availableUsers.length === 0 || !selectedUserId}
+                  className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed">
+                  Adicionar
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Diálogo de confirmação para exclusão de equipe */}
-      {confirmDelete.show && (
-        <ConfirmDialog
-          isOpen={true}
-          title="Excluir Equipe"
-          message={`Tem certeza que deseja excluir a equipe "${equipe.nome}"? Esta ação não pode ser desfeita e todas as postagens associadas a ela serão afetadas.`}
-          confirmText="Excluir"
-          cancelText="Cancelar"
-          onConfirm={handleDeleteEquipe}
-          onCancel={() => setConfirmDelete({ show: false, isDeleting: false })}
-          isLoading={confirmDelete.isDeleting}
-          variant="danger"
-        />
-      )}
+        {/* Diálogo de confirmação para exclusão de equipe */}
+        {confirmDelete.show && (
+          <ConfirmDialog
+            isOpen={true}
+            title="Excluir Equipe"
+            message={`Tem certeza que deseja excluir a equipe "${equipe.nome}"? Esta ação não pode ser desfeita e todas as postagens associadas a ela serão afetadas.`}
+            confirmText="Excluir"
+            cancelText="Cancelar"
+            onConfirm={handleDeleteEquipe}
+            onCancel={() =>
+              setConfirmDelete({ show: false, isDeleting: false })
+            }
+            isLoading={confirmDelete.isDeleting}
+            variant="danger"
+          />
+        )}
 
-      {/* Diálogo de confirmação para remoção de membro */}
-      {confirmRemoveMembro && (
-        <ConfirmDialog
-          isOpen={true}
-          title="Remover Membro"
-          message={`Tem certeza que deseja remover ${confirmRemoveMembro.membroName} desta equipe?`}
-          confirmText="Remover"
-          cancelText="Cancelar"
-          onConfirm={handleRemoveMembro}
-          onCancel={() => setConfirmRemoveMembro(null)}
-          isLoading={confirmRemoveMembro.isRemoving}
-          variant="warning"
-        />
-      )}
-    </div>
+        {/* Diálogo de confirmação para remoção de membro */}
+        {confirmRemoveMembro && (
+          <ConfirmDialog
+            isOpen={true}
+            title="Remover Membro"
+            message={`Tem certeza que deseja remover ${confirmRemoveMembro.membroName} desta equipe?`}
+            confirmText="Remover"
+            cancelText="Cancelar"
+            onConfirm={handleRemoveMembro}
+            onCancel={() => setConfirmRemoveMembro(null)}
+            isLoading={confirmRemoveMembro.isRemoving}
+            variant="warning"
+          />
+        )}
+      </div>
+    </ProtectedRoute>
   );
 }
