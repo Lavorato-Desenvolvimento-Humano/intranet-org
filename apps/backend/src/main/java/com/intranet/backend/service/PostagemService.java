@@ -40,5 +40,7 @@ public interface PostagemService {
 
     AnexoDto associarAnexo(UUID postagemId, UUID anexoId);
 
-    List<PostagemSummaryDto> getPostagensVisibleToCurrentUser();
+    List<PostagemSummaryDto> getPostagensByEquipeId(UUID equipeId);
+
+    List<PostagemSummaryDto> getPostagensByTipoDestino(String tipoDestino);
 }

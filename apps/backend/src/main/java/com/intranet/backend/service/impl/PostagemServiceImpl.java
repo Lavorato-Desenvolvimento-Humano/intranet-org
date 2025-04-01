@@ -62,6 +62,38 @@ public class PostagemServiceImpl implements PostagemService {
     }
 
     @Override
+    public List<PostagemSummaryDto> getPostagensByTipoDestino(String tipoDestino) {
+        logger.info("Buscando postagens do tipo: {}", tipoDestino);
+
+        // Validar tipo de destino
+        if (!Arrays.asList("geral", "equipe", "convenio").contains(tipoDestino)) {
+            throw new IllegalArgumentException("Tipo de destino inválido: " + tipoDestino);
+        }
+
+        List<Postagem> postagens = postagemRepository.findByTipoDestinoOrderByCreatedAtDesc(tipoDestino);
+
+        return postagens.stream()
+                .map(DTOMapperUtil::mapToPostagemSummaryDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<PostagemSummaryDto> getPostagensByEquipeId(UUID equipeId) {
+        logger.info("Buscando postagens para a equipe com ID: {}", equipeId);
+
+        if (!equipeRepository.existsById(equipeId)) {
+            throw new ResourceNotFoundException("Equipe não encontrada com ID: " + equipeId);
+        }
+
+        List<Postagem> postagens = postagemRepository.findByTipoDestinoAndEquipeIdOrderByCreatedAtDesc("equipe", equipeId);
+
+        return postagens.stream()
+                .map(DTOMapperUtil::mapToPostagemSummaryDto)
+                .collect(Collectors.toList());
+    }
+
+
+    @Override
     public List<PostagemSummaryDto> getPostagensByCurrentUser() {
         User currentUser = getCurrentUser();
         logger.info("Buscando postagens do usuário atual: {}", currentUser.getId());
@@ -491,6 +523,7 @@ public class PostagemServiceImpl implements PostagemService {
 
         return DTOMapperUtil.mapToAnexoDto(savedAnexo);
     }
+
 
     // Método auxiliar para obter o usuário atual
     private User getCurrentUser() {
