@@ -188,7 +188,7 @@ export default function DashboardPage() {
           )}
 
           {/* Cards de estatísticas */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {/* <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <div className="bg-white rounded-lg shadow-md p-6 flex items-start">
               <div className="rounded-full p-3 bg-blue-100 mr-4">
                 <FileText className="h-6 w-6 text-blue-600" />
@@ -234,7 +234,7 @@ export default function DashboardPage() {
                 </p>
               </div>
             </div>
-          </div>
+          </div> */}
 
           {/* Layout principal de dois painéis */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
