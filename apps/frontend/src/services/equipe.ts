@@ -16,7 +16,7 @@ export interface EquipeCreateDto {
 }
 
 export interface UserEquipeDto {
-  id: string; // Usado como userId
+  id: string;
   userId: string;
   userName: string;
   userEmail: string;

@@ -140,10 +140,7 @@ export default function NovaPostagemPage() {
       newErrors.text = "O conteúdo da postagem é obrigatório";
     }
 
-    if (!formData.convenioId) {
-      newErrors.convenioId = "Selecione um convênio";
-    }
-
+    // Validar campos específicos com base no tipo de destino selecionado
     switch (formData.tipoDestino) {
       case "convenio":
         if (!formData.convenioId) {
@@ -156,7 +153,7 @@ export default function NovaPostagemPage() {
         }
         break;
       case "geral":
-        // Não precisa de validação adicional
+        // Tipo "geral" não precisa de validação adicional
         break;
       default:
         newErrors.tipoDestino = "Tipo de destino inválido";
