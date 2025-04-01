@@ -288,6 +288,27 @@ public class PostagemController {
         }
     }
 
+    @GetMapping("/equipe/{equipeId}")
+    public ResponseEntity<List<PostagemSummaryDto>> getPostagensByEquipeId(@PathVariable UUID equipeId) {
+        logger.info("Requisição para listar postagens da equipe com ID: {}", equipeId);
+        List<PostagemSummaryDto> postagens = postagemService.getPostagensByEquipeId(equipeId);
+        return ResponseUtil.success(postagens);
+    }
+
+    @GetMapping("/tipo/{tipoDestino}")
+    public ResponseEntity<List<PostagemSummaryDto>> getPostagensByTipoDestino(@PathVariable String tipoDestino) {
+        logger.info("Requisição para listar postagens do tipo: {}", tipoDestino);
+        List<PostagemSummaryDto> postagens = postagemService.getPostagensByTipoDestino(tipoDestino);
+        return ResponseUtil.success(postagens);
+    }
+
+    @GetMapping("/visiveis")
+    public ResponseEntity<List<PostagemSummaryDto>> getPostagensVisibles() {
+        logger.info("Requisição para listar postagens visíveis para o usuário atual");
+        List<PostagemSummaryDto> postagens = postagemService.getPostagensVisibleToCurrentUser();
+        return ResponseUtil.success(postagens);
+    }
+
     private User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String currentUserEmail = authentication.getName();

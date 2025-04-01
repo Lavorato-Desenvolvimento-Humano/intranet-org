@@ -19,6 +19,7 @@ import { CustomButton } from "@/components/ui/custom-button";
 import dynamic from "next/dynamic";
 import RichTextPreview from "@/components/ui/rich-text-preview";
 import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
+import equipeService, { EquipeDto } from "@/services/equipe";
 
 // Importando o editor melhorado com carregamento dinâmico
 const SimpleRichEditor = dynamic(
@@ -41,8 +42,11 @@ export default function NovaPostagemPage() {
   const [formData, setFormData] = useState<PostagemCreateDto>({
     title: "",
     text: "",
+    tipoDestino: "convenio", // Valor padrão
     convenioId: "",
+    equipeId: "",
   });
+  const [equipes, setEquipes] = useState<EquipeDto[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [tempUploads, setTempUploads] = useState<{
     images: ImagemDto[];
@@ -61,33 +65,55 @@ export default function NovaPostagemPage() {
     user?.roles?.includes("ROLE_USER") || user?.roles?.includes("USER");
   const canCreatePostagem = isAdmin || isEditor || isUser;
 
-  // Extrair convenioId do parâmetro de consulta se disponível
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const convenioId = params.get("convenioId");
+      const equipeId = params.get("equipeId");
+      const tipoDestino = params.get("tipoDestino");
+
+      if (
+        tipoDestino &&
+        ["geral", "equipe", "convenio"].includes(tipoDestino)
+      ) {
+        setFormData((prev) => ({
+          ...prev,
+          tipoDestino: tipoDestino as "geral" | "equipe" | "convenio",
+        }));
+      }
+
       if (convenioId) {
         setFormData((prev) => ({ ...prev, convenioId }));
+      }
+
+      if (equipeId) {
+        setFormData((prev) => ({ ...prev, equipeId }));
       }
     }
   }, []);
 
-  // Carregar convênios
+  // Carregar convênios e equipes
   useEffect(() => {
-    const fetchConvenios = async () => {
+    const fetchData = async () => {
       setLoading(true);
       try {
-        const data = await convenioService.getAllConvenios();
-        setConvenios(data);
+        // Carregar dados em paralelo
+        const [conveniosData, equipesData] = await Promise.all([
+          convenioService.getAllConvenios(),
+          equipeService.getAllEquipes(),
+        ]);
+
+        setConvenios(conveniosData);
+        setEquipes(equipesData);
       } catch (err) {
-        console.error("Erro ao carregar convênios:", err);
-        setError("Erro ao carregar convênios. Tente novamente mais tarde.");
+        console.error("Erro ao carregar dados:", err);
+        setError("Erro ao carregar dados. Tente novamente mais tarde.");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchConvenios();
+    fetchData();
   }, []);
 
   // Redirecionar se não tem permissão
@@ -116,6 +142,24 @@ export default function NovaPostagemPage() {
 
     if (!formData.convenioId) {
       newErrors.convenioId = "Selecione um convênio";
+    }
+
+    switch (formData.tipoDestino) {
+      case "convenio":
+        if (!formData.convenioId) {
+          newErrors.convenioId = "Selecione um convênio";
+        }
+        break;
+      case "equipe":
+        if (!formData.equipeId) {
+          newErrors.equipeId = "Selecione uma equipe";
+        }
+        break;
+      case "geral":
+        // Não precisa de validação adicional
+        break;
+      default:
+        newErrors.tipoDestino = "Tipo de destino inválido";
     }
 
     setErrors(newErrors);
@@ -271,32 +315,86 @@ export default function NovaPostagemPage() {
 
               <div className="mb-4">
                 <label
-                  htmlFor="convenioId"
+                  htmlFor="tipoDestino"
                   className="block text-sm font-medium text-gray-700 mb-1">
-                  Convênio *
+                  Visibilidade da Postagem *
                 </label>
                 <select
-                  id="convenioId"
-                  name="convenioId"
-                  value={formData.convenioId}
+                  id="tipoDestino"
+                  name="tipoDestino"
+                  value={formData.tipoDestino}
                   onChange={handleChange}
-                  className={`w-full px-3 py-2 border rounded-md ${
-                    errors.convenioId ? "border-red-500" : "border-gray-300"
-                  } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                   disabled={submitting}>
-                  <option value="">Selecione um convênio</option>
-                  {convenios.map((convenio) => (
-                    <option key={convenio.id} value={convenio.id}>
-                      {convenio.name}
-                    </option>
-                  ))}
+                  <option value="geral">Geral (todos os usuários)</option>
+                  <option value="equipe">Equipe específica</option>
+                  <option value="convenio">Convênio específico</option>
                 </select>
-                {errors.convenioId && (
-                  <p className="mt-1 text-sm text-red-500">
-                    {errors.convenioId}
-                  </p>
-                )}
               </div>
+
+              {/* Campo de seleção de convênio (mostrar apenas se tipoDestino for "convenio") */}
+              {formData.tipoDestino === "convenio" && (
+                <div className="mb-4">
+                  <label
+                    htmlFor="convenioId"
+                    className="block text-sm font-medium text-gray-700 mb-1">
+                    Convênio *
+                  </label>
+                  <select
+                    id="convenioId"
+                    name="convenioId"
+                    value={formData.convenioId}
+                    onChange={handleChange}
+                    className={`w-full px-3 py-2 border rounded-md ${
+                      errors.convenioId ? "border-red-500" : "border-gray-300"
+                    } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
+                    disabled={submitting}>
+                    <option value="">Selecione um convênio</option>
+                    {convenios.map((convenio) => (
+                      <option key={convenio.id} value={convenio.id}>
+                        {convenio.name}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.convenioId && (
+                    <p className="mt-1 text-sm text-red-500">
+                      {errors.convenioId}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Campo de seleção de equipe (mostrar apenas se tipoDestino for "equipe") */}
+              {formData.tipoDestino === "equipe" && (
+                <div className="mb-4">
+                  <label
+                    htmlFor="equipeId"
+                    className="block text-sm font-medium text-gray-700 mb-1">
+                    Equipe *
+                  </label>
+                  <select
+                    id="equipeId"
+                    name="equipeId"
+                    value={formData.equipeId}
+                    onChange={handleChange}
+                    className={`w-full px-3 py-2 border rounded-md ${
+                      errors.equipeId ? "border-red-500" : "border-gray-300"
+                    } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
+                    disabled={submitting}>
+                    <option value="">Selecione uma equipe</option>
+                    {equipes.map((equipe) => (
+                      <option key={equipe.id} value={equipe.id}>
+                        {equipe.nome}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.equipeId && (
+                    <p className="mt-1 text-sm text-red-500">
+                      {errors.equipeId}
+                    </p>
+                  )}
+                </div>
+              )}
 
               <div className="mb-6">
                 <label

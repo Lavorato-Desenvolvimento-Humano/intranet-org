@@ -37,6 +37,7 @@ public class PostagemServiceImpl implements PostagemService {
     private final AnexoRepository anexoRepository;
     private final TabelaPostagemRepository tabelaPostagemRepository;
     private final FileStorageService fileStorageService;
+    private final EquipeRepository equipeRepository;
 
     @Override
     public Page<PostagemSummaryDto> getAllPostagens(Pageable pageable) {
@@ -90,16 +91,45 @@ public class PostagemServiceImpl implements PostagemService {
     public PostagemDto createPostagem(PostagemCreateDto postagemCreateDto) {
         logger.info("Criando nova postagem: {}", postagemCreateDto.getTitle());
 
-        Convenio convenio = convenioRepository.findById(postagemCreateDto.getConvenioId())
-                .orElseThrow(() -> new ResourceNotFoundException("Convênio não encontrado com ID: " + postagemCreateDto.getConvenioId()));
-
         User currentUser = getCurrentUser();
-
         Postagem postagem = new Postagem();
         postagem.setTitle(postagemCreateDto.getTitle());
         postagem.setText(postagemCreateDto.getText());
-        postagem.setConvenio(convenio);
         postagem.setCreatedBy(currentUser);
+
+        // Definir o tipo de destino
+        String tipoDestino = postagemCreateDto.getTipoDestino();
+        postagem.setTipoDestino(tipoDestino);
+
+        // Configurar o destino com base no tipo
+        switch (tipoDestino) {
+            case "convenio":
+                UUID convenioId = postagemCreateDto.getConvenioId();
+                if (convenioId == null) {
+                    throw new IllegalArgumentException("O ID do convênio é obrigatório para postagens de tipo 'convenio'");
+                }
+                Convenio convenio = convenioRepository.findById(convenioId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Convênio não encontrado com ID: " + convenioId));
+                postagem.setConvenio(convenio);
+                break;
+
+            case "equipe":
+                UUID equipeId = postagemCreateDto.getEquipeId();
+                if (equipeId == null) {
+                    throw new IllegalArgumentException("O ID da equipe é obrigatório para postagens de tipo 'equipe'");
+                }
+                Equipe equipe = equipeRepository.findById(equipeId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Equipe não encontrada com ID: " + equipeId));
+                postagem.setEquipe(equipe);
+                break;
+
+            case "geral":
+                // Não precisa de configuração adicional
+                break;
+
+            default:
+                throw new IllegalArgumentException("Tipo de destino inválido: " + tipoDestino);
+        }
 
         Postagem savedPostagem = postagemRepository.save(postagem);
         logger.info("Postagem criada com sucesso. ID: {}", savedPostagem.getId());
@@ -123,11 +153,48 @@ public class PostagemServiceImpl implements PostagemService {
             throw new IllegalStateException("Apenas o criador da postagem pode atualizá-la");
         }
 
-        // Verificar se o convênio existe, caso esteja sendo alterado
-        if (!postagem.getConvenio().getId().equals(postagemUpdateDto.getConvenioId())) {
-            Convenio convenio = convenioRepository.findById(postagemUpdateDto.getConvenioId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Convênio não encontrado com ID: " + postagemUpdateDto.getConvenioId()));
-            postagem.setConvenio(convenio);
+//        // Verificar se o convênio existe, caso esteja sendo alterado
+//        if (!postagem.getConvenio().getId().equals(postagemUpdateDto.getConvenioId())) {
+//            Convenio convenio = convenioRepository.findById(postagemUpdateDto.getConvenioId())
+//                    .orElseThrow(() -> new ResourceNotFoundException("Convênio não encontrado com ID: " + postagemUpdateDto.getConvenioId()));
+//            postagem.setConvenio(convenio);
+//        }
+
+        String tipoDestino = postagemUpdateDto.getTipoDestino();
+        postagem.setTipoDestino(tipoDestino);
+
+        //Resetar os campos de destino primeiro
+        postagem.setConvenio(null);
+        postagem.setEquipe(null);
+
+        // Configurar o destino com base no tipo
+        switch (tipoDestino) {
+            case "convenio":
+                UUID convenioId = postagemUpdateDto.getConvenioId();
+                if (convenioId == null) {
+                    throw new IllegalArgumentException("O ID do convênio é obrigatório para postagens de tipo 'convenio'");
+                }
+                Convenio convenio = convenioRepository.findById(convenioId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Convênio não encontrado com ID: " + convenioId));
+                postagem.setConvenio(convenio);
+                break;
+
+            case "equipe":
+                UUID equipeId = postagemUpdateDto.getEquipeId();
+                if (equipeId == null) {
+                    throw new IllegalArgumentException("O ID da equipe é obrigatório para postagens de tipo 'equipe'");
+                }
+                Equipe equipe = equipeRepository.findById(equipeId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Equipe não encontrada com ID: " + equipeId));
+                postagem.setEquipe(equipe);
+                break;
+
+            case "geral":
+                // Não precisa de configuração adicional
+                break;
+
+            default:
+                throw new IllegalArgumentException("Tipo de destino inválido: " + tipoDestino);
         }
 
         postagem.setTitle(postagemUpdateDto.getTitle());
@@ -139,6 +206,30 @@ public class PostagemServiceImpl implements PostagemService {
         associarImagensTemporarias(updatedPostagem, postagemUpdateDto.getText());
 
         return DTOMapperUtil.mapToPostagemDto(updatedPostagem);
+    }
+
+    /**
+     * Obtém todas as postagens visíveis para o usuário atual, incluindo:
+     * - Postagens do tipo 'geral' (visíveis para todos)
+     * - Postagens do tipo 'convenio' (visíveis para todos)
+     * - Postagens do tipo 'equipe' das equipes às quais o usuário pertence
+     *
+     * @return Lista de DTOs das postagens visíveis para o usuário atual
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<PostagemSummaryDto> getPostagensVisibleToCurrentUser() {
+        User currentUser = getCurrentUser();
+        logger.info("Buscando postagens visíveis para o usuário: {}", currentUser.getId());
+
+        // Buscar postagens visíveis para o usuário atual:
+        // Como todas as postagens de convênios são visíveis para todos, não é necessário
+        // passar o convenioId como parâmetro. O parâmetro pode ser null ou removido da query.
+        List<Postagem> postagens = postagemRepository.findVisibleToUserOrderByCreatedAtDesc(currentUser.getId());
+
+        return postagens.stream()
+                .map(DTOMapperUtil::mapToPostagemSummaryDto)
+                .collect(Collectors.toList());
     }
 
     @Override

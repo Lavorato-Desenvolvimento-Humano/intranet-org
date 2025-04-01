@@ -31,6 +31,13 @@ public class Postagem {
     @Column(name = "text", nullable = false, columnDefinition = "TEXT")
     private String text;
 
+    @Column(name = "tipo_destino", nullable = false)
+    private String tipoDestino = "convenio"; // Valores: geral, equipe, convenio
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "equipe_id")
+    private Equipe equipe;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "convenio_id")
     private Convenio convenio;
