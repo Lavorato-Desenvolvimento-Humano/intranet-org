@@ -73,16 +73,13 @@ export default function EquipeDetailPage() {
 
         setEquipe(equipeData);
 
-        // Converter UserEquipeDto[] para UserDto[]
-        // Assumindo que UserEquipeDto tem userId, userName, etc.
         const membrosFormatados: UserDto[] = membrosEquipeData.map(
           (membro) => ({
-            id: membro.userId,
-            fullName: membro.userName,
+            id: membro.id || membro.userId || "", // Garantir que o id nunca seja undefined
+            fullName: membro.userName || "",
             email: membro.userEmail || "",
             roles: membro.userRoles || [],
-            emailVerified: true, // Valor padrão se não disponível
-            // Outros campos com valores padrão se necessário
+            emailVerified: true, // Valor padrão assumido
           })
         );
 
@@ -112,6 +109,21 @@ export default function EquipeDetailPage() {
     });
   };
 
+  const handleRemoveMemberConfirmation = (membro: UserDto) => {
+    // Verificação de segurança para não passar undefined como ID
+    if (!membro.id) {
+      toastUtil.error("ID do membro inválido. Não é possível remover.");
+      return;
+    }
+
+    setConfirmRemoveMembro({
+      show: true,
+      membroId: membro.id,
+      membroName: membro.fullName || "Membro",
+      isRemoving: false,
+    });
+  };
+
   // Excluir equipe
   const handleDeleteEquipe = async () => {
     setConfirmDelete({ ...confirmDelete, isDeleting: true });
@@ -131,6 +143,14 @@ export default function EquipeDetailPage() {
     if (!confirmRemoveMembro) return;
 
     const { membroId } = confirmRemoveMembro;
+
+    // Verificação adicional para garantir que o ID do membro é válido
+    if (!membroId || membroId === "undefined") {
+      toastUtil.error("ID do membro inválido. Não é possível remover.");
+      setConfirmRemoveMembro(null);
+      return;
+    }
+
     setConfirmRemoveMembro({ ...confirmRemoveMembro, isRemoving: true });
 
     try {
@@ -398,13 +418,7 @@ export default function EquipeDetailPage() {
                 showActions={canEditEquipe}
                 onDelete={
                   canEditEquipe
-                    ? (membro) =>
-                        setConfirmRemoveMembro({
-                          show: true,
-                          membroId: membro.id,
-                          membroName: membro.fullName,
-                          isRemoving: false,
-                        })
+                    ? (membro) => handleRemoveMemberConfirmation(membro)
                     : undefined
                 }
               />
