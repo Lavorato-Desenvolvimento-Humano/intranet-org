@@ -54,7 +54,9 @@ export default function EditarPostagemPage() {
   const [formData, setFormData] = useState({
     title: "",
     text: "",
+    tipoDestino: "convenio" as "geral" | "equipe" | "convenio",
     convenioId: "",
+    equipeId: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState<
@@ -94,9 +96,14 @@ export default function EditarPostagemPage() {
 
         // Preencher formulário com dados da postagem
         setFormData({
-          title: postagemData.title,
-          text: postagemData.text,
-          convenioId: postagemData.convenioId,
+          title: postagemData.title || "",
+          text: postagemData.text || "",
+          tipoDestino: (postagemData.equipeId ? "equipe" : "convenio") as
+            | "geral"
+            | "equipe"
+            | "convenio",
+          convenioId: postagemData.convenioId || "",
+          equipeId: postagemData.equipeId || "",
         });
       } catch (err) {
         console.error("Erro ao carregar dados:", err);
@@ -480,7 +487,7 @@ export default function EditarPostagemPage() {
             items={[
               { label: "Convênios", href: "/convenios" },
               {
-                label: postagem.convenioName,
+                label: postagem.convenioName ?? "Convênio",
                 href: `/convenios/${postagem.convenioId}`,
               },
               {

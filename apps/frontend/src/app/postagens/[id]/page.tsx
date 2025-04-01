@@ -290,7 +290,7 @@ export default function PostagemViewPage() {
             items={[
               { label: "Convênios", href: "/convenios" },
               {
-                label: postagem.convenioName,
+                label: postagem.convenioName || "",
                 href: `/convenios/${postagem.convenioId}`,
               },
               { label: postagem.title },
