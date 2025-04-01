@@ -43,33 +43,10 @@ public interface PostagemRepository extends JpaRepository<Postagem, UUID> {
             "ORDER BY p.createdAt DESC")
     List<Postagem> findVisibleToUserOrderByCreatedAtDesc(@Param("userId") UUID userId);
 
-    /**
-     * Busca todas as postagens de determinados tipos de destino
-     */
-    List<Postagem> findByTipoDestinoInOrderByCreatedAtDesc(List<String> tiposDestino);
+    List<Postagem> findByTipoDestinoAndEquipeIdOrderByCreatedAtDesc(String tipoDestino, UUID equipeId);
 
-    @Query("SELECT COUNT(p) FROM Postagem p WHERE p.tipoDestino = 'equipe' AND p.equipe.id = :equipeId")
-    long countByEquipeId(@Param("equipeId") UUID equipeId);
+    List<Postagem> findByTipoDestinoOrderByCreatedAtDesc(String tipoDestino);
 
-    /**
-     * Busca todas as postagens visíveis para um usuário com paginação
-     */
-    @Query("SELECT p FROM Postagem p WHERE " +
-            "p.tipoDestino IN ('geral', 'convenio') OR " +
-            "(p.tipoDestino = 'equipe' AND p.equipe.id IN " +
-            "(SELECT ue.equipe.id FROM UserEquipe ue WHERE ue.user.id = :userId)) " +
-            "ORDER BY p.createdAt DESC")
-    Page<Postagem> findVisibleToUserPaged(
-            @Param("userId") UUID userId,
-            Pageable pageable);
-
-    @Query(value = "SELECT p FROM Postagem p WHERE " +
-            "(p.tipoDestino = 'geral' OR " +
-            "(p.tipoDestino = 'convenio' AND p.convenio.id = :convenioId) OR " +
-            "(p.tipoDestino = 'equipe' AND p.equipe.id IN " +
-            "(SELECT ue.equipe.id FROM UserEquipe ue WHERE ue.user.id = :userId))) " +
-            "ORDER BY p.createdAt DESC")
-    List<Postagem> findVisibleToUserOrderByCreatedAtDesc(
-            @Param("userId") UUID userId,
-            @Param("convenioId") UUID convenioId);
 }
+
+
