@@ -85,13 +85,14 @@ export default function DashboardPage() {
           [key: string]: { name: string; count: number };
         } = {};
         postagensData.content.forEach((postagem) => {
-          if (!convenioCount[postagem.convenioId]) {
-            convenioCount[postagem.convenioId] = {
-              name: postagem.convenioName,
+          const convenioKey = postagem.convenioId ?? "desconhecido";
+          if (!convenioCount[convenioKey]) {
+            convenioCount[convenioKey] = {
+              name: postagem.convenioName ?? "Convênio Desconhecido",
               count: 0,
             };
           }
-          convenioCount[postagem.convenioId].count += 1;
+          convenioCount[convenioKey].count += 1;
         });
 
         let convenioMaisAtivo = { name: "Nenhum", count: 0 };
