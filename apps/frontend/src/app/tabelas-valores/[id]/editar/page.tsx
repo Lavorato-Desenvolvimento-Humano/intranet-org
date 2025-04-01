@@ -15,6 +15,7 @@ import convenioService, { ConvenioDto } from "@/services/convenio";
 import toastUtil from "@/utils/toast";
 import { CustomButton } from "@/components/ui/custom-button";
 import TabelaValoresEditor from "@/components/ui/tabela-valores-editor";
+import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
 
 export default function EditarTabelaValoresPage() {
   const router = useRouter();
@@ -204,130 +205,136 @@ export default function EditarTabelaValoresPage() {
 
   // Renderização principal
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Navbar />
-      <main className="flex-grow container mx-auto p-6">
-        <Breadcrumb
-          items={[
-            { label: "Dashboard", href: "/dashboard" },
-            { label: "Tabelas de Valores", href: "/tabelas-valores" },
-            {
-              label: originalTabela.nome,
-              href: `/tabelas-valores/${tabelaId}`,
-            },
-            { label: "Editar" },
-          ]}
-        />
+    <ProtectedRoute>
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <Navbar />
+        <main className="flex-grow container mx-auto p-6">
+          <Breadcrumb
+            items={[
+              { label: "Dashboard", href: "/dashboard" },
+              { label: "Tabelas de Valores", href: "/tabelas-valores" },
+              {
+                label: originalTabela.nome,
+                href: `/tabelas-valores/${tabelaId}`,
+              },
+              { label: "Editar" },
+            ]}
+          />
 
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">
-            Editar Tabela de Valores
-          </h1>
-        </div>
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold text-gray-800">
+              Editar Tabela de Valores
+            </h1>
+          </div>
 
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <form onSubmit={handleSubmit}>
-            <div className="mb-4">
-              <label
-                htmlFor="nome"
-                className="block text-sm font-medium text-gray-700 mb-1">
-                Nome *
-              </label>
-              <input
-                type="text"
-                id="nome"
-                name="nome"
-                value={tabela.nome}
-                onChange={handleChange}
-                className={`w-full px-3 py-2 border rounded-md ${
-                  errors.nome ? "border-red-500" : "border-gray-300"
-                } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
-                placeholder="Digite o nome da tabela"
-                disabled={submitting}
-              />
-              {errors.nome && (
-                <p className="mt-1 text-sm text-red-500">{errors.nome}</p>
-              )}
-            </div>
-            <div className="mb-4">
-              <label
-                htmlFor="convenioId"
-                className="block text-sm font-medium text-gray-700 mb-1">
-                Convênio *
-              </label>
-              <select
-                id="convenioId"
-                name="convenioId"
-                value={tabela.convenioId}
-                onChange={handleChange}
-                className={`w-full px-3 py-2 border rounded-md ${
-                  errors.convenioId ? "border-red-500" : "border-gray-300"
-                } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
-                disabled={submitting}>
-                {convenios.map((convenio) => (
-                  <option key={convenio.id} value={convenio.id}>
-                    {convenio.name}
-                  </option>
-                ))}
-              </select>
-              {errors.convenioId && (
-                <p className="mt-1 text-sm text-red-500">{errors.convenioId}</p>
-              )}
-            </div>
-            <div className="mb-4">
-              <label
-                htmlFor="descricao"
-                className="block text-sm font-medium text-gray-700 mb-1">
-                Descrição
-              </label>
-              <textarea
-                id="descricao"
-                name="descricao"
-                value={tabela.descricao}
-                onChange={handleChange}
-                rows={3}
-                className={`w-full px-3 py-2 border rounded-md ${
-                  errors.descricao ? "border-red-500" : "border-gray-300"
-                } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
-                placeholder="Digite uma descrição para a tabela (opcional)"
-                disabled={submitting}></textarea>
-              {errors.descricao && (
-                <p className="mt-1 text-sm text-red-500">{errors.descricao}</p>
-              )}
-            </div>
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Valores *
-              </label>
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <form onSubmit={handleSubmit}>
+              <div className="mb-4">
+                <label
+                  htmlFor="nome"
+                  className="block text-sm font-medium text-gray-700 mb-1">
+                  Nome *
+                </label>
+                <input
+                  type="text"
+                  id="nome"
+                  name="nome"
+                  value={tabela.nome}
+                  onChange={handleChange}
+                  className={`w-full px-3 py-2 border rounded-md ${
+                    errors.nome ? "border-red-500" : "border-gray-300"
+                  } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
+                  placeholder="Digite o nome da tabela"
+                  disabled={submitting}
+                />
+                {errors.nome && (
+                  <p className="mt-1 text-sm text-red-500">{errors.nome}</p>
+                )}
+              </div>
+              <div className="mb-4">
+                <label
+                  htmlFor="convenioId"
+                  className="block text-sm font-medium text-gray-700 mb-1">
+                  Convênio *
+                </label>
+                <select
+                  id="convenioId"
+                  name="convenioId"
+                  value={tabela.convenioId}
+                  onChange={handleChange}
+                  className={`w-full px-3 py-2 border rounded-md ${
+                    errors.convenioId ? "border-red-500" : "border-gray-300"
+                  } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
+                  disabled={submitting}>
+                  {convenios.map((convenio) => (
+                    <option key={convenio.id} value={convenio.id}>
+                      {convenio.name}
+                    </option>
+                  ))}
+                </select>
+                {errors.convenioId && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {errors.convenioId}
+                  </p>
+                )}
+              </div>
+              <div className="mb-4">
+                <label
+                  htmlFor="descricao"
+                  className="block text-sm font-medium text-gray-700 mb-1">
+                  Descrição
+                </label>
+                <textarea
+                  id="descricao"
+                  name="descricao"
+                  value={tabela.descricao}
+                  onChange={handleChange}
+                  rows={3}
+                  className={`w-full px-3 py-2 border rounded-md ${
+                    errors.descricao ? "border-red-500" : "border-gray-300"
+                  } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
+                  placeholder="Digite uma descrição para a tabela (opcional)"
+                  disabled={submitting}></textarea>
+                {errors.descricao && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {errors.descricao}
+                  </p>
+                )}
+              </div>
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Valores *
+                </label>
 
-              <TabelaValoresEditor
-                value={tabela.conteudo}
-                onChange={handleTabelaChange}
-                disabled={submitting}
-                error={errors.conteudo}
-              />
-            </div>
-            <div className="flex justify-end space-x-3">
-              <CustomButton
-                type="button"
-                variant="primary"
-                className="bg-red-600 hover:bg-red-700 text-white border-none"
-                icon={X}
-                onClick={handleCancel}
-                disabled={submitting}>
-                Cancelar
-              </CustomButton>
-              <CustomButton
-                type="submit"
-                variant="primary"
-                icon={Save}
-                disabled={submitting}>
-                {submitting ? "Salvando..." : "Salvar Alterações"}
-              </CustomButton>
-            </div>
-          </form>
-        </div>
-      </main>
-    </div>
+                <TabelaValoresEditor
+                  value={tabela.conteudo}
+                  onChange={handleTabelaChange}
+                  disabled={submitting}
+                  error={errors.conteudo}
+                />
+              </div>
+              <div className="flex justify-end space-x-3">
+                <CustomButton
+                  type="button"
+                  variant="primary"
+                  className="bg-red-600 hover:bg-red-700 text-white border-none"
+                  icon={X}
+                  onClick={handleCancel}
+                  disabled={submitting}>
+                  Cancelar
+                </CustomButton>
+                <CustomButton
+                  type="submit"
+                  variant="primary"
+                  icon={Save}
+                  disabled={submitting}>
+                  {submitting ? "Salvando..." : "Salvar Alterações"}
+                </CustomButton>
+              </div>
+            </form>
+          </div>
+        </main>
+      </div>
+    </ProtectedRoute>
   );
 }

@@ -28,6 +28,7 @@ import postagemService, {
 import toastUtil from "@/utils/toast";
 import { CustomButton } from "@/components/ui/custom-button";
 import ContentViewer from "@/components/ui/content-viewer";
+import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
 
 export default function PostagemViewPage() {
   const router = useRouter();
@@ -280,217 +281,227 @@ export default function PostagemViewPage() {
   const hasTabelas = postagem.tabelas && postagem.tabelas.length > 0;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Navbar />
+    <ProtectedRoute>
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <Navbar />
 
-      <main className="flex-grow container mx-auto p-6">
-        <Breadcrumb
-          items={[
-            { label: "Convênios", href: "/convenios" },
-            {
-              label: postagem.convenioName,
-              href: `/convenios/${postagem.convenioId}`,
-            },
-            { label: postagem.title },
-          ]}
-        />
+        <main className="flex-grow container mx-auto p-6">
+          <Breadcrumb
+            items={[
+              { label: "Convênios", href: "/convenios" },
+              {
+                label: postagem.convenioName,
+                href: `/convenios/${postagem.convenioId}`,
+              },
+              { label: postagem.title },
+            ]}
+          />
 
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">{postagem.title}</h1>
-          <div className="flex space-x-2">
-            {canEdit() && (
-              <CustomButton
-                variant="primary"
-                icon={Edit}
-                onClick={() => router.push(`/postagens/${postagemId}/editar`)}>
-                Editar
-              </CustomButton>
-            )}
-            {canDelete() && (
-              <CustomButton
-                variant="primary"
-                icon={Trash}
-                onClick={() =>
-                  setConfirmDelete({ show: true, isDeleting: false })
-                }
-                className="bg-red-600 hover:bg-red-700 text-white border-none">
-                Excluir
-              </CustomButton>
-            )}
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          {/* Informações da postagem */}
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex flex-wrap justify-between items-center mb-4">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-800">
-                  Detalhes da Postagem
-                </h2>
-              </div>
-              <div className="flex items-center text-sm text-gray-500">
-                <Calendar size={16} className="mr-1 text-gray-400" />
-                {formatDate(postagem.createdAt)}
-                <Clock size={16} className="ml-3 mr-1 text-gray-400" />
-                {formatTime(postagem.createdAt)}
-              </div>
-            </div>
-            <div className="flex flex-wrap">
-              <div className="w-full md:w-1/2 mb-2 md:mb-0">
-                <p className="text-sm text-gray-500">Autor:</p>
-                <p className="text-gray-800">{postagem.createdByName}</p>
-              </div>
-              <div className="w-full md:w-1/2">
-                <p className="text-sm text-gray-500">Convênio:</p>
-                <p className="text-gray-800">{postagem.convenioName}</p>
-              </div>
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold text-gray-800">
+              {postagem.title}
+            </h1>
+            <div className="flex space-x-2">
+              {canEdit() && (
+                <CustomButton
+                  variant="primary"
+                  icon={Edit}
+                  onClick={() =>
+                    router.push(`/postagens/${postagemId}/editar`)
+                  }>
+                  Editar
+                </CustomButton>
+              )}
+              {canDelete() && (
+                <CustomButton
+                  variant="primary"
+                  icon={Trash}
+                  onClick={() =>
+                    setConfirmDelete({ show: true, isDeleting: false })
+                  }
+                  className="bg-red-600 hover:bg-red-700 text-white border-none">
+                  Excluir
+                </CustomButton>
+              )}
             </div>
           </div>
 
-          {/* Navegação entre conteúdo, anexos, imagens e tabelas */}
-          <div className="border-b border-gray-200">
-            <nav className="flex flex-wrap -mb-px">
-              <button
-                onClick={() => setActiveTab("conteudo")}
-                className={`py-4 px-6 border-b-2 font-medium text-sm ${
-                  activeTab === "conteudo"
-                    ? "border-primary text-primary"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}>
-                Conteúdo
-              </button>
-              {hasImagens && (
-                <button
-                  onClick={() => setActiveTab("imagens")}
-                  className={`py-4 px-6 border-b-2 font-medium text-sm ${
-                    activeTab === "imagens"
-                      ? "border-primary text-primary"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                  }`}>
-                  <div className="flex items-center">
-                    <ImageIcon size={16} className="mr-2" />
-                    Imagens ({postagem.imagens.length})
-                  </div>
-                </button>
-              )}
-              {hasAnexos && (
-                <button
-                  onClick={() => setActiveTab("anexos")}
-                  className={`py-4 px-6 border-b-2 font-medium text-sm ${
-                    activeTab === "anexos"
-                      ? "border-primary text-primary"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                  }`}>
-                  <div className="flex items-center">
-                    <Paperclip size={16} className="mr-2" />
-                    Anexos ({postagem.anexos.length})
-                  </div>
-                </button>
-              )}
-              {hasTabelas && (
-                <button
-                  onClick={() => setActiveTab("tabelas")}
-                  className={`py-4 px-6 border-b-2 font-medium text-sm ${
-                    activeTab === "tabelas"
-                      ? "border-primary text-primary"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                  }`}>
-                  <div className="flex items-center">
-                    <Table size={16} className="mr-2" />
-                    Tabelas ({postagem.tabelas.length})
-                  </div>
-                </button>
-              )}
-            </nav>
-          </div>
-
-          {/* Conteúdo da aba selecionada */}
-          <div className="p-6">
-            {activeTab === "conteudo" && (
-              <ContentViewer
-                content={postagem.text}
-                className="whitespace-pre-wrap"
-              />
-            )}
-
-            {activeTab === "imagens" && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {postagem.imagens.map((imagem, index) => (
-                  <div key={imagem.id} className="bg-gray-50 p-4 rounded-lg">
-                    <img
-                      src={imagem.url}
-                      alt={imagem.description || `Imagem ${index + 1}`}
-                      className="w-full max-h-96 rounded-lg mb-2"
-                    />
-                    {imagem.description && (
-                      <p className="text-sm text-gray-600 text-center">
-                        {imagem.description}
-                      </p>
-                    )}
-                  </div>
-                ))}
+          <div className="bg-white rounded-lg shadow-md overflow-hidden">
+            {/* Informações da postagem */}
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex flex-wrap justify-between items-center mb-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-800">
+                    Detalhes da Postagem
+                  </h2>
+                </div>
+                <div className="flex items-center text-sm text-gray-500">
+                  <Calendar size={16} className="mr-1 text-gray-400" />
+                  {formatDate(postagem.createdAt)}
+                  <Clock size={16} className="ml-3 mr-1 text-gray-400" />
+                  {formatTime(postagem.createdAt)}
+                </div>
               </div>
-            )}
+              <div className="flex flex-wrap">
+                <div className="w-full md:w-1/2 mb-2 md:mb-0">
+                  <p className="text-sm text-gray-500">Autor:</p>
+                  <p className="text-gray-800">{postagem.createdByName}</p>
+                </div>
+                <div className="w-full md:w-1/2">
+                  <p className="text-sm text-gray-500">Convênio:</p>
+                  <p className="text-gray-800">{postagem.convenioName}</p>
+                </div>
+              </div>
+            </div>
 
-            {activeTab === "anexos" && (
-              <div className="space-y-2">
-                {postagem.anexos.map((anexo) => (
-                  <div
-                    key={anexo.id}
-                    className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                    <div className="mr-3 text-gray-400">
-                      <Paperclip size={20} />
+            {/* Navegação entre conteúdo, anexos, imagens e tabelas */}
+            <div className="border-b border-gray-200">
+              <nav className="flex flex-wrap -mb-px">
+                <button
+                  onClick={() => setActiveTab("conteudo")}
+                  className={`py-4 px-6 border-b-2 font-medium text-sm ${
+                    activeTab === "conteudo"
+                      ? "border-primary text-primary"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}>
+                  Conteúdo
+                </button>
+                {hasImagens && (
+                  <button
+                    onClick={() => setActiveTab("imagens")}
+                    className={`py-4 px-6 border-b-2 font-medium text-sm ${
+                      activeTab === "imagens"
+                        ? "border-primary text-primary"
+                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    }`}>
+                    <div className="flex items-center">
+                      <ImageIcon size={16} className="mr-2" />
+                      Imagens ({postagem.imagens.length})
                     </div>
-                    <div className="flex-grow">
-                      <p className="text-sm font-medium text-gray-700">
-                        {anexo.nameFile}
-                      </p>
-                      <p className="text-xs text-gray-500">{anexo.typeFile}</p>
+                  </button>
+                )}
+                {hasAnexos && (
+                  <button
+                    onClick={() => setActiveTab("anexos")}
+                    className={`py-4 px-6 border-b-2 font-medium text-sm ${
+                      activeTab === "anexos"
+                        ? "border-primary text-primary"
+                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    }`}>
+                    <div className="flex items-center">
+                      <Paperclip size={16} className="mr-2" />
+                      Anexos ({postagem.anexos.length})
                     </div>
-                    <a
-                      href={anexo.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-2 text-primary hover:text-primary-dark transition-colors"
-                      title="Baixar anexo">
-                      <Download size={20} />
-                    </a>
-                  </div>
-                ))}
-              </div>
-            )}
+                  </button>
+                )}
+                {hasTabelas && (
+                  <button
+                    onClick={() => setActiveTab("tabelas")}
+                    className={`py-4 px-6 border-b-2 font-medium text-sm ${
+                      activeTab === "tabelas"
+                        ? "border-primary text-primary"
+                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    }`}>
+                    <div className="flex items-center">
+                      <Table size={16} className="mr-2" />
+                      Tabelas ({postagem.tabelas.length})
+                    </div>
+                  </button>
+                )}
+              </nav>
+            </div>
 
-            {activeTab === "tabelas" && (
-              <div className="space-y-8">
-                {postagem.tabelas.map((tabela, index) => (
-                  <div key={tabela.id} className="bg-white">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                      Tabela {index + 1}
-                    </h3>
-                    {renderTabela(tabela)}
-                  </div>
-                ))}
-              </div>
-            )}
+            {/* Conteúdo da aba selecionada */}
+            <div className="p-6">
+              {activeTab === "conteudo" && (
+                <ContentViewer
+                  content={postagem.text}
+                  className="whitespace-pre-wrap"
+                />
+              )}
+
+              {activeTab === "imagens" && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {postagem.imagens.map((imagem, index) => (
+                    <div key={imagem.id} className="bg-gray-50 p-4 rounded-lg">
+                      <img
+                        src={imagem.url}
+                        alt={imagem.description || `Imagem ${index + 1}`}
+                        className="w-full max-h-96 rounded-lg mb-2"
+                      />
+                      {imagem.description && (
+                        <p className="text-sm text-gray-600 text-center">
+                          {imagem.description}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {activeTab === "anexos" && (
+                <div className="space-y-2">
+                  {postagem.anexos.map((anexo) => (
+                    <div
+                      key={anexo.id}
+                      className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                      <div className="mr-3 text-gray-400">
+                        <Paperclip size={20} />
+                      </div>
+                      <div className="flex-grow">
+                        <p className="text-sm font-medium text-gray-700">
+                          {anexo.nameFile}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {anexo.typeFile}
+                        </p>
+                      </div>
+                      <a
+                        href={anexo.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 text-primary hover:text-primary-dark transition-colors"
+                        title="Baixar anexo">
+                        <Download size={20} />
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {activeTab === "tabelas" && (
+                <div className="space-y-8">
+                  {postagem.tabelas.map((tabela, index) => (
+                    <div key={tabela.id} className="bg-white">
+                      <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                        Tabela {index + 1}
+                      </h3>
+                      {renderTabela(tabela)}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      </main>
+        </main>
 
-      {/* Diálogo de confirmação de exclusão */}
-      {confirmDelete.show && (
-        <ConfirmDialog
-          isOpen={confirmDelete.show}
-          title="Excluir Postagem"
-          message="Tem certeza que deseja excluir esta postagem? Esta ação não pode ser desfeita."
-          confirmText="Excluir"
-          cancelText="Cancelar"
-          onConfirm={handleDeletePostagem}
-          onCancel={() => setConfirmDelete({ show: false, isDeleting: false })}
-          isLoading={confirmDelete.isDeleting}
-          variant="danger"
-        />
-      )}
-    </div>
+        {/* Diálogo de confirmação de exclusão */}
+        {confirmDelete.show && (
+          <ConfirmDialog
+            isOpen={confirmDelete.show}
+            title="Excluir Postagem"
+            message="Tem certeza que deseja excluir esta postagem? Esta ação não pode ser desfeita."
+            confirmText="Excluir"
+            cancelText="Cancelar"
+            onConfirm={handleDeletePostagem}
+            onCancel={() =>
+              setConfirmDelete({ show: false, isDeleting: false })
+            }
+            isLoading={confirmDelete.isDeleting}
+            variant="danger"
+          />
+        )}
+      </div>
+    </ProtectedRoute>
   );
 }

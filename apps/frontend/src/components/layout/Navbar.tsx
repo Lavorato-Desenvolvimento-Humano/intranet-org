@@ -11,6 +11,7 @@ import {
   SettingsIcon,
   LogOutIcon,
   Table,
+  Users,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -80,6 +81,14 @@ export default function Navbar() {
               onClick={handleNavigate("/tabelas-valores")}>
               <Table className="mr-1" size={18} />
               <span>Tabelas</span>
+            </Link>
+
+            <Link
+              href="/equipes"
+              className="text-white hover:text-gray-200 flex items-center"
+              onClick={handleNavigate("/equipes")}>
+              <Users className="mr-1" size={18} />
+              <span>Equipes</span>
             </Link>
 
             {hasAdminRole && (

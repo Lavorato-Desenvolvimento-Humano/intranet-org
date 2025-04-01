@@ -51,8 +51,17 @@ public class DTOMapperUtil {
         PostagemSummaryDto dto = new PostagemSummaryDto();
         dto.setId(postagem.getId());
         dto.setTitle(postagem.getTitle());
-        dto.setConvenioId(postagem.getConvenio().getId());
-        dto.setConvenioName(postagem.getConvenio().getName());
+        dto.setTipoDestino(postagem.getTipoDestino());
+
+        // Definir IDs e nomes baseados no tipo de destino
+        if ("convenio".equals(postagem.getTipoDestino()) && postagem.getConvenio() != null) {
+            dto.setConvenioId(postagem.getConvenio().getId());
+            dto.setConvenioName(postagem.getConvenio().getName());
+        } else if ("equipe".equals(postagem.getTipoDestino()) && postagem.getEquipe() != null) {
+            dto.setEquipeId(postagem.getEquipe().getId());
+            dto.setEquipeName(postagem.getEquipe().getNome());
+        }
+
         dto.setCreatedById(postagem.getCreatedBy().getId());
         dto.setCreatedByName(postagem.getCreatedBy().getFullName());
         dto.setCreatedAt(postagem.getCreatedAt());
@@ -77,13 +86,23 @@ public class DTOMapperUtil {
         dto.setId(postagem.getId());
         dto.setTitle(postagem.getTitle());
         dto.setText(postagem.getText());
-        dto.setConvenioId(postagem.getConvenio().getId());
-        dto.setConvenioName(postagem.getConvenio().getName());
+        dto.setTipoDestino(postagem.getTipoDestino());
+
+        // Definir IDs e nomes baseados no tipo de destino
+        if ("convenio".equals(postagem.getTipoDestino()) && postagem.getConvenio() != null) {
+            dto.setConvenioId(postagem.getConvenio().getId());
+            dto.setConvenioName(postagem.getConvenio().getName());
+        } else if ("equipe".equals(postagem.getTipoDestino()) && postagem.getEquipe() != null) {
+            dto.setEquipeId(postagem.getEquipe().getId());
+            dto.setEquipeName(postagem.getEquipe().getNome());
+        }
+
         dto.setCreatedById(postagem.getCreatedBy().getId());
         dto.setCreatedByName(postagem.getCreatedBy().getFullName());
         dto.setCreatedAt(postagem.getCreatedAt());
         dto.setUpdatedAt(postagem.getUpdatedAt());
 
+        // Mapear imagens, anexos e tabelas como antes
         List<ImagemDto> imagemDtos = postagem.getImagens().stream()
                 .map(DTOMapperUtil::mapToImagemDto)
                 .collect(Collectors.toList());
@@ -101,6 +120,7 @@ public class DTOMapperUtil {
 
         return dto;
     }
+
 
     /**
      * Mapeia uma imagem para um DTO de imagem
@@ -143,6 +163,22 @@ public class DTOMapperUtil {
         dto.setConteudo(tabela.getConteudo());
         return dto;
     }
+
+    /**
+     * Mapeia uma equipe para um DTO de equipe
+     */
+    public static EquipeDto mapToEquipeDto(Equipe equipe, int membroCount) {
+        EquipeDto dto = new EquipeDto();
+        dto.setId(equipe.getId());
+        dto.setNome(equipe.getNome());
+        dto.setDescricao(equipe.getDescricao());
+        dto.setCreatedAt(equipe.getCreatedAt());
+        dto.setUpdatedAt(equipe.getUpdatedAt());
+        dto.setMembroCount(membroCount);
+        return dto;
+    }
+
+
 
     /**
      * Mapeia uma tabela de valores para um DTO de tabela de valores
