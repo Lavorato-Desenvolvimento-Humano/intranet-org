@@ -24,17 +24,14 @@ public interface PostagemService {
 
     void deletePostagem(UUID id);
 
-    // Métodos para manipulação de imagens
     ImagemDto addImagem(UUID postagemId, MultipartFile file, String description);
 
     void deleteImagem(UUID id);
 
-    // Métodos para manipulação de anexos
     AnexoDto addAnexo(UUID postagemId, MultipartFile file);
 
     void deleteAnexo(UUID id);
 
-    // Métodos para manipulação de tabelas
     TabelaPostagemDto addTabelaPostagem(UUID postagemId, String conteudoJson);
 
     TabelaPostagemDto updateTabelaPostagem(UUID id, String conteudoJson);
@@ -42,4 +39,6 @@ public interface PostagemService {
     void deleteTabelaPostagem(UUID id);
 
     AnexoDto associarAnexo(UUID postagemId, UUID anexoId);
+
+    List<PostagemSummaryDto> getPostagensVisibleToCurrentUser();
 }

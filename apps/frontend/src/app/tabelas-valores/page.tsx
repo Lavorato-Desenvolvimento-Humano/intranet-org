@@ -15,6 +15,7 @@ import tabelaValoresService, {
 } from "@/services/tabelaValores";
 import toastUtil from "@/utils/toast";
 import { CustomButton } from "@/components/ui/custom-button";
+import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
 
 export default function TabelasValoresPage() {
   const router = useRouter();
@@ -191,69 +192,71 @@ export default function TabelasValoresPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Navbar />
+    <ProtectedRoute>
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <Navbar />
 
-      <main className="flex-grow container mx-auto p-6">
-        <Breadcrumb
-          items={[
-            { label: "Dashboard", href: "/dashboard" },
-            { label: "Tabelas de Valores" },
-          ]}
-        />
+        <main className="flex-grow container mx-auto p-6">
+          <Breadcrumb
+            items={[
+              { label: "Dashboard", href: "/dashboard" },
+              { label: "Tabelas de Valores" },
+            ]}
+          />
 
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">
-            Tabelas de Valores
-          </h1>
-          {canCreate && (
-            <CustomButton
-              variant="primary"
-              icon={Plus}
-              onClick={() => router.push("/tabelas-valores/nova")}>
-              Nova Tabela
-            </CustomButton>
-          )}
-        </div>
-
-        {loading ? (
-          <Loading message="Carregando tabelas de valores..." />
-        ) : error ? (
-          <div className="bg-red-50 text-red-700 p-4 rounded-md mb-4">
-            {error}
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold text-gray-800">
+              Tabelas de Valores
+            </h1>
+            {canCreate && (
+              <CustomButton
+                variant="primary"
+                icon={Plus}
+                onClick={() => router.push("/tabelas-valores/nova")}>
+                Nova Tabela
+              </CustomButton>
+            )}
           </div>
-        ) : (
-          <DataTable
-            data={tabelas}
-            columns={columns}
-            keyExtractor={(item) => item.id}
-            searchable
-            searchKeys={["nome", "descricao", "convenioNome"]}
-            onRowClick={(tabela) =>
-              router.push(`/tabelas-valores/${tabela.id}`)
+
+          {loading ? (
+            <Loading message="Carregando tabelas de valores..." />
+          ) : error ? (
+            <div className="bg-red-50 text-red-700 p-4 rounded-md mb-4">
+              {error}
+            </div>
+          ) : (
+            <DataTable
+              data={tabelas}
+              columns={columns}
+              keyExtractor={(item) => item.id}
+              searchable
+              searchKeys={["nome", "descricao", "convenioNome"]}
+              onRowClick={(tabela) =>
+                router.push(`/tabelas-valores/${tabela.id}`)
+              }
+              emptyMessage="Nenhuma tabela de valores encontrada."
+              title="Lista de Tabelas de Valores"
+            />
+          )}
+        </main>
+
+        {/* Diálogo de confirmação de exclusão */}
+        {confirmDelete.show && (
+          <ConfirmDialog
+            isOpen={confirmDelete.show}
+            title="Excluir Tabela de Valores"
+            message={`Tem certeza que deseja excluir a tabela "${confirmDelete.tabela?.nome}"? Esta ação não pode ser desfeita.`}
+            confirmText="Excluir"
+            cancelText="Cancelar"
+            onConfirm={handleConfirmDelete}
+            onCancel={() =>
+              setConfirmDelete({ show: false, tabela: null, isDeleting: false })
             }
-            emptyMessage="Nenhuma tabela de valores encontrada."
-            title="Lista de Tabelas de Valores"
+            isLoading={confirmDelete.isDeleting}
+            variant="danger"
           />
         )}
-      </main>
-
-      {/* Diálogo de confirmação de exclusão */}
-      {confirmDelete.show && (
-        <ConfirmDialog
-          isOpen={confirmDelete.show}
-          title="Excluir Tabela de Valores"
-          message={`Tem certeza que deseja excluir a tabela "${confirmDelete.tabela?.nome}"? Esta ação não pode ser desfeita.`}
-          confirmText="Excluir"
-          cancelText="Cancelar"
-          onConfirm={handleConfirmDelete}
-          onCancel={() =>
-            setConfirmDelete({ show: false, tabela: null, isDeleting: false })
-          }
-          isLoading={confirmDelete.isDeleting}
-          variant="danger"
-        />
-      )}
-    </div>
+      </div>
+    </ProtectedRoute>
   );
 }

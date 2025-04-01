@@ -5,8 +5,11 @@ export interface PostagemDto {
   id: string;
   title: string;
   text: string;
-  convenioId: string;
-  convenioName: string;
+  tipoDestino: "geral" | "equipe" | "convenio";
+  convenioId?: string;
+  convenioName?: string;
+  equipeId?: string;
+  equipeName?: string;
   createdById: string;
   createdByName: string;
   createdAt: string;
@@ -19,8 +22,11 @@ export interface PostagemDto {
 export interface PostagemSummaryDto {
   id: string;
   title: string;
-  convenioId: string;
-  convenioName: string;
+  tipoDestino: "geral" | "equipe" | "convenio";
+  convenioId?: string;
+  convenioName?: string;
+  equipeId?: string;
+  equipeName?: string;
   createdById: string;
   createdByName: string;
   createdAt: string;
@@ -32,7 +38,9 @@ export interface PostagemSummaryDto {
 export interface PostagemCreateDto {
   title: string;
   text: string;
-  convenioId: string;
+  tipoDestino: "geral" | "equipe" | "convenio";
+  convenioId?: string;
+  equipeId?: string;
 }
 
 export interface ImagemDto {
@@ -450,6 +458,55 @@ const postagemService = {
         `Erro ao associar imagem ${imagemId} à postagem ${postagemId}:`,
         error
       );
+      throw error;
+    }
+  },
+
+  /**
+   * Obtém postagens de uma equipe específica
+   */
+  getPostagensByEquipeId: async (
+    equipeId: string
+  ): Promise<PostagemSummaryDto[]> => {
+    try {
+      const response = await api.get<PostagemSummaryDto[]>(
+        `/api/postagens/equipe/${equipeId}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Erro ao buscar postagens da equipe ${equipeId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Obtém postagens por tipo de destino
+   */
+  getPostagensByTipoDestino: async (
+    tipoDestino: string
+  ): Promise<PostagemSummaryDto[]> => {
+    try {
+      const response = await api.get<PostagemSummaryDto[]>(
+        `/api/postagens/tipo/${tipoDestino}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Erro ao buscar postagens do tipo ${tipoDestino}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Obtém postagens visíveis para o usuário atual
+   */
+  getPostagensVisiveis: async (): Promise<PostagemSummaryDto[]> => {
+    try {
+      const response = await api.get<PostagemSummaryDto[]>(
+        "/api/postagens/visiveis"
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Erro ao buscar postagens visíveis:", error);
       throw error;
     }
   },
