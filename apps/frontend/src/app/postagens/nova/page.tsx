@@ -323,7 +323,7 @@ export default function NovaPostagemPage() {
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                   disabled={submitting}>
-                  <option value="geral">Geral (todos os usuários)</option>
+                  <option value="geral">Geral</option>
                   <option value="equipe">Equipe específica</option>
                   <option value="convenio">Convênio específico</option>
                 </select>

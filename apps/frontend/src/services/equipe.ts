@@ -1,6 +1,18 @@
 // src/services/equipe.ts
 import api from "./api";
 
+export interface UserDto {
+  id: string;
+  fullName: string;
+  email: string;
+  profileImage?: string;
+  roles: string[];
+  emailVerified: boolean;
+  active: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface EquipeDto {
   id: string;
   nome: string;
@@ -59,11 +71,9 @@ const equipeService = {
   /**
    * Obtém os membros de uma equipe
    */
-  getMembrosEquipe: async (id: string): Promise<UserEquipeDto[]> => {
+  getMembrosEquipe: async (id: string): Promise<UserDto[]> => {
     try {
-      const response = await api.get<UserEquipeDto[]>(
-        `/api/equipes/${id}/membros`
-      );
+      const response = await api.get<UserDto[]>(`/api/equipes/${id}/membros`);
       return response.data;
     } catch (error) {
       console.error(`Erro ao buscar membros da equipe ${id}:`, error);

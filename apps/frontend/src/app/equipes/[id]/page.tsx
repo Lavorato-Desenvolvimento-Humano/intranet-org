@@ -71,19 +71,28 @@ export default function EquipeDetailPage() {
             postagemService.getPostagensByEquipeId(equipeId),
           ]);
 
+        console.log("Dados da equipe:", equipeData);
+        console.log("Dados dos membros brutos:", membrosEquipeData);
+
         setEquipe(equipeData);
 
-        const membrosFormatados: UserDto[] = membrosEquipeData.map(
-          (membro) => ({
-            id: membro.id || membro.userId || "", // Garantir que o id nunca seja undefined
-            fullName: membro.userName || "",
-            email: membro.userEmail || "",
-            roles: membro.userRoles || [],
-            emailVerified: true, // Valor padrão assumido
-          })
-        );
+        // Como o backend já está retornando objetos UserDto formatados,
+        // podemos usar diretamente sem precisar mapear novamente
+        if (Array.isArray(membrosEquipeData)) {
+          // Garantir que cada membro tem um ID válido
+          const membrosValidados = membrosEquipeData.filter(
+            (membro) => membro && membro.id
+          );
+          console.log("Membros validados:", membrosValidados);
+          setMembros(membrosValidados);
+        } else {
+          console.log(
+            "Formato inesperado de dados de membros:",
+            membrosEquipeData
+          );
+          setMembros([]);
+        }
 
-        setMembros(membrosFormatados);
         setPostagens(postagensData);
       } catch (err) {
         console.error("Erro ao carregar dados:", err);
@@ -99,6 +108,7 @@ export default function EquipeDetailPage() {
       fetchData();
     }
   }, [equipeId]);
+
   // Formatar data
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
