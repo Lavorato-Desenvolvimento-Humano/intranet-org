@@ -43,4 +43,6 @@ public interface PostagemService {
     List<PostagemSummaryDto> getPostagensByEquipeId(UUID equipeId);
 
     List<PostagemSummaryDto> getPostagensByTipoDestino(String tipoDestino);
+    
+    List<PostagemSummaryDto> getPostagensVisibleToCurrentUser();
 }
