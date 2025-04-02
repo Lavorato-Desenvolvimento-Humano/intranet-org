@@ -24,6 +24,11 @@ import userService, { UserDto } from "@/services/user";
 import toastUtil from "@/utils/toast";
 import { CustomButton } from "@/components/ui/custom-button";
 import DataTable from "@/components/ui/data-table";
+import { AddMembroModal } from "@/components/equipe/AddMembroModal";
+import {
+  buildProfileImageUrl,
+  getPlaceholderImageUrl,
+} from "@/utils/imageUtils";
 import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
 
 export default function EquipeDetailPage() {
@@ -43,11 +48,13 @@ export default function EquipeDetailPage() {
     show: boolean;
     membroId: string;
     membroName: string;
+    membroImage?: string;
     isRemoving: boolean;
   } | null>(null);
 
   const [showAddMembroModal, setShowAddMembroModal] = useState(false);
   const [availableUsers, setAvailableUsers] = useState<UserDto[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string>("");
 
   const equipeId = params?.id as string;
@@ -187,38 +194,43 @@ export default function EquipeDetailPage() {
 
   // Carregar usuários disponíveis para adicionar
   const loadAvailableUsers = async () => {
+    setLoadingUsers(true);
     try {
       // Obter todos os usuários
       const allUsers = await userService.getAllUsers();
 
       // Filtrar usuários que já são membros
       const membroIds = membros.map((m) => m.id);
-      const filtered = allUsers.filter(
-        (u: { id: any }) => !membroIds.includes(u.id)
-      );
+      const filtered = allUsers.filter((u) => !membroIds.includes(u.id));
 
       setAvailableUsers(filtered);
     } catch (err) {
       console.error("Erro ao carregar usuários disponíveis:", err);
       toastUtil.error("Erro ao carregar usuários disponíveis.");
+    } finally {
+      setLoadingUsers(false);
     }
   };
 
+  const getProfileImageUrl = (user: UserDto) => {
+    if (user.profileImage) {
+      return buildProfileImageUrl(user.profileImage);
+    }
+    return getPlaceholderImageUrl(user.fullName);
+  };
+
   // Adicionar membro
-  const handleAddMembro = async () => {
-    if (!selectedUserId) {
+  const handleAddMembro = async (userId: string) => {
+    if (!userId) {
       toastUtil.warning("Selecione um usuário para adicionar.");
       return;
     }
 
     try {
-      const updatedEquipe = await equipeService.addMembro(
-        equipeId,
-        selectedUserId
-      );
+      const updatedEquipe = await equipeService.addMembro(equipeId, userId);
 
       // Buscar informações do usuário adicionado
-      const addedUser = availableUsers.find((u) => u.id === selectedUserId);
+      const addedUser = availableUsers.find((u) => u.id === userId);
 
       if (addedUser) {
         // Atualizar lista de membros
@@ -230,7 +242,6 @@ export default function EquipeDetailPage() {
 
       toastUtil.success("Membro adicionado com sucesso!");
       setShowAddMembroModal(false);
-      setSelectedUserId("");
     } catch (err) {
       console.error("Erro ao adicionar membro:", err);
       toastUtil.error("Erro ao adicionar membro. Tente novamente.");
@@ -242,10 +253,19 @@ export default function EquipeDetailPage() {
     {
       key: "fullName",
       header: "Nome",
-      width: "40%",
+      width: "35%",
       render: (value: string, record: UserDto) => (
         <div className="flex items-center">
-          <User size={16} className="mr-2 text-gray-400" />
+          <img
+            src={getProfileImageUrl(record)}
+            alt={record.fullName}
+            className="w-8 h-8 rounded-full mr-2 border border-gray-200"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = getPlaceholderImageUrl(
+                record.fullName
+              );
+            }}
+          />
           <span className="font-medium">{value}</span>
         </div>
       ),
@@ -253,12 +273,12 @@ export default function EquipeDetailPage() {
     {
       key: "email",
       header: "Email",
-      width: "50%",
+      width: "45%",
     },
     {
       key: "roles",
       header: "Função",
-      width: "10%",
+      width: "20%",
       render: (value: string[]) => (
         <div className="text-xs bg-gray-100 px-2 py-1 rounded text-center">
           {value.map((role) => role.replace("ROLE_", "")).join(", ")}
@@ -481,55 +501,13 @@ export default function EquipeDetailPage() {
 
         {/* Modal para adicionar membro */}
         {showAddMembroModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
-              <h3 className="text-lg font-bold mb-4">
-                Adicionar Membro à Equipe
-              </h3>
-
-              {availableUsers.length === 0 ? (
-                <p className="text-gray-600 mb-4">
-                  Não há usuários disponíveis para adicionar.
-                </p>
-              ) : (
-                <>
-                  <div className="mb-4">
-                    <label
-                      htmlFor="userId"
-                      className="block text-sm font-medium text-gray-700 mb-1">
-                      Selecione um usuário:
-                    </label>
-                    <select
-                      id="userId"
-                      value={selectedUserId}
-                      onChange={(e) => setSelectedUserId(e.target.value)}
-                      className="w-full px-3 py-2 border rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
-                      <option value="">Selecione um usuário</option>
-                      {availableUsers.map((user) => (
-                        <option key={user.id} value={user.id}>
-                          {user.fullName} ({user.email})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </>
-              )}
-
-              <div className="flex justify-end space-x-3 mt-4">
-                <button
-                  onClick={() => setShowAddMembroModal(false)}
-                  className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md">
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleAddMembro}
-                  disabled={availableUsers.length === 0 || !selectedUserId}
-                  className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed">
-                  Adicionar
-                </button>
-              </div>
-            </div>
-          </div>
+          <AddMembroModal
+            isOpen={showAddMembroModal}
+            onClose={() => setShowAddMembroModal(false)}
+            onAdd={handleAddMembro}
+            availableUsers={availableUsers}
+            isLoading={loadingUsers}
+          />
         )}
 
         {/* Diálogo de confirmação para exclusão de equipe */}
@@ -554,7 +532,30 @@ export default function EquipeDetailPage() {
           <ConfirmDialog
             isOpen={true}
             title="Remover Membro"
-            message={`Tem certeza que deseja remover ${confirmRemoveMembro.membroName} desta equipe?`}
+            message={
+              <div className="flex flex-col items-center">
+                <p className="mb-4">Tem certeza que deseja remover:</p>
+                <div className="flex items-center mb-2">
+                  <img
+                    src={
+                      confirmRemoveMembro.membroImage
+                        ? buildProfileImageUrl(confirmRemoveMembro.membroImage)
+                        : getPlaceholderImageUrl(confirmRemoveMembro.membroName)
+                    }
+                    alt={confirmRemoveMembro.membroName}
+                    className="w-12 h-12 rounded-full mr-3 border border-gray-200"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src =
+                        getPlaceholderImageUrl(confirmRemoveMembro.membroName);
+                    }}
+                  />
+                  <span className="font-medium text-lg">
+                    {confirmRemoveMembro.membroName}
+                  </span>
+                </div>
+                <p>desta equipe?</p>
+              </div>
+            }
             confirmText="Remover"
             cancelText="Cancelar"
             onConfirm={handleRemoveMembro}
