@@ -170,16 +170,18 @@ export default function DashboardPage() {
         <Navbar />
 
         <main className="flex-grow container mx-auto p-6">
-          <div className="flex justify-between items-center mb-8">
-            <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
-            {canCreatePostagem && (
-              <CustomButton
-                variant="primary"
-                onClick={() => router.push("/postagens/nova")}>
-                Nova Postagem
-              </CustomButton>
-            )}
-          </div>
+          {(isAdmin || isEditor) && (
+            <div className="flex justify-between items-center mb-8">
+              <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
+              {canCreatePostagem && (
+                <CustomButton
+                  variant="primary"
+                  onClick={() => router.push("/postagens/nova")}>
+                  Nova Postagem
+                </CustomButton>
+              )}
+            </div>
+          )}
 
           {error && (
             <div className="bg-red-50 text-red-700 p-4 rounded-md mb-6">
