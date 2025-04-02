@@ -1,4 +1,3 @@
-// src/main/java/com/intranet/backend/service/impl/EquipeServiceImpl.java
 package com.intranet.backend.service.impl;
 
 import com.intranet.backend.dto.EquipeCreateDto;
@@ -113,8 +112,18 @@ public class EquipeServiceImpl implements EquipeService {
             throw new ResourceNotFoundException("Equipe não encontrada com ID: " + id);
         }
 
-        equipeRepository.deleteById(id);
-        logger.info("Equipe excluída com sucesso. ID: {}", id);
+        try {
+            // Primeiro, remover todas as associações UserEquipe para prevenir problemas de cascata
+            userEquipeRepository.deleteByEquipeId(id);
+            logger.debug("Associações de membros removidas para a equipe ID: {}", id);
+
+            // Agora é seguro remover a equipe
+            equipeRepository.deleteById(id);
+            logger.info("Equipe excluída com sucesso. ID: {}", id);
+        } catch (Exception e) {
+            logger.error("Erro ao excluir equipe ID {}: {}", id, e.getMessage());
+            throw e;
+        }
     }
 
     @Override

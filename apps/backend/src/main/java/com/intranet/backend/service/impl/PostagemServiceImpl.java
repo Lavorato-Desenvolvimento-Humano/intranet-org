@@ -229,7 +229,7 @@ public class PostagemServiceImpl implements PostagemService {
                 // Não precisa de configuração adicional
                 postagem.setConvenio(null);  // Explicitamente definir como null para garantir
                 postagem.setEquipe(null);    // Explicitamente definir como null para garantir
-                break; 
+                break;
 
             default:
                 throw new IllegalArgumentException("Tipo de destino inválido: " + tipoDestino);
