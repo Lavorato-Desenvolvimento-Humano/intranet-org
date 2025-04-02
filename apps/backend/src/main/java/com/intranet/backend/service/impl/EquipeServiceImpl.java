@@ -5,9 +5,11 @@ import com.intranet.backend.dto.EquipeDto;
 import com.intranet.backend.dto.UserDto;
 import com.intranet.backend.exception.ResourceNotFoundException;
 import com.intranet.backend.model.Equipe;
+import com.intranet.backend.model.Postagem;
 import com.intranet.backend.model.User;
 import com.intranet.backend.model.UserEquipe;
 import com.intranet.backend.repository.EquipeRepository;
+import com.intranet.backend.repository.PostagemRepository;
 import com.intranet.backend.repository.UserEquipeRepository;
 import com.intranet.backend.repository.UserRepository;
 import com.intranet.backend.service.EquipeService;
@@ -33,6 +35,7 @@ public class EquipeServiceImpl implements EquipeService {
     private final EquipeRepository equipeRepository;
     private final UserRepository userRepository;
     private final UserEquipeRepository userEquipeRepository;
+    private final PostagemRepository postagemRepository;
 
     @Override
     public List<EquipeDto> getAllEquipes() {
@@ -113,11 +116,26 @@ public class EquipeServiceImpl implements EquipeService {
         }
 
         try {
-            // Primeiro, remover todas as associações UserEquipe para prevenir problemas de cascata
+            // 1. Primeiro, verificar se existem postagens associadas a esta equipe
+            List<Postagem> postagensRelacionadas = postagemRepository.findByTipoDestinoAndEquipeIdOrderByCreatedAtDesc("equipe", id);
+
+            // 2. Para cada postagem, atualizar o tipo para "geral" para evitar violar a constraint
+            for (Postagem postagem : postagensRelacionadas) {
+                postagem.setTipoDestino("geral");
+                postagem.setEquipe(null);
+                postagemRepository.save(postagem);
+                logger.debug("Postagem ID {} atualizada de 'equipe' para 'geral'", postagem.getId());
+            }
+
+            if (!postagensRelacionadas.isEmpty()) {
+                logger.info("{} postagens relacionadas foram atualizadas para tipo 'geral'", postagensRelacionadas.size());
+            }
+
+            // 3. Remover todas as associações UserEquipe
             userEquipeRepository.deleteByEquipeId(id);
             logger.debug("Associações de membros removidas para a equipe ID: {}", id);
 
-            // Agora é seguro remover a equipe
+            // 4. Agora é seguro remover a equipe
             equipeRepository.deleteById(id);
             logger.info("Equipe excluída com sucesso. ID: {}", id);
         } catch (Exception e) {
