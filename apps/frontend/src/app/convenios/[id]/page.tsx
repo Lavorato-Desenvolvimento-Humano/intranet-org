@@ -51,7 +51,7 @@ export default function ConvenioViewPage() {
   const isUser =
     user?.roles?.includes("ROLE_USER") || user?.roles?.includes("USER");
   const canEdit = isAdmin || isEditor;
-  const canCreatePostagem = isAdmin || isEditor || isUser;
+  const canCreatePostagem = isAdmin || isEditor;
   const canCreateTabela = isAdmin || isEditor;
 
   // Buscar dados do convênio
