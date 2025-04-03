@@ -87,15 +87,16 @@ export default function Navbar() {
               <span>Tabelas</span>
             </Link>
 
-            {hasSupervisorRole && (
-              <Link
-                href="/equipes"
-                className="text-white hover:text-gray-200 flex items-center"
-                onClick={handleNavigate("/equipes")}>
-                <Users className="mr-1" size={18} />
-                <span>Equipes</span>
-              </Link>
-            )}
+            {hasSupervisorRole ||
+              (hasAdminRole && (
+                <Link
+                  href="/equipes"
+                  className="text-white hover:text-gray-200 flex items-center"
+                  onClick={handleNavigate("/equipes")}>
+                  <Users className="mr-1" size={18} />
+                  <span>Equipes</span>
+                </Link>
+              ))}
 
             {hasAdminRole && (
               <Link
