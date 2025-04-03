@@ -23,11 +23,15 @@ export default function Navbar() {
     (role) => role === "ROLE_ADMIN" || role === "ADMIN"
   );
 
+  const hasSupervisorRole = user?.roles?.some(
+    (role) => role === "ROLE_SUPERVISOR" || role === "SUPERVISOR"
+  );
+
   // Função para lidar com o logout
   const handleLogout = async (e: React.MouseEvent) => {
     e.preventDefault();
     await logout();
-    router.replace("/login");
+    router.replace("auth/login");
   };
 
   // Função auxiliar para navegação com router
@@ -83,13 +87,16 @@ export default function Navbar() {
               <span>Tabelas</span>
             </Link>
 
-            <Link
-              href="/equipes"
-              className="text-white hover:text-gray-200 flex items-center"
-              onClick={handleNavigate("/equipes")}>
-              <Users className="mr-1" size={18} />
-              <span>Equipes</span>
-            </Link>
+            {hasSupervisorRole ||
+              (hasAdminRole && (
+                <Link
+                  href="/equipes"
+                  className="text-white hover:text-gray-200 flex items-center"
+                  onClick={handleNavigate("/equipes")}>
+                  <Users className="mr-1" size={18} />
+                  <span>Equipes</span>
+                </Link>
+              ))}
 
             {hasAdminRole && (
               <Link

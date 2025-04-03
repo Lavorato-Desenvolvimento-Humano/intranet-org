@@ -11,6 +11,7 @@ import { useAuth } from "@/context/AuthContext";
 import equipeService, { EquipeDto, EquipeCreateDto } from "@/services/equipe";
 import toastUtil from "@/utils/toast";
 import { CustomButton } from "@/components/ui/custom-button";
+import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
 
 export default function EquipeFormPage() {
   const router = useRouter();
@@ -144,91 +145,93 @@ export default function EquipeFormPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Navbar />
+    <ProtectedRoute>
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <Navbar />
 
-      <main className="flex-grow container mx-auto p-6">
-        <Breadcrumb
-          items={[
-            { label: "Equipes", href: "/equipes" },
-            {
-              label: isEditMode
-                ? equipe?.nome || "Editar Equipe"
-                : "Nova Equipe",
-            },
-          ]}
-        />
+        <main className="flex-grow container mx-auto p-6">
+          <Breadcrumb
+            items={[
+              { label: "Equipes", href: "/equipes" },
+              {
+                label: isEditMode
+                  ? equipe?.nome || "Editar Equipe"
+                  : "Nova Equipe",
+              },
+            ]}
+          />
 
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">
-            {isEditMode ? "Editar Equipe" : "Nova Equipe"}
-          </h1>
-        </div>
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold text-gray-800">
+              {isEditMode ? "Editar Equipe" : "Nova Equipe"}
+            </h1>
+          </div>
 
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <form onSubmit={handleSubmit}>
-            <div className="mb-4">
-              <label
-                htmlFor="nome"
-                className="block text-sm font-medium text-gray-700 mb-1">
-                Nome da Equipe *
-              </label>
-              <input
-                type="text"
-                id="nome"
-                name="nome"
-                value={formData.nome}
-                onChange={handleChange}
-                className={`w-full px-3 py-2 border rounded-md ${
-                  errors.nome ? "border-red-500" : "border-gray-300"
-                } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
-                placeholder="Digite o nome da equipe"
-                disabled={submitting}
-              />
-              {errors.nome && (
-                <p className="mt-1 text-sm text-red-500">{errors.nome}</p>
-              )}
-            </div>
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <form onSubmit={handleSubmit}>
+              <div className="mb-4">
+                <label
+                  htmlFor="nome"
+                  className="block text-sm font-medium text-gray-700 mb-1">
+                  Nome da Equipe *
+                </label>
+                <input
+                  type="text"
+                  id="nome"
+                  name="nome"
+                  value={formData.nome}
+                  onChange={handleChange}
+                  className={`w-full px-3 py-2 border rounded-md ${
+                    errors.nome ? "border-red-500" : "border-gray-300"
+                  } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
+                  placeholder="Digite o nome da equipe"
+                  disabled={submitting}
+                />
+                {errors.nome && (
+                  <p className="mt-1 text-sm text-red-500">{errors.nome}</p>
+                )}
+              </div>
 
-            <div className="mb-6">
-              <label
-                htmlFor="descricao"
-                className="block text-sm font-medium text-gray-700 mb-1">
-                Descrição
-              </label>
-              <textarea
-                id="descricao"
-                name="descricao"
-                value={formData.descricao}
-                onChange={handleChange}
-                rows={4}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                placeholder="Descrição da equipe (opcional)"
-                disabled={submitting}
-              />
-            </div>
+              <div className="mb-6">
+                <label
+                  htmlFor="descricao"
+                  className="block text-sm font-medium text-gray-700 mb-1">
+                  Descrição
+                </label>
+                <textarea
+                  id="descricao"
+                  name="descricao"
+                  value={formData.descricao}
+                  onChange={handleChange}
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  placeholder="Descrição da equipe (opcional)"
+                  disabled={submitting}
+                />
+              </div>
 
-            <div className="flex justify-end space-x-3">
-              <CustomButton
-                type="button"
-                variant="primary"
-                className="bg-red-600 hover:bg-red-700 text-white border-none"
-                icon={X}
-                onClick={() => router.push("/equipes")}
-                disabled={submitting}>
-                Cancelar
-              </CustomButton>
-              <CustomButton
-                type="submit"
-                variant="primary"
-                icon={Save}
-                disabled={submitting}>
-                {submitting ? "Salvando..." : "Salvar"}
-              </CustomButton>
-            </div>
-          </form>
-        </div>
-      </main>
-    </div>
+              <div className="flex justify-end space-x-3">
+                <CustomButton
+                  type="button"
+                  variant="primary"
+                  className="bg-red-600 hover:bg-red-700 text-white border-none"
+                  icon={X}
+                  onClick={() => router.push("/equipes")}
+                  disabled={submitting}>
+                  Cancelar
+                </CustomButton>
+                <CustomButton
+                  type="submit"
+                  variant="primary"
+                  icon={Save}
+                  disabled={submitting}>
+                  {submitting ? "Salvando..." : "Salvar"}
+                </CustomButton>
+              </div>
+            </form>
+          </div>
+        </main>
+      </div>
+    </ProtectedRoute>
   );
 }
