@@ -51,7 +51,7 @@ export default function DashboardPage() {
     user?.roles?.includes("ROLE_EDITOR") || user?.roles?.includes("EDITOR");
   const isUser =
     user?.roles?.includes("ROLE_USER") || user?.roles?.includes("USER");
-  const canCreatePostagem = isAdmin || isEditor || isUser;
+  const canCreatePostagem = isAdmin || isEditor;
 
   // Carregar dados
   useEffect(() => {
@@ -425,16 +425,20 @@ export default function DashboardPage() {
                   Links Rápidos
                 </h2>
                 <div className="space-y-2">
-                  <button
-                    onClick={() => router.push("/postagens/nova")}
-                    className="w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 rounded-md text-left text-sm font-medium text-gray-800 transition-colors">
-                    Criar nova postagem
-                  </button>
-                  <button
-                    onClick={() => router.push("/convenios")}
-                    className="w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 rounded-md text-left text-sm font-medium text-gray-800 transition-colors">
-                    Gerenciar convênios
-                  </button>
+                  {isEditor && (
+                    <button
+                      onClick={() => router.push("/postagens/nova")}
+                      className="w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 rounded-md text-left text-sm font-medium text-gray-800 transition-colors">
+                      Criar nova postagem
+                    </button>
+                  )}
+                  {isEditor && (
+                    <button
+                      onClick={() => router.push("/convenios")}
+                      className="w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 rounded-md text-left text-sm font-medium text-gray-800 transition-colors">
+                      Gerenciar convênios
+                    </button>
+                  )}
                   {isAdmin && (
                     <button
                       onClick={() => router.push("/admin")}
