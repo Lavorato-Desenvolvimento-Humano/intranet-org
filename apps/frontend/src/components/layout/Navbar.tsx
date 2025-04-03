@@ -44,8 +44,8 @@ export default function Navbar() {
     <nav className="bg-primary shadow-md text-white">
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center h-16">
-          {/* Logo e Brand */}
-          <div className="flex items-center">
+          {/* Logo e Brand - Agora com largura fixa */}
+          <div className="w-1/4 flex justify-start">
             <Link
               href="/"
               className="flex items-center"
@@ -61,34 +61,34 @@ export default function Navbar() {
             </Link>
           </div>
 
-          {/* Navigation Links */}
-          <div className="hidden md:flex items-center space-x-6">
-            <Link
-              href="/dashboard"
-              className="text-white hover:text-gray-200 flex items-center"
-              onClick={handleNavigate("/dashboard")}>
-              <HomeIcon className="mr-1" size={18} />
-              <span>Dashboard</span>
-            </Link>
+          {/* Navigation Links - Centralizado com largura fixa */}
+          <div className="w-2/4 hidden md:flex items-center justify-center">
+            <div className="flex items-center space-x-6">
+              <Link
+                href="/dashboard"
+                className="text-white hover:text-gray-200 flex items-center"
+                onClick={handleNavigate("/dashboard")}>
+                <HomeIcon className="mr-1" size={18} />
+                <span>Dashboard</span>
+              </Link>
 
-            <Link
-              href="/convenios"
-              className="text-white hover:text-gray-200 flex items-center"
-              onClick={handleNavigate("/convenios")}>
-              <FileTextIcon className="mr-1" size={18} />
-              <span>Convênios</span>
-            </Link>
+              <Link
+                href="/convenios"
+                className="text-white hover:text-gray-200 flex items-center"
+                onClick={handleNavigate("/convenios")}>
+                <FileTextIcon className="mr-1" size={18} />
+                <span>Convênios</span>
+              </Link>
 
-            <Link
-              href="/tabelas-valores"
-              className="text-white hover:text-gray-200 flex items-center"
-              onClick={handleNavigate("/tabelas-valores")}>
-              <Table className="mr-1" size={18} />
-              <span>Tabelas</span>
-            </Link>
+              <Link
+                href="/tabelas-valores"
+                className="text-white hover:text-gray-200 flex items-center"
+                onClick={handleNavigate("/tabelas-valores")}>
+                <Table className="mr-1" size={18} />
+                <span>Tabelas</span>
+              </Link>
 
-            {hasSupervisorRole ||
-              (hasAdminRole && (
+              {(hasSupervisorRole || hasAdminRole) && (
                 <Link
                   href="/equipes"
                   className="text-white hover:text-gray-200 flex items-center"
@@ -96,21 +96,22 @@ export default function Navbar() {
                   <Users className="mr-1" size={18} />
                   <span>Equipes</span>
                 </Link>
-              ))}
+              )}
 
-            {hasAdminRole && (
-              <Link
-                href="/admin"
-                className="text-white hover:text-gray-200 flex items-center"
-                onClick={handleNavigate("/admin")}>
-                <SettingsIcon className="mr-1" size={18} />
-                <span>Painel Administrativo</span>
-              </Link>
-            )}
+              {hasAdminRole && (
+                <Link
+                  href="/admin"
+                  className="text-white hover:text-gray-200 flex items-center"
+                  onClick={handleNavigate("/admin")}>
+                  <SettingsIcon className="mr-1" size={18} />
+                  <span>Painel Administrativo</span>
+                </Link>
+              )}
+            </div>
           </div>
 
-          {/* User Profile & Logout */}
-          <div className="flex items-center space-x-4">
+          {/* User Profile & Logout - Agora com largura fixa */}
+          <div className="w-1/4 flex items-center justify-end space-x-4">
             <Link
               href="/profile"
               className="text-white hover:text-gray-200 flex items-center"
