@@ -87,7 +87,7 @@ export default function Navbar() {
               <button
                 className="flex items-center text-white hover:text-gray-200 focus:outline-none"
                 onClick={() => setDropdownOpen(!dropdownOpen)}>
-                <span className="mr-1 font-medium">MENU</span>
+                {/* <span className="mr-1 font-medium">MENU</span> */}
                 <ChevronDown size={16} />
               </button>
 
