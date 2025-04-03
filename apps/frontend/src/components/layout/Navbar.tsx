@@ -31,7 +31,7 @@ export default function Navbar() {
   const handleLogout = async (e: React.MouseEvent) => {
     e.preventDefault();
     await logout();
-    router.replace("/login");
+    router.replace("auth/login");
   };
 
   // Função auxiliar para navegação com router
