@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import Image from "next/image";
@@ -12,12 +12,16 @@ import {
   LogOutIcon,
   Table,
   Users,
+  Menu,
+  ChevronDown,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function Navbar() {
   const router = useRouter();
   const { user, logout } = useAuth();
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const hasAdminRole = user?.roles?.some(
     (role) => role === "ROLE_ADMIN" || role === "ADMIN"
@@ -26,6 +30,23 @@ export default function Navbar() {
   const hasSupervisorRole = user?.roles?.some(
     (role) => role === "ROLE_SUPERVISOR" || role === "SUPERVISOR"
   );
+
+  // Função para fechar o dropdown quando clicar fora dele
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setDropdownOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [dropdownRef]);
 
   // Função para lidar com o logout
   const handleLogout = async (e: React.MouseEvent) => {
@@ -38,14 +59,15 @@ export default function Navbar() {
   const handleNavigate = (path: string) => (e: React.MouseEvent) => {
     e.preventDefault();
     router.push(path);
+    setDropdownOpen(false);
   };
 
   return (
     <nav className="bg-primary shadow-md text-white">
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center h-16">
-          {/* Logo e Brand */}
-          <div className="flex items-center">
+          {/* Seção esquerda - Logo e Dropdown */}
+          <div className="flex items-center space-x-4">
             <Link
               href="/"
               className="flex items-center"
@@ -59,54 +81,64 @@ export default function Navbar() {
                 style={{ objectFit: "contain" }}
               />
             </Link>
-          </div>
 
-          {/* Navigation Links */}
-          <div className="hidden md:flex items-center space-x-6">
-            <Link
-              href="/dashboard"
-              className="text-white hover:text-gray-200 flex items-center"
-              onClick={handleNavigate("/dashboard")}>
-              <HomeIcon className="mr-1" size={18} />
-              <span>Dashboard</span>
-            </Link>
+            {/* Dropdown de navegação */}
+            <div className="relative" ref={dropdownRef}>
+              <button
+                className="flex items-center text-white hover:text-gray-200 focus:outline-none"
+                onClick={() => setDropdownOpen(!dropdownOpen)}>
+                {/* <span className="mr-1 font-medium">MENU</span> */}
+                <ChevronDown size={16} />
+              </button>
 
-            <Link
-              href="/convenios"
-              className="text-white hover:text-gray-200 flex items-center"
-              onClick={handleNavigate("/convenios")}>
-              <FileTextIcon className="mr-1" size={18} />
-              <span>Convênios</span>
-            </Link>
+              {dropdownOpen && (
+                <div className="absolute z-10 mt-2 w-56 bg-white rounded-md shadow-lg py-1 text-gray-800">
+                  <Link
+                    href="/dashboard"
+                    className="flex items-center px-4 py-2 hover:bg-gray-100"
+                    onClick={handleNavigate("/dashboard")}>
+                    <HomeIcon className="mr-2" size={16} />
+                    <span>Dashboard</span>
+                  </Link>
 
-            <Link
-              href="/tabelas-valores"
-              className="text-white hover:text-gray-200 flex items-center"
-              onClick={handleNavigate("/tabelas-valores")}>
-              <Table className="mr-1" size={18} />
-              <span>Tabelas</span>
-            </Link>
+                  <Link
+                    href="/convenios"
+                    className="flex items-center px-4 py-2 hover:bg-gray-100"
+                    onClick={handleNavigate("/convenios")}>
+                    <FileTextIcon className="mr-2" size={16} />
+                    <span>Convênios</span>
+                  </Link>
 
-            {hasSupervisorRole ||
-              (hasAdminRole && (
-                <Link
-                  href="/equipes"
-                  className="text-white hover:text-gray-200 flex items-center"
-                  onClick={handleNavigate("/equipes")}>
-                  <Users className="mr-1" size={18} />
-                  <span>Equipes</span>
-                </Link>
-              ))}
+                  <Link
+                    href="/tabelas-valores"
+                    className="flex items-center px-4 py-2 hover:bg-gray-100"
+                    onClick={handleNavigate("/tabelas-valores")}>
+                    <Table className="mr-2" size={16} />
+                    <span>Tabelas</span>
+                  </Link>
 
-            {hasAdminRole && (
-              <Link
-                href="/admin"
-                className="text-white hover:text-gray-200 flex items-center"
-                onClick={handleNavigate("/admin")}>
-                <SettingsIcon className="mr-1" size={18} />
-                <span>Painel Administrativo</span>
-              </Link>
-            )}
+                  {(hasSupervisorRole || hasAdminRole) && (
+                    <Link
+                      href="/equipes"
+                      className="flex items-center px-4 py-2 hover:bg-gray-100"
+                      onClick={handleNavigate("/equipes")}>
+                      <Users className="mr-2" size={16} />
+                      <span>Equipes</span>
+                    </Link>
+                  )}
+
+                  {hasAdminRole && (
+                    <Link
+                      href="/admin"
+                      className="flex items-center px-4 py-2 hover:bg-gray-100"
+                      onClick={handleNavigate("/admin")}>
+                      <SettingsIcon className="mr-2" size={16} />
+                      <span>Painel Administrativo</span>
+                    </Link>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* User Profile & Logout */}
