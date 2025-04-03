@@ -345,7 +345,7 @@ export default function EquipeDetailPage() {
   }
 
   return (
-    <ProtectedRoute>
+    <ProtectedRoute requiredRoles={["ROLE_ADMIN", "ROLE_SUPERVISOR"]}>
       <div className="min-h-screen bg-gray-50 flex flex-col">
         <Navbar />
 
