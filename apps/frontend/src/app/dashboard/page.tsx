@@ -336,7 +336,7 @@ export default function DashboardPage() {
             {/* Painel lateral */}
             <div className="space-y-6">
               {/* Minhas Postagens */}
-              {user && (
+              {canCreatePostagem && (
                 <div className="bg-white rounded-lg shadow-md">
                   <div className="p-4 border-b border-gray-200">
                     <h2 className="text-lg font-semibold text-gray-800">
