@@ -504,6 +504,7 @@ const postagemService = {
       const response = await api.get<PostagemSummaryDto[]>(
         "/api/postagens/visiveis"
       );
+      console.log("Postagens visíveis retornadas:", response.data);
       return response.data;
     } catch (error) {
       console.error("Erro ao buscar postagens visíveis:", error);
