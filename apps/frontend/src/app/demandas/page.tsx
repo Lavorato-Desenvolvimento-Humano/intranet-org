@@ -44,12 +44,18 @@ export default function DemandaCalendarPage() {
       const start = format(currentRange.start, "yyyy-MM-dd");
       const end = format(currentRange.end, "yyyy-MM-dd");
 
+      console.log(`Buscando demandas de ${start} até ${end}`);
+
       // Chamar API para obter eventos do calendário
       const data = await demandaService.getDemandasCalendario(start, end);
+      console.log("Dados recebidos:", data);
       setEvents(data);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao carregar eventos:", error);
-      setError("Não foi possível carregar as demandas para o calendário.");
+      setError(
+        error?.message ||
+          "Não foi possível carregar as demandas para o calendário."
+      );
     } finally {
       setIsLoading(false);
     }
@@ -63,6 +69,11 @@ export default function DemandaCalendarPage() {
   // Lidar com mudança de intervalo do calendário
   const handleRangeChange = (start: Date, end: Date) => {
     setCurrentRange({ start, end });
+  };
+
+  // Tentar novamente se ocorrer um erro
+  const handleRetry = () => {
+    loadEvents();
   };
 
   // Navegar para a página de criação de demanda
@@ -107,7 +118,14 @@ export default function DemandaCalendarPage() {
 
       {error && (
         <Alert variant="error" className="mb-6">
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>
+            {error}
+            <button
+              onClick={handleRetry}
+              className="ml-2 underline text-primary hover:text-primary-dark">
+              Tentar novamente
+            </button>
+          </AlertDescription>
         </Alert>
       )}
 
