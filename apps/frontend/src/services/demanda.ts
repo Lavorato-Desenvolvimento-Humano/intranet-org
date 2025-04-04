@@ -25,7 +25,7 @@ const demandaService = {
     totalPages: number;
   }> => {
     try {
-      const response = await api.get("/demandas", { params });
+      const response = await api.get("/api/demandas", { params });
       return response.data;
     } catch (error) {
       console.error("Erro ao buscar demandas:", error);
@@ -38,7 +38,7 @@ const demandaService = {
    */
   getDemandaById: async (id: string): Promise<Demanda> => {
     try {
-      const response = await api.get(`/demandas/${id}`);
+      const response = await api.get(`/api/demandas/${id}`);
       return response.data;
     } catch (error) {
       console.error(`Erro ao buscar demanda ${id}:`, error);
@@ -51,7 +51,7 @@ const demandaService = {
    */
   createDemanda: async (demanda: DemandaCreateDto): Promise<Demanda> => {
     try {
-      const response = await api.post("/demandas", demanda);
+      const response = await api.post("/api/demandas", demanda);
       return response.data;
     } catch (error) {
       console.error("Erro ao criar demanda:", error);
@@ -67,7 +67,7 @@ const demandaService = {
     demanda: DemandaUpdateDto
   ): Promise<Demanda> => {
     try {
-      const response = await api.put(`/demandas/${id}`, demanda);
+      const response = await api.put(`/api/demandas/${id}`, demanda);
       return response.data;
     } catch (error) {
       console.error(`Erro ao atualizar demanda ${id}:`, error);
@@ -81,7 +81,7 @@ const demandaService = {
   updateDemandaStatus: async (id: string, status: string): Promise<Demanda> => {
     try {
       const response = await api.patch(
-        `/demandas/${id}/status?status=${status}`
+        `/api/demandas/${id}/status?status=${status}`
       );
       return response.data;
     } catch (error) {
@@ -95,7 +95,7 @@ const demandaService = {
    */
   deleteDemanda: async (id: string): Promise<void> => {
     try {
-      await api.delete(`/demandas/${id}`);
+      await api.delete(`/api/demandas/${id}`);
     } catch (error) {
       console.error(`Erro ao excluir demanda ${id}:`, error);
       throw error;
@@ -113,7 +113,7 @@ const demandaService = {
     totalPages: number;
   }> => {
     try {
-      const response = await api.get("/demandas/minhas", { params });
+      const response = await api.get("/api/demandas/minhas", { params });
       return response.data;
     } catch (error) {
       console.error("Erro ao buscar minhas demandas:", error);
@@ -132,7 +132,7 @@ const demandaService = {
     totalPages: number;
   }> => {
     try {
-      const response = await api.get("/demandas/criadas", { params });
+      const response = await api.get("/api/demandas/criadas", { params });
       return response.data;
     } catch (error) {
       console.error("Erro ao buscar demandas criadas:", error);
@@ -148,7 +148,7 @@ const demandaService = {
     dataFim: string
   ): Promise<DemandaEvent[]> => {
     try {
-      const response = await api.get("/demandas/calendario", {
+      const response = await api.get("/api/demandas/calendario", {
         params: {
           dataInicio,
           dataFim,
@@ -166,7 +166,7 @@ const demandaService = {
    */
   getDemandaStats: async (): Promise<DemandaStats> => {
     try {
-      const response = await api.get("/demandas/stats");
+      const response = await api.get("/api/demandas/stats");
       return response.data;
     } catch (error) {
       console.error("Erro ao buscar estatísticas de demandas:", error);
@@ -179,7 +179,7 @@ const demandaService = {
    */
   getDemandaAudit: async (demandaId: string): Promise<DemandaAudit[]> => {
     try {
-      const response = await api.get(`/demandas/${demandaId}/audit`);
+      const response = await api.get(`/api/demandas/${demandaId}/audit`);
       return response.data;
     } catch (error) {
       console.error(`Erro ao buscar histórico da demanda ${demandaId}:`, error);
