@@ -117,6 +117,14 @@ export default function Navbar() {
                     <span>Tabelas</span>
                   </Link>
 
+                  <Link
+                    href="/demandas"
+                    className="flex items-center px-4 py-2 hover:bg-gray-100"
+                    onClick={handleNavigate("/demandas")}>
+                    <Users className="mr-2" size={16} />
+                    <span>Demandas</span>
+                  </Link>
+
                   {(hasSupervisorRole || hasAdminRole) && (
                     <Link
                       href="/equipes"
