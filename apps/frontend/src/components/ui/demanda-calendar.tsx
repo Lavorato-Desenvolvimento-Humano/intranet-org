@@ -2,20 +2,24 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   DemandaEvent,
   PRIORIDADE_COLORS,
   STATUS_COLORS,
 } from "@/types/demanda";
-import { useRouter } from "next/navigation";
-import { Calendar as BigCalendar, momentLocalizer } from "react-big-calendar";
-import moment from "moment";
-import "moment/locale/pt-br";
-import "react-big-calendar/lib/css/react-big-calendar.css";
-
-// Configurar localização para português
-moment.locale("pt-br");
-const localizer = momentLocalizer(moment);
+import {
+  format,
+  parse,
+  startOfMonth,
+  endOfMonth,
+  startOfWeek,
+  endOfWeek,
+  addDays,
+  isSameMonth,
+  isSameDay,
+} from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface DemandaCalendarProps {
   events: DemandaEvent[];
@@ -29,76 +33,156 @@ const DemandaCalendar: React.FC<DemandaCalendarProps> = ({
   isLoading = false,
 }) => {
   const router = useRouter();
-  const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(new Date());
 
-  // Transformar eventos para o formato do calendário
+  // Notificar mudança de intervalo quando o mês mudar
   useEffect(() => {
-    if (events && events.length > 0) {
-      const formattedEvents = events.map((event) => ({
-        id: event.id,
-        title: event.title,
-        start: new Date(event.start),
-        end: new Date(event.end),
-        backgroundColor:
-          event.backgroundColor ||
-          STATUS_COLORS[event.extendedProps.status] ||
-          PRIORIDADE_COLORS[event.extendedProps.prioridade] ||
-          "#3788d8",
-        borderColor:
-          event.borderColor ||
-          STATUS_COLORS[event.extendedProps.status] ||
-          "#3788d8",
-        textColor: event.textColor || "#ffffff",
-        demandaId: event.extendedProps.demandaId,
-        prioridade: event.extendedProps.prioridade,
-        status: event.extendedProps.status,
-        atribuidoParaNome: event.extendedProps.atribuidoParaNome,
-      }));
-      setCalendarEvents(formattedEvents);
-    } else {
-      setCalendarEvents([]);
+    if (onRangeChange) {
+      const start = startOfMonth(currentMonth);
+      const end = endOfMonth(currentMonth);
+      onRangeChange(start, end);
     }
-  }, [events]);
+  }, [currentMonth, onRangeChange]);
 
-  // Estilo personalizado para eventos
-  const eventStyleGetter = (event: any) => {
-    return {
-      style: {
-        backgroundColor: event.backgroundColor,
-        borderColor: event.borderColor,
-        color: event.textColor,
-      },
+  // Renderizar cabeçalho com nome do mês e ano
+  const renderHeader = () => {
+    const dateFormat = "MMMM yyyy";
+    return (
+      <div className="flex justify-between items-center mb-4">
+        <button
+          onClick={prevMonth}
+          className="p-2 rounded hover:bg-gray-200 text-gray-700">
+          &lt;
+        </button>
+        <div className="text-xl font-bold text-gray-800">
+          {format(currentMonth, dateFormat, { locale: ptBR })}
+        </div>
+        <button
+          onClick={nextMonth}
+          className="p-2 rounded hover:bg-gray-200 text-gray-700">
+          &gt;
+        </button>
+      </div>
+    );
+  };
+
+  // Renderizar dias da semana
+  const renderDays = () => {
+    const dateFormat = "EEEEEE";
+    const days = [];
+    let startDate = startOfWeek(currentMonth, { weekStartsOn: 0 });
+
+    for (let i = 0; i < 7; i++) {
+      days.push(
+        <div key={i} className="w-full text-center font-semibold text-sm py-2">
+          {format(addDays(startDate, i), dateFormat, {
+            locale: ptBR,
+          }).toUpperCase()}
+        </div>
+      );
+    }
+    return <div className="grid grid-cols-7 mb-2">{days}</div>;
+  };
+
+  // Renderizar células do calendário
+  const renderCells = () => {
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(monthStart);
+    const startDate = startOfWeek(monthStart, { weekStartsOn: 0 });
+    const endDate = endOfWeek(monthEnd, { weekStartsOn: 0 });
+
+    const rows = [];
+    let days = [];
+    let day = startDate;
+    let formattedDate = "";
+
+    // Filtrar eventos por dia
+    const getEventsForDay = (day: Date) => {
+      return events.filter((event) => {
+        const eventStart = new Date(event.start);
+        const eventEnd = new Date(event.end);
+        return (
+          (eventStart <= day && eventEnd >= day) ||
+          isSameDay(eventStart, day) ||
+          isSameDay(eventEnd, day)
+        );
+      });
     };
+
+    while (day <= endDate) {
+      for (let i = 0; i < 7; i++) {
+        formattedDate = format(day, "d", { locale: ptBR });
+        const cloneDay = day;
+        const dayEvents = getEventsForDay(day);
+
+        days.push(
+          <div
+            key={day.toString()}
+            className={`min-h-[100px] p-1 border border-gray-200 ${
+              !isSameMonth(day, monthStart)
+                ? "bg-gray-100 text-gray-400"
+                : isSameDay(day, selectedDate)
+                  ? "bg-blue-50 text-blue-600"
+                  : isSameDay(day, new Date())
+                    ? "bg-yellow-50 text-yellow-600"
+                    : "bg-white"
+            }`}
+            onClick={() => handleDateClick(cloneDay)}>
+            <div className="text-right p-1">{formattedDate}</div>
+            <div className="overflow-y-auto max-h-[80px]">
+              {dayEvents.map((event, index) => (
+                <div
+                  key={`${event.id}-${index}`}
+                  className="text-xs mb-1 p-1 rounded truncate cursor-pointer"
+                  style={{
+                    backgroundColor:
+                      event.backgroundColor ||
+                      STATUS_COLORS[event.extendedProps.status] ||
+                      PRIORIDADE_COLORS[event.extendedProps.prioridade] ||
+                      "#3788d8",
+                    color: event.textColor || "#ffffff",
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEventClick(event);
+                  }}>
+                  {event.title}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+        day = addDays(day, 1);
+      }
+      rows.push(
+        <div key={day.toString()} className="grid grid-cols-7">
+          {days}
+        </div>
+      );
+      days = [];
+    }
+    return <div className="bg-white">{rows}</div>;
+  };
+
+  // Navegação do calendário
+  const nextMonth = () => {
+    setCurrentMonth((month) => addDays(month, 32));
+  };
+
+  const prevMonth = () => {
+    setCurrentMonth((month) => addDays(month, -32));
+  };
+
+  // Lidar com clique em data
+  const handleDateClick = (day: Date) => {
+    setSelectedDate(day);
   };
 
   // Lidar com clique no evento
-  const handleEventClick = (event: any) => {
-    router.push(`/demandas/${event.demandaId}`);
+  const handleEventClick = (event: DemandaEvent) => {
+    router.push(`/demandas/${event.extendedProps.demandaId}`);
   };
-
-  // Lidar com mudança de intervalo do calendário
-  const handleRangeChange = (range: any) => {
-    if (onRangeChange) {
-      // Se for visualização de mês
-      if (range.start && range.end) {
-        onRangeChange(range.start, range.end);
-      }
-      // Se for visualização de semana ou dia
-      else if (Array.isArray(range) && range.length > 0) {
-        const start = new Date(Math.min(...range.map((d) => d.getTime())));
-        const end = new Date(Math.max(...range.map((d) => d.getTime())));
-        onRangeChange(start, end);
-      }
-    }
-  };
-
-  // Componente personalizado para o título do evento
-  const EventComponent = ({ event }: { event: any }) => (
-    <div className="truncate">
-      <div className="font-medium">{event.title}</div>
-      <div className="text-xs">{event.atribuidoParaNome}</div>
-    </div>
-  );
 
   if (isLoading) {
     return (
@@ -109,35 +193,12 @@ const DemandaCalendar: React.FC<DemandaCalendarProps> = ({
   }
 
   return (
-    <div className="h-[700px]">
-      <BigCalendar
-        localizer={localizer}
-        events={calendarEvents}
-        startAccessor="start"
-        endAccessor="end"
-        style={{ height: "100%" }}
-        views={["month", "week", "day", "agenda"]}
-        defaultView="month"
-        eventPropGetter={eventStyleGetter}
-        onSelectEvent={handleEventClick}
-        onRangeChange={handleRangeChange}
-        components={{
-          event: EventComponent,
-        }}
-        messages={{
-          today: "Hoje",
-          previous: "Anterior",
-          next: "Próximo",
-          month: "Mês",
-          week: "Semana",
-          day: "Dia",
-          agenda: "Agenda",
-          date: "Data",
-          time: "Hora",
-          event: "Evento",
-          noEventsInRange: "Não há demandas neste período",
-        }}
-      />
+    <div className="h-[700px] overflow-auto">
+      <div className="bg-white p-4 rounded-lg">
+        {renderHeader()}
+        {renderDays()}
+        {renderCells()}
+      </div>
     </div>
   );
 };

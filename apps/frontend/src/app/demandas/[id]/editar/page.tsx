@@ -13,6 +13,7 @@ import demandaService from "@/services/demanda";
 import userService from "@/services/user";
 import { Demanda, DemandaUpdateDto } from "@/types/demanda";
 import { UserDto } from "@/services/user";
+import Navbar from "@/components/layout/Navbar";
 
 interface DemandaEditPageProps {
   params: {
@@ -148,6 +149,7 @@ export default function DemandaEditPage({ params }: DemandaEditPageProps) {
 
   return (
     <div className="container py-8">
+      <Navbar />
       <Breadcrumb
         items={[
           { label: "Demandas", href: "/demandas" },

@@ -28,6 +28,7 @@ import {
   isDemandaAtrasada,
   isDemandaProximaAVencer,
 } from "@/types/demanda";
+import Navbar from "@/components/layout/Navbar";
 
 interface DemandasViewPageProps {
   params: {
@@ -231,6 +232,7 @@ export default function DemandasViewPage({ params }: DemandasViewPageProps) {
 
   return (
     <div className="container py-8">
+      <Navbar />
       <Breadcrumb
         items={[
           { label: "Demandas", href: "/demandas" },

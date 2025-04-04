@@ -1,9 +1,6 @@
 package com.intranet.backend.service;
 
-import com.intranet.backend.dto.DemandaCreateDto;
-import com.intranet.backend.dto.DemandaDto;
-import com.intranet.backend.dto.DemandaFilterDto;
-import com.intranet.backend.dto.DemandaUpdateDto;
+import com.intranet.backend.dto.*;
 
 import java.time.LocalDateTime;
 import java.util.List;

@@ -1,9 +1,6 @@
 package com.intranet.backend.service.impl;
 
-import com.intranet.backend.dto.DemandaCreateDto;
-import com.intranet.backend.dto.DemandaDto;
-import com.intranet.backend.dto.DemandaFilterDto;
-import com.intranet.backend.dto.DemandaUpdateDto;
+import com.intranet.backend.dto.*;
 import com.intranet.backend.exception.ResourceNotFoundException;
 import com.intranet.backend.model.Demanda;
 import com.intranet.backend.model.User;

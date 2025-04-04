@@ -21,6 +21,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -184,6 +185,25 @@ public class DemandaController {
             return ResponseUtil.success(estatisticas);
         } catch (Exception e) {
             logger.error("Erro ao obter estatísticas: {}", e.getMessage(), e);
+            throw e;
+        }
+    }
+
+    @GetMapping("/calendario")
+    public ResponseEntity<List<DemandaDto>> getDemandasCalendario(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim) {
+        logger.info("Requisição para listar demandas para calendário: {} até {}", dataInicio, dataFim);
+
+        // Converter LocalDate para LocalDateTime (início do dia e fim do dia)
+        LocalDateTime inicio = dataInicio.atStartOfDay();
+        LocalDateTime fim = dataFim.atTime(23, 59, 59);
+
+        try {
+            List<DemandaDto> demandas = demandaService.getDemandasByPeriodo(inicio, fim);
+            return ResponseUtil.success(demandas);
+        } catch (Exception e) {
+            logger.error("Erro ao buscar demandas para calendário: {}", e.getMessage(), e);
             throw e;
         }
     }

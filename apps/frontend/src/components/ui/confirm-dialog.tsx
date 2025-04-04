@@ -10,7 +10,7 @@ interface ConfirmDialogProps {
   cancelText?: string;
   onConfirm: () => void;
   onCancel: () => void;
-  variant?: "danger" | "warning" | "info";
+  variant?: "danger" | "warning" | "info" | "success";
   isLoading?: boolean;
 }
 
@@ -32,18 +32,21 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
     danger: "bg-red-500 text-white",
     warning: "bg-yellow-500 text-white",
     info: "bg-blue-500 text-white",
+    success: "bg-green-500 text-white",
   };
 
   const confirmButtonStyles = {
     danger: "bg-red-500 hover:bg-red-600 text-white",
     warning: "bg-yellow-500 hover:bg-yellow-600 text-white",
     info: "bg-blue-500 hover:bg-blue-600 text-white",
+    success: "bg-green-500 hover:bg-green-600 text-white",
   };
 
   const iconMap = {
     danger: <AlertTriangle className="h-6 w-6 text-white" />,
     warning: <AlertTriangle className="h-6 w-6 text-white" />,
     info: <AlertTriangle className="h-6 w-6 text-white" />,
+    success: <AlertTriangle className="h-6 w-6 text-white" />,
   };
 
   return (

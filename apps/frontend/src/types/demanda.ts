@@ -18,6 +18,7 @@ export interface Demanda {
   prioridade: DemandaPrioridade;
   criadaEm: string; // ISO date string
   atualizadaEm: string; // ISO date string
+  podeEditar?: boolean;
 }
 
 export interface DemandaCreateDto {
@@ -26,11 +27,12 @@ export interface DemandaCreateDto {
   dataInicio: string; // ISO date string
   dataFim: string; // ISO date string
   atribuidoParaId: string;
-  prioridade: DemandaPrioridade;
+  prioridade?: DemandaPrioridade;
+  status?: DemandaStatus;
 }
 
 export interface DemandaUpdateDto {
-  id: string;
+  id?: string; // Tornando opcional para compatibilidade
   titulo?: string;
   descricao?: string;
   dataInicio?: string; // ISO date string
