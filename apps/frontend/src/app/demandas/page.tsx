@@ -13,6 +13,7 @@ import { useAuth } from "@/context/AuthContext";
 import demandaService from "@/services/demanda";
 import { DemandaEvent } from "@/types/demanda";
 import { format } from "date-fns";
+import Navbar from "@/components/layout/Navbar";
 
 export default function DemandaCalendarPage() {
   const { user } = useAuth();
@@ -71,6 +72,7 @@ export default function DemandaCalendarPage() {
 
   return (
     <div className="container py-8">
+      <Navbar />
       <Breadcrumb
         items={[
           { label: "Demandas", href: "/demandas" },
