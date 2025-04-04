@@ -143,7 +143,5 @@ public interface DemandaRepository extends JpaRepository<Demanda, UUID>, JpaSpec
     @Query("SELECT COUNT(d) FROM Demanda d WHERE d.prioridade = :prioridade")
     long countByPrioridade(@Param("prioridade") String prioridade);
 
-    List<Demanda> findByDataInicioBetween(LocalDateTime inicio, LocalDateTime fim);
-
     Long countByStatus(String valor);
 }

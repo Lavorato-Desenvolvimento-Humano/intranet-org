@@ -512,20 +512,4 @@ public class DemandaServiceImpl implements DemandaService {
 
         return false;
     }
-
-    @Override
-    public List<DemandaEvent> getDemandasParaCalendario(LocalDateTime inicio, LocalDateTime fim) {
-        List<Demanda> demandas = demandaRepository.findByDataInicioBetween(inicio, fim);
-
-        return demandas.stream().map(demanda -> {
-            DemandaEvent event = new DemandaEvent();
-            event.setId(demanda.getId());
-            event.setTitle(demanda.getTitulo());
-            event.setStart(demanda.getDataInicio());
-            event.setEnd(demanda.getDataFim() != null ? demanda.getDataFim() : demanda.getDataInicio());
-            event.setStatus(demanda.getStatus());
-            event.setPrioridade(demanda.getPrioridade());
-            return event;
-        }).toList();
-    }
 }

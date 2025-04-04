@@ -67,6 +67,4 @@ public interface DemandaService {
      * Atribui uma demanda a outro usuário
      */
     DemandaDto atribuirDemanda(UUID demandaId, UUID usuarioId);
-
-    List<DemandaEvent> getDemandasParaCalendario(LocalDateTime inicio, LocalDateTime fim);
 }
