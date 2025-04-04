@@ -1,7 +1,7 @@
 // apps/frontend/src/app/demandas/calendario/page.tsx
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, ListFilter } from "lucide-react";
 import Breadcrumb from "@/components/ui/breadcrumb";
@@ -28,28 +28,52 @@ export default function DemandaCalendarPage() {
     end: new Date(new Date().setMonth(new Date().getMonth() + 1)),
   });
 
+  // Use refs para evitar loops infinitos
+  const isLoadingRef = useRef(false);
+  const loadAttemptRef = useRef(0);
+
   // Verificar permissões do usuário
   const isAdmin = user?.roles.includes("ADMIN") || false;
   const isSupervisor = user?.roles.includes("SUPERVISOR") || false;
   const canCreate = true; // Todos podem criar demandas
   const canSeeAll = isAdmin || isSupervisor; // Supervisores e admin podem ver todas
 
-  // Carregar eventos para o calendário
+  // Carregar eventos para o calendário com proteção contra loop infinito
   const loadEvents = async () => {
+    // Prevenir múltiplas chamadas simultâneas
+    if (isLoadingRef.current) return;
+
+    // Limitar a 3 tentativas para evitar loops infinitos
+    if (loadAttemptRef.current >= 3) {
+      console.log("Máximo de tentativas atingido");
+      setError(
+        "Número máximo de tentativas excedido. Aguarde ou recarregue a página."
+      );
+      setIsLoading(false);
+      return;
+    }
+
     try {
+      isLoadingRef.current = true;
       setIsLoading(true);
       setError(null);
+
+      loadAttemptRef.current += 1;
+      console.log(`Tentativa ${loadAttemptRef.current} de carregar eventos`);
 
       // Formatar datas para API - formato ISO (YYYY-MM-DD)
       const start = format(currentRange.start, "yyyy-MM-dd");
       const end = format(currentRange.end, "yyyy-MM-dd");
 
-      console.log(`Buscando demandas de ${start} até ${end}`);
-
       // Chamar API para obter eventos do calendário
       const data = await demandaService.getDemandasCalendario(start, end);
-      console.log("Dados recebidos:", data);
-      setEvents(data);
+      console.log("Dados recebidos da API:", data);
+
+      // Garantir que data é sempre um array
+      setEvents(Array.isArray(data) ? data : []);
+
+      // Reset contador após sucesso
+      loadAttemptRef.current = 0;
     } catch (error: any) {
       console.error("Erro ao carregar eventos:", error);
       setError(
@@ -58,21 +82,34 @@ export default function DemandaCalendarPage() {
       );
     } finally {
       setIsLoading(false);
+      isLoadingRef.current = false;
     }
   };
 
-  // Carregar eventos iniciais
+  // Carregar eventos apenas na montagem do componente e quando canSeeAll mudar
+  // Isolando do ciclo de atualização de currentRange
   useEffect(() => {
+    // Resetar contador quando a dependência crítica mudar
+    loadAttemptRef.current = 0;
     loadEvents();
-  }, [currentRange, canSeeAll]);
+  }, [canSeeAll, user]); // Removendo currentRange das dependências
 
-  // Lidar com mudança de intervalo do calendário
+  // Função para lidar com mudança de intervalo
   const handleRangeChange = (start: Date, end: Date) => {
+    // Atualizar o estado
     setCurrentRange({ start, end });
+
+    // Carregar dados apenas se tivermos feito menos de 3 tentativas recentemente
+    if (loadAttemptRef.current < 3) {
+      // Resetar tentativas para este novo intervalo
+      loadAttemptRef.current = 0;
+      loadEvents();
+    }
   };
 
   // Tentar novamente se ocorrer um erro
   const handleRetry = () => {
+    loadAttemptRef.current = 0; // Resetar tentativas
     loadEvents();
   };
 
