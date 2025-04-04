@@ -13,6 +13,7 @@
     "@ckeditor/ckeditor5-react": "9.5.0",
     "@hookform/resolvers": "^3.3.2",
     "@tinymce/tinymce-react": "6.0.0",
+    "date-fns": "4.1.0",
     "draft-js": "0.11.7",
     "draftjs-to-html": "0.9.1",
     "html-to-draftjs": "1.5.0",

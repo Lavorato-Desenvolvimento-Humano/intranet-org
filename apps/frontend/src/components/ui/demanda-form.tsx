@@ -21,16 +21,16 @@ const DemandaForm: React.FC<DemandaFormProps> = ({
   podeAtribuir = true,
 }) => {
   // Estado inicial do formulário
-  const [formData, setFormData] = useState<DemandaCreateDto | DemandaUpdateDto>(
-    {
-      titulo: "",
-      descricao: "",
-      dataInicio: new Date().toISOString().split("T")[0],
-      dataFim: "",
-      atribuidoParaId: "",
-      prioridade: "media",
-    }
-  );
+  const [formData, setFormData] = useState<
+    Partial<DemandaCreateDto | DemandaUpdateDto>
+  >({
+    titulo: "",
+    descricao: "",
+    dataInicio: new Date().toISOString().split("T")[0],
+    dataFim: "",
+    atribuidoParaId: "",
+    prioridade: "media",
+  });
 
   // Estado para controle de validação
   const [errors, setErrors] = useState<{
@@ -121,7 +121,25 @@ const DemandaForm: React.FC<DemandaFormProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (validateForm()) {
-      onSubmit(formData);
+      // Se estiver em modo de edição, garantimos que o ID está presente
+      if (editMode && demanda) {
+        onSubmit({
+          ...formData,
+          id: demanda.id,
+        } as DemandaUpdateDto);
+      } else {
+        // Garantimos que os campos obrigatórios estão presentes para criação
+        if (formData.titulo && formData.descricao && formData.atribuidoParaId) {
+          onSubmit({
+            titulo: formData.titulo,
+            descricao: formData.descricao,
+            dataInicio: formData.dataInicio as string,
+            dataFim: formData.dataFim as string,
+            atribuidoParaId: formData.atribuidoParaId,
+            prioridade: (formData.prioridade as any) || "media",
+          } as DemandaCreateDto);
+        }
+      }
     }
   };
 
@@ -137,7 +155,7 @@ const DemandaForm: React.FC<DemandaFormProps> = ({
           type="text"
           id="titulo"
           name="titulo"
-          value={formData.titulo}
+          value={formData.titulo || ""}
           onChange={handleChange}
           className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm ${
             errors.titulo ? "border-red-500" : ""
@@ -159,7 +177,7 @@ const DemandaForm: React.FC<DemandaFormProps> = ({
           id="descricao"
           name="descricao"
           rows={4}
-          value={formData.descricao}
+          value={formData.descricao || ""}
           onChange={handleChange}
           className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm ${
             errors.descricao ? "border-red-500" : ""
@@ -182,7 +200,7 @@ const DemandaForm: React.FC<DemandaFormProps> = ({
             type="date"
             id="dataInicio"
             name="dataInicio"
-            value={formData.dataInicio}
+            value={formData.dataInicio || ""}
             onChange={handleChange}
             className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm ${
               errors.dataInicio ? "border-red-500" : ""
@@ -204,7 +222,7 @@ const DemandaForm: React.FC<DemandaFormProps> = ({
             type="date"
             id="dataFim"
             name="dataFim"
-            value={formData.dataFim}
+            value={formData.dataFim || ""}
             onChange={handleChange}
             className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm ${
               errors.dataFim ? "border-red-500" : ""
@@ -227,7 +245,7 @@ const DemandaForm: React.FC<DemandaFormProps> = ({
           <select
             id="prioridade"
             name="prioridade"
-            value={formData.prioridade}
+            value={formData.prioridade || "media"}
             onChange={handleChange}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
             disabled={isLoading}>
@@ -247,7 +265,7 @@ const DemandaForm: React.FC<DemandaFormProps> = ({
             <select
               id="status"
               name="status"
-              value={(formData as DemandaUpdateDto).status || demanda.status}
+              value={formData.status || demanda.status}
               onChange={handleChange}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
               disabled={isLoading}>
@@ -267,7 +285,7 @@ const DemandaForm: React.FC<DemandaFormProps> = ({
           <select
             id="atribuidoParaId"
             name="atribuidoParaId"
-            value={formData.atribuidoParaId}
+            value={formData.atribuidoParaId || ""}
             onChange={handleChange}
             className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm ${
               errors.atribuidoParaId ? "border-red-500" : ""

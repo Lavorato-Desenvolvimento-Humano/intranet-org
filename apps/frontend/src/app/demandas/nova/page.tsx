@@ -1,3 +1,4 @@
+// apps/frontend/src/app/demandas/nova/page.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -49,7 +50,7 @@ export default function DemandaCreatePage() {
   }, []);
 
   // Lidar com envio do formulário
-  const handleSubmit = async (demanda: DemandaCreateDto) => {
+  const handleSubmit = async (demanda: DemandaCreateDto | any) => {
     try {
       setIsSubmitting(true);
       setError(null);
@@ -59,7 +60,7 @@ export default function DemandaCreatePage() {
         demanda.atribuidoParaId = user.id;
       }
 
-      await demandaService.createDemanda(demanda);
+      await demandaService.createDemanda(demanda as DemandaCreateDto);
       toastUtil.success("Demanda criada com sucesso!");
       router.push("/demandas");
     } catch (error: any) {
