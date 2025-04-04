@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, ListFilter } from "lucide-react";
+import { Plus, ListFilter, RefreshCw } from "lucide-react";
 import Breadcrumb from "@/components/ui/breadcrumb";
 import DemandaCalendar from "@/components/ui/demanda-calendar";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -15,105 +15,102 @@ import { DemandaEvent } from "@/types/demanda";
 import { format } from "date-fns";
 import Navbar from "@/components/layout/Navbar";
 
+// Flag global para desativar completamente o carregamento automático
+const DISABLE_AUTO_LOADING = true;
+
 export default function DemandaCalendarPage() {
   const { user } = useAuth();
   const router = useRouter();
 
   // Estados
   const [events, setEvents] = useState<DemandaEvent[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false); // Inicia como false para evitar carregamento automático
   const [error, setError] = useState<string | null>(null);
   const [currentRange, setCurrentRange] = useState({
     start: new Date(),
     end: new Date(new Date().setMonth(new Date().getMonth() + 1)),
   });
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
-  // Use refs para evitar loops infinitos
+  // Usar refs para controle
+  const isComponentMounted = useRef(true);
   const isLoadingRef = useRef(false);
-  const loadAttemptRef = useRef(0);
 
   // Verificar permissões do usuário
   const isAdmin = user?.roles.includes("ADMIN") || false;
   const isSupervisor = user?.roles.includes("SUPERVISOR") || false;
-  const canCreate = true; // Todos podem criar demandas
-  const canSeeAll = isAdmin || isSupervisor; // Supervisores e admin podem ver todas
+  const canCreate = true;
+  const canSeeAll = isAdmin || isSupervisor;
 
-  // Carregar eventos para o calendário com proteção contra loop infinito
-  const loadEvents = async () => {
-    // Prevenir múltiplas chamadas simultâneas
+  // Ao desmontar componente
+  useEffect(() => {
+    return () => {
+      isComponentMounted.current = false;
+    };
+  }, []);
+
+  // Carregar eventos de forma controlada
+  const loadEvents = async (showLoadingIndicator = true) => {
+    // Evitar carregamento duplo
     if (isLoadingRef.current) return;
-
-    // Limitar a 3 tentativas para evitar loops infinitos
-    if (loadAttemptRef.current >= 3) {
-      console.log("Máximo de tentativas atingido");
-      setError(
-        "Número máximo de tentativas excedido. Aguarde ou recarregue a página."
-      );
-      setIsLoading(false);
-      return;
-    }
 
     try {
       isLoadingRef.current = true;
-      setIsLoading(true);
+      if (showLoadingIndicator) {
+        setIsLoading(true);
+      }
       setError(null);
 
-      loadAttemptRef.current += 1;
-      console.log(`Tentativa ${loadAttemptRef.current} de carregar eventos`);
-
-      // Formatar datas para API - formato ISO (YYYY-MM-DD)
+      // Formatar datas para API
       const start = format(currentRange.start, "yyyy-MM-dd");
       const end = format(currentRange.end, "yyyy-MM-dd");
 
-      // Chamar API para obter eventos do calendário
+      console.log(`Carregando demandas de ${start} até ${end}`);
+
+      // Chamar API
       const data = await demandaService.getDemandasCalendario(start, end);
-      console.log("Dados recebidos da API:", data);
 
-      // Garantir que data é sempre um array
-      setEvents(Array.isArray(data) ? data : []);
-
-      // Reset contador após sucesso
-      loadAttemptRef.current = 0;
+      // Verificar se componente ainda está montado antes de atualizar estado
+      if (isComponentMounted.current) {
+        setEvents(Array.isArray(data) ? data : []);
+        setHasLoadedOnce(true);
+      }
     } catch (error: any) {
       console.error("Erro ao carregar eventos:", error);
-      setError(
-        error?.message ||
-          "Não foi possível carregar as demandas para o calendário."
-      );
+      if (isComponentMounted.current) {
+        setError(
+          error?.message ||
+            "Não foi possível carregar as demandas para o calendário."
+        );
+      }
     } finally {
-      setIsLoading(false);
+      if (isComponentMounted.current) {
+        setIsLoading(false);
+      }
       isLoadingRef.current = false;
     }
   };
 
-  // Carregar eventos apenas na montagem do componente e quando canSeeAll mudar
-  // Isolando do ciclo de atualização de currentRange
+  // Carregar dados apenas uma vez na montagem, se auto-carregamento não estiver desativado
   useEffect(() => {
-    // Resetar contador quando a dependência crítica mudar
-    loadAttemptRef.current = 0;
-    loadEvents();
-  }, [canSeeAll, user]); // Removendo currentRange das dependências
-
-  // Função para lidar com mudança de intervalo
-  const handleRangeChange = (start: Date, end: Date) => {
-    // Atualizar o estado
-    setCurrentRange({ start, end });
-
-    // Carregar dados apenas se tivermos feito menos de 3 tentativas recentemente
-    if (loadAttemptRef.current < 3) {
-      // Resetar tentativas para este novo intervalo
-      loadAttemptRef.current = 0;
+    if (!DISABLE_AUTO_LOADING && !hasLoadedOnce) {
       loadEvents();
     }
+    // Importante: Sem dependências para executar apenas uma vez
+  }, []);
+
+  // Lidar com mudança de intervalo de forma manual
+  const handleRangeChange = (start: Date, end: Date) => {
+    setCurrentRange({ start, end });
+    // Não carrega automaticamente com mudança de intervalo
   };
 
-  // Tentar novamente se ocorrer um erro
+  // Tentar novamente manualmente
   const handleRetry = () => {
-    loadAttemptRef.current = 0; // Resetar tentativas
     loadEvents();
   };
 
-  // Navegar para a página de criação de demanda
+  // Navegar para criação
   const handleCreateDemanda = () => {
     router.push("/demandas/nova");
   };
@@ -142,6 +139,16 @@ export default function DemandaCalendarPage() {
               <ListFilter size={20} />
             </button>
           </div>
+
+          {/* Botão de atualização manual */}
+          <CustomButton
+            onClick={handleRetry}
+            variant="secondary"
+            icon={RefreshCw}
+            className={isLoading ? "animate-spin" : ""}>
+            {isLoading ? "Carregando..." : "Atualizar"}
+          </CustomButton>
+
           {canCreate && (
             <CustomButton
               onClick={handleCreateDemanda}
@@ -164,6 +171,17 @@ export default function DemandaCalendarPage() {
             </button>
           </AlertDescription>
         </Alert>
+      )}
+
+      {!hasLoadedOnce && !isLoading && (
+        <div className="text-center py-8">
+          <p className="mb-4">
+            Clique no botão "Atualizar" para carregar as demandas do calendário.
+          </p>
+          <CustomButton onClick={handleRetry} variant="primary">
+            Carregar Demandas
+          </CustomButton>
+        </div>
       )}
 
       <div className="bg-white shadow-md rounded-lg overflow-hidden p-4">
