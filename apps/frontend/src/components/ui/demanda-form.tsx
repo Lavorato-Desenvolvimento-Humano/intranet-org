@@ -2,6 +2,8 @@
 import React, { useState, useEffect } from "react";
 import { UserDto } from "@/services/user";
 import { Demanda, DemandaCreateDto, DemandaUpdateDto } from "@/types/demanda";
+import { CustomButton } from "@/components/ui/custom-button";
+import { Calendar, Clock } from "lucide-react";
 
 interface DemandaFormProps {
   onSubmit: (demanda: DemandaCreateDto | DemandaUpdateDto) => void;
@@ -27,7 +29,9 @@ const DemandaForm: React.FC<DemandaFormProps> = ({
     titulo: "",
     descricao: "",
     dataInicio: new Date().toISOString().split("T")[0],
-    dataFim: "",
+    dataFim: new Date(new Date().setDate(new Date().getDate() + 7))
+      .toISOString()
+      .split("T")[0], // Data padrão 7 dias à frente
     atribuidoParaId: "",
     prioridade: "media",
   });
@@ -161,6 +165,7 @@ const DemandaForm: React.FC<DemandaFormProps> = ({
             errors.titulo ? "border-red-500" : ""
           }`}
           disabled={isLoading}
+          placeholder="Digite o título da demanda"
         />
         {errors.titulo && (
           <p className="mt-1 text-sm text-red-500">{errors.titulo}</p>
@@ -183,6 +188,7 @@ const DemandaForm: React.FC<DemandaFormProps> = ({
             errors.descricao ? "border-red-500" : ""
           }`}
           disabled={isLoading}
+          placeholder="Descreva os detalhes da demanda"
         />
         {errors.descricao && (
           <p className="mt-1 text-sm text-red-500">{errors.descricao}</p>
@@ -196,17 +202,22 @@ const DemandaForm: React.FC<DemandaFormProps> = ({
             className="block text-sm font-medium text-gray-700">
             Data de Início <span className="text-red-500">*</span>
           </label>
-          <input
-            type="date"
-            id="dataInicio"
-            name="dataInicio"
-            value={formData.dataInicio || ""}
-            onChange={handleChange}
-            className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm ${
-              errors.dataInicio ? "border-red-500" : ""
-            }`}
-            disabled={isLoading}
-          />
+          <div className="relative mt-1">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Calendar className="h-5 w-5 text-gray-400" />
+            </div>
+            <input
+              type="date"
+              id="dataInicio"
+              name="dataInicio"
+              value={formData.dataInicio || ""}
+              onChange={handleChange}
+              className={`pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm ${
+                errors.dataInicio ? "border-red-500" : ""
+              }`}
+              disabled={isLoading}
+            />
+          </div>
           {errors.dataInicio && (
             <p className="mt-1 text-sm text-red-500">{errors.dataInicio}</p>
           )}
@@ -218,17 +229,22 @@ const DemandaForm: React.FC<DemandaFormProps> = ({
             className="block text-sm font-medium text-gray-700">
             Data de Término <span className="text-red-500">*</span>
           </label>
-          <input
-            type="date"
-            id="dataFim"
-            name="dataFim"
-            value={formData.dataFim || ""}
-            onChange={handleChange}
-            className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm ${
-              errors.dataFim ? "border-red-500" : ""
-            }`}
-            disabled={isLoading}
-          />
+          <div className="relative mt-1">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Calendar className="h-5 w-5 text-gray-400" />
+            </div>
+            <input
+              type="date"
+              id="dataFim"
+              name="dataFim"
+              value={formData.dataFim || ""}
+              onChange={handleChange}
+              className={`pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm ${
+                errors.dataFim ? "border-red-500" : ""
+              }`}
+              disabled={isLoading}
+            />
+          </div>
           {errors.dataFim && (
             <p className="mt-1 text-sm text-red-500">{errors.dataFim}</p>
           )}
@@ -306,17 +322,23 @@ const DemandaForm: React.FC<DemandaFormProps> = ({
         </div>
       </div>
 
-      <div className="flex justify-end">
-        <button
-          type="submit"
-          className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+      <div className="flex justify-end pt-4 border-t border-gray-200">
+        <CustomButton
+          type="button"
+          variant="secondary"
+          onClick={() => (window.location.href = "/demandas")}
+          className="mr-3"
           disabled={isLoading}>
+          Cancelar
+        </CustomButton>
+
+        <CustomButton type="submit" variant="primary" disabled={isLoading}>
           {isLoading
-            ? "Processando..."
+            ? "Salvando..."
             : editMode
               ? "Atualizar Demanda"
               : "Criar Demanda"}
-        </button>
+        </CustomButton>
       </div>
     </form>
   );
