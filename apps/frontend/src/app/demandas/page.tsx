@@ -1,4 +1,4 @@
-// apps/frontend/src/app/demandas/calendario/page.tsx
+// apps/frontend/src/app/demandas/page.tsx
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -91,14 +91,6 @@ export default function DemandaCalendarPage() {
     }
   };
 
-  // Carregar dados apenas uma vez na montagem, se auto-carregamento não estiver desativado
-  useEffect(() => {
-    if (!DISABLE_AUTO_LOADING && !hasLoadedOnce) {
-      loadEvents();
-    }
-    // Importante: Sem dependências para executar apenas uma vez
-  }, []);
-
   // Lidar com mudança de intervalo de forma manual
   const handleRangeChange = (start: Date, end: Date) => {
     setCurrentRange({ start, end });
@@ -116,108 +108,114 @@ export default function DemandaCalendarPage() {
   };
 
   return (
-    <div className="container py-8">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Navbar fixa no topo */}
       <Navbar />
-      <Breadcrumb
-        items={[
-          { label: "Demandas", href: "/demandas" },
-          { label: "Calendário" },
-        ]}
-        showHome={true}
-      />
 
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">
-          Calendário de Demandas
-        </h1>
-        <div className="flex space-x-4">
-          <div className="flex border rounded-md overflow-hidden">
-            <button
-              onClick={() => router.push("/demandas")}
-              className="px-3 py-2 bg-white text-gray-700 hover:bg-gray-100"
-              title="Visualização em lista">
-              <ListFilter size={20} />
-            </button>
-          </div>
-
-          {/* Botão de atualização manual */}
-          <CustomButton
-            onClick={handleRetry}
-            variant="secondary"
-            icon={RefreshCw}
-            className={isLoading ? "animate-spin" : ""}>
-            {isLoading ? "Carregando..." : "Atualizar"}
-          </CustomButton>
-
-          {canCreate && (
-            <CustomButton
-              onClick={handleCreateDemanda}
-              icon={Plus}
-              variant="primary">
-              Nova Demanda
-            </CustomButton>
-          )}
-        </div>
-      </div>
-
-      {error && (
-        <Alert variant="error" className="mb-6">
-          <AlertDescription>
-            {error}
-            <button
-              onClick={handleRetry}
-              className="ml-2 underline text-primary hover:text-primary-dark">
-              Tentar novamente
-            </button>
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {!hasLoadedOnce && !isLoading && (
-        <div className="text-center py-8">
-          <p className="mb-4">
-            Clique no botão "Atualizar" para carregar as demandas do calendário.
-          </p>
-          <CustomButton onClick={handleRetry} variant="primary">
-            Carregar Demandas
-          </CustomButton>
-        </div>
-      )}
-
-      <div className="bg-white shadow-md rounded-lg overflow-hidden p-4">
-        <DemandaCalendar
-          events={events}
-          onRangeChange={handleRangeChange}
-          isLoading={isLoading}
+      {/* Conteúdo principal */}
+      <div className="container mx-auto px-4 py-6 flex-grow">
+        <Breadcrumb
+          items={[
+            { label: "Demandas", href: "/demandas" },
+            { label: "Calendário" },
+          ]}
+          showHome={true}
         />
-      </div>
 
-      <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-        <h3 className="text-lg font-medium mb-3">Legenda</h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <div className="flex items-center">
-            <div className="w-4 h-4 rounded-full bg-green-500 mr-2"></div>
-            <span>Prioridade Baixa</span>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold text-gray-800">
+            Calendário de Demandas
+          </h1>
+          <div className="flex space-x-4">
+            <div className="flex border rounded-md overflow-hidden">
+              <button
+                onClick={() => router.push("/demandas")}
+                className="px-3 py-2 bg-white text-gray-700 hover:bg-gray-100"
+                title="Visualização em lista">
+                <ListFilter size={20} />
+              </button>
+            </div>
+
+            {/* Botão de atualização manual */}
+            <CustomButton
+              onClick={handleRetry}
+              variant="secondary"
+              icon={RefreshCw}
+              className={isLoading ? "animate-spin" : ""}>
+              {isLoading ? "Carregando..." : "Atualizar"}
+            </CustomButton>
+
+            {canCreate && (
+              <CustomButton
+                onClick={handleCreateDemanda}
+                icon={Plus}
+                variant="primary">
+                Nova Demanda
+              </CustomButton>
+            )}
           </div>
-          <div className="flex items-center">
-            <div className="w-4 h-4 rounded-full bg-yellow-500 mr-2"></div>
-            <span>Prioridade Média</span>
+        </div>
+
+        {error && (
+          <Alert variant="error" className="mb-6">
+            <AlertDescription>
+              {error}
+              <button
+                onClick={handleRetry}
+                className="ml-2 underline text-primary hover:text-primary-dark">
+                Tentar novamente
+              </button>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {!hasLoadedOnce && !isLoading && (
+          <div className="text-center py-8 bg-white rounded-lg shadow mb-6">
+            <p className="mb-4">
+              Clique no botão "Atualizar" para carregar as demandas do
+              calendário.
+            </p>
+            <CustomButton onClick={handleRetry} variant="primary">
+              Carregar Demandas
+            </CustomButton>
           </div>
-          <div className="flex items-center">
-            <div className="w-4 h-4 rounded-full bg-red-500 mr-2"></div>
-            <span>Prioridade Alta</span>
-          </div>
-          <div className="flex items-center">
-            <div className="w-4 h-4 rounded-full bg-blue-500 mr-2"></div>
-            <span>Pendente</span>
-          </div>
-          <div className="flex items-center">
-            <div className="w-4 h-4 rounded-full bg-orange-500 mr-2"></div>
-            <span>Em Andamento</span>
-          </div>
-          <div className="flex items-center">
-            <div className="w-4 h-4 rounded-full bg-green-600 mr-2"></div>
-            <span>Concluída</span>
+        )}
+
+        <div className="bg-white shadow-md rounded-lg overflow-hidden p-4">
+          <DemandaCalendar
+            events={events}
+            onRangeChange={handleRangeChange}
+            isLoading={isLoading}
+          />
+        </div>
+
+        <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <h3 className="text-lg font-medium mb-3">Legenda</h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="flex items-center">
+              <div className="w-4 h-4 rounded-full bg-green-500 mr-2"></div>
+              <span>Prioridade Baixa</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-4 h-4 rounded-full bg-yellow-500 mr-2"></div>
+              <span>Prioridade Média</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-4 h-4 rounded-full bg-red-500 mr-2"></div>
+              <span>Prioridade Alta</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-4 h-4 rounded-full bg-blue-500 mr-2"></div>
+              <span>Pendente</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-4 h-4 rounded-full bg-orange-500 mr-2"></div>
+              <span>Em Andamento</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-4 h-4 rounded-full bg-green-600 mr-2"></div>
+              <span>Concluída</span>
+            </div>
           </div>
         </div>
       </div>
