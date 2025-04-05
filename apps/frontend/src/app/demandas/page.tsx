@@ -118,7 +118,7 @@ export default function DemandasPage() {
             {/* Botão de atualização manual */}
             <CustomButton
               onClick={handleRetry}
-              variant="secondary"
+              variant="primary"
               icon={RefreshCw}
               className={isLoading ? "animate-spin" : ""}>
               {isLoading ? "Carregando..." : "Atualizar"}

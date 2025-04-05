@@ -2,7 +2,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import Breadcrumb from "@/components/ui/breadcrumb";
 import DemandaForm from "@/components/ui/demanda-form";
@@ -14,14 +13,14 @@ import demandaService from "@/services/demanda";
 import userService from "@/services/user";
 import { DemandaCreateDto } from "@/types/demanda";
 import { UserDto } from "@/services/user";
+import Navbar from "@/components/layout/Navbar";
 
 export default function DemandaCreatePage() {
   const { user } = useAuth();
-  const router = useRouter();
 
   // Estados
   const [usuarios, setUsuarios] = useState<UserDto[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,7 +61,9 @@ export default function DemandaCreatePage() {
 
       await demandaService.createDemanda(demanda as DemandaCreateDto);
       toastUtil.success("Demanda criada com sucesso!");
-      router.push("/demandas");
+
+      // Redirecionar para a página de demandas após sucesso
+      window.location.href = "/demandas";
     } catch (error: any) {
       console.error("Erro ao criar demanda:", error);
 
@@ -84,50 +85,57 @@ export default function DemandaCreatePage() {
 
   // Voltar para a página anterior
   const handleBack = () => {
-    router.back();
+    window.location.href = "/demandas";
   };
 
   if (isLoading) {
     return (
-      <div className="container py-8">
-        <Loading size="large" message="Carregando..." />
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <Loading size="large" message="Carregando..." />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="container py-8">
-      <Breadcrumb
-        items={[
-          { label: "Demandas", href: "/demandas" },
-          { label: "Nova Demanda" },
-        ]}
-        showHome={true}
-      />
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <Navbar />
 
-      <div className="flex items-center mb-6">
-        <button
-          onClick={handleBack}
-          className="mr-3 text-gray-500 hover:text-gray-700">
-          <ArrowLeft size={24} />
-        </button>
-        <h1 className="text-2xl font-bold text-gray-800">Nova Demanda</h1>
-      </div>
+      <div className="container mx-auto px-4 py-6 flex-grow">
+        <Breadcrumb
+          items={[
+            { label: "Demandas", href: "/demandas" },
+            { label: "Nova Demanda" },
+          ]}
+          showHome={true}
+        />
 
-      {error && (
-        <Alert variant="error" className="mb-6">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
+        <div className="flex items-center mb-6">
+          <button
+            onClick={handleBack}
+            className="mr-3 text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100">
+            <ArrowLeft size={24} />
+          </button>
+          <h1 className="text-2xl font-bold text-gray-800">Nova Demanda</h1>
+        </div>
 
-      <div className="bg-white shadow-md rounded-lg overflow-hidden">
-        <div className="p-6">
-          <DemandaForm
-            onSubmit={handleSubmit}
-            usuarios={usuarios}
-            isLoading={isSubmitting}
-            podeAtribuir={podeAtribuir}
-          />
+        {error && (
+          <Alert variant="error" className="mb-6">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        <div className="bg-white shadow-md rounded-lg overflow-hidden">
+          <div className="p-6">
+            <DemandaForm
+              onSubmit={handleSubmit}
+              usuarios={usuarios}
+              isLoading={isSubmitting}
+              podeAtribuir={podeAtribuir}
+            />
+          </div>
         </div>
       </div>
     </div>
