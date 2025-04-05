@@ -43,8 +43,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             "/uploads/temp/imagens/**",
             "/api/uploads/temp/**",
             "/api/uploads/temp/anexos/**",
-            "/api/uploads/temp/imagens/**",
-            "/api/demandas/**"
+            "/api/uploads/temp/imagens/**"
     );
 
     private final AntPathMatcher pathMatcher = new AntPathMatcher();

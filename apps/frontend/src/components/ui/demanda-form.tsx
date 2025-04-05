@@ -265,7 +265,7 @@ const DemandaForm: React.FC<DemandaFormProps> = ({
             <select
               id="status"
               name="status"
-              value={formData.status || demanda.status}
+              value={demanda.status}
               onChange={handleChange}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
               disabled={isLoading}>

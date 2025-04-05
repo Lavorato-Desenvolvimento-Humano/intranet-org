@@ -79,6 +79,9 @@ public class SecurityConfig {
                                 // Public endpoints for authentication - always start with /api
                                 .requestMatchers("/api/auth/**", "/api/public/**").permitAll()
 
+                                // Endpoint específico para calendário
+                                .requestMatchers("/api/demandas/calendario").authenticated()
+
                                 // Public access to image and file resources
                                 .requestMatchers("/api/uploads/**").permitAll()
                                 .requestMatchers("/api/uploads/temp/**").permitAll()
