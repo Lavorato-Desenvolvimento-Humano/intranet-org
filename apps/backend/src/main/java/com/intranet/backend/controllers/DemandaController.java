@@ -189,6 +189,10 @@ public class DemandaController {
         }
     }
 
+    /**
+     * Endpoint específico para buscar demandas para visualização em calendário
+     * CORREÇÃO: Movido o endpoint para um método separado com mapeamento específico
+     */
     @GetMapping("/calendario")
     public ResponseEntity<List<DemandaDto>> getDemandasCalendario(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio,
