@@ -14,6 +14,7 @@ import {
   Users,
   Menu,
   ChevronDown,
+  Book,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -121,7 +122,7 @@ export default function Navbar() {
                     href="/demandas"
                     className="flex items-center px-4 py-2 hover:bg-gray-100"
                     onClick={handleNavigate("/demandas")}>
-                    <Users className="mr-2" size={16} />
+                    <Book className="mr-2" size={16} />
                     <span>Demandas</span>
                   </Link>
 
