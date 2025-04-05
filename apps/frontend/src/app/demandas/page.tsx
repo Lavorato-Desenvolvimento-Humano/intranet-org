@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Plus, ListFilter, RefreshCw } from "lucide-react";
 import Breadcrumb from "@/components/ui/breadcrumb";
 import DemandaCalendar from "@/components/ui/demanda-calendar";
@@ -18,13 +18,12 @@ import Navbar from "@/components/layout/Navbar";
 // Flag global para desativar completamente o carregamento automático
 const DISABLE_AUTO_LOADING = true;
 
-export default function DemandaCalendarPage() {
+export default function DemandasPage() {
   const { user } = useAuth();
-  const router = useRouter();
 
   // Estados
   const [events, setEvents] = useState<DemandaEvent[]>([]);
-  const [isLoading, setIsLoading] = useState(false); // Inicia como false para evitar carregamento automático
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentRange, setCurrentRange] = useState({
     start: new Date(),
@@ -102,11 +101,6 @@ export default function DemandaCalendarPage() {
     loadEvents();
   };
 
-  // Navegar para criação
-  const handleCreateDemanda = () => {
-    router.push("/demandas/nova");
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Navbar fixa no topo */}
@@ -114,28 +108,13 @@ export default function DemandaCalendarPage() {
 
       {/* Conteúdo principal */}
       <div className="container mx-auto px-4 py-6 flex-grow">
-        <Breadcrumb
-          items={[
-            { label: "Demandas", href: "/demandas" },
-            { label: "Calendário" },
-          ]}
-          showHome={true}
-        />
+        <Breadcrumb items={[{ label: "Demandas" }]} showHome={true} />
 
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-800">
             Calendário de Demandas
           </h1>
           <div className="flex space-x-4">
-            <div className="flex border rounded-md overflow-hidden">
-              <button
-                onClick={() => router.push("/demandas")}
-                className="px-3 py-2 bg-white text-gray-700 hover:bg-gray-100"
-                title="Visualização em lista">
-                <ListFilter size={20} />
-              </button>
-            </div>
-
             {/* Botão de atualização manual */}
             <CustomButton
               onClick={handleRetry}
@@ -145,13 +124,14 @@ export default function DemandaCalendarPage() {
               {isLoading ? "Carregando..." : "Atualizar"}
             </CustomButton>
 
+            {/* Link para nova demanda - rota corrigida */}
             {canCreate && (
-              <CustomButton
-                onClick={handleCreateDemanda}
-                icon={Plus}
-                variant="primary">
+              <a
+                href="/demandas/nova"
+                className="inline-flex items-center px-4 py-2 bg-primary hover:bg-primary-light text-white font-medium rounded-md transition-colors">
+                <Plus size={20} className="mr-2" />
                 Nova Demanda
-              </CustomButton>
+              </a>
             )}
           </div>
         </div>
