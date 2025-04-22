@@ -51,6 +51,7 @@ const demandaService = {
    */
   createDemanda: async (demanda: DemandaCreateDto): Promise<Demanda> => {
     try {
+      console.log("Enviando dados da demanda:", demanda);
       const response = await api.post("/api/demandas", demanda);
       return response.data;
     } catch (error) {

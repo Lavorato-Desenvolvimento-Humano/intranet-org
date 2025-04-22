@@ -124,12 +124,31 @@ const DemandaForm: React.FC<DemandaFormProps> = ({
   // Submeter formulário
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (validateForm()) {
+    const isValid = validateForm();
+    if (isValid) {
+      // Formatar datas para o formato LocalDateTime
+      const formatarDataParaLocalDateTime = (
+        dataString: string | undefined
+      ) => {
+        if (!dataString) return undefined;
+        // Adiciona a hora 00:00:00 à data
+        return `${dataString}T00:00:00`;
+      };
+
+      const dataInicioFormatada = formatarDataParaLocalDateTime(
+        formData.dataInicio as string
+      );
+      const dataFimFormatada = formatarDataParaLocalDateTime(
+        formData.dataFim as string
+      );
+
       // Se estiver em modo de edição, garantimos que o ID está presente
       if (editMode && demanda) {
         onSubmit({
           ...formData,
           id: demanda.id,
+          dataInicio: dataInicioFormatada,
+          dataFim: dataFimFormatada,
         } as DemandaUpdateDto);
       } else {
         // Garantimos que os campos obrigatórios estão presentes para criação
@@ -137,8 +156,8 @@ const DemandaForm: React.FC<DemandaFormProps> = ({
           onSubmit({
             titulo: formData.titulo,
             descricao: formData.descricao,
-            dataInicio: formData.dataInicio as string,
-            dataFim: formData.dataFim as string,
+            dataInicio: dataInicioFormatada,
+            dataFim: dataFimFormatada,
             atribuidoParaId: formData.atribuidoParaId,
             prioridade: (formData.prioridade as any) || "media",
           } as DemandaCreateDto);
