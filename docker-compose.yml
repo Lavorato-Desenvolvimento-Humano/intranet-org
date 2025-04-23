@@ -14,7 +14,7 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${DB_PASS}
       SPRING_PROFILES_ACTIVE: production
     volumes:
-      - /opt/deploy/main/certbot/conf/live/lavorato.app.br/:/certs
+      - /opt/deploy/main/certbot/conf/live/lavorato.app.br/keystore.p12:/certs/keystore.p12
       - /upload-data:/app/uploads/images
     depends_on:
       postgres:
