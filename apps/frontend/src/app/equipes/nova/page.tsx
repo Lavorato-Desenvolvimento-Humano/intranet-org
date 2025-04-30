@@ -11,6 +11,7 @@ import { useAuth } from "@/context/AuthContext";
 import equipeService, { EquipeDto, EquipeCreateDto } from "@/services/equipe";
 import toastUtil from "@/utils/toast";
 import { CustomButton } from "@/components/ui/custom-button";
+import SimpleRichEditor from "@/components/ui/simple-rich-editor";
 import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
 
 export default function EquipeFormPage() {
@@ -198,15 +199,14 @@ export default function EquipeFormPage() {
                   className="block text-sm font-medium text-gray-700 mb-1">
                   Descrição
                 </label>
-                <textarea
-                  id="descricao"
-                  name="descricao"
-                  value={formData.descricao}
-                  onChange={handleChange}
-                  rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                <SimpleRichEditor
+                  value={formData.descricao || ""}
+                  onChange={(value) =>
+                    setFormData((prev) => ({ ...prev, descricao: value }))
+                  }
                   placeholder="Descrição da equipe (opcional)"
                   disabled={submitting}
+                  height="200px"
                 />
               </div>
 

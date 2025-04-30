@@ -14,6 +14,7 @@ import tabelaValoresService, {
 import { CustomButton } from "@/components/ui/custom-button";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
 import toastUtil from "@/utils/toast";
+import ContentViewer from "@/components/ui/content-viewer";
 import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
 
 export default function TabelaValoresViewPage() {
@@ -275,9 +276,10 @@ export default function TabelaValoresViewPage() {
             {tabela.descricao && (
               <div className="mt-4">
                 <p className="text-sm text-gray-500">Descrição:</p>
-                <p className="text-gray-800 whitespace-pre-line">
-                  {tabela.descricao}
-                </p>
+                <ContentViewer
+                  content={tabela.descricao}
+                  className="text-gray-800"
+                />
               </div>
             )}
           </div>

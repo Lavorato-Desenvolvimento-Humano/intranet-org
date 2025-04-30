@@ -24,6 +24,7 @@ import convenioService, {
 import tabelaValoresService, {
   TabelaValoresDto,
 } from "@/services/tabelaValores";
+import ContentViewer from "@/components/ui/content-viewer";
 import toastUtil from "@/utils/toast";
 import { CustomButton } from "@/components/ui/custom-button";
 import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
@@ -252,9 +253,10 @@ export default function ConvenioViewPage() {
             {convenio.description && (
               <div className="mt-4">
                 <p className="text-sm text-gray-500">Descrição:</p>
-                <p className="text-gray-800 whitespace-pre-line">
-                  {convenio.description}
-                </p>
+                <ContentViewer
+                  content={convenio.description}
+                  className="text-gray-800"
+                />
               </div>
             )}
           </div>
