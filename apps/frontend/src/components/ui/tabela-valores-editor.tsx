@@ -7,6 +7,7 @@ import { CustomButton } from "@/components/ui/custom-button";
 interface ValorRow {
   id: string; // ID único para manipulação
   especialidade: string;
+  codigoProcedimento: string; // Novo campo
   valor: string;
   observacao: string;
 }
@@ -47,6 +48,7 @@ const TabelaValoresEditor: React.FC<TabelaValoresEditorProps> = ({
               parsedData.map((item, index) => ({
                 id: `row-${index}-${Date.now()}`,
                 especialidade: item.especialidade || "",
+                codigoProcedimento: item.codigoProcedimento || "", // Novo campo
                 valor: item.valor || "",
                 observacao: item.observacao || "",
               }))
@@ -60,6 +62,7 @@ const TabelaValoresEditor: React.FC<TabelaValoresEditorProps> = ({
                 return {
                   id: `row-${index}-${Date.now()}`,
                   especialidade: entries[0]?.[1]?.toString() || "",
+                  codigoProcedimento: "", // Valor padrão para o novo campo
                   valor: entries[1]?.[1]?.toString() || "",
                   observacao: entries[2]?.[1]?.toString() || "",
                 };
@@ -87,11 +90,14 @@ const TabelaValoresEditor: React.FC<TabelaValoresEditorProps> = ({
     if (rows.length === 0) return;
 
     // Converte as linhas para o formato JSON esperado
-    const jsonData = rows.map(({ especialidade, valor, observacao }) => ({
-      especialidade,
-      valor,
-      observacao,
-    }));
+    const jsonData = rows.map(
+      ({ especialidade, codigoProcedimento, valor, observacao }) => ({
+        especialidade,
+        codigoProcedimento,
+        valor,
+        observacao,
+      })
+    );
 
     // Notifica a mudança através da função onChange
     onChange(JSON.stringify(jsonData));
@@ -104,6 +110,7 @@ const TabelaValoresEditor: React.FC<TabelaValoresEditorProps> = ({
       {
         id: `row-${prevRows.length}-${Date.now()}`,
         especialidade: "",
+        codigoProcedimento: "",
         valor: "",
         observacao: "",
       },
@@ -134,6 +141,9 @@ const TabelaValoresEditor: React.FC<TabelaValoresEditorProps> = ({
               Especialidade
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Código Procedimento
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Valor
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -156,6 +166,18 @@ const TabelaValoresEditor: React.FC<TabelaValoresEditorProps> = ({
                   }
                   className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                   placeholder="Especialidade"
+                  disabled={disabled}
+                />
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <input
+                  type="text"
+                  value={row.codigoProcedimento}
+                  onChange={(e) =>
+                    updateCell(row.id, "codigoProcedimento", e.target.value)
+                  }
+                  className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="Código Procedimento"
                   disabled={disabled}
                 />
               </td>
