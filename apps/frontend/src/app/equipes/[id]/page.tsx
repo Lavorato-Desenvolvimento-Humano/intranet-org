@@ -24,6 +24,7 @@ import userService, { UserDto } from "@/services/user";
 import toastUtil from "@/utils/toast";
 import { CustomButton } from "@/components/ui/custom-button";
 import DataTable from "@/components/ui/data-table";
+import ContentViewer from "@/components/ui/content-viewer";
 import { AddMembroModal } from "@/components/equipe/AddMembroModal";
 import {
   buildProfileImageUrl,
@@ -401,6 +402,14 @@ export default function EquipeDetailPage() {
 
             <div className="mb-4">
               <p className="text-sm text-gray-500">Descrição:</p>
+              {equipe.descricao ? (
+                <ContentViewer
+                  content={equipe.descricao}
+                  className="text-gray-800"
+                />
+              ) : (
+                <p className="text-gray-800">Sem descrição</p>
+              )}
               <p className="text-gray-800">
                 {equipe.descricao || "Sem descrição"}
               </p>

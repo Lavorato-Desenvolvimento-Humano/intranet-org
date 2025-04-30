@@ -15,6 +15,7 @@ import convenioService, {
 import toastUtil from "@/utils/toast";
 import { CustomButton } from "@/components/ui/custom-button";
 import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
+import SimpleRichEditor from "@/components/ui/simple-rich-editor";
 
 export default function EditarConvenioPage() {
   const router = useRouter();
@@ -222,17 +223,17 @@ export default function EditarConvenioPage() {
                   className="block text-sm font-medium text-gray-700 mb-1">
                   Descrição
                 </label>
-                <textarea
-                  id="description"
-                  name="description"
-                  value={convenio.description}
-                  onChange={handleChange}
-                  rows={4}
-                  className={`w-full px-3 py-2 border rounded-md ${
-                    errors.description ? "border-red-500" : "border-gray-300"
-                  } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
+                <SimpleRichEditor
+                  value={convenio.description || ""}
+                  onChange={(value) =>
+                    setConvenio((prev) => ({ ...prev, description: value }))
+                  }
                   placeholder="Digite a descrição do convênio"
-                  disabled={submitting}></textarea>
+                  disabled={submitting}
+                  error={errors.description}
+                  height="200px"
+                />
+
                 {errors.description && (
                   <p className="mt-1 text-sm text-red-500">
                     {errors.description}
