@@ -14,7 +14,7 @@ import tabelaValoresService, {
   TabelaValoresDto,
 } from "@/services/tabelaValores";
 import toastUtil from "@/utils/toast";
-import ContentViewer from "@/components/ui/content-viewer";
+import { stripHtml } from "@/utils/textUtils";
 import { CustomButton } from "@/components/ui/custom-button";
 import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
 
@@ -126,17 +126,8 @@ export default function TabelasValoresPage() {
       header: "Descrição",
       width: "25%",
       render: (value: string) => (
-        <div
-          className="text-gray-600 max-w-sm overflow-hidden"
-          style={{ maxHeight: "60px" }}>
-          {value ? (
-            <ContentViewer
-              content={value}
-              className="line-clamp-2 table-rich-content"
-            />
-          ) : (
-            "Sem descrição"
-          )}
+        <div className="text-gray-600 truncate max-w-sm">
+          {stripHtml(value) || "Sem descrição"}
         </div>
       ),
     },

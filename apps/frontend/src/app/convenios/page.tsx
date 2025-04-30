@@ -12,7 +12,7 @@ import ConfirmDialog from "@/components/ui/confirm-dialog";
 import { useAuth } from "@/context/AuthContext";
 import convenioService, { ConvenioDto } from "@/services/convenio";
 import toastUtil from "@/utils/toast";
-import ContentViewer from "@/components/ui/content-viewer";
+import { stripHtml } from "@/utils/textUtils";
 import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
 
 export default function ConveniosPage() {
@@ -118,17 +118,8 @@ export default function ConveniosPage() {
       header: "Descrição",
       width: "35%",
       render: (value: string) => (
-        <div
-          className="text-gray-600 max-w-sm overflow-hidden"
-          style={{ maxHeight: "60px" }}>
-          {value ? (
-            <ContentViewer
-              content={value}
-              className="line-clamp-2 table-rich-content" // Limita a 2 linhas
-            />
-          ) : (
-            "Sem descrição"
-          )}
+        <div className="text-gray-600 truncate max-w-sm">
+          {stripHtml(value) || "Sem descrição"}
         </div>
       ),
     },
