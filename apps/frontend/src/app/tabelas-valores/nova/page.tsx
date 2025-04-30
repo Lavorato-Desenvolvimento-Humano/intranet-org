@@ -28,7 +28,7 @@ function NovaTabelaContent() {
     nome: "",
     descricao: "",
     conteudo: JSON.stringify([
-      { especialidade: "", valor: "", observacao: "" },
+      { especialidade: "", codigoProcedimento: "", valor: "", observacao: "" },
     ]),
     convenioId: "",
   });
