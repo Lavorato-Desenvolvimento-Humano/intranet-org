@@ -24,7 +24,6 @@ export default function Navbar() {
   const { user, logout } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const [pendingUsersCount, setPendingUsersCount] = useState<number>(0);
 
   const hasAdminRole = user?.roles?.some(
     (role) => role === "ROLE_ADMIN" || role === "ADMIN"
@@ -49,30 +48,7 @@ export default function Navbar() {
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [dropdownRef, hasAdminRole]);
-
-  useEffect(() => {
-    if (hasAdminRole) {
-      const fetchPendingUsers = async () => {
-        try {
-          const usersData = await adminService.getAllUsers();
-          // Filtrar apenas usuários com email verificado mas não aprovados pelo admin
-          const pendingCount = usersData.filter(
-            (user) => user.emailVerified && !user.adminApproved
-          ).length;
-          setPendingUsersCount(pendingCount);
-        } catch (error) {
-          console.error("Erro ao verificar usuários pendentes:", error);
-        }
-      };
-
-      fetchPendingUsers();
-
-      const interval = setInterval(fetchPendingUsers, 60000); // a cada minuto
-
-      return () => clearInterval(interval);
-    }
-  }, [hasAdminRole]);
+  }, [dropdownRef]);
 
   // Função para lidar com o logout
   const handleLogout = async (e: React.MouseEvent) => {
@@ -168,11 +144,6 @@ export default function Navbar() {
                       onClick={handleNavigate("/admin")}>
                       <SettingsIcon className="mr-2" size={16} />
                       <span>Painel Administrativo</span>
-                      {pendingUsersCount > 0 && (
-                        <span className="absolute top-1 right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                          {pendingUsersCount}
-                        </span>
-                      )}
                     </Link>
                   )}
                 </div>

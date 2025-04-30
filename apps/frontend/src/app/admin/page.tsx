@@ -112,16 +112,6 @@ export default function AdminDashboardPage() {
                   Pendentes
                 </TabsTrigger>
                 <TabsTrigger
-                  value="users"
-                  onClick={() => setActiveTab("users")}
-                  className={`flex items-center px-4 py-2 rounded-md transition-colors ${
-                    activeTab === "users"
-                      ? "bg-primary text-white"
-                      : "hover:bg-gray-200"
-                  }`}>
-                  Usuários
-                </TabsTrigger>
-                <TabsTrigger
                   value="roles"
                   onClick={() => setActiveTab("roles")}
                   className={`flex items-center px-4 py-2 rounded-md transition-colors ${
