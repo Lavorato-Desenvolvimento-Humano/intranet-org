@@ -21,6 +21,7 @@ export interface User {
   roles: string[];
   token?: string;
   emailVerified: boolean;
+  adminApproved?: boolean;
   active?: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -35,6 +36,7 @@ export interface AuthResponse {
   profileImage: string | null;
   roles: string[];
   emailVerified: boolean;
+  adminApproved?: boolean;
 }
 
 export interface NewPasswordRequest {
@@ -79,13 +81,6 @@ function processAuthResponse(userData: AuthResponse): User {
 }
 
 export const register = async (data: RegisterData): Promise<User> => {
-  //Validar domínio do e-mail antes de enviar a requisição
-  if (!data.email.endsWith("@lavorato.com.br")) {
-    throw new Error(
-      "Apenas emails com domínio @lavorato.com.br são permitidos"
-    );
-  }
-
   // Remover confirmPassword antes de enviar para o backend
   const { confirmPassword, ...registerData } = data;
 

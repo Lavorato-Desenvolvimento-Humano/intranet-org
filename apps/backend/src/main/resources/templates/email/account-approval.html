@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Conta Aprovada</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .content {
+            margin-bottom: 30px;
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #2ea6b8;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        .footer {
+            margin-top: 30px;
+            font-size: 12px;
+            color: #777;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <img src="cid:logo" alt="Lavorato Saúde Integrada" />
+        <h1>Conta Aprovada</h1>
+    </div>
+    <div class="content">
+        <p>Olá <span th:text="${name}">Usuário</span>,</p>
+        <p>Temos o prazer de informar que sua conta na Lavorato Saúde Integrada foi aprovada pelo administrador.</p>
+        <p>Agora você pode acessar nosso sistema normalmente.</p>
+        <div style="text-align: center; margin: 30px 0;">
+            <a th:href="@{${loginUrl}}" class="button">Acessar o Sistema</a>
+        </div>
+        <p>Se você tiver alguma dúvida, entre em contato conosco.</p>
+        <p>Atenciosamente,<br/>Equipe Lavorato Saúde Integrada</p>
+    </div>
+    <div class="footer">
+        <p>Este é um email automático. Por favor, não responda a este email.</p>
+    </div>
+</div>
+</body>
+</html>

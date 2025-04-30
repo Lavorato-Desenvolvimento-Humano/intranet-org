@@ -22,12 +22,14 @@ export default function RegisterPage() {
   const isMobile = viewport === "mobile";
   const { register } = useAuth();
 
-  // Validar domínio de e-mail sempre que o e-mail mudar
   useEffect(() => {
-    if (email && !email.endsWith("@lavorato.com.br")) {
-      setEmailError(
-        "Apenas emails com domínio @lavorato.com.br são permitidos"
-      );
+    if (email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        setEmailError("Por favor, insira um email válido");
+      } else {
+        setEmailError("");
+      }
     } else {
       setEmailError("");
     }

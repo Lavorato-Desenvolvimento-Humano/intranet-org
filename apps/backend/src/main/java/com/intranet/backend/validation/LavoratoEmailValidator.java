@@ -14,11 +14,7 @@ public class LavoratoEmailValidator implements ConstraintValidator<LavoratoEmail
 
     @Override
     public boolean isValid(String email, ConstraintValidatorContext context) {
-        if (email == null || email.isEmpty()) {
-            return true;
-        }
-
-        return email.endsWith(ALLOWED_DOMAIN);
+        return true;
     }
 
 }

@@ -75,6 +75,27 @@ const adminService = {
       throw error;
     }
   },
+
+  /**
+   * Atualiza o stauts de aprovação de um usuário
+   */
+  updateUserApproval: async (
+    userId: string,
+    approved: boolean
+  ): Promise<User> => {
+    try {
+      const response = await api.patch<User>(
+        `/api/users/${userId}/approve?approved=${approved}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Erro ao ${approved ? "aprovar" : "reprovar"} usuário ${userId}:`,
+        error
+      );
+      throw error;
+    }
+  },
 };
 
 export default adminService;

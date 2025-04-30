@@ -23,6 +23,7 @@ function LoginContent() {
   const { login } = useAuth();
   const searchParams = useSearchParams();
   const resetSuccess = searchParams.get("reset") === "success";
+  const [customError, setCustomError] = useState<string | null>(null);
 
   // Mostrar toast de sucesso se o usuário acabou de redefinir a senha
   useEffect(() => {
@@ -43,13 +44,17 @@ function LoginContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setCustomError(null);
 
     try {
       await login({ email, password });
       // O redirecionamento é feito dentro de login
-    } catch (error) {
+    } catch (error: any) {
       console.error("Falha ao fazer login:", error);
-      // Tratamento de erro já é feito dentro de login
+      if (error.response?.data?.message?.includes("aguardando aprovação"))
+        setCustomError(
+          "Sua conta ainda está aguardando aprovação do administrador. Você receberá um email quando sua for aprovada."
+        );
     } finally {
       setIsSubmitting(false);
     }
@@ -81,6 +86,7 @@ function LoginContent() {
             handleSubmit={handleSubmit}
             isSubmitting={isSubmitting}
             onInputChange={onInputChange}
+            customError={customError ?? undefined}
           />
 
           {/* Ferramenta de debug no mobile */}
@@ -102,6 +108,7 @@ function LoginContent() {
             handleSubmit={handleSubmit}
             isSubmitting={isSubmitting}
             onInputChange={onInputChange}
+            customError={customError ?? undefined}
           />
         </div>
       )}

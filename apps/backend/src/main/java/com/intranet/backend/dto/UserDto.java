@@ -21,5 +21,6 @@ public class UserDto {
     private LocalDateTime updatedAt;
     private boolean emailVerified;
     private boolean active;
+    private boolean adminApproved;
 }
 

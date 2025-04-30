@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import toastUtil from "@/utils/toast";
 import { CustomButton } from "@/components/ui/custom-button";
+import UserApprovalStatus from "@/components/admin/UserApprovalStatus";
 
 export default function AdminUsersTab() {
   const [users, setUsers] = useState<User[]>([]);
@@ -228,6 +229,9 @@ export default function AdminUsersTab() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Ações
               </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Status de Aprovação
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
@@ -346,6 +350,13 @@ export default function AdminUsersTab() {
                         )}
                       </button>
                     </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <UserApprovalStatus
+                      emailVerified={user.emailVerified}
+                      adminApproved={user.adminApproved ?? false}
+                      active={user.active || false}
+                    />
                   </td>
                 </tr>
               ))
