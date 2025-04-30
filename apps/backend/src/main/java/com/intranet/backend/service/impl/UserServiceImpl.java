@@ -4,6 +4,7 @@ import com.intranet.backend.dto.UserDto;
 import com.intranet.backend.exception.ResourceNotFoundException;
 import com.intranet.backend.model.*;
 import com.intranet.backend.repository.*;
+import com.intranet.backend.service.EmailService;
 import com.intranet.backend.service.FileStorageService;
 import com.intranet.backend.service.UserService;
 import com.intranet.backend.util.DTOMapperUtil;
@@ -35,6 +36,7 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
     private final EmailVerificationTokenRepository emailVerificationTokenRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final EmailService emailService;
 
     @Override
     public List<UserDto> getAllUsers() {
