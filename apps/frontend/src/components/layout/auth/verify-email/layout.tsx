@@ -4,7 +4,7 @@ import Image from "next/image";
 import Logo from "../../../../../public/logo.svg";
 import { CustomButton } from "@/components/ui/custom-button";
 import Link from "next/link";
-import { Loader2 } from "lucide-react";
+import { Loader2, InfoIcon } from "lucide-react";
 
 // Interface para os props compartilhados
 interface EmailVerificationLayoutProps {
@@ -114,6 +114,20 @@ export const MobileEmailVerificationLayout = ({
           )}
         </CustomButton>
       </form>
+
+      <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
+        <div className="flex items-start">
+          <InfoIcon
+            className="text-blue-500 mr-2 flex-shrink-0 mt-0.5"
+            size={18}
+          />
+          <p className="text-sm text-blue-700">
+            Após a verificação do seu e-mail, sua conta ainda precisará ser
+            aprovada por um administrador antes que você possa acessar o
+            sistema. Você receberá um e-mail quando sua conta for aprovada.
+          </p>
+        </div>
+      </div>
     </div>
   </div>
 );
@@ -201,6 +215,20 @@ export const DesktopEmailVerificationLayout = ({
             )}
           </CustomButton>
         </form>
+
+        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
+          <div className="flex items-start">
+            <InfoIcon
+              className="text-blue-500 mr-2 flex-shrink-0 mt-0.5"
+              size={18}
+            />
+            <p className="text-sm text-blue-700">
+              Após a verificação do seu e-mail, sua conta ainda precisará ser
+              aprovada por um administrador antes que você possa acessar o
+              sistema. Você receberá um e-mail quando sua conta for aprovada.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   </div>

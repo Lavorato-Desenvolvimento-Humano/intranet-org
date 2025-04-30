@@ -130,6 +130,19 @@ public class UserController {
         return ResponseEntity.ok(updatedUser);
     }
 
+    @PatchMapping("/{id}/approve")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<UserDto> approveUser(@PathVariable UUID id, @RequestParam boolean approved) {
+        logger.info("Recebendo solicitação para {} usuário: {}",
+                approved ? "aprovar" : "reprovar", id);
+
+        UserDto updatedUser = userService.updateUserApproval(id, approved);
+
+        logger.info("Status de aprovação do usuário atualizado com sucesso: {}", id);
+
+        return ResponseEntity.ok(updatedUser);
+    }
+
     @PostMapping("/{id}/roles")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserDto> addRole(@PathVariable UUID id, @RequestParam String roleName) {

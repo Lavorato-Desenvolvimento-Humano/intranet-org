@@ -12,6 +12,7 @@ import { PasswordChange } from "@/components/profile/PasswordChange";
 import { DeleteAccount } from "@/components/profile/DeleteAccount";
 import profileService from "@/services/profile";
 import toastUtil from "@/utils/toast";
+import AccountStatus from "@/components/profile/AccountStatus";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   UserIcon,

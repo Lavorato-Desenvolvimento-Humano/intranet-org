@@ -7,6 +7,7 @@ import Navbar from "@/components/layout/Navbar";
 import AdminUsersTab from "@/components/admin/AdminUsersTab";
 import AdminRolesTab from "@/components/admin/AdminRolesTab";
 import AdminPermissionsTab from "@/components/admin/AdminPermissionsTab";
+import AdminPendingUsersTab from "@/components/admin/AdminPendingUsersTab";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { CustomButton } from "@/components/ui/custom-button";
 import { useAuth } from "@/context/AuthContext";
@@ -101,6 +102,16 @@ export default function AdminDashboardPage() {
                   Usuários
                 </TabsTrigger>
                 <TabsTrigger
+                  value="pending"
+                  onClick={() => setActiveTab("pending")}
+                  className={`flex items-center px-4 py-2 rounded-md transition-colors ${
+                    activeTab === "pending"
+                      ? "bg-primary text-white"
+                      : "hover:bg-gray-200"
+                  }`}>
+                  Pendentes
+                </TabsTrigger>
+                <TabsTrigger
                   value="roles"
                   onClick={() => setActiveTab("roles")}
                   className={`flex items-center px-4 py-2 rounded-md transition-colors ${
@@ -124,6 +135,10 @@ export default function AdminDashboardPage() {
 
               <TabsContent value="users">
                 <AdminUsersTab key={`users-${retryCount}`} />
+              </TabsContent>
+
+              <TabsContent value="pending">
+                <AdminPendingUsersTab key={`pending-${retryCount}`} />
               </TabsContent>
 
               <TabsContent value="roles">

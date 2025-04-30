@@ -11,6 +11,7 @@ import {
   LockKeyholeOpenIcon,
   Github,
   Loader2,
+  AlertTriangle,
 } from "lucide-react";
 import toastUtil from "@/utils/toast";
 import { initiateGithubLogin } from "@/services/auth";
@@ -26,6 +27,7 @@ interface LoginLayoutProps {
   setPassword: (password: string) => void;
   handleSubmit: (e: React.FormEvent) => void;
   isSubmitting: boolean;
+  customError?: string; // Adicionado para permitir mensagens de erro personalizadas
   onInputChange?: () => void; // Agora é opcional com o símbolo ?
 }
 
@@ -39,6 +41,7 @@ export const MobileLoginLayout = ({
   setPassword,
   handleSubmit,
   isSubmitting,
+  customError,
   onInputChange = () => {}, // Valor padrão para quando não for fornecido
 }: LoginLayoutProps) => {
   // Handler para login com GitHub
@@ -112,6 +115,15 @@ export const MobileLoginLayout = ({
         </div>
       </form>
 
+      {customError && (
+        <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+          <div className="flex items-start text-yellow-700">
+            <AlertTriangle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
+            <p className="text-sm">{customError}</p>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col items-center justify-center mt-6">
         <div
           className="flex items-center justify-center"
@@ -155,6 +167,7 @@ export const DesktopLoginLayout = ({
   setPassword,
   handleSubmit,
   isSubmitting,
+  customError,
   onInputChange = () => {}, // Valor padrão para quando não for fornecido
 }: LoginLayoutProps) => {
   // Handler para login com GitHub
@@ -248,6 +261,15 @@ export const DesktopLoginLayout = ({
               />
             </div>
           </form>
+
+          {customError && (
+            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+              <div className="flex items-start text-yellow-700">
+                <AlertTriangle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
+                <p className="text-sm">{customError}</p>
+              </div>
+            </div>
+          )}
 
           <div className="mt-8 text-center">
             <div className="mb-3">

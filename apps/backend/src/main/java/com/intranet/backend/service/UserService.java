@@ -26,4 +26,6 @@ public interface UserService {
     UserDto removeRole(UUID id, String roleName);
 
     UserDto updateUserStatus(UUID id, boolean active);
+
+    UserDto updateUserApproval(UUID id, boolean approved);
 }

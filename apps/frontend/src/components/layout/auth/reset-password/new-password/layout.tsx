@@ -3,7 +3,12 @@ import Input from "@/components/ui/input";
 import Image from "next/image";
 import Logo from "../../../../../../public/logo.svg";
 import { CustomButton } from "@/components/ui/custom-button";
-import { LockKeyholeIcon, LockKeyholeOpenIcon, Loader2 } from "lucide-react";
+import {
+  LockKeyholeIcon,
+  LockKeyholeOpenIcon,
+  Loader2,
+  InfoIcon,
+} from "lucide-react";
 
 // Interface para os props compartilhados
 interface NewPasswordLayoutProps {
@@ -99,6 +104,19 @@ export const MobileNewPasswordLayout = ({
           )}
         </CustomButton>
       </form>
+      <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
+        <div className="flex items-start">
+          <InfoIcon
+            className="text-blue-500 mr-2 flex-shrink-0 mt-0.5"
+            size={18}
+          />
+          <p className="text-sm text-blue-700">
+            Lembre-se: Caso sua conta ainda não tenha sido aprovada por um
+            administrador, você precisará aguardar a aprovação mesmo após
+            redefinir sua senha.
+          </p>
+        </div>
+      </div>
     </div>
   </div>
 );
@@ -187,6 +205,19 @@ export const DesktopNewPasswordLayout = ({
             )}
           </CustomButton>
         </form>
+        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
+          <div className="flex items-start">
+            <InfoIcon
+              className="text-blue-500 mr-2 flex-shrink-0 mt-0.5"
+              size={18}
+            />
+            <p className="text-sm text-blue-700">
+              Lembre-se: Caso sua conta ainda não tenha sido aprovada por um
+              administrador, você precisará aguardar a aprovação mesmo após
+              redefinir sua senha.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   </div>

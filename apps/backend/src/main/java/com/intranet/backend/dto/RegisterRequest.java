@@ -23,7 +23,6 @@ public class RegisterRequest {
 
     @NotBlank(message = "O email é obrigatório")
     @Email(message = "Formato de email inválido")
-    @LavoratoEmail(message = "Apenas emails com domínio @lavorato.com.br são permitidos")
     private String email;
 
     @NotBlank(message = "A senha é obrigatória")

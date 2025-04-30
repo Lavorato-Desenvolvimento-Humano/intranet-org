@@ -26,7 +26,8 @@ public class DTOMapperUtil {
                 user.getCreatedAt(),
                 user.getUpdatedAt(),
                 user.isEmailVerified(),
-                user.isActive()
+                user.isActive(),
+                user.isAdminApproved()
         );
     }
 
