@@ -11,6 +11,7 @@ import { useAuth } from "@/context/AuthContext";
 import convenioService, { ConvenioCreateDto } from "@/services/convenio";
 import toastUtil from "@/utils/toast";
 import { CustomButton } from "@/components/ui/custom-button";
+import SimpleRichEditor from "@/components/ui/simple-rich-editor";
 import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
 
 export default function NovoConvenioPage() {
@@ -144,17 +145,16 @@ export default function NovoConvenioPage() {
                   className="block text-sm font-medium text-gray-700 mb-1">
                   Descrição
                 </label>
-                <textarea
-                  id="description"
-                  name="description"
-                  value={convenio.description}
-                  onChange={handleChange}
-                  rows={4}
-                  className={`w-full px-3 py-2 border rounded-md ${
-                    errors.description ? "border-red-500" : "border-gray-300"
-                  } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
+                <SimpleRichEditor
+                  value={convenio.description || ""}
+                  onChange={(value) =>
+                    setConvenio((prev) => ({ ...prev, description: value }))
+                  }
                   placeholder="Digite a descrição do convênio"
-                  disabled={loading}></textarea>
+                  disabled={loading}
+                  error={errors.description}
+                  height="200px"
+                />
                 {errors.description && (
                   <p className="mt-1 text-sm text-red-500">
                     {errors.description}

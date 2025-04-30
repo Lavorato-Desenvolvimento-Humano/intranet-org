@@ -14,6 +14,7 @@ import tabelaValoresService, {
   TabelaValoresDto,
 } from "@/services/tabelaValores";
 import toastUtil from "@/utils/toast";
+import { stripHtml } from "@/utils/textUtils";
 import { CustomButton } from "@/components/ui/custom-button";
 import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
 
@@ -126,7 +127,7 @@ export default function TabelasValoresPage() {
       width: "25%",
       render: (value: string) => (
         <div className="text-gray-600 truncate max-w-sm">
-          {value || "Sem descrição"}
+          {stripHtml(value) || "Sem descrição"}
         </div>
       ),
     },
