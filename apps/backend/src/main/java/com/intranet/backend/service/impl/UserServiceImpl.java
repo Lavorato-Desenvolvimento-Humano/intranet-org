@@ -155,6 +155,32 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
+    public UserDto updateUserApproval(UUID id, boolean approved) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado com o ID: " + id));
+
+        user.setAdminApproved(approved);
+        User updatedUser = userRepository.save(user);
+
+        // Se o usuário foi aprovado, enviar email de notificação
+        if (approved) {
+            try {
+                // Enviar email de aprovação
+                emailService.sendAccountApprovalEmail(user.getEmail(), user.getFullName());
+            } catch (Exception e) {
+                logger.error("Erro ao enviar email de aprovação: {}", e.getMessage());
+                // Não falhar a operação se o email não puder ser enviado
+            }
+        }
+
+        // Buscar papéis do usuário de forma segura
+        List<String> roles = userRepository.findRoleNamesByUserId(updatedUser.getId());
+
+        return DTOMapperUtil.mapToUserDto(updatedUser, roles);
+    }
+
+    @Override
+    @Transactional
     public UserDto updateProfileImage(UUID id, MultipartFile image) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado com o ID: " + id));

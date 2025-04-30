@@ -21,6 +21,7 @@ export interface User {
   roles: string[];
   token?: string;
   emailVerified: boolean;
+  adminApproved?: boolean;
   active?: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -35,6 +36,7 @@ export interface AuthResponse {
   profileImage: string | null;
   roles: string[];
   emailVerified: boolean;
+  adminApproved?: boolean;
 }
 
 export interface NewPasswordRequest {

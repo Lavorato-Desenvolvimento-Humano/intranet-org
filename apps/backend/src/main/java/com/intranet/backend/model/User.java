@@ -46,6 +46,9 @@ public class User {
     @Column(name = "email_verified", nullable = false)
     private boolean emailVerified = false;
 
+    @Column(name = "admin_approved", nullable = false)
+    private boolean adminApproved = false;
+
     @Column(name = "active", nullable = false)
     private boolean active = true;
 

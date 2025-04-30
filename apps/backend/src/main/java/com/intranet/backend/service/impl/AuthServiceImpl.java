@@ -72,6 +72,12 @@ public class AuthServiceImpl implements AuthService {
                 throw new EmailNotVerifiedException("Por favor, verifique seu email antes de fazer login.");
             }
 
+            //Verificar se o usuário foi aprovado pelo administrador
+            if (!user.isAdminApproved()) {
+                logger.warn("[{}] Tentativa de login com conta não aprovada: {}", requestId, loginRequest.getEmail());
+                throw new RuntimeException("Sua conta está aguardando aprovação do administrador.");
+            }
+
             // Verificar se o usuário está ativo
             if (!user.isActive()) {
                 logger.warn("[{}] Tentativa de login com conta desativada: {}", requestId, loginRequest.getEmail());
@@ -112,6 +118,8 @@ public class AuthServiceImpl implements AuthService {
                     roles
             );
             response.setEmailVerified(user.isEmailVerified());
+            response.setEmailVerified(user.isEmailVerified());
+            response.setAdminApproved(user.isAdminApproved());
 
             logger.info("[{}] Login concluído com sucesso para: {}", requestId, loginRequest.getEmail());
             return response;
@@ -131,12 +139,6 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public JwtResponse register(RegisterRequest registerRequest) {
         logger.info("Processando solicitação de registro para: {}", registerRequest.getEmail());
-
-        // Validar email
-        if (!registerRequest.getEmail().endsWith("@lavorato.com.br")) {
-            logger.warn("Tentativa de registro com domínio de email não permitido {}", registerRequest.getEmail());
-            throw new RuntimeException("Erro: Apenas emails com domínio @lavorato.com.br são permitidos!");
-        }
 
         // Verificar se email já está em uso
         if (userRepository.existsByEmail(registerRequest.getEmail())) {
@@ -171,6 +173,7 @@ public class AuthServiceImpl implements AuthService {
         user.setGithubId(registerRequest.getGithubId());
         user.setProfileImage(profileImagePath);
         user.setActive(true);
+        user.setAdminApproved(false);
 
         User savedUser = userRepository.save(user);
         logger.info("Usuário salvo no banco de dados: {} (ID: {})", savedUser.getEmail(), savedUser.getId());
