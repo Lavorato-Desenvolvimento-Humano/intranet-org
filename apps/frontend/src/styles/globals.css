@@ -153,6 +153,39 @@
   color: #666;
 }
 
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* CSS específico para conteúdo rich-text em tabelas */
+.table-rich-content h1,
+.table-rich-content h2,
+.table-rich-content h3 {
+  font-size: 1rem !important;
+  margin: 0 !important;
+}
+
+.table-rich-content p,
+.table-rich-content li {
+  margin-bottom: 0.25rem !important;
+}
+
+.table-rich-content ul,
+.table-rich-content ol {
+  margin: 0 !important;
+  padding-left: 1rem !important;
+}
+
 /* Responsividade para telas pequenas */
 @media (max-width: 768px) {
   .fc .fc-toolbar {
