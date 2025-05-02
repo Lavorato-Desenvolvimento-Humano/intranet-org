@@ -121,12 +121,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return;
     }
 
-    if (!data.email.endsWith("@lavorato.com.br")) {
-      toastUtil.error(
-        "Apenas emails com domínio @lavorato.com.br são permitidos"
-      );
-      return;
-    }
+    // if (!data.email.endsWith("@lavorato.com.br")) {
+    //   toastUtil.error(
+    //     "Apenas emails com domínio @lavorato.com.br são permitidos"
+    //   );
+    //   return;
+    // }
 
     const loadingToastId = toastUtil.loading("Criando sua conta...");
 
@@ -183,12 +183,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return;
     }
 
-    if (!email.endsWith("@lavorato.com.br")) {
-      toastUtil.error(
-        "Apenas emails com domínio @lavorato.com.br são permitidos"
-      );
-      return;
-    }
+    // if (!email.endsWith("@lavorato.com.br")) {
+    //   toastUtil.error(
+    //     "Apenas emails com domínio @lavorato.com.br são permitidos"
+    //   );
+    //   return;
+    // }
 
     const loadingToastId = toastUtil.loading("Enviando solicitação...");
 
