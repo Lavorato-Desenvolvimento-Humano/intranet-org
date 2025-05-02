@@ -38,7 +38,7 @@ services:
     image: postgres:15-alpine
     restart: always
     ports:
-      - "5433:5432"
+      - "5433:5433"
     environment:
       POSTGRES_DB: tiratec
       POSTGRES_USER: ${DB_USER}
