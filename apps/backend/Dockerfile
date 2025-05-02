@@ -1,4 +1,3 @@
-# Usa uma versão sem Alpine para evitar problemas de compatibilidade do Maven
 FROM eclipse-temurin:17-jdk AS build
 WORKDIR /app
 
