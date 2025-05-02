@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
+import java.io.UnsupportedEncodingException;
+
 @Service
 @RequiredArgsConstructor
 public class EmailService {
@@ -55,7 +57,7 @@ public class EmailService {
             // Enviar o email
             mailSender.send(message);
             logger.info("Email de redefinição de senha enviado para: {}", to);
-        } catch (MessagingException e) {
+        } catch (MessagingException | UnsupportedEncodingException e) {
             logger.error("Erro ao enviar email de redefinição de senha para: {}", to, e);
             throw new RuntimeException("Erro ao enviar email de redefinição de senha", e);
         }
@@ -83,7 +85,7 @@ public class EmailService {
 
             mailSender.send(message);
             logger.info("Email de confirmação de redefinição de senha enviado para: {}", to);
-        } catch (MessagingException e) {
+        } catch (MessagingException | UnsupportedEncodingException e) {
             logger.error("Erro ao enviar email de confirmação para: {}", to, e);
             throw new RuntimeException("Erro ao enviar email de confirmação", e);
         }
@@ -112,7 +114,7 @@ public class EmailService {
 
             mailSender.send(message);
             logger.info("Email de verificação enviado para: {}", to);
-        } catch (MessagingException e) {
+        } catch (MessagingException | UnsupportedEncodingException e) {
             logger.error("Erro ao enviar email de verificação para: {}", to, e);
             throw new RuntimeException("Erro ao enviar email de verificação", e);
         }
@@ -140,7 +142,7 @@ public class EmailService {
 
             mailSender.send(message);
             logger.info("Email de aprovação de conta enviado para: {}", to);
-        } catch (MessagingException e) {
+        } catch (MessagingException | UnsupportedEncodingException e) {
             logger.error("Erro ao enviar email de aprovação de conta para: {}", to, e);
             throw new RuntimeException("Erro ao enviar email de aprovação de conta", e);
         }
