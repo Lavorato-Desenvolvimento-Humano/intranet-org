@@ -4,164 +4,83 @@
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Verifique seu Email</title>
-  <style type="text/css">
-    /* Reset de estilos para clientes de email */
-    body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
-    table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
-    img { -ms-interpolation-mode: bicubic; }
-
-    /* Reset para alguns clientes móveis */
-    body { margin: 0 !important; padding: 0 !important; width: 100% !important; }
-
-    /* Oculta elementos para clientes móveis */
-    .mobile-hidden { display: none !important; }
-
-    /* Estilos básicos */
+  <style>
     body {
-      margin: 0;
-      padding: 0;
       font-family: Arial, Helvetica, sans-serif;
       font-size: 16px;
       line-height: 1.6;
       color: #333333;
+      margin: 0;
+      padding: 0;
     }
-
-    /* Contêiner para o email */
-    .email-container {
+    .container {
       max-width: 600px;
       margin: 0 auto;
-      background-color: #ffffff;
+      padding: 20px;
     }
-
-    /* Cabeçalho */
     .header {
       background-color: #2ea6b8;
-      padding: 30px 20px;
+      color: #ffffff;
+      padding: 20px;
       text-align: center;
     }
-
     .header h1 {
       margin: 0;
-      color: #ffffff;
       font-size: 24px;
-      font-weight: bold;
     }
-
-    /* Conteúdo do email */
     .content {
-      padding: 30px 20px;
-    }
-
-    /* Código de verificação */
-    .verification-code {
       padding: 20px;
-      margin: 25px 0;
-      font-size: 32px;
+      background-color: #ffffff;
+    }
+    .verification-code {
+      padding: 15px;
+      margin: 20px 0;
+      font-size: 28px;
       font-weight: bold;
-      letter-spacing: 10px;
+      letter-spacing: 5px;
       text-align: center;
       color: #2ea6b8;
-      background-color: #f9f9f9;
-      border-radius: 5px;
-      border: 1px solid #eaeaea;
+      background-color: #f5f5f5;
+      border-radius: 4px;
     }
-
-    /* Rodapé */
     .footer {
       padding: 20px;
       text-align: center;
-      color: #666666;
       font-size: 12px;
-      background-color: #f9f9f9;
-      border-top: 1px solid #eaeaea;
+      color: #666666;
+      background-color: #f5f5f5;
     }
-
-    /* Links */
-    a {
-      color: #2ea6b8;
-      text-decoration: none;
-    }
-
-    /* Botão para link */
     .button {
       display: inline-block;
       padding: 10px 20px;
-      margin: 20px 0;
       background-color: #2ea6b8;
-      color: #ffffff !important;
+      color: #ffffff;
       text-decoration: none;
       border-radius: 4px;
-      font-weight: bold;
-    }
-
-    /* Estilos responsivos */
-    @media screen and (max-width: 600px) {
-      .email-container {
-        width: 100% !important;
-      }
-      .verification-code {
-        font-size: 24px;
-        letter-spacing: 8px;
-      }
-    }
-
-    @media screen and (max-width: 400px) {
-      .verification-code {
-        font-size: 20px;
-        letter-spacing: 5px;
-        padding: 15px 10px;
-      }
+      margin: 20px 0;
     }
   </style>
 </head>
 <body>
-<table border="0" cellpadding="0" cellspacing="0" width="100%">
-  <tr>
-    <td align="center" valign="top">
-      <table class="email-container" border="0" cellpadding="0" cellspacing="0" width="600">
-        <!-- Cabeçalho -->
-        <tr>
-          <td class="header" align="center">
-            <img src="cid:logo" alt="Lavorato Saúde Integrada" style="max-width: 200px; height: auto;" />
-            <h1>Lavorato Saúde Integrada</h1>
-          </td>
-        </tr>
+<div class="container">
+  <div class="header">
+    <h1>Lavorato Saúde Integrada</h1>
+  </div>
+  <div class="content">
+    <p>Olá, <strong th:text="${name}">Usuário</strong>!</p>
 
-        <!-- Conteúdo -->
-        <tr>
-          <td class="content">
-            <p>Olá, <strong th:text="${name}">Usuário</strong>!</p>
+    <p>Obrigado por se registrar. Por favor, use o código abaixo para ativar sua conta.</p>
 
-            <p>Obrigado por se registrar. Por favor, verifique seu email para ativar sua conta.</p>
+    <div class="verification-code" th:text="${token}">123456</div>
 
-            <p>Seu código de verificação é:</p>
+    <p>Este código é válido por 24 horas. Após este período, você precisará solicitar um novo código.</p>
 
-            <div class="verification-code" th:text="${token}">123456</div>
-
-            <p>Este código é válido por 24 horas. Após este período, você precisará solicitar um novo código.</p>
-
-            <table border="0" cellpadding="0" cellspacing="0" width="100%">
-              <tr>
-                <td align="center">
-                  <a th:href="${loginUrl}" class="button">Acessar o Portal</a>
-                </td>
-              </tr>
-            </table>
-
-            <p>Atenciosamente,<br/>Equipe Lavorato Saúde Integrada</p>
-          </td>
-        </tr>
-
-        <!-- Rodapé -->
-        <tr>
-          <td class="footer">
-            <p>Este é um email automático. Por favor, não responda a este email.</p>
-            <p>&copy; 2025 Lavorato Saúde Integrada. Todos os direitos reservados.</p>
-          </td>
-        </tr>
-      </table>
-    </td>
-  </tr>
-</table>
+    <p>Atenciosamente,<br/>Equipe Lavorato Saúde Integrada</p>
+  </div>
+  <div class="footer">
+    <p>Este é um email automático. Por favor, não responda a este email.</p>
+    <p>&copy; 2025 Lavorato Saúde Integrada. Todos os direitos reservados.</p>
+  </div>
+</div>
 </body>
 </html>

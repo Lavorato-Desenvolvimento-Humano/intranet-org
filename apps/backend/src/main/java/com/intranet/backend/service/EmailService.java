@@ -28,14 +28,10 @@ public class EmailService {
     public void sendPasswordResetEmail(String to, String token, String name) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
-            // Use o charset UTF-8 e especifique que é multipart
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            // Configuração simples sem multipart inicialmente
+            MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
 
-            // Adicionar logo como uma imagem embutida
-            helper.addInline("logo", new ClassPathResource("static/images/logo.png"));
-
-            // Definir os cabeçalhos corretos para HTML
-            helper.setFrom("desenvolvimento@lavorato.com.br", "Lavorato Saúde Integrada");
+            helper.setFrom("desenvolvimento@lavorato.com.br");
             helper.setTo(to);
             helper.setSubject("Redefinição de Senha - Lavorato Saúde Integrada");
 
@@ -51,13 +47,10 @@ public class EmailService {
             // Definir o conteúdo como HTML
             helper.setText(htmlContent, true);
 
-            // Adicionar cabeçalho Content-Type explícito
-            message.setHeader("Content-Type", "text/html; charset=UTF-8");
-
             // Enviar o email
             mailSender.send(message);
             logger.info("Email de redefinição de senha enviado para: {}", to);
-        } catch (MessagingException | UnsupportedEncodingException e) {
+        } catch (MessagingException e) {
             logger.error("Erro ao enviar email de redefinição de senha para: {}", to, e);
             throw new RuntimeException("Erro ao enviar email de redefinição de senha", e);
         }
@@ -67,10 +60,9 @@ public class EmailService {
     public void sendPasswordResetConfirmationEmail(String to, String name) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
 
-            helper.addInline("logo", new ClassPathResource("static/images/logo.png"));
-            helper.setFrom("desenvolvimento@lavorato.com.br", "Lavorato Saúde Integrada");
+            helper.setFrom("desenvolvimento@lavorato.com.br");
             helper.setTo(to);
             helper.setSubject("Senha Redefinida com Sucesso - Lavorato Saúde Integrada");
 
@@ -81,11 +73,9 @@ public class EmailService {
             String htmlContent = templateEngine.process("email/reset-password-confirmation", context);
             helper.setText(htmlContent, true);
 
-            message.setHeader("Content-Type", "text/html; charset=UTF-8");
-
             mailSender.send(message);
             logger.info("Email de confirmação de redefinição de senha enviado para: {}", to);
-        } catch (MessagingException | UnsupportedEncodingException e) {
+        } catch (MessagingException e) {
             logger.error("Erro ao enviar email de confirmação para: {}", to, e);
             throw new RuntimeException("Erro ao enviar email de confirmação", e);
         }
@@ -95,10 +85,9 @@ public class EmailService {
     public void sendEmailVerification(String to, String token, String name) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
 
-            helper.addInline("logo", new ClassPathResource("static/images/logo.png"));
-            helper.setFrom("desenvolvimento@lavorato.com.br", "Lavorato Saúde Integrada");
+            helper.setFrom("desenvolvimento@lavorato.com.br");
             helper.setTo(to);
             helper.setSubject("Verifique seu Email - Lavorato Saúde Integrada");
 
@@ -110,11 +99,9 @@ public class EmailService {
             String htmlContent = templateEngine.process("email/email-verification", context);
             helper.setText(htmlContent, true);
 
-            message.setHeader("Content-Type", "text/html; charset=UTF-8");
-
             mailSender.send(message);
             logger.info("Email de verificação enviado para: {}", to);
-        } catch (MessagingException | UnsupportedEncodingException e) {
+        } catch (MessagingException e) {
             logger.error("Erro ao enviar email de verificação para: {}", to, e);
             throw new RuntimeException("Erro ao enviar email de verificação", e);
         }
@@ -124,10 +111,9 @@ public class EmailService {
     public void sendAccountApprovalEmail(String to, String name) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
 
-            helper.addInline("logo", new ClassPathResource("static/images/logo.png"));
-            helper.setFrom("desenvolvimento@lavorato.com.br", "Lavorato Saúde Integrada");
+            helper.setFrom("desenvolvimento@lavorato.com.br");
             helper.setTo(to);
             helper.setSubject("Conta Aprovada - Lavorato Saúde Integrada");
 
@@ -138,11 +124,9 @@ public class EmailService {
             String htmlContent = templateEngine.process("email/account-approval", context);
             helper.setText(htmlContent, true);
 
-            message.setHeader("Content-Type", "text/html; charset=UTF-8");
-
             mailSender.send(message);
             logger.info("Email de aprovação de conta enviado para: {}", to);
-        } catch (MessagingException | UnsupportedEncodingException e) {
+        } catch (MessagingException e) {
             logger.error("Erro ao enviar email de aprovação de conta para: {}", to, e);
             throw new RuntimeException("Erro ao enviar email de aprovação de conta", e);
         }
