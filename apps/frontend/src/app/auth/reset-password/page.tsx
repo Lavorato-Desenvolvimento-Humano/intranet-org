@@ -34,14 +34,6 @@ export default function ResetPasswordPage() {
       return false;
     }
 
-    // Verificar se o domínio é permitido
-    if (!email.endsWith("@lavorato.com.br")) {
-      toastUtil.error(
-        "Apenas emails com domínio @lavorato.com.br são permitidos"
-      );
-      return false;
-    }
-
     return true;
   };
 

@@ -46,11 +46,19 @@ public class EmailConfig {
         props.put("mail.smtp.auth", "true");
         props.put("mail.smtp.starttls.enable", "true");
         props.put("mail.smtp.ssl.trust", host);
-        props.put("mail.debug", "true"); // Para depuração
+
+        // Adicionar propriedades para melhorar a compatibilidade com o Gmail
+        props.put("mail.smtp.allow8bitmime", "true");
+        props.put("mail.smtps.allow8bitmime", "true");
+        props.put("mail.mime.charset", "UTF-8");
+        props.put("mail.mime.encodefilename", "true");
+        props.put("mail.mime.encodeparameters", "true");
+
+        // Habilitar debugging de SMTP para diagnóstico
+        props.put("mail.debug", "true");
 
         return mailSender;
     }
-
     // Template resolver HTML para emails
     @Bean
     public ITemplateResolver emailTemplateResolver() {

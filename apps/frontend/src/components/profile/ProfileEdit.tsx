@@ -20,17 +20,6 @@ export const ProfileEdit: React.FC<ProfileEditProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emailError, setEmailError] = useState("");
 
-  // Validar domínio de e-mail sempre que o e-mail mudar
-  React.useEffect(() => {
-    if (email && !email.endsWith("@lavorato.com.br")) {
-      setEmailError(
-        "Apenas emails com domínio @lavorato.com.br são permitidos"
-      );
-    } else {
-      setEmailError("");
-    }
-  }, [email]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 

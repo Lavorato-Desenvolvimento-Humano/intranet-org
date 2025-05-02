@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
+import java.io.UnsupportedEncodingException;
+
 @Service
 @RequiredArgsConstructor
 public class EmailService {
@@ -26,21 +28,26 @@ public class EmailService {
     public void sendPasswordResetEmail(String to, String token, String name) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-
-            helper.addInline("logo", new ClassPathResource("static/images/logo.png"));
+            // Configuração simples sem multipart inicialmente
+            MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
 
             helper.setFrom("desenvolvimento@lavorato.com.br");
             helper.setTo(to);
             helper.setSubject("Redefinição de Senha - Lavorato Saúde Integrada");
 
+            // Preparar o contexto do template
             Context context = new Context();
             context.setVariable("token", token);
             context.setVariable("name", name);
+            context.setVariable("loginUrl", "https://lavorato.app.br/auth/login");
 
+            // Processar o template
             String htmlContent = templateEngine.process("email/reset-password", context);
+
+            // Definir o conteúdo como HTML
             helper.setText(htmlContent, true);
 
+            // Enviar o email
             mailSender.send(message);
             logger.info("Email de redefinição de senha enviado para: {}", to);
         } catch (MessagingException e) {
@@ -53,9 +60,7 @@ public class EmailService {
     public void sendPasswordResetConfirmationEmail(String to, String name) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-
-            helper.addInline("logo", new ClassPathResource("static/images/logo.png"));
+            MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
 
             helper.setFrom("desenvolvimento@lavorato.com.br");
             helper.setTo(to);
@@ -63,6 +68,7 @@ public class EmailService {
 
             Context context = new Context();
             context.setVariable("name", name);
+            context.setVariable("loginUrl", "https://lavorato.app.br/auth/login");
 
             String htmlContent = templateEngine.process("email/reset-password-confirmation", context);
             helper.setText(htmlContent, true);
@@ -79,9 +85,7 @@ public class EmailService {
     public void sendEmailVerification(String to, String token, String name) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-
-            helper.addInline("logo", new ClassPathResource("static/images/logo.png"));
+            MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
 
             helper.setFrom("desenvolvimento@lavorato.com.br");
             helper.setTo(to);
@@ -90,6 +94,7 @@ public class EmailService {
             Context context = new Context();
             context.setVariable("token", token);
             context.setVariable("name", name);
+            context.setVariable("loginUrl", "https://lavorato.app.br/auth/login");
 
             String htmlContent = templateEngine.process("email/email-verification", context);
             helper.setText(htmlContent, true);
@@ -106,9 +111,7 @@ public class EmailService {
     public void sendAccountApprovalEmail(String to, String name) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-
-            helper.addInline("logo", new ClassPathResource("static/images/logo.png"));
+            MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
 
             helper.setFrom("desenvolvimento@lavorato.com.br");
             helper.setTo(to);
@@ -116,6 +119,7 @@ public class EmailService {
 
             Context context = new Context();
             context.setVariable("name", name);
+            context.setVariable("loginUrl", "https://lavorato.app.br/auth/login");
 
             String htmlContent = templateEngine.process("email/account-approval", context);
             helper.setText(htmlContent, true);
