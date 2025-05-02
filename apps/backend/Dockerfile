@@ -18,6 +18,6 @@ WORKDIR /app
 RUN mkdir -p /app/uploads/images
 
 COPY --from=build /app/target/backend-0.0.1-SNAPSHOT.jar app.jar
-EXPOSE 8080
-EXPOSE 8443
+EXPOSE 9080
+EXPOSE 9443
 CMD ["java", "-jar", "app.jar"]
