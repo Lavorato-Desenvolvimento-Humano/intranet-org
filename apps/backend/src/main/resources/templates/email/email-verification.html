@@ -1,95 +1,84 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Verifique seu Email</title>
-  <style type="text/css">
+  <style>
     body {
-      margin: 0;
-      padding: 0;
       font-family: Arial, Helvetica, sans-serif;
       font-size: 16px;
       line-height: 1.6;
       color: #333333;
-      -webkit-text-size-adjust: 100%;
-      -ms-text-size-adjust: 100%;
+      margin: 0;
+      padding: 0;
     }
-
-    .email-container {
+    .container {
       max-width: 600px;
       margin: 0 auto;
-      background-color: #ffffff;
+      padding: 20px;
     }
-
     .header {
       background-color: #2ea6b8;
       color: #ffffff;
-      padding: 30px 20px;
+      padding: 20px;
       text-align: center;
     }
-
     .header h1 {
       margin: 0;
       font-size: 24px;
-      font-weight: bold;
     }
-
     .content {
-      padding: 30px 20px;
-    }
-
-    .verification-code {
       padding: 20px;
-      margin: 25px 0;
-      font-size: 32px;
+      background-color: #ffffff;
+    }
+    .verification-code {
+      padding: 15px;
+      margin: 20px 0;
+      font-size: 28px;
       font-weight: bold;
-      letter-spacing: 10px;
+      letter-spacing: 5px;
       text-align: center;
       color: #2ea6b8;
-      background-color: #f9f9f9;
-      border-radius: 5px;
-      border: 1px solid #eaeaea;
+      background-color: #f5f5f5;
+      border-radius: 4px;
     }
-
     .footer {
       padding: 20px;
       text-align: center;
-      color: #666666;
       font-size: 12px;
-      background-color: #f9f9f9;
-      border-top: 1px solid #eaeaea;
+      color: #666666;
+      background-color: #f5f5f5;
     }
-
-    a {
-      color: #2ea6b8;
+    .button {
+      display: inline-block;
+      padding: 10px 20px;
+      background-color: #2ea6b8;
+      color: #ffffff;
       text-decoration: none;
+      border-radius: 4px;
+      margin: 20px 0;
     }
   </style>
 </head>
 <body>
-<div class="email-container">
+<div class="container">
   <div class="header">
-    <img src="cid:logo" alt="Lavorato Saúde Integrada" style="max-width: 200px; height: auto;" />
     <h1>Lavorato Saúde Integrada</h1>
   </div>
-
   <div class="content">
     <p>Olá, <strong th:text="${name}">Usuário</strong>!</p>
 
-    <p>Obrigado por se registrar. Por favor, verifique seu email para ativar sua conta.</p>
-
-    <p>Seu código de verificação é:</p>
+    <p>Obrigado por se registrar. Por favor, use o código abaixo para ativar sua conta.</p>
 
     <div class="verification-code" th:text="${token}">123456</div>
 
     <p>Este código é válido por 24 horas. Após este período, você precisará solicitar um novo código.</p>
 
-    <p>Atenciosamente,<br>Equipe Lavorato Saúde Integrada</p>
+    <p>Atenciosamente,<br/>Equipe Lavorato Saúde Integrada</p>
   </div>
-
   <div class="footer">
-    <p>Este é um email automático, por favor não responda.</p>
+    <p>Este é um email automático. Por favor, não responda a este email.</p>
     <p>&copy; 2025 Lavorato Saúde Integrada. Todos os direitos reservados.</p>
   </div>
 </div>
