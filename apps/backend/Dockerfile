@@ -10,13 +10,12 @@ COPY . .
 RUN chmod +x mvnw  # Adiciona permissão novamente após a segunda cópia
 RUN ./mvnw clean package -DskipTests
 
-# Segunda etapa: Mantém o JDK para rodar o Spring Boot corretamente
 FROM eclipse-temurin:17-jdk-alpine
 WORKDIR /app
 
 RUN mkdir -p /app/uploads/images
 
 COPY --from=build /app/target/backend-0.0.1-SNAPSHOT.jar app.jar
-EXPOSE 9080
-EXPOSE 9443
+EXPOSE 8080
+EXPOSE 8443
 CMD ["java", "-jar", "app.jar"]
