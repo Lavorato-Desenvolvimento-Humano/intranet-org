@@ -477,7 +477,7 @@ export default function AdminUsersTab() {
 
             <div className="flex justify-end">
               <CustomButton
-                variant="secondary"
+                variant="primary"
                 onClick={handleCloseModal}
                 className="border border-gray-300">
                 Fechar

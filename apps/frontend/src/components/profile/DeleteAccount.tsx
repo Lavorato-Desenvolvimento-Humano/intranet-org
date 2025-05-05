@@ -113,7 +113,7 @@ export const DeleteAccount: React.FC<DeleteAccountProps> = ({ user }) => {
           <div className="flex space-x-3">
             <CustomButton
               type="button"
-              variant="secondary"
+              variant="primary"
               onClick={handleCancel}
               className="flex-1"
               disabled={isSubmitting}>
