@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   Plus,
@@ -13,6 +14,7 @@ import {
   Users,
   Building,
   Globe,
+  UserIcon,
 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Breadcrumb from "@/components/ui/breadcrumb";
@@ -23,6 +25,7 @@ import postagemService, { PostagemSummaryDto } from "@/services/postagem";
 import convenioService, { ConvenioDto } from "@/services/convenio";
 import equipeService, { EquipeDto } from "@/services/equipe";
 import toastUtil from "@/utils/toast";
+import ProfileAvatar from "@/components/profile/profile-avatar";
 import { CustomButton } from "@/components/ui/custom-button";
 
 export default function PostagensPage() {
@@ -182,19 +185,40 @@ export default function PostagensPage() {
       key: "createdByName",
       header: "Autor",
       width: "15%",
-      render: (value: string) => <div className="text-gray-700">{value}</div>,
+      render: (value: string, record: PostagemSummaryDto) => (
+        <div className="flex items-center text-gray-700">
+          {record.createdByProfileImage ? (
+            <div className="mr-2 relative w-6 h-6 rounded-full overflow-hidden">
+              <Image
+                src={record.createdByProfileImage}
+                alt={`Foto de ${value}`}
+                width={24}
+                height={24}
+                className="object-cover"
+              />
+            </div>
+          ) : (
+            <div className="mr-2 w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center">
+              <UserIcon size={12} className="text-gray-500" />
+            </div>
+          )}
+          <span>{value}</span>
+        </div>
+      ),
     },
     {
-      key: "createdAt",
-      header: "Data de Criação",
-      width: "20%",
-      sortable: true,
-      render: (value: string) => (
-        <div className="text-gray-600 flex items-center">
-          <Calendar size={16} className="mr-1 text-gray-400" />
-          {formatDate(value)}
-          <Clock size={16} className="ml-2 mr-1 text-gray-400" />
-          {formatTime(value)}
+      key: "createdByName",
+      header: "Autor",
+      width: "15%",
+      render: (value: string, record: PostagemSummaryDto) => (
+        <div className="flex items-center text-gray-700">
+          <ProfileAvatar
+            profileImage={record.createdByProfileImage}
+            userName={value}
+            size={24}
+            className="mr-2"
+          />
+          <div className="text-gray-700">{value}</div>
         </div>
       ),
     },

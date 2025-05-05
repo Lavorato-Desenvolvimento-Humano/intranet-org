@@ -16,7 +16,9 @@ import {
   Globe,
   Users,
   Building,
+  UserIcon,
 } from "lucide-react";
+import Image from "next/image";
 import Navbar from "@/components/layout/Navbar";
 import Breadcrumb from "@/components/ui/breadcrumb";
 import { Loading } from "@/components/ui/loading";
@@ -30,6 +32,7 @@ import postagemService, {
 } from "@/services/postagem";
 import toastUtil from "@/utils/toast";
 import { CustomButton } from "@/components/ui/custom-button";
+import ProfileAvatar from "@/components/profile/profile-avatar";
 import ContentViewer from "@/components/ui/content-viewer";
 import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
 
@@ -345,11 +348,21 @@ export default function PostagemViewPage() {
                   {formatTime(postagem.createdAt)}
                 </div>
               </div>
-              <div className="flex flex-wrap">
-                <div className="w-full md:w-1/2 mb-2 md:mb-0">
-                  <p className="text-sm text-gray-500">Autor:</p>
-                  <p className="text-gray-800">{postagem.createdByName}</p>
+              <div className="flex items-center mb-6">
+                <ProfileAvatar
+                  profileImage={postagem.createdByProfileImage}
+                  userName={postagem.createdByName}
+                  size={40}
+                  className="mr-3"
+                />
+                <div>
+                  <p className="text-sm text-gray-500">Por</p>
+                  <p className="font-medium text-gray-800">
+                    {postagem.createdByName}
+                  </p>
                 </div>
+              </div>
+              <div className="flex flex-wrap">
                 <div className="w-full md:w-1/2">
                   <p className="text-sm text-gray-500">Visibilidade:</p>
                   {postagem.tipoDestino === "convenio" &&

@@ -24,4 +24,5 @@ public class PostagemSummaryDto {
     private boolean hasImagens;
     private boolean hasAnexos;
     private boolean hasTabelas;
+    private String createdByProfileImage;
 }
