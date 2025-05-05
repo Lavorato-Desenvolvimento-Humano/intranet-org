@@ -410,9 +410,6 @@ export default function EquipeDetailPage() {
               ) : (
                 <p className="text-gray-800">Sem descrição</p>
               )}
-              <p className="text-gray-800">
-                {equipe.descricao || "Sem descrição"}
-              </p>
             </div>
 
             <div className="flex items-center">
