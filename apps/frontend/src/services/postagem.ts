@@ -12,6 +12,7 @@ export interface PostagemDto {
   equipeName?: string;
   createdById: string;
   createdByName: string;
+  createdByProfileImage?: string;
   createdAt: string;
   updatedAt: string;
   imagens: ImagemDto[];
@@ -29,6 +30,7 @@ export interface PostagemSummaryDto {
   equipeName?: string;
   createdById: string;
   createdByName: string;
+  createdByProfileImage?: string;
   createdAt: string;
   hasImagens: boolean;
   hasAnexos: boolean;
