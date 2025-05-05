@@ -65,6 +65,7 @@ public class DTOMapperUtil {
 
         dto.setCreatedById(postagem.getCreatedBy().getId());
         dto.setCreatedByName(postagem.getCreatedBy().getFullName());
+        dto.setCreatedByProfileImage(postagem.getCreatedBy().getProfileImage());
         dto.setCreatedAt(postagem.getCreatedAt());
         dto.setHasImagens(!postagem.getImagens().isEmpty());
         dto.setHasAnexos(!postagem.getAnexos().isEmpty());
@@ -100,6 +101,7 @@ public class DTOMapperUtil {
 
         dto.setCreatedById(postagem.getCreatedBy().getId());
         dto.setCreatedByName(postagem.getCreatedBy().getFullName());
+        dto.setCreatedByProfileImage(postagem.getCreatedBy().getProfileImage());
         dto.setCreatedAt(postagem.getCreatedAt());
         dto.setUpdatedAt(postagem.getUpdatedAt());
 

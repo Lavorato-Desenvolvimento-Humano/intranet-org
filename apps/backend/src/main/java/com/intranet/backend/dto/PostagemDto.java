@@ -27,4 +27,5 @@ public class PostagemDto {
     private List<ImagemDto> imagens;
     private List<AnexoDto> anexos;
     private List<TabelaPostagemDto> tabelas;
+    private String createdByProfileImage;
 }
