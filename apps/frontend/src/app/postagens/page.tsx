@@ -47,7 +47,7 @@ export default function PostagensPage() {
     user?.roles?.includes("ROLE_EDITOR") || user?.roles?.includes("EDITOR");
   const isUser =
     user?.roles?.includes("ROLE_USER") || user?.roles?.includes("USER");
-  const canCreatePostagem = isAdmin || isEditor || isUser;
+  const canCreatePostagem = isAdmin || isEditor;
 
   // Carregar dados das postagens, convênios e equipes
   useEffect(() => {

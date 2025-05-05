@@ -34,7 +34,7 @@ export default function AdminDashboardPage() {
     }
   }, [user]);
 
-  // Função para forçar o recarregamento da página
+  // Função para forçar o recarregamento da pagina
   const handleRetry = () => {
     setRetryCount((prev) => prev + 1);
     window.location.reload();
