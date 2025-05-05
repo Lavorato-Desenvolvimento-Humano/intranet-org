@@ -295,7 +295,6 @@ export default function NovaTabelaValoresPage() {
           items={[
             { label: "Dashboard", href: "/dashboard" },
             { label: "Tabelas de Valores", href: "/tabelas-valores" },
-            { label: "Nova Tabela" },
           ]}
         />
 

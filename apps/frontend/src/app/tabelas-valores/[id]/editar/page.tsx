@@ -214,11 +214,7 @@ export default function EditarTabelaValoresPage() {
             items={[
               { label: "Dashboard", href: "/dashboard" },
               { label: "Tabelas de Valores", href: "/tabelas-valores" },
-              {
-                label: originalTabela.nome,
-                href: `/tabelas-valores/${tabelaId}`,
-              },
-              { label: "Editar" },
+              { label: tabela.nome },
             ]}
           />
 
