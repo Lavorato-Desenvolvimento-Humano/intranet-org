@@ -181,67 +181,6 @@ public class DTOMapperUtil {
         return dto;
     }
 
-    /**
-     * Mapeia uma demanda para um DTO de demanda
-     */
-    public static DemandaDto mapToDemandaDto(Demanda demanda, User currentUser, boolean avaliarPermissoes) {
-        DemandaDto dto = new DemandaDto();
-        dto.setId(demanda.getId());
-        dto.setTitulo(demanda.getTitulo());
-        dto.setDescricao(demanda.getDescricao());
-        dto.setDataInicio(demanda.getDataInicio());
-        dto.setDataFim(demanda.getDataFim());
-        dto.setStatus(demanda.getStatus());
-        dto.setPrioridade(demanda.getPrioridade());
-        dto.setCriadaEm(demanda.getCriadaEm());
-        dto.setAtualizadaEm(demanda.getAtualizadaEm());
-
-        // Informações do criador
-        if (demanda.getCriadoPor() != null) {
-            dto.setCriadoPorId(demanda.getCriadoPor().getId());
-            dto.setCriadoPorNome(demanda.getCriadoPor().getFullName());
-        }
-
-        // Informações do atribuído
-        if (demanda.getAtribuidoPara() != null) {
-            dto.setAtribuidoParaId(demanda.getAtribuidoPara().getId());
-            dto.setAtribuidoParaNome(demanda.getAtribuidoPara().getFullName());
-        }
-
-        // Verificar se o usuário atual pode editar esta demanda
-        if (avaliarPermissoes) {
-            dto.setPodeEditar(podeEditarDemanda(demanda, currentUser));
-        } else {
-            dto.setPodeEditar(true);
-        }
-
-        return dto;
-    }
-
-    /**
-     * Verifica se o usuário pode editar a demanda
-     */
-    private static boolean podeEditarDemanda(Demanda demanda, User user) {
-        // Para implementação completa, mova esta lógica para um serviço específico
-        // Esta é uma versão simplificada
-
-        if (demanda == null || user == null) {
-            return false;
-        }
-
-        // O criador da demanda sempre pode editá-la
-        if (demanda.getCriadoPor() != null && demanda.getCriadoPor().getId().equals(user.getId())) {
-            return true;
-        }
-
-        // O usuário atribuído pode editar a demanda
-        if (demanda.getAtribuidoPara() != null && demanda.getAtribuidoPara().getId().equals(user.getId())) {
-            return true;
-        }
-
-        return false;
-    }
-
 
     /**
      * Extrai o nome do arquivo de uma URL
