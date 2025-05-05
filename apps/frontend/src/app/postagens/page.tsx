@@ -25,6 +25,7 @@ import postagemService, { PostagemSummaryDto } from "@/services/postagem";
 import convenioService, { ConvenioDto } from "@/services/convenio";
 import equipeService, { EquipeDto } from "@/services/equipe";
 import toastUtil from "@/utils/toast";
+import ProfileAvatar from "@/components/profile/profile-avatar";
 import { CustomButton } from "@/components/ui/custom-button";
 
 export default function PostagensPage() {
@@ -206,16 +207,18 @@ export default function PostagensPage() {
       ),
     },
     {
-      key: "createdAt",
-      header: "Data de Criação",
-      width: "20%",
-      sortable: true,
-      render: (value: string) => (
-        <div className="text-gray-600 flex items-center">
-          <Calendar size={16} className="mr-1 text-gray-400" />
-          {formatDate(value)}
-          <Clock size={16} className="ml-2 mr-1 text-gray-400" />
-          {formatTime(value)}
+      key: "createdByName",
+      header: "Autor",
+      width: "15%",
+      render: (value: string, record: PostagemSummaryDto) => (
+        <div className="flex items-center text-gray-700">
+          <ProfileAvatar
+            profileImage={record.createdByProfileImage}
+            userName={value}
+            size={24}
+            className="mr-2"
+          />
+          <div className="text-gray-700">{value}</div>
         </div>
       ),
     },
