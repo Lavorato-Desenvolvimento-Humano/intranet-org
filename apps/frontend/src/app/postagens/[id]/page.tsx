@@ -32,6 +32,7 @@ import postagemService, {
 } from "@/services/postagem";
 import toastUtil from "@/utils/toast";
 import { CustomButton } from "@/components/ui/custom-button";
+import ProfileAvatar from "@/components/profile/profile-avatar";
 import ContentViewer from "@/components/ui/content-viewer";
 import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
 
@@ -347,29 +348,21 @@ export default function PostagemViewPage() {
                   {formatTime(postagem.createdAt)}
                 </div>
               </div>
-              <div className="flex flex-wrap">
-                <div className="w-full md:w-1/2 mb-2 md:mb-0">
-                  <p className="text-sm text-gray-500">Autor:</p>
-                  <div className="flex items-center">
-                    {postagem.createdByProfileImage ? (
-                      <div className="mr-2 relative w-8 h-8 rounded-full overflow-hidden">
-                        <Image
-                          src={postagem.createdByProfileImage}
-                          alt={`Foto de ${postagem.createdByName}`}
-                          width={32}
-                          height={32}
-                          className="object-cover"
-                        />
-                      </div>
-                    ) : (
-                      <div className="mr-2 w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
-                        <UserIcon size={16} className="text-gray-500" />
-                      </div>
-                    )}
-                    <p className="text-gray-800">{postagem.createdByName}</p>
-                  </div>
+              <div className="flex items-center mb-6">
+                <ProfileAvatar
+                  profileImage={postagem.createdByProfileImage}
+                  userName={postagem.createdByName}
+                  size={40}
+                  className="mr-3"
+                />
+                <div>
+                  <p className="text-sm text-gray-500">Por</p>
+                  <p className="font-medium text-gray-800">
+                    {postagem.createdByName}
+                  </p>
                 </div>
-
+              </div>
+              <div className="flex flex-wrap">
                 <div className="w-full md:w-1/2">
                   <p className="text-sm text-gray-500">Visibilidade:</p>
                   {postagem.tipoDestino === "convenio" &&
