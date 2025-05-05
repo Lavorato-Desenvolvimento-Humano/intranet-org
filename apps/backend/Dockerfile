@@ -1,4 +1,3 @@
-# Usa uma versão sem Alpine para evitar problemas de compatibilidade do Maven
 FROM eclipse-temurin:17-jdk AS build
 WORKDIR /app
 
@@ -11,7 +10,6 @@ COPY . .
 RUN chmod +x mvnw  # Adiciona permissão novamente após a segunda cópia
 RUN ./mvnw clean package -DskipTests
 
-# Segunda etapa: Mantém o JDK para rodar o Spring Boot corretamente
 FROM eclipse-temurin:17-jdk-alpine
 WORKDIR /app
 

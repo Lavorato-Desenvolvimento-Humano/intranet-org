@@ -147,7 +147,7 @@ function NovaTabelaContent() {
     try {
       await tabelaValoresService.createTabela(tabela);
       toastUtil.success("Tabela de valores criada com sucesso!");
-      router.replace("/tabelas-valores");
+      router.back();
     } catch (err: any) {
       console.error("Erro ao criar tabela de valores:", err);
       toastUtil.error(
