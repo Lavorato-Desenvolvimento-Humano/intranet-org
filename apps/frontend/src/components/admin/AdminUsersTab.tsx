@@ -479,7 +479,7 @@ export default function AdminUsersTab() {
               <CustomButton
                 variant="primary"
                 onClick={handleCloseModal}
-                className="border border-gray-300">
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white">
                 Fechar
               </CustomButton>
             </div>
