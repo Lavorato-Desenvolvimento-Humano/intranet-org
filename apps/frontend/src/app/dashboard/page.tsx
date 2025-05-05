@@ -22,6 +22,7 @@ import postagemService, { PostagemSummaryDto } from "@/services/postagem";
 import convenioService, { ConvenioDto } from "@/services/convenio";
 import toastUtil from "@/utils/toast";
 import { CustomButton } from "@/components/ui/custom-button";
+import ProfileAvatar from "@/components/profile/profile-avatar";
 import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
 
 export default function DashboardPage() {
@@ -299,7 +300,13 @@ export default function DashboardPage() {
                             )}
                           </div>
 
-                          <div className="text-sm text-gray-600 mt-0.5">
+                          <div className="text-sm text-gray-600 mt-0.5 flex items-center">
+                            <ProfileAvatar
+                              profileImage={postagem.createdByProfileImage}
+                              userName={postagem.createdByName}
+                              size={20}
+                              className="mr-2"
+                            />
                             <span>por {postagem.createdByName}</span>
                           </div>
                         </div>
