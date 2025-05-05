@@ -77,7 +77,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth ->
                         auth
                                 // Public endpoints for authentication - always start with /api
-                                .requestMatchers("/api/auth/**", "/api/public/**").permitAll()
+                                .requestMatchers("/api/auth/**", "/auth/**").permitAll()
+                                .requestMatchers("/api/public/**", "/public/**").permitAll()
 
                                 // Endpoint específico para calendário
                                 .requestMatchers("/api/demandas/calendario").authenticated()

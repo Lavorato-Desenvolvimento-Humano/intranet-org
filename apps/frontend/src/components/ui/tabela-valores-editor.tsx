@@ -223,7 +223,7 @@ const TabelaValoresEditor: React.FC<TabelaValoresEditorProps> = ({
       <div className="mt-4">
         <CustomButton
           type="button"
-          variant="secondary"
+          variant="primary"
           icon={Plus}
           onClick={addNewRow}
           disabled={disabled}>
