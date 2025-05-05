@@ -8,12 +8,12 @@ services:
       - "9080:8080"
       - "9443:8443"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/tiratec
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/main_production
       SPRING_DATASOURCE_USERNAME: ${DB_USER}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASS}
       SPRING_PROFILES_ACTIVE: production
     volumes:
-      - /opt/deploy/develop/certbot/conf/live/dev.lavorato.app.br/:/certs
+      - /opt/deploy/main/certbot/conf/live/lavorato.app.br/keystore.p12:/certs/keystore.p12
       - /upload-data:/app/uploads/images
     depends_on:
       postgres:
@@ -28,7 +28,7 @@ services:
       - "3001:3000"
     environment:
       - NODE_ENV=production
-      - NEXT_PUBLIC_API_URL=https://${DOMAIN_NAME}/api
+      - NEXT_PUBLIC_API_URL=https://${DOMAIN_NAME}
     depends_on:
       - backend
     networks:
@@ -40,7 +40,7 @@ services:
     ports:
       - "5433:5432"
     environment:
-      POSTGRES_DB: tiratec
+      POSTGRES_DB: main_production
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASS}
     volumes:
