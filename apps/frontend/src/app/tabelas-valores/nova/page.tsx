@@ -1,7 +1,7 @@
 // apps/frontend/src/app/tabelas-valores/nova/page.tsx
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Save, X } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
@@ -18,11 +18,8 @@ import TabelaValoresEditor from "@/components/ui/tabela-valores-editor";
 import SimpleRichEditor from "@/components/ui/simple-rich-editor";
 import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
 
-// Componente que usa o useSearchParams
-function NovaTabelaContent() {
+export default function NovaTabelaValoresPage() {
   const router = useRouter();
-  const { useSearchParams } = require("next/navigation");
-  const searchParams = useSearchParams();
   const { user } = useAuth();
   const [tabela, setTabela] = useState<TabelaValoresCreateDto>({
     nome: "",
@@ -53,8 +50,13 @@ function NovaTabelaContent() {
         const data = await convenioService.getAllConvenios();
         setConvenios(data);
 
-        // Se tiver convenioId no parâmetro da URL, usar ele
-        const convenioId = searchParams.get("convenioId");
+        // Obter parâmetro da URL de forma segura
+        const urlParams =
+          typeof window !== "undefined"
+            ? new URLSearchParams(window.location.search)
+            : new URLSearchParams();
+        const convenioId = urlParams.get("convenioId");
+
         if (convenioId) {
           setTabela((prev) => ({
             ...prev,
@@ -76,16 +78,16 @@ function NovaTabelaContent() {
     };
 
     fetchConvenios();
-  }, [searchParams]);
+  }, []);
 
   // Redirecionar se não tem permissão - com controle para evitar redirecionamentos infinitos
   useEffect(() => {
     if (!canCreate && !redirected && !loadingConvenios) {
       setRedirected(true);
       toastUtil.error("Você não tem permissão para criar tabelas de valores.");
-      router.push("/tabelas-valores");
+      window.location.href = "/tabelas-valores";
     }
-  }, [canCreate, redirected, router, loadingConvenios]);
+  }, [canCreate, redirected, loadingConvenios]);
 
   // Função para validar o formulário
   const validateForm = () => {
@@ -130,12 +132,10 @@ function NovaTabelaContent() {
     setTabela((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Função para lidar com mudanças no conteúdo da tabela
   const handleTabelaChange = (value: string) => {
     setTabela((prev) => ({ ...prev, conteudo: value }));
   };
 
-  // Função para lidar com o envio do formulário
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -147,7 +147,7 @@ function NovaTabelaContent() {
     try {
       await tabelaValoresService.createTabela(tabela);
       toastUtil.success("Tabela de valores criada com sucesso!");
-      router.back();
+      window.location.href = "/tabelas-valores";
     } catch (err: any) {
       console.error("Erro ao criar tabela de valores:", err);
       toastUtil.error(
@@ -159,155 +159,158 @@ function NovaTabelaContent() {
     }
   };
 
-  // Função para cancelar e voltar à listagem
   const handleCancel = (e: React.MouseEvent) => {
     e.preventDefault();
-    router.back();
+    window.location.href = "/tabelas-valores";
   };
 
   if (loadingConvenios) {
-    return <Loading message="Carregando..." />;
+    return (
+      <ProtectedRoute>
+        <div className="min-h-screen bg-gray-50 flex flex-col">
+          <Navbar />
+          <main className="flex-grow container mx-auto p-6">
+            <Loading message="Carregando..." />
+          </main>
+        </div>
+      </ProtectedRoute>
+    );
   }
 
   return (
     <ProtectedRoute>
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label
-              htmlFor="nome"
-              className="block text-sm font-medium text-gray-700 mb-1">
-              Nome *
-            </label>
-            <input
-              type="text"
-              id="nome"
-              name="nome"
-              value={tabela.nome}
-              onChange={handleChange}
-              className={`w-full px-3 py-2 border rounded-md ${
-                errors.nome ? "border-red-500" : "border-gray-300"
-              } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
-              placeholder="Digite o nome da tabela"
-              disabled={loading}
-            />
-            {errors.nome && (
-              <p className="mt-1 text-sm text-red-500">{errors.nome}</p>
-            )}
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <Navbar />
+        <main className="flex-grow container mx-auto p-6">
+          <Breadcrumb
+            items={[
+              { label: "Dashboard", href: "/dashboard" },
+              { label: "Tabelas de Valores", href: "/tabelas-valores" },
+              { label: "Nova Tabela" },
+            ]}
+          />
+
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold text-gray-800">
+              Nova Tabela de Valores
+            </h1>
           </div>
 
-          <div className="mb-4">
-            <label
-              htmlFor="convenioId"
-              className="block text-sm font-medium text-gray-700 mb-1">
-              Convênio *
-            </label>
-            <select
-              id="convenioId"
-              name="convenioId"
-              value={tabela.convenioId}
-              onChange={handleChange}
-              className={`w-full px-3 py-2 border rounded-md ${
-                errors.convenioId ? "border-red-500" : "border-gray-300"
-              } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
-              disabled={loading}>
-              {convenios.length === 0 ? (
-                <option value="">Nenhum convênio disponível</option>
-              ) : (
-                convenios.map((convenio) => (
-                  <option key={convenio.id} value={convenio.id}>
-                    {convenio.name}
-                  </option>
-                ))
-              )}
-            </select>
-            {errors.convenioId && (
-              <p className="mt-1 text-sm text-red-500">{errors.convenioId}</p>
-            )}
-          </div>
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <form onSubmit={handleSubmit}>
+              <div className="mb-4">
+                <label
+                  htmlFor="nome"
+                  className="block text-sm font-medium text-gray-700 mb-1">
+                  Nome *
+                </label>
+                <input
+                  type="text"
+                  id="nome"
+                  name="nome"
+                  value={tabela.nome}
+                  onChange={handleChange}
+                  className={`w-full px-3 py-2 border rounded-md ${
+                    errors.nome ? "border-red-500" : "border-gray-300"
+                  } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
+                  placeholder="Digite o nome da tabela"
+                  disabled={loading}
+                />
+                {errors.nome && (
+                  <p className="mt-1 text-sm text-red-500">{errors.nome}</p>
+                )}
+              </div>
 
-          <div className="mb-4">
-            <label
-              htmlFor="descricao"
-              className="block text-sm font-medium text-gray-700 mb-1">
-              Descrição
-            </label>
-            <SimpleRichEditor
-              value={tabela.descricao || ""}
-              onChange={(value) =>
-                setTabela((prev) => ({ ...prev, descricao: value }))
-              }
-              placeholder="Digite uma descrição para a tabela (opcional)"
-              disabled={loading}
-              error={errors.descricao}
-              height="200px"
-            />
-            {errors.descricao && (
-              <p className="mt-1 text-sm text-red-500">{errors.descricao}</p>
-            )}
-          </div>
+              <div className="mb-4">
+                <label
+                  htmlFor="convenioId"
+                  className="block text-sm font-medium text-gray-700 mb-1">
+                  Convênio *
+                </label>
+                <select
+                  id="convenioId"
+                  name="convenioId"
+                  value={tabela.convenioId}
+                  onChange={handleChange}
+                  className={`w-full px-3 py-2 border rounded-md ${
+                    errors.convenioId ? "border-red-500" : "border-gray-300"
+                  } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
+                  disabled={loading}>
+                  {convenios.length === 0 ? (
+                    <option value="">Nenhum convênio disponível</option>
+                  ) : (
+                    convenios.map((convenio) => (
+                      <option key={convenio.id} value={convenio.id}>
+                        {convenio.name}
+                      </option>
+                    ))
+                  )}
+                </select>
+                {errors.convenioId && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {errors.convenioId}
+                  </p>
+                )}
+              </div>
 
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Valores *
-            </label>
+              <div className="mb-4">
+                <label
+                  htmlFor="descricao"
+                  className="block text-sm font-medium text-gray-700 mb-1">
+                  Descrição
+                </label>
+                <SimpleRichEditor
+                  value={tabela.descricao || ""}
+                  onChange={(value) =>
+                    setTabela((prev) => ({ ...prev, descricao: value }))
+                  }
+                  placeholder="Digite uma descrição para a tabela (opcional)"
+                  disabled={loading}
+                  error={errors.descricao}
+                  height="200px"
+                />
+                {errors.descricao && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {errors.descricao}
+                  </p>
+                )}
+              </div>
 
-            <TabelaValoresEditor
-              value={tabela.conteudo}
-              onChange={handleTabelaChange}
-              disabled={loading}
-              error={errors.conteudo}
-            />
-          </div>
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Valores *
+                </label>
 
-          <div className="flex justify-end space-x-3">
-            <CustomButton
-              type="button"
-              variant="primary"
-              className="bg-red-600 hover:bg-red-700 text-white border-none"
-              icon={X}
-              onClick={handleCancel}
-              disabled={loading}>
-              Cancelar
-            </CustomButton>
-            <CustomButton
-              type="submit"
-              variant="primary"
-              icon={Save}
-              disabled={loading}>
-              {loading ? "Salvando..." : "Salvar"}
-            </CustomButton>
+                <TabelaValoresEditor
+                  value={tabela.conteudo}
+                  onChange={handleTabelaChange}
+                  disabled={loading}
+                  error={errors.conteudo}
+                />
+              </div>
+
+              <div className="flex justify-end space-x-3">
+                <CustomButton
+                  type="button"
+                  variant="primary"
+                  className="bg-red-600 hover:bg-red-700 text-white border-none"
+                  icon={X}
+                  onClick={handleCancel}
+                  disabled={loading}>
+                  Cancelar
+                </CustomButton>
+                <CustomButton
+                  type="submit"
+                  variant="primary"
+                  icon={Save}
+                  disabled={loading}>
+                  {loading ? "Salvando..." : "Salvar"}
+                </CustomButton>
+              </div>
+            </form>
           </div>
-        </form>
+        </main>
       </div>
     </ProtectedRoute>
-  );
-}
-
-// Componente principal que encapsula tudo com Suspense
-export default function NovaTabelaValoresPage() {
-  return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Navbar />
-
-      <main className="flex-grow container mx-auto p-6">
-        <Breadcrumb
-          items={[
-            { label: "Dashboard", href: "/dashboard" },
-            { label: "Tabelas de Valores", href: "/tabelas-valores" },
-          ]}
-        />
-
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">
-            Nova Tabela de Valores
-          </h1>
-        </div>
-
-        <Suspense fallback={<Loading message="Carregando..." />}>
-          <NovaTabelaContent />
-        </Suspense>
-      </main>
-    </div>
   );
 }
