@@ -163,7 +163,6 @@ export default function EditarTabelaValoresPage() {
     }
   };
 
-  // Função melhorada para cancelar e voltar à página anterior
   const handleCancel = (e: React.MouseEvent) => {
     e.preventDefault(); // Evitar comportamento padrão
     router.back();
@@ -214,11 +213,7 @@ export default function EditarTabelaValoresPage() {
             items={[
               { label: "Dashboard", href: "/dashboard" },
               { label: "Tabelas de Valores", href: "/tabelas-valores" },
-              {
-                label: originalTabela.nome,
-                href: `/tabelas-valores/${tabelaId}`,
-              },
-              { label: "Editar" },
+              { label: tabela.nome },
             ]}
           />
 
