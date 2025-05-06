@@ -1,8 +1,6 @@
-// src/components/ui/breadcrumb.tsx
+// apps/frontend/src/components/ui/breadcrumb.tsx
 import React from "react";
-import Link from "next/link";
 import { ChevronRight, Home } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 export interface BreadcrumbItem {
   label: string;
@@ -18,12 +16,9 @@ export const Breadcrumb: React.FC<BreadcrumbProps> = ({
   items,
   showHome = true,
 }) => {
-  const router = useRouter();
-
-  // Função para navegação programática
   const handleNavigate = (path: string) => (e: React.MouseEvent) => {
     e.preventDefault();
-    router.push(path);
+    window.location.href = path;
   };
 
   return (
@@ -31,13 +26,13 @@ export const Breadcrumb: React.FC<BreadcrumbProps> = ({
       className="flex items-center space-x-2 text-sm mb-6"
       aria-label="Breadcrumb">
       {showHome && (
-        <Link
+        <a
           href="/"
           className="text-gray-500 hover:text-primary flex items-center"
           onClick={handleNavigate("/")}>
           <Home size={16} className="mr-1" />
           <span>Início</span>
-        </Link>
+        </a>
       )}
 
       {showHome && items.length > 0 && (
@@ -47,7 +42,7 @@ export const Breadcrumb: React.FC<BreadcrumbProps> = ({
       {items.map((item, index) => (
         <React.Fragment key={index}>
           {item.href ? (
-            <Link
+            <a
               href={item.href}
               className={`hover:text-primary ${
                 index === items.length - 1
@@ -56,7 +51,7 @@ export const Breadcrumb: React.FC<BreadcrumbProps> = ({
               }`}
               onClick={item.href ? handleNavigate(item.href) : undefined}>
               {item.label}
-            </Link>
+            </a>
           ) : (
             <span
               className={`${
