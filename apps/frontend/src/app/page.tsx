@@ -56,7 +56,7 @@ export default function Home() {
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto text-center">
             <h2 className="text-4xl font-bold mb-6">
-              Bem-vindo à Intranet da Clínica
+              Bem-vindo ao sistema interno da Lavorato Saúde Integrada
             </h2>
             <p className="text-xl mb-8">
               Seu portal de acesso único a todos os recursos que você precisa
@@ -170,6 +170,50 @@ export default function Home() {
             </div>
 
             {/* Restante das caixas de recursos... */}
+            {/* Fluxos */}
+            <div className="bg-white rounded-xl shadow-md overflow-hidden transition-transform hover:scale-105">
+              <div className="h-3 bg-red-500"></div>
+              <div className="p-6">
+                <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-7 w-7 text-red-500"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                    />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-bold mb-2">Fluxos</h3>
+                <p className="text-neutral-dark mb-4">
+                  Acompanhe os processos rotineiros, fluxos personalizados e
+                  otimize o seu desempenho.
+                </p>
+                <Link
+                  href="/auth/login"
+                  className="text-primary font-medium flex items-center">
+                  Acessar
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4 ml-1"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </section>
