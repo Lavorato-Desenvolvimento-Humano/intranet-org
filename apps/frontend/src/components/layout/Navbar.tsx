@@ -17,6 +17,7 @@ import {
   Book,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import NotificationPanel from "@/components/workflow/NotificationPanel";
 
 export default function Navbar() {
   const router = useRouter();
@@ -74,6 +75,7 @@ export default function Navbar() {
         <div className="flex justify-between items-center h-16">
           {/* Seção esquerda - Logo e Dropdown */}
           <div className="flex items-center space-x-4">
+            <NotificationPanel />
             <Link
               href="/"
               className="flex items-center"
