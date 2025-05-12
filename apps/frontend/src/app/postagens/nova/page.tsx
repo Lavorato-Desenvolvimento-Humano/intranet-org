@@ -63,7 +63,7 @@ export default function NovaPostagemPage() {
     user?.roles?.includes("ROLE_EDITOR") || user?.roles?.includes("EDITOR");
   const isUser =
     user?.roles?.includes("ROLE_USER") || user?.roles?.includes("USER");
-  const canCreatePostagem = isAdmin || isEditor || isUser;
+  const canCreatePostagem = isAdmin || isEditor;
 
   useEffect(() => {
     if (typeof window !== "undefined") {
