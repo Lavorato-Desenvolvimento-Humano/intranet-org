@@ -207,22 +207,6 @@ export default function PostagensPage() {
       ),
     },
     {
-      key: "createdByName",
-      header: "Autor",
-      width: "15%",
-      render: (value: string, record: PostagemSummaryDto) => (
-        <div className="flex items-center text-gray-700">
-          <ProfileAvatar
-            profileImage={record.createdByProfileImage}
-            userName={value}
-            size={24}
-            className="mr-2"
-          />
-          <div className="text-gray-700">{value}</div>
-        </div>
-      ),
-    },
-    {
       key: "features",
       header: "Recursos",
       width: "10%",
