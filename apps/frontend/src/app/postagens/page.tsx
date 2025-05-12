@@ -187,22 +187,13 @@ export default function PostagensPage() {
       width: "15%",
       render: (value: string, record: PostagemSummaryDto) => (
         <div className="flex items-center text-gray-700">
-          {record.createdByProfileImage ? (
-            <div className="mr-2 relative w-6 h-6 rounded-full overflow-hidden">
-              <Image
-                src={record.createdByProfileImage}
-                alt={`Foto de ${value}`}
-                width={24}
-                height={24}
-                className="object-cover"
-              />
-            </div>
-          ) : (
-            <div className="mr-2 w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center">
-              <UserIcon size={12} className="text-gray-500" />
-            </div>
-          )}
-          <span>{value}</span>
+          <ProfileAvatar
+            profileImage={record.createdByProfileImage}
+            userName={value}
+            size={24}
+            className="mr-2"
+          />
+          <div className="text-gray-700">{value}</div>
         </div>
       ),
     },
