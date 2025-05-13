@@ -105,7 +105,7 @@ export default function WorkflowsPage() {
             <CustomButton
               variant="primary"
               icon={Home}
-              onClick={() => handleDashboard}>
+              onClick={handleDashboard}>
               Dashboard
             </CustomButton>
             <CustomButton

@@ -153,6 +153,31 @@
   color: #666;
 }
 
+.notification-dropdown {
+  max-height: 80vh;
+  overflow: visible;
+  position: absolute;
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Estilos para dispositivos móveis */
+@media (max-width: 640px) {
+  .notification-dropdown {
+    width: calc(100vw - 20px) !important;
+    left: auto !important;
+    right: -10px !important;
+    max-width: 100%;
+  }
+}
+
+/* Garantir que notificações longas não quebrem o layout */
+.notification-item-content {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Responsividade para telas pequenas */
 @media (max-width: 768px) {
   .fc .fc-toolbar {

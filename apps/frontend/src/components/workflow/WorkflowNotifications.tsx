@@ -1,13 +1,7 @@
 // src/components/workflow/WorkflowNotifications.tsx
 import React from "react";
 import { WorkflowNotificationDto } from "@/types/workflow";
-import {
-  Bell,
-  CheckCircle,
-  Calendar,
-  RefreshCw,
-  AlertTriangle,
-} from "lucide-react";
+import { Bell, CheckCircle, Calendar, RefreshCw, X } from "lucide-react";
 
 interface WorkflowNotificationsProps {
   notifications: WorkflowNotificationDto[];
@@ -40,20 +34,28 @@ const WorkflowNotifications: React.FC<WorkflowNotificationsProps> = ({
     }
   };
 
+  // Truncar texto longo para evitar que estoure a largura
+  const truncateText = (text: string, maxLength: number) => {
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + "...";
+  };
+
   return (
-    <div className="bg-white rounded-lg shadow-md">
-      <div className="flex justify-between items-center p-4 border-b">
+    <div className="bg-white rounded-lg shadow-md max-h-[80vh] flex flex-col">
+      <div className="flex justify-between items-center p-3 border-b sticky top-0 bg-white z-10">
         <h3 className="text-lg font-semibold">Notificações</h3>
-        {notifications.length > 0 && !loading && (
-          <button
-            onClick={onMarkAllAsRead}
-            className="text-sm text-primary hover:text-primary-dark">
-            Marcar todas como lidas
-          </button>
-        )}
+        <div className="flex items-center">
+          {notifications.length > 0 && !loading && (
+            <button
+              onClick={onMarkAllAsRead}
+              className="text-sm text-primary hover:text-primary-dark mr-2">
+              Marcar todas como lidas
+            </button>
+          )}
+        </div>
       </div>
 
-      <div className="max-h-96 overflow-y-auto">
+      <div className="overflow-y-auto max-h-[calc(80vh-60px)]">
         {loading ? (
           <div className="p-6 text-center text-gray-500">
             Carregando notificações...
@@ -67,34 +69,35 @@ const WorkflowNotifications: React.FC<WorkflowNotificationsProps> = ({
             {notifications.map((notification) => (
               <div
                 key={notification.id}
-                className={`p-4 hover:bg-gray-50 ${notification.read ? "opacity-75" : ""}`}>
+                className={`p-3 hover:bg-gray-50 ${notification.read ? "opacity-75" : ""}`}>
                 <div className="flex items-start">
                   <div className="flex-shrink-0 mt-1">
                     {getIcon(notification.type)}
                   </div>
-                  <div className="ml-3 flex-1">
+                  <div className="ml-3 flex-1 min-w-0">
                     <div className="flex justify-between items-center mb-1">
-                      <p className="text-sm font-medium text-gray-900">
-                        {notification.title}
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {truncateText(notification.title, 40)}
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-gray-500 whitespace-nowrap ml-2">
                         {formatDate(notification.createdAt)}
                       </p>
                     </div>
-                    <p className="text-sm text-gray-600">
-                      {notification.message}
+                    <p className="text-sm text-gray-600 break-words">
+                      {truncateText(notification.message, 100)}
                     </p>
                     <div className="mt-2 flex justify-between items-center">
                       <a
                         href={`/workflows/${notification.workflowId}`}
-                        className="text-xs text-primary hover:text-primary-dark">
-                        Ver fluxo: {notification.workflowTitle}
+                        className="text-xs text-primary hover:text-primary-dark truncate max-w-[160px]">
+                        Ver fluxo:{" "}
+                        {truncateText(notification.workflowTitle, 30)}
                       </a>
 
                       {!notification.read && (
                         <button
                           onClick={() => onMarkAsRead(notification.id)}
-                          className="text-xs text-gray-500 hover:text-primary">
+                          className="text-xs text-gray-500 hover:text-primary whitespace-nowrap">
                           Marcar como lida
                         </button>
                       )}
