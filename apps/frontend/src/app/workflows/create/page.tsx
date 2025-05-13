@@ -66,18 +66,22 @@ function CreateWorkflowContent() {
 // Componente principal que envolve o conteúdo com Suspense
 export default function CreateWorkflowPage() {
   return (
-    <div className="container mx-auto py-6 px-4">
+    <>
       <Navbar />
-      <Breadcrumb
-        items={[
-          { label: "Fluxos de Trabalho", href: "/workflows" },
-          { label: "Novo Fluxo" },
-        ]}
-      />
-      <Suspense
-        fallback={<Loading size="medium" message="Carregando formulário..." />}>
-        <CreateWorkflowContent />
-      </Suspense>
-    </div>
+      <div className="container mx-auto py-6 px-4">
+        <Breadcrumb
+          items={[
+            { label: "Fluxos de Trabalho", href: "/workflows" },
+            { label: "Novo Fluxo" },
+          ]}
+        />
+        <Suspense
+          fallback={
+            <Loading size="medium" message="Carregando formulário..." />
+          }>
+          <CreateWorkflowContent />
+        </Suspense>
+      </div>
+    </>
   );
 }

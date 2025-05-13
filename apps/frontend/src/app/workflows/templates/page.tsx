@@ -48,7 +48,6 @@ export default function WorkflowTemplatesPage() {
     <>
       <Navbar />
       <div className="container mx-auto py-6 px-4">
-        <Navbar />
         <Breadcrumb
           items={[
             { label: "Fluxos de Trabalho", href: "/workflows" },

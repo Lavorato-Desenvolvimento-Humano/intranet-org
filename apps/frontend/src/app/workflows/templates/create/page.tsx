@@ -29,26 +29,28 @@ export default function CreateTemplatePage() {
   };
 
   return (
-    <div className="container mx-auto py-6 px-4">
+    <>
       <Navbar />
-      <Breadcrumb
-        items={[
-          { label: "Fluxos de Trabalho", href: "/workflows" },
-          { label: "Templates", href: "/workflows/templates" },
-          { label: "Novo Template" },
-        ]}
-      />
+      <div className="container mx-auto py-6 px-4">
+        <Breadcrumb
+          items={[
+            { label: "Fluxos de Trabalho", href: "/workflows" },
+            { label: "Templates", href: "/workflows/templates" },
+            { label: "Novo Template" },
+          ]}
+        />
 
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Criar Novo Template</h1>
-        <p className="text-gray-600">
-          Defina as etapas e propriedades do novo template de fluxo
-        </p>
-      </div>
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold">Criar Novo Template</h1>
+          <p className="text-gray-600">
+            Defina as etapas e propriedades do novo template de fluxo
+          </p>
+        </div>
 
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <TemplateForm onSubmit={handleSubmit} isLoading={isLoading} />
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <TemplateForm onSubmit={handleSubmit} isLoading={isLoading} />
+        </div>
       </div>
-    </div>
+    </>
   );
 }
