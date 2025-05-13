@@ -64,6 +64,23 @@ const WorkflowCard: React.FC<WorkflowCardProps> = ({ workflow }) => {
     }
   };
 
+  const getPriorityDisplayName = (priority?: string) => {
+    if (!priority) return "Média";
+
+    switch (priority) {
+      case "low":
+        return "Baixa";
+      case "medium":
+        return "Média";
+      case "high":
+        return "Alta";
+      case "urgent":
+        return "Urgente";
+      default:
+        return "Média";
+    }
+  };
+
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "Sem prazo";
     const date = new Date(dateString);
@@ -83,7 +100,7 @@ const WorkflowCard: React.FC<WorkflowCardProps> = ({ workflow }) => {
         <div className="flex items-center space-x-2">
           <span
             className={`px-2 py-1 rounded-full text-xs ${getPriorityColor()}`}>
-            {priority.charAt(0).toUpperCase() + priority.slice(1)}
+            {getPriorityDisplayName(priority)}
           </span>
           <span className={`w-3 h-3 rounded-full ${getStatusColor()}`}></span>
         </div>

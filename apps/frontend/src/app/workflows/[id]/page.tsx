@@ -247,6 +247,23 @@ export default function WorkflowPage({ params }: WorkflowPageProps) {
     }
   };
 
+  const getPriorityDisplayName = (priority?: string) => {
+    if (!priority) return "Média";
+
+    switch (priority) {
+      case "low":
+        return "Baixa";
+      case "medium":
+        return "Média";
+      case "high":
+        return "Alta";
+      case "urgent":
+        return "Urgente";
+      default:
+        return "Média";
+    }
+  };
+
   const getPriorityColor = (priority?: string) => {
     if (!priority) return "bg-gray-100 text-gray-800";
 
@@ -375,8 +392,7 @@ export default function WorkflowPage({ params }: WorkflowPageProps) {
               <h1 className="text-2xl font-bold">{workflow.title}</h1>
               <span
                 className={`px-2 py-1 rounded-full text-xs ${getPriorityColor(workflow.priority)}`}>
-                {workflow.priority.charAt(0).toUpperCase() +
-                  workflow.priority.slice(1)}
+                {getPriorityDisplayName(workflow.priority)}
               </span>
               <span
                 className={`w-3 h-3 rounded-full ${getStatusColor(workflow.status)}`}></span>
