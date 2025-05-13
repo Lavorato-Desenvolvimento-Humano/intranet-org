@@ -8,6 +8,17 @@ interface UsersWorkloadProps {
 }
 
 const UsersWorkload: React.FC<UsersWorkloadProps> = ({ usersWorkload }) => {
+  // Verificar se a lista está vazia ou é undefined
+  if (!usersWorkload || usersWorkload.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-md p-4">
+        <p className="text-center text-gray-500">
+          Nenhum dado de carga de trabalho disponível
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden">
       <h3 className="text-lg font-semibold p-4 border-b">
@@ -36,77 +47,90 @@ const UsersWorkload: React.FC<UsersWorkloadProps> = ({ usersWorkload }) => {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {usersWorkload.map((user) => (
-              <tr
-                key={user.userId}
-                className={user.isOverloaded ? "bg-red-50" : ""}>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center">
-                    {user.profileImage ? (
-                      <img
-                        src={user.profileImage}
-                        alt={user.userName}
-                        className="h-8 w-8 rounded-full mr-2"
-                      />
+            {usersWorkload.map((user) => {
+              // Garantir que user.userId não seja undefined
+              if (!user.userId) return null;
+
+              // Valores seguros com fallbacks
+              const userName = user.userName || "Usuário";
+              const userEmail = user.userEmail || "";
+              const profileImage = user.profileImage || "";
+              const activeAssignmentsCount = user.activeAssignmentsCount || 0;
+              const pendingAssignmentsCount = user.pendingAssignmentsCount || 0;
+              const overdueAssignmentsCount = user.overdueAssignmentsCount || 0;
+              const workloadPercentage = user.workloadPercentage || 0;
+              const isOverloaded = user.isOverloaded || false;
+
+              return (
+                <tr
+                  key={user.userId.toString()}
+                  className={isOverloaded ? "bg-red-50" : ""}>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      {profileImage ? (
+                        <img
+                          src={profileImage}
+                          alt={userName}
+                          className="h-8 w-8 rounded-full mr-2"
+                        />
+                      ) : (
+                        <div className="h-8 w-8 rounded-full bg-gray-300 flex items-center justify-center mr-2">
+                          <span className="text-sm text-gray-600">
+                            {userName.charAt(0)}
+                          </span>
+                        </div>
+                      )}
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {userName}
+                        </div>
+                        <div className="text-xs text-gray-500">{userEmail}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">
+                      {activeAssignmentsCount}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">
+                      {pendingAssignmentsCount}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {overdueAssignmentsCount > 0 ? (
+                      <div className="flex items-center text-sm text-red-500">
+                        <AlertTriangle size={16} className="mr-1" />
+                        {overdueAssignmentsCount}
+                      </div>
                     ) : (
-                      <div className="h-8 w-8 rounded-full bg-gray-300 flex items-center justify-center mr-2">
-                        <span className="text-sm text-gray-600">
-                          {user.userName.charAt(0)}
-                        </span>
+                      <div className="flex items-center text-sm text-green-500">
+                        <CheckCircle size={16} className="mr-1" />0
                       </div>
                     )}
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">
-                        {user.userName}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="bg-gray-200 rounded-full h-2.5 w-32 mr-2">
+                        <div
+                          className={`h-2.5 rounded-full ${
+                            workloadPercentage > 90
+                              ? "bg-red-500"
+                              : workloadPercentage > 70
+                                ? "bg-orange-500"
+                                : "bg-green-500"
+                          }`}
+                          style={{ width: `${workloadPercentage}%` }}></div>
                       </div>
-                      <div className="text-xs text-gray-500">
-                        {user.userEmail}
-                      </div>
+                      <span className="text-xs text-gray-500">
+                        {Math.round(workloadPercentage)}%
+                      </span>
                     </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">
-                    {user.activeAssignmentsCount}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">
-                    {user.pendingAssignmentsCount}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {user.overdueAssignmentsCount > 0 ? (
-                    <div className="flex items-center text-sm text-red-500">
-                      <AlertTriangle size={16} className="mr-1" />
-                      {user.overdueAssignmentsCount}
-                    </div>
-                  ) : (
-                    <div className="flex items-center text-sm text-green-500">
-                      <CheckCircle size={16} className="mr-1" />0
-                    </div>
-                  )}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center">
-                    <div className="bg-gray-200 rounded-full h-2.5 w-32 mr-2">
-                      <div
-                        className={`h-2.5 rounded-full ${
-                          user.workloadPercentage > 90
-                            ? "bg-red-500"
-                            : user.workloadPercentage > 70
-                              ? "bg-orange-500"
-                              : "bg-green-500"
-                        }`}
-                        style={{ width: `${user.workloadPercentage}%` }}></div>
-                    </div>
-                    <span className="text-xs text-gray-500">
-                      {Math.round(user.workloadPercentage)}%
-                    </span>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                  </td>
+                </tr>
+              );
+            })}
 
             {usersWorkload.length === 0 && (
               <tr>

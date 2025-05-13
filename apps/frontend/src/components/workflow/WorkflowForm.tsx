@@ -211,10 +211,6 @@ const WorkflowForm: React.FC<WorkflowFormProps> = ({
               className="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-transparent"
               min={new Date().toISOString().split("T")[0]}
             />
-            <Calendar
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-              size={20}
-            />
           </div>
         </div>
 
