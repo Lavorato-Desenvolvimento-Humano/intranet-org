@@ -1,6 +1,8 @@
 package com.intranet.backend.controllers;
 
 import com.intranet.backend.dto.*;
+import com.intranet.backend.model.User;
+import com.intranet.backend.repository.UserRepository;
 import com.intranet.backend.service.WorkflowService;
 import com.intranet.backend.util.ResponseUtil;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +29,7 @@ public class WorkflowController {
 
     private static final Logger logger = LoggerFactory.getLogger(WorkflowController.class);
     private final WorkflowService workflowService;
+    private final UserRepository userRepository;
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
@@ -86,10 +89,12 @@ public class WorkflowController {
     @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
     public ResponseEntity<List<WorkflowSummaryDto>> getWorkflowsAssignedToMe() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        String email = authentication.getName();
 
-        // Obter o ID do usuário a partir do contexto de segurança
-        UUID userId = UUID.fromString(userDetails.getUsername());
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Usuário não encontrado com o email: " + email));
+
+        UUID userId = user.getId();
 
         logger.info("Buscando fluxos de trabalho atribuídos ao usuário: {}", userId);
 
@@ -104,10 +109,12 @@ public class WorkflowController {
             @RequestParam(defaultValue = "10") int size) {
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        String email = authentication.getName();
 
-        // Obter o ID do usuário a partir do contexto de segurança
-        UUID userId = UUID.fromString(userDetails.getUsername());
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Usuário não encontrado com o email: " + email));
+
+        UUID userId = user.getId();;
 
         logger.info("Buscando fluxos de trabalho visíveis para o usuário: {}", userId);
 
@@ -158,10 +165,12 @@ public class WorkflowController {
     @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
     public ResponseEntity<WorkflowStatsDto> getUserWorkflowStats() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        String email = authentication.getName();
 
-        // Obter o ID do usuário a partir do contexto de segurança
-        UUID userId = UUID.fromString(userDetails.getUsername());
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Usuário não encontrado com o email: " + email));
+
+        UUID userId = user.getId();
 
         logger.info("Obtendo estatísticas de fluxos para o usuário: {}", userId);
 
@@ -182,10 +191,12 @@ public class WorkflowController {
     @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
     public ResponseEntity<WorkflowDto> createWorkflow(@RequestBody WorkflowCreateDto workflowDto) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        String email = authentication.getName();
 
-        // Obter o ID do usuário a partir do contexto de segurança
-        UUID userId = UUID.fromString(userDetails.getUsername());
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Usuário não encontrado com o email: " + email));
+
+        UUID userId = user.getId();
 
         logger.info("Criando novo fluxo de trabalho");
 
@@ -200,10 +211,12 @@ public class WorkflowController {
             @RequestBody WorkflowCreateDto workflowDto) {
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        String email = authentication.getName();
 
-        // Obter o ID do usuário a partir do contexto de segurança
-        UUID userId = UUID.fromString(userDetails.getUsername());
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Usuário não encontrado com o email: " + email));
+
+        UUID userId = user.getId();
 
         // Verificar se o usuário tem permissão para modificar o fluxo
         if (!workflowService.canUserModifyWorkflow(userId, id)) {
@@ -225,10 +238,12 @@ public class WorkflowController {
             @RequestParam(required = false) String comments) {
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        String email = authentication.getName();
 
-        // Obter o ID do usuário a partir do contexto de segurança
-        UUID userId = UUID.fromString(userDetails.getUsername());
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Usuário não encontrado com o email: " + email));
+
+        UUID userId = user.getId();
 
         // Verificar se o usuário tem permissão para modificar o fluxo
         if (!workflowService.canUserModifyWorkflow(userId, id)) {
@@ -250,10 +265,12 @@ public class WorkflowController {
             @RequestParam(required = false) String comments) {
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        String email = authentication.getName();
 
-        // Obter o ID do usuário a partir do contexto de segurança
-        UUID userId = UUID.fromString(userDetails.getUsername());
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Usuário não encontrado com o email: " + email));
+
+        UUID userId = user.getId();
 
         // Verificar se o usuário tem permissão para modificar o fluxo
         if (!workflowService.canUserModifyWorkflow(userId, id)) {
@@ -276,10 +293,12 @@ public class WorkflowController {
             @RequestParam(required = false) String comments) {
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        String email = authentication.getName();
 
-        // Obter o ID do usuário a partir do contexto de segurança
-        UUID userId = UUID.fromString(userDetails.getUsername());
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Usuário não encontrado com o email: " + email));
+
+        UUID userId = user.getId();
 
         // Verificar se o usuário tem permissão para modificar o fluxo
         if (!workflowService.canUserModifyWorkflow(userId, id)) {
@@ -301,10 +320,12 @@ public class WorkflowController {
             @RequestParam(required = false) String comments) {
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        String email = authentication.getName();
 
-        // Obter o ID do usuário a partir do contexto de segurança
-        UUID userId = UUID.fromString(userDetails.getUsername());
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Usuário não encontrado com o email: " + email));
+
+        UUID userId = user.getId();
 
         // Verificar se o usuário tem permissão para modificar o fluxo
         if (!workflowService.canUserModifyWorkflow(userId, id)) {
