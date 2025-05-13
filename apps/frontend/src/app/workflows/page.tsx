@@ -84,148 +84,154 @@ export default function WorkflowsPage() {
   };
 
   return (
-    <div className="container mx-auto py-6 px-4">
+    <>
       <Navbar />
-      <Breadcrumb items={[{ label: "Fluxos de Trabalho" }]} />
+      <div className="container mx-auto py-6 px-4">
+        <Navbar />
+        <Breadcrumb items={[{ label: "Fluxos de Trabalho" }]} />
 
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold">Fluxos de Trabalho</h1>
-          <p className="text-gray-600">
-            Gerencie e acompanhe seus fluxos de trabalho
-          </p>
-        </div>
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-2xl font-bold">Fluxos de Trabalho</h1>
+            <p className="text-gray-600">
+              Gerencie e acompanhe seus fluxos de trabalho
+            </p>
+          </div>
 
-        <div className="flex space-x-3">
-          <CustomButton
-            variant="secondary"
-            icon={Settings}
-            onClick={handleViewTemplates}>
-            Templates
-          </CustomButton>
-          <CustomButton
-            variant="primary"
-            icon={Plus}
-            onClick={handleCreateWorkflow}>
-            Novo Fluxo
-          </CustomButton>
-        </div>
-      </div>
-
-      <Tabs defaultValue="all" className="py-2 px-4">
-        <TabsList className="bg-white rounded-lg shadow-sm p-1 mb-4">
-          <TabsTrigger
-            value="all"
-            className="py-2 px-4"
-            onClick={() => handleTabChange("all")}>
-            Todos
-          </TabsTrigger>
-          <TabsTrigger
-            value="in_progress"
-            className="py-2 px-4"
-            onClick={() => handleTabChange("in_progress")}>
-            Em Andamento
-          </TabsTrigger>
-          <TabsTrigger
-            value="paused"
-            className="py-2 px-4"
-            onClick={() => handleTabChange("paused")}>
-            Pausados
-          </TabsTrigger>
-          <TabsTrigger
-            value="completed"
-            className="py-2 px-4"
-            onClick={() => handleTabChange("completed")}>
-            Concluídos
-          </TabsTrigger>
-          <TabsTrigger
-            value="assigned"
-            className="py-2 px-4"
-            onClick={() => handleTabChange("assigned")}>
-            Atribuídos a Mim
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="all">
-          {renderWorkflowList(workflows, loading, error)}
-        </TabsContent>
-
-        <TabsContent value="in_progress">
-          {renderWorkflowList(workflows, loading, error)}
-        </TabsContent>
-
-        <TabsContent value="paused">
-          {renderWorkflowList(workflows, loading, error)}
-        </TabsContent>
-
-        <TabsContent value="completed">
-          {renderWorkflowList(workflows, loading, error)}
-        </TabsContent>
-
-        <TabsContent value="assigned">
-          {loadingAssigned ? (
-            <Loading size="medium" message="Carregando fluxos atribuídos..." />
-          ) : assignedWorkflows.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {assignedWorkflows.map((workflow) => (
-                <WorkflowCard key={workflow.id} workflow={workflow} />
-              ))}
-            </div>
-          ) : (
-            <div className="bg-white rounded-lg shadow-md p-8 text-center">
-              <FileText size={48} className="mx-auto text-gray-400 mb-4" />
-              <h3 className="text-lg font-semibold mb-2">
-                Nenhum fluxo atribuído a você
-              </h3>
-              <p className="text-gray-600">
-                Você não possui fluxos de trabalho atribuídos no momento
-              </p>
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
-
-      {totalPages > 1 && activeTab !== "assigned" && (
-        <div className="flex justify-center mt-6">
-          <div className="flex space-x-2">
-            <button
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-              disabled={page === 0}
-              className={`px-4 py-2 rounded ${
-                page === 0
-                  ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-              }`}>
-              Anterior
-            </button>
-
-            {Array.from({ length: totalPages }).map((_, index) => (
-              <button
-                key={index}
-                onClick={() => setPage(index)}
-                className={`px-4 py-2 rounded ${
-                  page === index
-                    ? "bg-primary text-white"
-                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                }`}>
-                {index + 1}
-              </button>
-            ))}
-
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-              disabled={page === totalPages - 1}
-              className={`px-4 py-2 rounded ${
-                page === totalPages - 1
-                  ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-              }`}>
-              Próxima
-            </button>
+          <div className="flex space-x-3">
+            <CustomButton
+              variant="secondary"
+              icon={Settings}
+              onClick={handleViewTemplates}>
+              Templates
+            </CustomButton>
+            <CustomButton
+              variant="primary"
+              icon={Plus}
+              onClick={handleCreateWorkflow}>
+              Novo Fluxo
+            </CustomButton>
           </div>
         </div>
-      )}
-    </div>
+
+        <Tabs defaultValue="all" className="py-2 px-4">
+          <TabsList className="bg-white rounded-lg shadow-sm p-1 mb-4">
+            <TabsTrigger
+              value="all"
+              className="py-2 px-4"
+              onClick={() => handleTabChange("all")}>
+              Todos
+            </TabsTrigger>
+            <TabsTrigger
+              value="in_progress"
+              className="py-2 px-4"
+              onClick={() => handleTabChange("in_progress")}>
+              Em Andamento
+            </TabsTrigger>
+            <TabsTrigger
+              value="paused"
+              className="py-2 px-4"
+              onClick={() => handleTabChange("paused")}>
+              Pausados
+            </TabsTrigger>
+            <TabsTrigger
+              value="completed"
+              className="py-2 px-4"
+              onClick={() => handleTabChange("completed")}>
+              Concluídos
+            </TabsTrigger>
+            <TabsTrigger
+              value="assigned"
+              className="py-2 px-4"
+              onClick={() => handleTabChange("assigned")}>
+              Atribuídos a Mim
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="all">
+            {renderWorkflowList(workflows, loading, error)}
+          </TabsContent>
+
+          <TabsContent value="in_progress">
+            {renderWorkflowList(workflows, loading, error)}
+          </TabsContent>
+
+          <TabsContent value="paused">
+            {renderWorkflowList(workflows, loading, error)}
+          </TabsContent>
+
+          <TabsContent value="completed">
+            {renderWorkflowList(workflows, loading, error)}
+          </TabsContent>
+
+          <TabsContent value="assigned">
+            {loadingAssigned ? (
+              <Loading
+                size="medium"
+                message="Carregando fluxos atribuídos..."
+              />
+            ) : assignedWorkflows.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {assignedWorkflows.map((workflow) => (
+                  <WorkflowCard key={workflow.id} workflow={workflow} />
+                ))}
+              </div>
+            ) : (
+              <div className="bg-white rounded-lg shadow-md p-8 text-center">
+                <FileText size={48} className="mx-auto text-gray-400 mb-4" />
+                <h3 className="text-lg font-semibold mb-2">
+                  Nenhum fluxo atribuído a você
+                </h3>
+                <p className="text-gray-600">
+                  Você não possui fluxos de trabalho atribuídos no momento
+                </p>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+
+        {totalPages > 1 && activeTab !== "assigned" && (
+          <div className="flex justify-center mt-6">
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                disabled={page === 0}
+                className={`px-4 py-2 rounded ${
+                  page === 0
+                    ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                }`}>
+                Anterior
+              </button>
+
+              {Array.from({ length: totalPages }).map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => setPage(index)}
+                  className={`px-4 py-2 rounded ${
+                    page === index
+                      ? "bg-primary text-white"
+                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                  }`}>
+                  {index + 1}
+                </button>
+              ))}
+
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                disabled={page === totalPages - 1}
+                className={`px-4 py-2 rounded ${
+                  page === totalPages - 1
+                    ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                }`}>
+                Próxima
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </>
   );
 
   function renderWorkflowList(

@@ -180,39 +180,41 @@ export default function TemplatePage({ params }: TemplatePageProps) {
     };
 
     return (
-      <div className="container mx-auto py-6 px-4">
+      <>
         <Navbar />
-        <Breadcrumb
-          items={[
-            { label: "Fluxos de Trabalho", href: "/workflows" },
-            { label: "Templates", href: "/workflows/templates" },
-            { label: template.name },
-          ]}
-        />
-
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold">Editar Template</h1>
-          <p className="text-gray-600">
-            Modifique as configurações e etapas do template
-          </p>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <TemplateForm
-            initialData={formData}
-            onSubmit={handleUpdate}
-            isLoading={isSubmitting}
+        <div className="container mx-auto py-6 px-4">
+          <Breadcrumb
+            items={[
+              { label: "Fluxos de Trabalho", href: "/workflows" },
+              { label: "Templates", href: "/workflows/templates" },
+              { label: template.name },
+            ]}
           />
 
-          <div className="mt-4 flex justify-end">
-            <CustomButton
-              variant="secondary"
-              onClick={() => setIsEditing(false)}>
-              Cancelar Edição
-            </CustomButton>
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold">Editar Template</h1>
+            <p className="text-gray-600">
+              Modifique as configurações e etapas do template
+            </p>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <TemplateForm
+              initialData={formData}
+              onSubmit={handleUpdate}
+              isLoading={isSubmitting}
+            />
+
+            <div className="mt-4 flex justify-end">
+              <CustomButton
+                variant="secondary"
+                onClick={() => setIsEditing(false)}>
+                Cancelar Edição
+              </CustomButton>
+            </div>
           </div>
         </div>
-      </div>
+      </>
     );
   }
 

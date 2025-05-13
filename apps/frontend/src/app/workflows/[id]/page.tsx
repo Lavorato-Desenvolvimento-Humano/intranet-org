@@ -358,454 +358,459 @@ export default function WorkflowPage({ params }: WorkflowPageProps) {
   const currentAssignment = getCurrentAssignment();
 
   return (
-    <div className="container mx-auto py-6 px-4">
+    <>
       <Navbar />
-      <Breadcrumb
-        items={[
-          { label: "Fluxos de Trabalho", href: "/workflows" },
-          { label: workflow.title },
-        ]}
-      />
-
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold">{workflow.title}</h1>
-            <span
-              className={`px-2 py-1 rounded-full text-xs ${getPriorityColor(workflow.priority)}`}>
-              {workflow.priority.charAt(0).toUpperCase() +
-                workflow.priority.slice(1)}
-            </span>
-            <span
-              className={`w-3 h-3 rounded-full ${getStatusColor(workflow.status)}`}></span>
-            <span className="text-gray-600">
-              {getStatusDisplayName(workflow.status)}
-            </span>
-          </div>
-          <div className="flex items-center text-gray-600 mt-1">
-            <span className="mr-4">Baseado em: {workflow.templateName}</span>
-            {getVisibilityIcon()}
-            <span>{getVisibilityText()}</span>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          {workflow.status === "in_progress" && (
-            <>
-              <CustomButton
-                variant="secondary"
-                size="small"
-                icon={UserPlus}
-                onClick={() => {
-                  setAssignToId(currentAssignment?.assignedToId || "");
-                  setShowAssignDialog(true);
-                }}>
-                Atribuir
-              </CustomButton>
-
-              {hasMoreSteps() && (
-                <CustomButton
-                  variant="primary"
-                  size="small"
-                  icon={ArrowRight}
-                  onClick={() => setShowAdvanceDialog(true)}>
-                  Avançar
-                </CustomButton>
-              )}
-
-              <CustomButton
-                variant="secondary"
-                size="small"
-                icon={PauseCircle}
-                onClick={() => {
-                  setNewStatus("paused");
-                  setShowStatusDialog(true);
-                }}>
-                Pausar
-              </CustomButton>
-
-              <CustomButton
-                variant="secondary"
-                size="small"
-                icon={CheckCircle}
-                onClick={() => {
-                  setNewStatus("completed");
-                  setShowStatusDialog(true);
-                }}>
-                Concluir
-              </CustomButton>
-
-              <CustomButton
-                variant="secondary"
-                size="small"
-                icon={XCircle}
-                onClick={() => {
-                  setNewStatus("canceled");
-                  setShowStatusDialog(true);
-                }}>
-                Cancelar
-              </CustomButton>
-            </>
-          )}
-
-          {workflow.status === "paused" && (
-            <CustomButton
-              variant="primary"
-              size="small"
-              icon={PlayCircle}
-              onClick={() => {
-                setNewStatus("in_progress");
-                setShowStatusDialog(true);
-              }}>
-              Retomar
-            </CustomButton>
-          )}
-
-          {(workflow.status === "completed" ||
-            workflow.status === "canceled") && (
-            <CustomButton
-              variant="secondary"
-              size="small"
-              icon={ArchiveIcon}
-              onClick={handleArchiveWorkflow}>
-              Arquivar
-            </CustomButton>
-          )}
-
-          {workflow.status === "archived" && (
-            <CustomButton
-              variant="primary"
-              size="small"
-              icon={RotateCcw}
-              onClick={handleRestoreWorkflow}>
-              Restaurar
-            </CustomButton>
-          )}
-        </div>
-      </div>
-
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <WorkflowProgress
-          currentStep={workflow.currentStep}
-          totalSteps={workflow.totalSteps}
-          steps={workflow.assignments.map((a) => ({
-            name: a.stepName,
-            status: a.status,
-          }))}
+      <div className="container mx-auto py-6 px-4">
+        <Breadcrumb
+          items={[
+            { label: "Fluxos de Trabalho", href: "/workflows" },
+            { label: workflow.title },
+          ]}
         />
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <div className="lg:col-span-2 bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-lg font-semibold mb-4">Detalhes do Fluxo</h2>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold">{workflow.title}</h1>
+              <span
+                className={`px-2 py-1 rounded-full text-xs ${getPriorityColor(workflow.priority)}`}>
+                {workflow.priority.charAt(0).toUpperCase() +
+                  workflow.priority.slice(1)}
+              </span>
+              <span
+                className={`w-3 h-3 rounded-full ${getStatusColor(workflow.status)}`}></span>
+              <span className="text-gray-600">
+                {getStatusDisplayName(workflow.status)}
+              </span>
+            </div>
+            <div className="flex items-center text-gray-600 mt-1">
+              <span className="mr-4">Baseado em: {workflow.templateName}</span>
+              {getVisibilityIcon()}
+              <span>{getVisibilityText()}</span>
+            </div>
+          </div>
 
-          {workflow.description && (
+          <div className="flex flex-wrap gap-2">
+            {workflow.status === "in_progress" && (
+              <>
+                <CustomButton
+                  variant="secondary"
+                  size="small"
+                  icon={UserPlus}
+                  onClick={() => {
+                    setAssignToId(currentAssignment?.assignedToId || "");
+                    setShowAssignDialog(true);
+                  }}>
+                  Atribuir
+                </CustomButton>
+
+                {hasMoreSteps() && (
+                  <CustomButton
+                    variant="primary"
+                    size="small"
+                    icon={ArrowRight}
+                    onClick={() => setShowAdvanceDialog(true)}>
+                    Avançar
+                  </CustomButton>
+                )}
+
+                <CustomButton
+                  variant="secondary"
+                  size="small"
+                  icon={PauseCircle}
+                  onClick={() => {
+                    setNewStatus("paused");
+                    setShowStatusDialog(true);
+                  }}>
+                  Pausar
+                </CustomButton>
+
+                <CustomButton
+                  variant="secondary"
+                  size="small"
+                  icon={CheckCircle}
+                  onClick={() => {
+                    setNewStatus("completed");
+                    setShowStatusDialog(true);
+                  }}>
+                  Concluir
+                </CustomButton>
+
+                <CustomButton
+                  variant="secondary"
+                  size="small"
+                  icon={XCircle}
+                  onClick={() => {
+                    setNewStatus("canceled");
+                    setShowStatusDialog(true);
+                  }}>
+                  Cancelar
+                </CustomButton>
+              </>
+            )}
+
+            {workflow.status === "paused" && (
+              <CustomButton
+                variant="primary"
+                size="small"
+                icon={PlayCircle}
+                onClick={() => {
+                  setNewStatus("in_progress");
+                  setShowStatusDialog(true);
+                }}>
+                Retomar
+              </CustomButton>
+            )}
+
+            {(workflow.status === "completed" ||
+              workflow.status === "canceled") && (
+              <CustomButton
+                variant="secondary"
+                size="small"
+                icon={ArchiveIcon}
+                onClick={handleArchiveWorkflow}>
+                Arquivar
+              </CustomButton>
+            )}
+
+            {workflow.status === "archived" && (
+              <CustomButton
+                variant="primary"
+                size="small"
+                icon={RotateCcw}
+                onClick={handleRestoreWorkflow}>
+                Restaurar
+              </CustomButton>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <WorkflowProgress
+            currentStep={workflow.currentStep}
+            totalSteps={workflow.totalSteps}
+            steps={workflow.assignments.map((a) => ({
+              name: a.stepName,
+              status: a.status,
+            }))}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          <div className="lg:col-span-2 bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-lg font-semibold mb-4">Detalhes do Fluxo</h2>
+
+            {workflow.description && (
+              <div className="mb-6">
+                <h3 className="text-sm font-medium text-gray-500 mb-2">
+                  Descrição
+                </h3>
+                <p className="text-gray-700">{workflow.description}</p>
+              </div>
+            )}
+
             <div className="mb-6">
               <h3 className="text-sm font-medium text-gray-500 mb-2">
-                Descrição
+                Etapa Atual
               </h3>
-              <p className="text-gray-700">{workflow.description}</p>
-            </div>
-          )}
-
-          <div className="mb-6">
-            <h3 className="text-sm font-medium text-gray-500 mb-2">
-              Etapa Atual
-            </h3>
-            <div className="border rounded-lg p-4 bg-gray-50">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h4 className="font-medium">
-                    {currentAssignment?.stepName ||
-                      `Etapa ${workflow.currentStep}`}
-                  </h4>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Atribuído a:{" "}
-                    {currentAssignment?.assignedToName || "Não atribuído"}
-                  </p>
-
-                  {currentAssignment?.startDate && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      Iniciado em:{" "}
-                      {new Date(currentAssignment.startDate).toLocaleString(
-                        "pt-BR"
-                      )}
+              <div className="border rounded-lg p-4 bg-gray-50">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h4 className="font-medium">
+                      {currentAssignment?.stepName ||
+                        `Etapa ${workflow.currentStep}`}
+                    </h4>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Atribuído a:{" "}
+                      {currentAssignment?.assignedToName || "Não atribuído"}
                     </p>
+
+                    {currentAssignment?.startDate && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Iniciado em:{" "}
+                        {new Date(currentAssignment.startDate).toLocaleString(
+                          "pt-BR"
+                        )}
+                      </p>
+                    )}
+                  </div>
+
+                  <div
+                    className={`px-2 py-1 rounded-full text-xs ${
+                      currentAssignment?.status === "completed"
+                        ? "bg-green-100 text-green-800"
+                        : currentAssignment?.status === "in_progress"
+                          ? "bg-blue-100 text-blue-800"
+                          : "bg-gray-100 text-gray-800"
+                    }`}>
+                    {currentAssignment?.status === "completed"
+                      ? "Concluído"
+                      : currentAssignment?.status === "in_progress"
+                        ? "Em andamento"
+                        : "Pendente"}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <h3 className="text-sm font-medium text-gray-500 mb-2">
+                Histórico de Atividades
+              </h3>
+              <WorkflowHistory transitions={workflow.transitions} />
+            </div>
+          </div>
+
+          <div>
+            <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+              <h2 className="text-lg font-semibold mb-4">Informações</h2>
+
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">
+                    Criado por
+                  </h3>
+                  <p>{workflow.createdByName}</p>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">
+                    Data de Criação
+                  </h3>
+                  <p>{new Date(workflow.createdAt).toLocaleString("pt-BR")}</p>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">
+                    Última Atualização
+                  </h3>
+                  <p>{new Date(workflow.updatedAt).toLocaleString("pt-BR")}</p>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">Prazo</h3>
+                  <div className="flex items-center">
+                    <Calendar size={16} className="text-gray-500 mr-1" />
+                    <p>{formatDate(workflow.deadline)}</p>
+                  </div>
+
+                  {workflow.isOverdue && (
+                    <div className="flex items-center text-red-500 text-sm mt-1">
+                      <AlertTriangle size={16} className="mr-1" />
+                      <span>
+                        Atrasado ({Math.abs(workflow.daysRemaining)} dias)
+                      </span>
+                    </div>
+                  )}
+
+                  {workflow.isNearDeadline && !workflow.isOverdue && (
+                    <div className="flex items-center text-orange-500 text-sm mt-1">
+                      <Clock size={16} className="mr-1" />
+                      <span>Prazo próximo ({workflow.daysRemaining} dias)</span>
+                    </div>
                   )}
                 </div>
 
+                {workflow.teamName && (
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500">
+                      Equipe
+                    </h3>
+                    <p>{workflow.teamName}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-lg font-semibold mb-4">Progresso</h2>
+
+              <div className="w-full h-4 bg-gray-200 rounded-full mb-2">
                 <div
-                  className={`px-2 py-1 rounded-full text-xs ${
-                    currentAssignment?.status === "completed"
-                      ? "bg-green-100 text-green-800"
-                      : currentAssignment?.status === "in_progress"
-                        ? "bg-blue-100 text-blue-800"
-                        : "bg-gray-100 text-gray-800"
-                  }`}>
-                  {currentAssignment?.status === "completed"
-                    ? "Concluído"
-                    : currentAssignment?.status === "in_progress"
-                      ? "Em andamento"
-                      : "Pendente"}
+                  className="h-4 bg-primary rounded-full"
+                  style={{ width: `${workflow.progressPercentage}%` }}></div>
+              </div>
+              <p className="text-sm text-gray-600 text-center">
+                {workflow.progressPercentage}% concluído
+              </p>
+
+              <div className="mt-4">
+                <div className="flex justify-between text-sm">
+                  <span>Etapas concluídas:</span>
+                  <span>
+                    {
+                      workflow.assignments.filter(
+                        (a) => a.status === "completed"
+                      ).length
+                    }{" "}
+                    / {workflow.totalSteps}
+                  </span>
                 </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="mb-6">
-            <h3 className="text-sm font-medium text-gray-500 mb-2">
-              Histórico de Atividades
-            </h3>
-            <WorkflowHistory transitions={workflow.transitions} />
-          </div>
-        </div>
-
-        <div>
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-            <h2 className="text-lg font-semibold mb-4">Informações</h2>
-
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">
-                  Criado por
-                </h3>
-                <p>{workflow.createdByName}</p>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">
-                  Data de Criação
-                </h3>
-                <p>{new Date(workflow.createdAt).toLocaleString("pt-BR")}</p>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">
-                  Última Atualização
-                </h3>
-                <p>{new Date(workflow.updatedAt).toLocaleString("pt-BR")}</p>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Prazo</h3>
-                <div className="flex items-center">
-                  <Calendar size={16} className="text-gray-500 mr-1" />
-                  <p>{formatDate(workflow.deadline)}</p>
+                <div className="flex justify-between text-sm mt-1">
+                  <span>Etapa atual:</span>
+                  <span>
+                    {workflow.currentStep} de {workflow.totalSteps}
+                  </span>
                 </div>
-
-                {workflow.isOverdue && (
-                  <div className="flex items-center text-red-500 text-sm mt-1">
-                    <AlertTriangle size={16} className="mr-1" />
-                    <span>
-                      Atrasado ({Math.abs(workflow.daysRemaining)} dias)
-                    </span>
-                  </div>
-                )}
-
-                {workflow.isNearDeadline && !workflow.isOverdue && (
-                  <div className="flex items-center text-orange-500 text-sm mt-1">
-                    <Clock size={16} className="mr-1" />
-                    <span>Prazo próximo ({workflow.daysRemaining} dias)</span>
-                  </div>
-                )}
-              </div>
-
-              {workflow.teamName && (
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500">Equipe</h3>
-                  <p>{workflow.teamName}</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-lg font-semibold mb-4">Progresso</h2>
-
-            <div className="w-full h-4 bg-gray-200 rounded-full mb-2">
-              <div
-                className="h-4 bg-primary rounded-full"
-                style={{ width: `${workflow.progressPercentage}%` }}></div>
-            </div>
-            <p className="text-sm text-gray-600 text-center">
-              {workflow.progressPercentage}% concluído
-            </p>
-
-            <div className="mt-4">
-              <div className="flex justify-between text-sm">
-                <span>Etapas concluídas:</span>
-                <span>
-                  {
-                    workflow.assignments.filter((a) => a.status === "completed")
-                      .length
-                  }{" "}
-                  / {workflow.totalSteps}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm mt-1">
-                <span>Etapa atual:</span>
-                <span>
-                  {workflow.currentStep} de {workflow.totalSteps}
-                </span>
               </div>
             </div>
           </div>
         </div>
+
+        {/* Diálogos de Confirmação */}
+        <ConfirmDialog
+          isOpen={showStatusDialog}
+          title={`${
+            newStatus === "completed"
+              ? "Concluir"
+              : newStatus === "paused"
+                ? "Pausar"
+                : newStatus === "canceled"
+                  ? "Cancelar"
+                  : "Retomar"
+          } Fluxo`}
+          message={
+            <>
+              <p className="mb-4">
+                {newStatus === "completed"
+                  ? "Tem certeza que deseja marcar este fluxo como concluído?"
+                  : newStatus === "paused"
+                    ? "Tem certeza que deseja pausar este fluxo?"
+                    : newStatus === "canceled"
+                      ? "Tem certeza que deseja cancelar este fluxo?"
+                      : "Tem certeza que deseja retomar este fluxo?"}
+              </p>
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Comentário (opcional)
+                </label>
+                <textarea
+                  value={statusComment}
+                  onChange={(e) => setStatusComment(e.target.value)}
+                  rows={3}
+                  className="w-full p-2 border rounded-md"
+                  placeholder="Adicione um comentário sobre esta mudança..."
+                />
+              </div>
+            </>
+          }
+          confirmText={
+            newStatus === "completed"
+              ? "Concluir"
+              : newStatus === "paused"
+                ? "Pausar"
+                : newStatus === "canceled"
+                  ? "Cancelar"
+                  : "Retomar"
+          }
+          cancelText="Cancelar"
+          onConfirm={handleUpdateStatus}
+          onCancel={() => {
+            setShowStatusDialog(false);
+            setStatusComment("");
+          }}
+          variant={newStatus === "canceled" ? "danger" : "warning"}
+          isLoading={isSubmitting}
+        />
+
+        <ConfirmDialog
+          isOpen={showAssignDialog}
+          title="Atribuir Etapa"
+          message={
+            <>
+              <p className="mb-4">
+                Selecione o usuário responsável pela etapa atual:
+              </p>
+              <div className="mb-4">
+                <select
+                  value={assignToId}
+                  onChange={(e) => setAssignToId(e.target.value)}
+                  className="w-full p-2 border rounded-md"
+                  disabled={loadingUsers}>
+                  <option value="">Selecione um usuário</option>
+                  {users.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.fullName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Comentário (opcional)
+                </label>
+                <textarea
+                  value={assignComment}
+                  onChange={(e) => setAssignComment(e.target.value)}
+                  rows={3}
+                  className="w-full p-2 border rounded-md"
+                  placeholder="Adicione um comentário sobre esta atribuição..."
+                />
+              </div>
+            </>
+          }
+          confirmText="Atribuir"
+          cancelText="Cancelar"
+          onConfirm={handleAssignStep}
+          onCancel={() => {
+            setShowAssignDialog(false);
+            setAssignComment("");
+          }}
+          variant="info"
+          isLoading={isSubmitting}
+        />
+
+        <ConfirmDialog
+          isOpen={showAdvanceDialog}
+          title="Avançar para Próxima Etapa"
+          message={
+            <>
+              <p className="mb-4">
+                Ao avançar, a etapa atual será marcada como concluída e o fluxo
+                passará para a próxima etapa.
+              </p>
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-2">
+                  Atribuir próxima etapa para:
+                </label>
+                <select
+                  value={advanceToId}
+                  onChange={(e) => setAdvanceToId(e.target.value)}
+                  className="w-full p-2 border rounded-md"
+                  disabled={loadingUsers}>
+                  <option value="">Selecione um usuário</option>
+                  {users.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.fullName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Comentário (opcional)
+                </label>
+                <textarea
+                  value={advanceComment}
+                  onChange={(e) => setAdvanceComment(e.target.value)}
+                  rows={3}
+                  className="w-full p-2 border rounded-md"
+                  placeholder="Adicione um comentário sobre esta transição..."
+                />
+              </div>
+            </>
+          }
+          confirmText="Avançar"
+          cancelText="Cancelar"
+          onConfirm={handleAdvanceStep}
+          onCancel={() => {
+            setShowAdvanceDialog(false);
+            setAdvanceComment("");
+          }}
+          variant="info"
+          isLoading={isSubmitting}
+        />
       </div>
-
-      {/* Diálogos de Confirmação */}
-      <ConfirmDialog
-        isOpen={showStatusDialog}
-        title={`${
-          newStatus === "completed"
-            ? "Concluir"
-            : newStatus === "paused"
-              ? "Pausar"
-              : newStatus === "canceled"
-                ? "Cancelar"
-                : "Retomar"
-        } Fluxo`}
-        message={
-          <>
-            <p className="mb-4">
-              {newStatus === "completed"
-                ? "Tem certeza que deseja marcar este fluxo como concluído?"
-                : newStatus === "paused"
-                  ? "Tem certeza que deseja pausar este fluxo?"
-                  : newStatus === "canceled"
-                    ? "Tem certeza que deseja cancelar este fluxo?"
-                    : "Tem certeza que deseja retomar este fluxo?"}
-            </p>
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Comentário (opcional)
-              </label>
-              <textarea
-                value={statusComment}
-                onChange={(e) => setStatusComment(e.target.value)}
-                rows={3}
-                className="w-full p-2 border rounded-md"
-                placeholder="Adicione um comentário sobre esta mudança..."
-              />
-            </div>
-          </>
-        }
-        confirmText={
-          newStatus === "completed"
-            ? "Concluir"
-            : newStatus === "paused"
-              ? "Pausar"
-              : newStatus === "canceled"
-                ? "Cancelar"
-                : "Retomar"
-        }
-        cancelText="Cancelar"
-        onConfirm={handleUpdateStatus}
-        onCancel={() => {
-          setShowStatusDialog(false);
-          setStatusComment("");
-        }}
-        variant={newStatus === "canceled" ? "danger" : "warning"}
-        isLoading={isSubmitting}
-      />
-
-      <ConfirmDialog
-        isOpen={showAssignDialog}
-        title="Atribuir Etapa"
-        message={
-          <>
-            <p className="mb-4">
-              Selecione o usuário responsável pela etapa atual:
-            </p>
-            <div className="mb-4">
-              <select
-                value={assignToId}
-                onChange={(e) => setAssignToId(e.target.value)}
-                className="w-full p-2 border rounded-md"
-                disabled={loadingUsers}>
-                <option value="">Selecione um usuário</option>
-                {users.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.fullName}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Comentário (opcional)
-              </label>
-              <textarea
-                value={assignComment}
-                onChange={(e) => setAssignComment(e.target.value)}
-                rows={3}
-                className="w-full p-2 border rounded-md"
-                placeholder="Adicione um comentário sobre esta atribuição..."
-              />
-            </div>
-          </>
-        }
-        confirmText="Atribuir"
-        cancelText="Cancelar"
-        onConfirm={handleAssignStep}
-        onCancel={() => {
-          setShowAssignDialog(false);
-          setAssignComment("");
-        }}
-        variant="info"
-        isLoading={isSubmitting}
-      />
-
-      <ConfirmDialog
-        isOpen={showAdvanceDialog}
-        title="Avançar para Próxima Etapa"
-        message={
-          <>
-            <p className="mb-4">
-              Ao avançar, a etapa atual será marcada como concluída e o fluxo
-              passará para a próxima etapa.
-            </p>
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-2">
-                Atribuir próxima etapa para:
-              </label>
-              <select
-                value={advanceToId}
-                onChange={(e) => setAdvanceToId(e.target.value)}
-                className="w-full p-2 border rounded-md"
-                disabled={loadingUsers}>
-                <option value="">Selecione um usuário</option>
-                {users.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.fullName}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Comentário (opcional)
-              </label>
-              <textarea
-                value={advanceComment}
-                onChange={(e) => setAdvanceComment(e.target.value)}
-                rows={3}
-                className="w-full p-2 border rounded-md"
-                placeholder="Adicione um comentário sobre esta transição..."
-              />
-            </div>
-          </>
-        }
-        confirmText="Avançar"
-        cancelText="Cancelar"
-        onConfirm={handleAdvanceStep}
-        onCancel={() => {
-          setShowAdvanceDialog(false);
-          setAdvanceComment("");
-        }}
-        variant="info"
-        isLoading={isSubmitting}
-      />
-    </div>
+    </>
   );
 }
