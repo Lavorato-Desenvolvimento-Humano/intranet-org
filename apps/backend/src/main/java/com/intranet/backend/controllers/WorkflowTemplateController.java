@@ -3,6 +3,8 @@ package com.intranet.backend.controllers;
 import com.intranet.backend.dto.WorkflowTemplateCreateDto;
 import com.intranet.backend.dto.WorkflowTemplateDto;
 import com.intranet.backend.dto.WorkflowTemplateStepDto;
+import com.intranet.backend.exception.ResourceNotFoundException;
+import com.intranet.backend.repository.UserRepository;
 import com.intranet.backend.service.WorkflowTemplateService;
 import com.intranet.backend.util.ResponseUtil;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +14,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import com.intranet.backend.model.User;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -29,6 +32,7 @@ public class WorkflowTemplateController {
 
     private static final Logger logger = LoggerFactory.getLogger(WorkflowTemplateController.class);
     private final WorkflowTemplateService templateService;
+    private final UserRepository userRepository;
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
@@ -60,10 +64,11 @@ public class WorkflowTemplateController {
     @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR')")
     public ResponseEntity<List<WorkflowTemplateDto>> getMyTemplates() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        String email = authentication.getName();
 
-        // Obter o ID do usuário a partir do contexto de segurança
-        UUID userId = UUID.fromString(userDetails.getUsername());
+        User user = userRepository.findByEmail(email).orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado com o email: " + email));
+
+        UUID userId = user.getId();
 
         logger.info("Buscando templates criados pelo usuário: {}", userId);
 
@@ -75,10 +80,11 @@ public class WorkflowTemplateController {
     @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
     public ResponseEntity<List<WorkflowTemplateDto>> getVisibleTemplates() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        String email = authentication.getName();
 
-        // Obter o ID do usuário a partir do contexto de segurança
-        UUID userId = UUID.fromString(userDetails.getUsername());
+        User user = userRepository.findByEmail(email).orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado com o email: " + email));
+
+        UUID userId = user.getId();
 
         logger.info("Buscando templates visíveis para o usuário: {}", userId);
 
@@ -99,12 +105,13 @@ public class WorkflowTemplateController {
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR')")
     public ResponseEntity<WorkflowTemplateDto> createTemplate(@RequestBody WorkflowTemplateCreateDto templateDto) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        String email = authentication.getName();
 
-        // Obter o ID do usuário a partir do contexto de segurança
-        UUID userId = UUID.fromString(userDetails.getUsername());
+        logger.info("Criando novo template de fluxo para usuário com email: {}", email);
 
-        logger.info("Criando novo template de fluxo");
+        User user = userRepository.findByEmail(email).orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado com o email: " + email));
+
+        UUID userId = user.getId();
 
         WorkflowTemplateDto createdTemplate = templateService.createTemplate(templateDto, userId);
         return ResponseEntity.created(null).body(createdTemplate);
