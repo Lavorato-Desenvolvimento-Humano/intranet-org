@@ -16,6 +16,7 @@ import {
   ChevronDown,
   Book,
   GitBranch,
+  Bell,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import NotificationPanel from "@/components/workflow/NotificationPanel";
@@ -24,7 +25,9 @@ export default function Navbar() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const notificationsRef = useRef<HTMLDivElement>(null);
 
   const hasAdminRole = user?.roles?.some(
     (role) => role === "ROLE_ADMIN" || role === "ADMIN"
@@ -43,13 +46,20 @@ export default function Navbar() {
       ) {
         setDropdownOpen(false);
       }
+
+      if (
+        notificationsRef.current &&
+        !notificationsRef.current.contains(event.target as Node)
+      ) {
+        setNotificationsOpen(false);
+      }
     }
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [dropdownRef]);
+  }, [dropdownRef, notificationsRef]);
 
   // Função para lidar com o logout
   const handleLogout = async (e: React.MouseEvent) => {
@@ -72,11 +82,10 @@ export default function Navbar() {
 
   return (
     <nav className="bg-primary shadow-md text-white">
-      <div className="container mx-auto px-4">
+      <div className="container px-4">
         <div className="flex justify-between items-center h-16">
           {/* Seção esquerda - Logo e Dropdown */}
           <div className="flex items-center space-x-4">
-            <NotificationPanel />
             <Link
               href="/"
               className="flex items-center"
@@ -93,6 +102,28 @@ export default function Navbar() {
                 style={{ objectFit: "contain" }}
               />
             </Link>
+
+            {/* Componente de Notificações */}
+            <div className="relative" ref={notificationsRef}>
+              <button
+                className="relative p-2 text-white hover:text-gray-200 rounded-full hover:bg-[#259AAC]"
+                onClick={() => setNotificationsOpen(!notificationsOpen)}
+                aria-label="Notificações">
+                <Bell size={20} />
+                {/* Pode adicionar badge de contagem aqui se necessário */}
+              </button>
+
+              {notificationsOpen && (
+                <div className="absolute left-0 mt-2 w-80 bg-white rounded-md shadow-lg py-1 text-gray-800 z-50 max-h-[500px] overflow-y-auto">
+                  <div className="p-4 border-b">
+                    <h3 className="text-lg font-semibold">Notificações</h3>
+                  </div>
+                  <div className="p-4 text-center text-gray-500">
+                    Não há notificações novas.
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Dropdown de navegação */}
             <div className="relative" ref={dropdownRef}>
