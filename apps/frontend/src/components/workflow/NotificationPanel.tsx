@@ -100,13 +100,10 @@ export default function NotificationPanel() {
     try {
       await workflowService.markAllNotificationsAsRead();
 
-      // Atualizar estado localmente
-      setNotifications((prev) =>
-        prev.map((notif) => ({ ...notif, read: true }))
-      );
+      setNotifications([]);
 
-      // Recalcular contagem
-      setUnreadCount(0);
+      fetchUnreadCount();
+
       toastUtil.success("Todas as notificações foram marcadas como lidas");
     } catch (error) {
       console.error("Erro ao marcar todas notificações como lidas:", error);
