@@ -82,15 +82,14 @@ export default function NotificationPanel() {
     try {
       await workflowService.markNotificationAsRead(id);
 
-      // Atualizar estado localmente
-      setNotifications((prev) =>
-        prev.map((notif) =>
-          notif.id === id ? { ...notif, read: true } : notif
-        )
-      );
+      // Remover a notificação da lista
+      setNotifications((prev) => prev.filter((notif) => notif.id !== id));
 
       // Recalcular contagem
       fetchUnreadCount();
+
+      // Adicionar feedback visual
+      toastUtil.success("Notificação marcada como lida");
     } catch (error) {
       console.error("Erro ao marcar notificação como lida:", error);
       toastUtil.error("Erro ao marcar notificação como lida");
