@@ -53,8 +53,7 @@ public class WorkflowTemplateServiceImpl implements WorkflowTemplateService {
         // Salvar o template primeiro para obter o ID
         WorkflowTemplate savedTemplate = templateRepository.save(template);
 
-        // Processar e salvar os passos
-        Set<WorkflowTemplateStep> steps = new HashSet<>();
+        // Criar uma nova coleção para os passos
         if (templateDto.getSteps() != null) {
             for (WorkflowTemplateStepCreateDto stepDto : templateDto.getSteps()) {
                 WorkflowTemplateStep step = new WorkflowTemplateStep();
@@ -62,12 +61,15 @@ public class WorkflowTemplateServiceImpl implements WorkflowTemplateService {
                 step.setName(stepDto.getName());
                 step.setDescription(stepDto.getDescription());
                 step.setStepOrder(stepDto.getStepOrder());
-                steps.add(step);
+
+                // Salvar cada passo individualmente
+                stepRepository.save(step);
             }
         }
 
-        savedTemplate.setSteps(steps);
-        WorkflowTemplate finalTemplate = templateRepository.save(savedTemplate);
+        // Buscar o template novamente com os passos já carregados
+        WorkflowTemplate finalTemplate = templateRepository.findById(savedTemplate.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Template não encontrado após criação"));
 
         logger.info("Template de fluxo criado com sucesso: {}", finalTemplate.getId());
         return mapToTemplateDto(finalTemplate, 0);
