@@ -346,8 +346,9 @@ export default function WorkflowPage({ params }: WorkflowPageProps) {
           Fluxo não encontrado
         </div>
         <CustomButton
-          variant="secondary"
+          variant="primary"
           icon={ArrowLeft}
+          className="bg-red-600 hover:bg-red-700 text-white border-none"
           onClick={() => router.push("/workflows")}>
           Voltar
         </CustomButton>
@@ -394,7 +395,7 @@ export default function WorkflowPage({ params }: WorkflowPageProps) {
             {workflow.status === "in_progress" && (
               <>
                 <CustomButton
-                  variant="secondary"
+                  variant="primary"
                   size="small"
                   icon={UserPlus}
                   onClick={() => {
@@ -437,8 +438,9 @@ export default function WorkflowPage({ params }: WorkflowPageProps) {
                 </CustomButton>
 
                 <CustomButton
-                  variant="secondary"
+                  variant="primary"
                   size="small"
+                  className="bg-red-600 hover:bg-red-700 text-white border-none"
                   icon={XCircle}
                   onClick={() => {
                     setNewStatus("canceled");
@@ -465,7 +467,7 @@ export default function WorkflowPage({ params }: WorkflowPageProps) {
             {(workflow.status === "completed" ||
               workflow.status === "canceled") && (
               <CustomButton
-                variant="secondary"
+                variant="primary"
                 size="small"
                 icon={ArchiveIcon}
                 onClick={handleArchiveWorkflow}>
