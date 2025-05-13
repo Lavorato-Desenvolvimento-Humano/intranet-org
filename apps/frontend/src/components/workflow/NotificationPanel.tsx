@@ -16,12 +16,12 @@ export default function NotificationPanel() {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const panelRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   const fetchNotifications = async () => {
     try {
       setLoading(true);
       const response = await workflowService.getNotifications(0, 20);
-      console.log("Notificações carregadas:", response);
       setNotifications(response.content || []);
     } catch (error) {
       console.error("Erro ao buscar notificações:", error);
@@ -34,7 +34,6 @@ export default function NotificationPanel() {
   const fetchUnreadCount = async () => {
     try {
       const count = await workflowService.getUnreadNotificationCount();
-      console.log("Contagem de não lidas:", count);
       setUnreadCount(count);
     } catch (error) {
       console.error("Erro ao buscar contagem de notificações:", error);
@@ -52,7 +51,9 @@ export default function NotificationPanel() {
     const handleClickOutside = (event: MouseEvent) => {
       if (
         panelRef.current &&
-        !panelRef.current.contains(event.target as Node)
+        !panelRef.current.contains(event.target as Node) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(event.target as Node)
       ) {
         setIsOpen(false);
       }
@@ -114,11 +115,25 @@ export default function NotificationPanel() {
     }
   };
 
+  // Adicionando verificação para determinar o lado de abertura do dropdown
+  const getDropdownPosition = () => {
+    if (!buttonRef.current) return { right: 0 };
+
+    const buttonRect = buttonRef.current.getBoundingClientRect();
+    // Se estiver muito à esquerda na tela, abrir para a direita
+    if (buttonRect.left < 200) {
+      return { left: 0 };
+    }
+    // Caso contrário, abrir para a esquerda
+    return { right: 0 };
+  };
+
   return (
     <div className="relative" ref={panelRef}>
       <button
+        ref={buttonRef}
         onClick={handleTogglePanel}
-        className="relative p-2 text-gray-600 hover:text-primary rounded-full hover:bg-gray-100"
+        className="relative p-2 text-white hover:text-gray-200 rounded-full hover:bg-[#259AAC]"
         aria-label="Notificações">
         <Bell size={20} />
         {unreadCount > 0 && (
@@ -129,7 +144,9 @@ export default function NotificationPanel() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-96 z-50">
+        <div
+          className="absolute mt-2 w-96 z-50 notification-dropdown"
+          style={getDropdownPosition()}>
           <WorkflowNotifications
             notifications={notifications}
             onMarkAsRead={handleMarkAsRead}
