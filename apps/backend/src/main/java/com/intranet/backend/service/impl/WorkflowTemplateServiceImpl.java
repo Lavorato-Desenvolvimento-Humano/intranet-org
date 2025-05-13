@@ -89,27 +89,47 @@ public class WorkflowTemplateServiceImpl implements WorkflowTemplateService {
         template.setDescription(templateDto.getDescription());
         template.setVisibility(templateDto.getVisibility());
 
-        // Remover os passos existentes
-        stepRepository.deleteAll(template.getSteps());
-        template.getSteps().clear();
-
-        // Adicionar os novos passos
-        Set<WorkflowTemplateStep> steps = new HashSet<>();
         if (templateDto.getSteps() != null) {
-            for (WorkflowTemplateStepCreateDto stepDto : templateDto.getSteps()) {
-                WorkflowTemplateStep step = new WorkflowTemplateStep();
-                step.setTemplate(template);
-                step.setName(stepDto.getName());
-                step.setDescription(stepDto.getDescription());
-                step.setStepOrder(stepDto.getStepOrder());
-                steps.add(step);
+            // Criar um mapa com os passos existentes para referência rápida
+            Map<Integer, WorkflowTemplateStep> existingStepsByOrder = new HashMap<>();
+            for (WorkflowTemplateStep existingStep : template.getSteps()) {
+                existingStepsByOrder.put(existingStep.getStepOrder(), existingStep);
             }
+
+            // Criar uma lista dos novos passos
+            List<WorkflowTemplateStep> updatedSteps = new ArrayList<>();
+
+            for (WorkflowTemplateStepCreateDto stepDto : templateDto.getSteps()) {
+                // Verificar se já existe um passo com essa ordem
+                WorkflowTemplateStep step = existingStepsByOrder.get(stepDto.getStepOrder());
+
+                if (step != null) {
+                    // Atualizar o passo existente
+                    step.setName(stepDto.getName());
+                    step.setDescription(stepDto.getDescription());
+                    updatedSteps.add(step);
+                    // Remover do mapa para indicar que foi processado
+                    existingStepsByOrder.remove(stepDto.getStepOrder());
+                } else {
+                    // Criar um novo passo
+                    WorkflowTemplateStep newStep = new WorkflowTemplateStep();
+                    newStep.setTemplate(template);
+                    newStep.setName(stepDto.getName());
+                    newStep.setDescription(stepDto.getDescription());
+                    newStep.setStepOrder(stepDto.getStepOrder());
+                    updatedSteps.add(newStep);
+                }
+            }
+
+            // Limpar a coleção existente e adicionar os passos atualizados
+            template.getSteps().clear();
+            template.getSteps().addAll(updatedSteps);
         }
 
-        template.setSteps(steps);
+        // Salvar o template com as alterações
         WorkflowTemplate updatedTemplate = templateRepository.save(template);
 
-        // Contar fluxos que usam este template
+        // Calcular o número de workflows que usam este template
         int workflowCount = templateRepository.countWorkflowsByTemplateId(templateId);
 
         logger.info("Template de fluxo atualizado com sucesso: {}", updatedTemplate.getId());
