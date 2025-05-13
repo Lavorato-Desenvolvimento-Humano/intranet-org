@@ -87,7 +87,6 @@ export default function WorkflowsPage() {
     <>
       <Navbar />
       <div className="container mx-auto py-6 px-4">
-        <Navbar />
         <Breadcrumb items={[{ label: "Fluxos de Trabalho" }]} />
 
         <div className="flex justify-between items-center mb-6">
