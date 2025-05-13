@@ -220,157 +220,162 @@ export default function TemplatePage({ params }: TemplatePageProps) {
   }
 
   return (
-    <div className="container mx-auto py-6 px-4">
-      <Breadcrumb
-        items={[
-          { label: "Fluxos de Trabalho", href: "/workflows" },
-          { label: "Templates", href: "/workflows/templates" },
-          { label: template.name },
-        ]}
-      />
+    <>
+      <Navbar />
+      <div className="container mx-auto py-6 px-4">
+        <Breadcrumb
+          items={[
+            { label: "Fluxos de Trabalho", href: "/workflows" },
+            { label: "Templates", href: "/workflows/templates" },
+            { label: template.name },
+          ]}
+        />
 
-      <div className="flex justify-between items-start mb-6">
-        <div>
-          <h1 className="text-2xl font-bold">{template.name}</h1>
-          <div className="flex items-center text-gray-600 mt-1">
-            {getVisibilityIcon()}
-            <span>{getVisibilityText()}</span>
+        <div className="flex justify-between items-start mb-6">
+          <div>
+            <h1 className="text-2xl font-bold">{template.name}</h1>
+            <div className="flex items-center text-gray-600 mt-1">
+              {getVisibilityIcon()}
+              <span>{getVisibilityText()}</span>
+            </div>
+          </div>
+
+          <div className="flex space-x-2">
+            <CustomButton
+              variant="primary"
+              icon={Play}
+              onClick={() => setShowUseTemplateDialog(true)}>
+              Usar Template
+            </CustomButton>
+            <CustomButton
+              variant="primary"
+              icon={Edit}
+              onClick={() => setIsEditing(true)}>
+              Editar
+            </CustomButton>
+            <CustomButton
+              variant="primary"
+              icon={Trash2}
+              onClick={() => setShowDeleteDialog(true)}>
+              Excluir
+            </CustomButton>
           </div>
         </div>
 
-        <div className="flex space-x-2">
-          <CustomButton
-            variant="primary"
-            icon={Play}
-            onClick={() => setShowUseTemplateDialog(true)}>
-            Usar Template
-          </CustomButton>
-          <CustomButton
-            variant="secondary"
-            icon={Edit}
-            onClick={() => setIsEditing(true)}>
-            Editar
-          </CustomButton>
-          <CustomButton
-            variant="secondary"
-            icon={Trash2}
-            onClick={() => setShowDeleteDialog(true)}>
-            Excluir
-          </CustomButton>
-        </div>
-      </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-lg font-semibold mb-4">
+                Detalhes do Template
+              </h2>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-lg font-semibold mb-4">Detalhes do Template</h2>
+              {template.description && (
+                <div className="mb-6">
+                  <h3 className="text-sm font-medium text-gray-500 mb-2">
+                    Descrição
+                  </h3>
+                  <p className="text-gray-700">{template.description}</p>
+                </div>
+              )}
 
-            {template.description && (
               <div className="mb-6">
                 <h3 className="text-sm font-medium text-gray-500 mb-2">
-                  Descrição
+                  Etapas do Fluxo
                 </h3>
-                <p className="text-gray-700">{template.description}</p>
-              </div>
-            )}
-
-            <div className="mb-6">
-              <h3 className="text-sm font-medium text-gray-500 mb-2">
-                Etapas do Fluxo
-              </h3>
-              <div className="space-y-3">
-                {template.steps.map((step, index) => (
-                  <div
-                    key={step.id}
-                    className="border rounded-lg p-4 bg-gray-50">
-                    <div className="flex items-center mb-1">
-                      <span className="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-sm mr-2">
-                        {index + 1}
-                      </span>
-                      <h4 className="font-medium">{step.name}</h4>
+                <div className="space-y-3">
+                  {template.steps.map((step, index) => (
+                    <div
+                      key={step.id}
+                      className="border rounded-lg p-4 bg-gray-50">
+                      <div className="flex items-center mb-1">
+                        <span className="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-sm mr-2">
+                          {index + 1}
+                        </span>
+                        <h4 className="font-medium">{step.name}</h4>
+                      </div>
+                      {step.description && (
+                        <p className="text-sm text-gray-600 ml-8">
+                          {step.description}
+                        </p>
+                      )}
                     </div>
-                    {step.description && (
-                      <p className="text-sm text-gray-600 ml-8">
-                        {step.description}
-                      </p>
-                    )}
-                  </div>
-                ))}
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-lg font-semibold mb-4">Informações</h2>
+
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">
+                    Criado por
+                  </h3>
+                  <p>{template.createdByName}</p>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">
+                    Data de Criação
+                  </h3>
+                  <p>{new Date(template.createdAt).toLocaleString("pt-BR")}</p>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">
+                    Última Atualização
+                  </h3>
+                  <p>{new Date(template.updatedAt).toLocaleString("pt-BR")}</p>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">
+                    Número de Etapas
+                  </h3>
+                  <p>{template.steps.length}</p>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">
+                    Fluxos Usando Este Template
+                  </h3>
+                  <p>{template.workflowCount}</p>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div>
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-lg font-semibold mb-4">Informações</h2>
+        <ConfirmDialog
+          isOpen={showDeleteDialog}
+          title="Excluir Template"
+          message={
+            template.workflowCount > 0
+              ? `Este template está sendo usado por ${template.workflowCount} fluxo(s). Não é possível excluí-lo.`
+              : "Tem certeza que deseja excluir este template? Esta ação não pode ser desfeita."
+          }
+          confirmText="Excluir"
+          cancelText="Cancelar"
+          onConfirm={handleDelete}
+          onCancel={() => setShowDeleteDialog(false)}
+          variant="danger"
+          isLoading={isSubmitting}
+        />
 
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">
-                  Criado por
-                </h3>
-                <p>{template.createdByName}</p>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">
-                  Data de Criação
-                </h3>
-                <p>{new Date(template.createdAt).toLocaleString("pt-BR")}</p>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">
-                  Última Atualização
-                </h3>
-                <p>{new Date(template.updatedAt).toLocaleString("pt-BR")}</p>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">
-                  Número de Etapas
-                </h3>
-                <p>{template.steps.length}</p>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">
-                  Fluxos Usando Este Template
-                </h3>
-                <p>{template.workflowCount}</p>
-              </div>
-            </div>
-          </div>
-        </div>
+        <ConfirmDialog
+          isOpen={showUseTemplateDialog}
+          title="Usar Template"
+          message={`Deseja criar um novo fluxo de trabalho usando o template "${template.name}"?`}
+          confirmText="Criar Fluxo"
+          cancelText="Cancelar"
+          onConfirm={handleUseTemplate}
+          onCancel={() => setShowUseTemplateDialog(false)}
+          variant="info"
+        />
       </div>
-
-      <ConfirmDialog
-        isOpen={showDeleteDialog}
-        title="Excluir Template"
-        message={
-          template.workflowCount > 0
-            ? `Este template está sendo usado por ${template.workflowCount} fluxo(s). Não é possível excluí-lo.`
-            : "Tem certeza que deseja excluir este template? Esta ação não pode ser desfeita."
-        }
-        confirmText="Excluir"
-        cancelText="Cancelar"
-        onConfirm={handleDelete}
-        onCancel={() => setShowDeleteDialog(false)}
-        variant="danger"
-        isLoading={isSubmitting}
-      />
-
-      <ConfirmDialog
-        isOpen={showUseTemplateDialog}
-        title="Usar Template"
-        message={`Deseja criar um novo fluxo de trabalho usando o template "${template.name}"?`}
-        confirmText="Criar Fluxo"
-        cancelText="Cancelar"
-        onConfirm={handleUseTemplate}
-        onCancel={() => setShowUseTemplateDialog(false)}
-        variant="info"
-      />
-    </div>
+    </>
   );
 }
