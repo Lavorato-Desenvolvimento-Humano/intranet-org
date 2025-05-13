@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, FileText, FilterIcon, Settings } from "lucide-react";
+import { Plus, FileText, FilterIcon, Settings, Home } from "lucide-react";
 import Breadcrumb from "@/components/ui/breadcrumb";
 import { CustomButton } from "@/components/ui/custom-button";
 import WorkflowCard from "@/components/workflow/WorkflowCard";
@@ -83,6 +83,10 @@ export default function WorkflowsPage() {
     router.push("/workflows/templates");
   };
 
+  const handleDashbaord = () => {
+    router.push("/workflows/dashboard");
+  };
+
   return (
     <>
       <Navbar />
@@ -98,6 +102,12 @@ export default function WorkflowsPage() {
           </div>
 
           <div className="flex space-x-3">
+            <CustomButton
+              variant="primary"
+              icon={FilterIcon}
+              onClick={() => handleDashbaord}>
+              Dashboard
+            </CustomButton>
             <CustomButton
               variant="primary"
               icon={Settings}
