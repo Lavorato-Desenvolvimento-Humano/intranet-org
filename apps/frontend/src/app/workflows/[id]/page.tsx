@@ -330,7 +330,7 @@ export default function WorkflowPage({ params }: WorkflowPageProps) {
           {error}
         </div>
         <CustomButton
-          variant="secondary"
+          variant="primary"
           icon={ArrowLeft}
           onClick={() => router.push("/workflows")}>
           Voltar
@@ -416,7 +416,7 @@ export default function WorkflowPage({ params }: WorkflowPageProps) {
                 )}
 
                 <CustomButton
-                  variant="secondary"
+                  variant="primary"
                   size="small"
                   icon={PauseCircle}
                   onClick={() => {
@@ -427,7 +427,7 @@ export default function WorkflowPage({ params }: WorkflowPageProps) {
                 </CustomButton>
 
                 <CustomButton
-                  variant="secondary"
+                  variant="primary"
                   size="small"
                   icon={CheckCircle}
                   onClick={() => {
