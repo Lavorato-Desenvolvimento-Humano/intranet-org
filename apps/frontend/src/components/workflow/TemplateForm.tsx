@@ -236,7 +236,7 @@ const TemplateForm: React.FC<TemplateFormProps> = ({
           <h3 className="text-lg font-semibold">Etapas do Fluxo</h3>
           <CustomButton
             type="button"
-            variant="secondary"
+            variant="primary"
             size="small"
             onClick={addStep}
             icon={Plus}>
@@ -318,7 +318,8 @@ const TemplateForm: React.FC<TemplateFormProps> = ({
       <div className="flex justify-end space-x-3">
         <CustomButton
           type="button"
-          variant="secondary"
+          variant="primary"
+          className="bg-red-600 hover:bg-red-700 text-white border-none"
           onClick={() => window.history.back()}>
           Cancelar
         </CustomButton>
