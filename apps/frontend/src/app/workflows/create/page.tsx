@@ -9,6 +9,7 @@ import { WorkflowCreateDto } from "@/types/workflow";
 import workflowService from "@/services/workflow";
 import toastUtil from "@/utils/toast";
 import { Loading } from "@/components/ui/loading";
+import Navbar from "@/components/layout/Navbar";
 
 function CreateWorkflowContent() {
   const router = useRouter();
@@ -66,13 +67,13 @@ function CreateWorkflowContent() {
 export default function CreateWorkflowPage() {
   return (
     <div className="container mx-auto py-6 px-4">
+      <Navbar />
       <Breadcrumb
         items={[
           { label: "Fluxos de Trabalho", href: "/workflows" },
           { label: "Novo Fluxo" },
         ]}
       />
-
       <Suspense
         fallback={<Loading size="medium" message="Carregando formulário..." />}>
         <CreateWorkflowContent />

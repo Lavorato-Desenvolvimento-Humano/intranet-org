@@ -8,6 +8,7 @@ import TemplateForm from "@/components/workflow/TemplateForm";
 import { WorkflowTemplateCreateDto } from "@/types/workflow";
 import workflowService from "@/services/workflow";
 import toastUtil from "@/utils/toast";
+import Navbar from "@/components/layout/Navbar";
 
 export default function CreateTemplatePage() {
   const router = useRouter();
@@ -29,6 +30,7 @@ export default function CreateTemplatePage() {
 
   return (
     <div className="container mx-auto py-6 px-4">
+      <Navbar />
       <Breadcrumb
         items={[
           { label: "Fluxos de Trabalho", href: "/workflows" },

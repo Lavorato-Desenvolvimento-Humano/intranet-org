@@ -22,6 +22,7 @@ import {
 } from "@/types/workflow";
 import workflowService from "@/services/workflow";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import Navbar from "@/components/layout/Navbar";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -121,6 +122,7 @@ export default function DashboardPage() {
 
   return (
     <div className="container mx-auto py-6 px-4">
+      <Navbar />
       <Breadcrumb
         items={[
           { label: "Fluxos de Trabalho", href: "/workflows" },

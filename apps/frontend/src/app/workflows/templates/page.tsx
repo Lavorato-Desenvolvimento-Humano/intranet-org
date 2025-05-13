@@ -10,6 +10,7 @@ import TemplateCard from "@/components/workflow/TemplateCard";
 import { Loading } from "@/components/ui/loading";
 import workflowService from "@/services/workflow";
 import { WorkflowTemplateDto } from "@/types/workflow";
+import Navbar from "@/components/layout/Navbar";
 
 export default function WorkflowTemplatesPage() {
   const router = useRouter();
@@ -45,6 +46,7 @@ export default function WorkflowTemplatesPage() {
 
   return (
     <div className="container mx-auto py-6 px-4">
+      <Navbar />
       <Breadcrumb
         items={[
           { label: "Fluxos de Trabalho", href: "/workflows" },
