@@ -23,6 +23,7 @@ import {
 } from "@/types/workflow";
 import workflowService from "@/services/workflow";
 import toastUtil from "@/utils/toast";
+import Navbar from "@/components/layout/Navbar";
 
 interface TemplatePageProps {
   params: {
@@ -180,6 +181,7 @@ export default function TemplatePage({ params }: TemplatePageProps) {
 
     return (
       <div className="container mx-auto py-6 px-4">
+        <Navbar />
         <Breadcrumb
           items={[
             { label: "Fluxos de Trabalho", href: "/workflows" },

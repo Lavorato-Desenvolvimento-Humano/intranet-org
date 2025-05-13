@@ -11,6 +11,7 @@ import { Loading } from "@/components/ui/loading";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import workflowService from "@/services/workflow";
 import { WorkflowSummaryDto } from "@/types/workflow";
+import Navbar from "@/components/layout/Navbar";
 
 export default function WorkflowsPage() {
   const router = useRouter();
@@ -84,6 +85,7 @@ export default function WorkflowsPage() {
 
   return (
     <div className="container mx-auto py-6 px-4">
+      <Navbar />
       <Breadcrumb items={[{ label: "Fluxos de Trabalho" }]} />
 
       <div className="flex justify-between items-center mb-6">
