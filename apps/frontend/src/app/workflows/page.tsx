@@ -83,7 +83,7 @@ export default function WorkflowsPage() {
     router.push("/workflows/templates");
   };
 
-  const handleDashbaord = () => {
+  const handleDashboard = () => {
     router.push("/workflows/dashboard");
   };
 
@@ -104,8 +104,8 @@ export default function WorkflowsPage() {
           <div className="flex space-x-3">
             <CustomButton
               variant="primary"
-              icon={FilterIcon}
-              onClick={() => handleDashbaord}>
+              icon={Home}
+              onClick={() => handleDashboard}>
               Dashboard
             </CustomButton>
             <CustomButton

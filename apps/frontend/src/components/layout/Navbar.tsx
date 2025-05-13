@@ -46,20 +46,13 @@ export default function Navbar() {
       ) {
         setDropdownOpen(false);
       }
-
-      if (
-        notificationsRef.current &&
-        !notificationsRef.current.contains(event.target as Node)
-      ) {
-        setNotificationsOpen(false);
-      }
     }
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [dropdownRef, notificationsRef]);
+  }, [dropdownRef]);
 
   // Função para lidar com o logout
   const handleLogout = async (e: React.MouseEvent) => {
@@ -104,26 +97,7 @@ export default function Navbar() {
             </Link>
 
             {/* Componente de Notificações */}
-            <div className="relative" ref={notificationsRef}>
-              <button
-                className="relative p-2 text-white hover:text-gray-200 rounded-full hover:bg-[#259AAC]"
-                onClick={() => setNotificationsOpen(!notificationsOpen)}
-                aria-label="Notificações">
-                <Bell size={20} />
-                {/* Pode adicionar badge de contagem aqui se necessário */}
-              </button>
-
-              {notificationsOpen && (
-                <div className="absolute left-0 mt-2 w-80 bg-white rounded-md shadow-lg py-1 text-gray-800 z-50 max-h-[500px] overflow-y-auto">
-                  <div className="p-4 border-b">
-                    <h3 className="text-lg font-semibold">Notificações</h3>
-                  </div>
-                  <div className="p-4 text-center text-gray-500">
-                    Não há notificações novas.
-                  </div>
-                </div>
-              )}
-            </div>
+            <NotificationPanel />
 
             {/* Dropdown de navegação */}
             <div className="relative" ref={dropdownRef}>

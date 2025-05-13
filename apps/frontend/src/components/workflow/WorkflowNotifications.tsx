@@ -1,8 +1,13 @@
 // src/components/workflow/WorkflowNotifications.tsx
 import React from "react";
 import { WorkflowNotificationDto } from "@/types/workflow";
-import { Bell, CheckCircle, Calendar, RefreshCw } from "lucide-react";
-import workflowService from "@/services/workflow";
+import {
+  Bell,
+  CheckCircle,
+  Calendar,
+  RefreshCw,
+  AlertTriangle,
+} from "lucide-react";
 
 interface WorkflowNotificationsProps {
   notifications: WorkflowNotificationDto[];
