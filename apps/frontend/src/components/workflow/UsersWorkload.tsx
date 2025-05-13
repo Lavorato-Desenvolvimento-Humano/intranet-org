@@ -1,7 +1,8 @@
 // src/components/workflow/UsersWorkload.tsx
 import React from "react";
 import { UserWorkloadDto } from "@/types/workflow";
-import { AlertTriangle, CheckCircle, Clock } from "lucide-react";
+import { AlertTriangle, CheckCircle } from "lucide-react";
+import ProfileAvatar from "@/components/profile/profile-avatar"; // Importe o componente
 
 interface UsersWorkloadProps {
   usersWorkload: UserWorkloadDto[];
@@ -67,19 +68,13 @@ const UsersWorkload: React.FC<UsersWorkloadProps> = ({ usersWorkload }) => {
                   className={isOverloaded ? "bg-red-50" : ""}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      {profileImage ? (
-                        <img
-                          src={profileImage}
-                          alt={userName}
-                          className="h-8 w-8 rounded-full mr-2"
-                        />
-                      ) : (
-                        <div className="h-8 w-8 rounded-full bg-gray-300 flex items-center justify-center mr-2">
-                          <span className="text-sm text-gray-600">
-                            {userName.charAt(0)}
-                          </span>
-                        </div>
-                      )}
+                      {/* Substituir a renderização de imagem com o componente ProfileAvatar */}
+                      <ProfileAvatar
+                        userName={userName}
+                        profileImage={profileImage}
+                        size={32}
+                        className="mr-2"
+                      />
                       <div>
                         <div className="text-sm font-medium text-gray-900">
                           {userName}
