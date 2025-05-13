@@ -6,6 +6,7 @@ import { Bell } from "lucide-react";
 import { WorkflowNotificationDto } from "@/types/workflow";
 import WorkflowNotifications from "@/components/workflow/WorkflowNotifications";
 import workflowService from "@/services/workflow";
+import toastUtil from "@/utils/toast";
 
 export default function NotificationPanel() {
   const [notifications, setNotifications] = useState<WorkflowNotificationDto[]>(
@@ -18,10 +19,13 @@ export default function NotificationPanel() {
 
   const fetchNotifications = async () => {
     try {
+      setLoading(true);
       const response = await workflowService.getNotifications(0, 20);
+      console.log("Notificações carregadas:", response);
       setNotifications(response.content || []);
     } catch (error) {
       console.error("Erro ao buscar notificações:", error);
+      toastUtil.error("Não foi possível carregar as notificações");
     } finally {
       setLoading(false);
     }
@@ -30,6 +34,7 @@ export default function NotificationPanel() {
   const fetchUnreadCount = async () => {
     try {
       const count = await workflowService.getUnreadNotificationCount();
+      console.log("Contagem de não lidas:", count);
       setUnreadCount(count);
     } catch (error) {
       console.error("Erro ao buscar contagem de notificações:", error);
@@ -87,6 +92,7 @@ export default function NotificationPanel() {
       fetchUnreadCount();
     } catch (error) {
       console.error("Erro ao marcar notificação como lida:", error);
+      toastUtil.error("Erro ao marcar notificação como lida");
     }
   };
 
@@ -101,8 +107,10 @@ export default function NotificationPanel() {
 
       // Recalcular contagem
       setUnreadCount(0);
+      toastUtil.success("Todas as notificações foram marcadas como lidas");
     } catch (error) {
       console.error("Erro ao marcar todas notificações como lidas:", error);
+      toastUtil.error("Erro ao marcar todas as notificações como lidas");
     }
   };
 
