@@ -99,7 +99,7 @@ export default function WorkflowsPage() {
 
           <div className="flex space-x-3">
             <CustomButton
-              variant="secondary"
+              variant="primary"
               icon={Settings}
               onClick={handleViewTemplates}>
               Templates

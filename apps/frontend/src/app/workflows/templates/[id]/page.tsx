@@ -207,7 +207,8 @@ export default function TemplatePage({ params }: TemplatePageProps) {
 
             <div className="mt-4 flex justify-end">
               <CustomButton
-                variant="secondary"
+                variant="primary"
+                className="bg-red-600 hover:bg-red-700 text-white border-none"
                 onClick={() => setIsEditing(false)}>
                 Cancelar Edição
               </CustomButton>
