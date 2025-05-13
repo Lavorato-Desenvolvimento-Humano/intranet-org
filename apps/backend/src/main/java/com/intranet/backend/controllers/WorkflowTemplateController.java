@@ -124,10 +124,11 @@ public class WorkflowTemplateController {
             @RequestBody WorkflowTemplateCreateDto templateDto) {
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        String email = authentication.getName();
 
-        // Obter o ID do usuário a partir do contexto de segurança
-        UUID userId = UUID.fromString(userDetails.getUsername());
+        User user = userRepository.findByEmail(email).orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado com o email: " + email));
+
+        UUID userId = user.getId();
 
         // Verificar se o usuário tem permissão para modificar o template
         if (!templateService.canUserModifyTemplate(userId, id)) {
@@ -145,10 +146,11 @@ public class WorkflowTemplateController {
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR')")
     public ResponseEntity<Void> deleteTemplate(@PathVariable UUID id) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        String email = authentication.getName();
 
-        // Obter o ID do usuário a partir do contexto de segurança
-        UUID userId = UUID.fromString(userDetails.getUsername());
+        User user = userRepository.findByEmail(email).orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado com o email: " + email));
+
+        UUID userId = user.getId();
 
         // Verificar se o usuário tem permissão para excluir o template
         if (!templateService.canUserModifyTemplate(userId, id)) {
