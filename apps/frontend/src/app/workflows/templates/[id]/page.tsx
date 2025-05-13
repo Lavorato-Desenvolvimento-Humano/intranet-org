@@ -141,7 +141,7 @@ export default function TemplatePage({ params }: TemplatePageProps) {
           {error}
         </div>
         <CustomButton
-          variant="secondary"
+          variant="primary"
           icon={ArrowLeft}
           onClick={() => router.push("/workflows/templates")}>
           Voltar
@@ -157,7 +157,7 @@ export default function TemplatePage({ params }: TemplatePageProps) {
           Template não encontrado
         </div>
         <CustomButton
-          variant="secondary"
+          variant="primary"
           icon={ArrowLeft}
           onClick={() => router.push("/workflows/templates")}>
           Voltar
@@ -204,15 +204,6 @@ export default function TemplatePage({ params }: TemplatePageProps) {
               onSubmit={handleUpdate}
               isLoading={isSubmitting}
             />
-
-            <div className="mt-4 flex justify-end">
-              <CustomButton
-                variant="primary"
-                className="bg-red-600 hover:bg-red-700 text-white border-none"
-                onClick={() => setIsEditing(false)}>
-                Cancelar Edição
-              </CustomButton>
-            </div>
           </div>
         </div>
       </>
