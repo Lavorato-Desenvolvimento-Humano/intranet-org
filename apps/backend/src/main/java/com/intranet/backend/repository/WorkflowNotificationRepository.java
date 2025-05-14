@@ -35,4 +35,6 @@ public interface WorkflowNotificationRepository extends JpaRepository<WorkflowNo
             @Param("workflowId") UUID workflowId,
             @Param("userId") UUID userId
     );
+
+    Page<WorkflowNotification> findByUserIdAndReadOrderByCreatedAtDesc(UUID userId, boolean read, Pageable pageable);
 }

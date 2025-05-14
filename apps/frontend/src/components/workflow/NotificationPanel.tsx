@@ -21,7 +21,7 @@ export default function NotificationPanel() {
   const fetchNotifications = async () => {
     try {
       setLoading(true);
-      const response = await workflowService.getNotifications(0, 20);
+      const response = await workflowService.getNotifications(0, 20, true);
       setNotifications(response.content || []);
     } catch (error) {
       console.error("Erro ao buscar notificações:", error);
@@ -83,7 +83,11 @@ export default function NotificationPanel() {
       await workflowService.markNotificationAsRead(id);
 
       // Remover a notificação da lista
-      setNotifications((prev) => prev.filter((notif) => notif.id !== id));
+      setNotifications((prev) =>
+        prev.map((notif) =>
+          notif.id === id ? { ...notif, read: true } : notif
+        )
+      );
 
       // Recalcular contagem
       fetchUnreadCount();
@@ -100,7 +104,9 @@ export default function NotificationPanel() {
     try {
       await workflowService.markAllNotificationsAsRead();
 
-      setNotifications([]);
+      setNotifications((prev) =>
+        prev.map((notif) => ({ ...notif, read: true }))
+      );
 
       fetchUnreadCount();
 

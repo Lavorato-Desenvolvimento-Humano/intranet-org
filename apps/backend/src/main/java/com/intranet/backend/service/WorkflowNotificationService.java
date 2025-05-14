@@ -41,6 +41,8 @@ public interface WorkflowNotificationService {
 
     List<WorkflowNotificationDto> getUnreadNotifications(UUID userId);
 
+    Page<WorkflowNotificationDto> getUnreadUserNotifications(UUID userId, Pageable pageable);
+
     void markNotificationAsRead(UUID notificationId);
 
     void markAllNotificationsAsRead(UUID userId);
