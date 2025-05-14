@@ -164,7 +164,7 @@ public class WorkflowNotificationServiceImpl implements WorkflowNotificationServ
                 .map(this::mapToNotificationDto)
                 .collect(Collectors.toList());
     }
-    
+
     @Override
     @Transactional(readOnly = true)
     public Page<WorkflowNotificationDto> getUnreadUserNotifications(UUID userId, Pageable pageable) {
