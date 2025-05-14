@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -53,8 +54,7 @@ public class WorkflowTemplateServiceImpl implements WorkflowTemplateService {
         // Salvar o template primeiro para obter o ID
         WorkflowTemplate savedTemplate = templateRepository.save(template);
 
-        // Processar e salvar os passos
-        Set<WorkflowTemplateStep> steps = new HashSet<>();
+        // Criar uma nova coleção para os passos
         if (templateDto.getSteps() != null) {
             for (WorkflowTemplateStepCreateDto stepDto : templateDto.getSteps()) {
                 WorkflowTemplateStep step = new WorkflowTemplateStep();
@@ -62,12 +62,15 @@ public class WorkflowTemplateServiceImpl implements WorkflowTemplateService {
                 step.setName(stepDto.getName());
                 step.setDescription(stepDto.getDescription());
                 step.setStepOrder(stepDto.getStepOrder());
-                steps.add(step);
+
+                // Salvar cada passo individualmente
+                stepRepository.save(step);
             }
         }
 
-        savedTemplate.setSteps(steps);
-        WorkflowTemplate finalTemplate = templateRepository.save(savedTemplate);
+        // Buscar o template novamente com os passos já carregados
+        WorkflowTemplate finalTemplate = templateRepository.findById(savedTemplate.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Template não encontrado após criação"));
 
         logger.info("Template de fluxo criado com sucesso: {}", finalTemplate.getId());
         return mapToTemplateDto(finalTemplate, 0);
@@ -86,27 +89,47 @@ public class WorkflowTemplateServiceImpl implements WorkflowTemplateService {
         template.setDescription(templateDto.getDescription());
         template.setVisibility(templateDto.getVisibility());
 
-        // Remover os passos existentes
-        stepRepository.deleteAll(template.getSteps());
-        template.getSteps().clear();
-
-        // Adicionar os novos passos
-        Set<WorkflowTemplateStep> steps = new HashSet<>();
         if (templateDto.getSteps() != null) {
-            for (WorkflowTemplateStepCreateDto stepDto : templateDto.getSteps()) {
-                WorkflowTemplateStep step = new WorkflowTemplateStep();
-                step.setTemplate(template);
-                step.setName(stepDto.getName());
-                step.setDescription(stepDto.getDescription());
-                step.setStepOrder(stepDto.getStepOrder());
-                steps.add(step);
+            // Criar um mapa com os passos existentes para referência rápida
+            Map<Integer, WorkflowTemplateStep> existingStepsByOrder = new HashMap<>();
+            for (WorkflowTemplateStep existingStep : template.getSteps()) {
+                existingStepsByOrder.put(existingStep.getStepOrder(), existingStep);
             }
+
+            // Criar uma lista dos novos passos
+            List<WorkflowTemplateStep> updatedSteps = new ArrayList<>();
+
+            for (WorkflowTemplateStepCreateDto stepDto : templateDto.getSteps()) {
+                // Verificar se já existe um passo com essa ordem
+                WorkflowTemplateStep step = existingStepsByOrder.get(stepDto.getStepOrder());
+
+                if (step != null) {
+                    // Atualizar o passo existente
+                    step.setName(stepDto.getName());
+                    step.setDescription(stepDto.getDescription());
+                    updatedSteps.add(step);
+                    // Remover do mapa para indicar que foi processado
+                    existingStepsByOrder.remove(stepDto.getStepOrder());
+                } else {
+                    // Criar um novo passo
+                    WorkflowTemplateStep newStep = new WorkflowTemplateStep();
+                    newStep.setTemplate(template);
+                    newStep.setName(stepDto.getName());
+                    newStep.setDescription(stepDto.getDescription());
+                    newStep.setStepOrder(stepDto.getStepOrder());
+                    updatedSteps.add(newStep);
+                }
+            }
+
+            // Limpar a coleção existente e adicionar os passos atualizados
+            template.getSteps().clear();
+            template.getSteps().addAll(updatedSteps);
         }
 
-        template.setSteps(steps);
+        // Salvar o template com as alterações
         WorkflowTemplate updatedTemplate = templateRepository.save(template);
 
-        // Contar fluxos que usam este template
+        // Calcular o número de workflows que usam este template
         int workflowCount = templateRepository.countWorkflowsByTemplateId(templateId);
 
         logger.info("Template de fluxo atualizado com sucesso: {}", updatedTemplate.getId());
@@ -132,12 +155,57 @@ public class WorkflowTemplateServiceImpl implements WorkflowTemplateService {
     public Page<WorkflowTemplateDto> getAllTemplates(Pageable pageable) {
         logger.info("Buscando todos os templates de fluxo com paginação");
 
+        // Modificar a consulta para buscar templates com suas coleções carregadas
         Page<WorkflowTemplate> templates = templateRepository.findAll(pageable);
 
-        return templates.map(template -> {
-            int workflowCount = templateRepository.countWorkflowsByTemplateId(template.getId());
-            return mapToTemplateDto(template, workflowCount);
-        });
+        // Usar uma abordagem diferente para mapear
+        List<WorkflowTemplateDto> dtoList = new ArrayList<>();
+
+        for (WorkflowTemplate template : templates.getContent()) {
+            try {
+                // Carregar manualmente o contador de workflows
+                int workflowCount = templateRepository.countWorkflowsByTemplateId(template.getId());
+
+                // Criar DTO com dados básicos
+                WorkflowTemplateDto dto = new WorkflowTemplateDto();
+                dto.setId(template.getId());
+                dto.setName(template.getName());
+                dto.setDescription(template.getDescription());
+                dto.setVisibility(template.getVisibility());
+
+                if (template.getCreatedBy() != null) {
+                    dto.setCreatedById(template.getCreatedBy().getId());
+                    dto.setCreatedByName(template.getCreatedBy().getFullName());
+                }
+
+                dto.setWorkflowCount(workflowCount);
+                dto.setCreatedAt(template.getCreatedAt());
+                dto.setUpdatedAt(template.getUpdatedAt());
+
+                // Buscar os passos separadamente para evitar problemas de lazy loading
+                List<WorkflowTemplateStepDto> stepDtoList = new ArrayList<>();
+                List<WorkflowTemplateStep> steps = stepRepository.findByTemplateIdOrderByStepOrder(template.getId());
+
+                for (WorkflowTemplateStep step : steps) {
+                    WorkflowTemplateStepDto stepDto = new WorkflowTemplateStepDto();
+                    stepDto.setId(step.getId());
+                    stepDto.setTemplateId(template.getId());
+                    stepDto.setName(step.getName());
+                    stepDto.setDescription(step.getDescription());
+                    stepDto.setStepOrder(step.getStepOrder());
+                    stepDtoList.add(stepDto);
+                }
+
+                dto.setSteps(stepDtoList);
+                dtoList.add(dto);
+            } catch (Exception e) {
+                logger.error("Erro ao processar template {}: {}", template.getId(), e.getMessage());
+                // Continuar para o próximo template
+            }
+        }
+
+        // Converter para Page
+        return new PageImpl<>(dtoList, pageable, templates.getTotalElements());
     }
 
     @Override
@@ -235,20 +303,31 @@ public class WorkflowTemplateServiceImpl implements WorkflowTemplateService {
         dto.setName(template.getName());
         dto.setDescription(template.getDescription());
         dto.setVisibility(template.getVisibility());
-        dto.setCreatedById(template.getCreatedBy().getId());
-        dto.setCreatedByName(template.getCreatedBy().getFullName());
+
+        if (template.getCreatedBy() != null) {
+            dto.setCreatedById(template.getCreatedBy().getId());
+            dto.setCreatedByName(template.getCreatedBy().getFullName());
+        }
+
         dto.setWorkflowCount(workflowCount);
         dto.setCreatedAt(template.getCreatedAt());
         dto.setUpdatedAt(template.getUpdatedAt());
 
-        // Mapear passos
-        List<WorkflowTemplateStepDto> steps = template.getSteps().stream()
-                .sorted(Comparator.comparing(WorkflowTemplateStep::getStepOrder))
-                .map(this::mapToStepDto)
-                .collect(Collectors.toList());
+        // Buscar passos separadamente para evitar problemas de lazy loading
+        List<WorkflowTemplateStepDto> stepDtoList = new ArrayList<>();
+        List<WorkflowTemplateStep> steps = stepRepository.findByTemplateIdOrderByStepOrder(template.getId());
 
-        dto.setSteps(steps);
+        for (WorkflowTemplateStep step : steps) {
+            WorkflowTemplateStepDto stepDto = new WorkflowTemplateStepDto();
+            stepDto.setId(step.getId());
+            stepDto.setTemplateId(template.getId());
+            stepDto.setName(step.getName());
+            stepDto.setDescription(step.getDescription());
+            stepDto.setStepOrder(step.getStepOrder());
+            stepDtoList.add(stepDto);
+        }
 
+        dto.setSteps(stepDtoList);
         return dto;
     }
 

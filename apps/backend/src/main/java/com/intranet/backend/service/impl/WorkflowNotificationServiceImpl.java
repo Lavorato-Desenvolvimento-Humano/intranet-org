@@ -166,6 +166,13 @@ public class WorkflowNotificationServiceImpl implements WorkflowNotificationServ
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Page<WorkflowNotificationDto> getUnreadUserNotifications(UUID userId, Pageable pageable) {
+        Page<WorkflowNotification> notifications = notificationRepository.findByUserIdAndReadOrderByCreatedAtDesc(userId, false, pageable);
+        return notifications.map(this::mapToNotificationDto);
+    }
+
+    @Override
     @Transactional
     public void markNotificationAsRead(UUID notificationId) {
         logger.info("Marcando notificação como lida: {}", notificationId);
