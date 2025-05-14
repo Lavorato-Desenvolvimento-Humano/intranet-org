@@ -15,14 +15,19 @@ import {
   Menu,
   ChevronDown,
   Book,
+  GitBranch,
+  Bell,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import NotificationPanel from "@/components/workflow/NotificationPanel";
 
 export default function Navbar() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const notificationsRef = useRef<HTMLDivElement>(null);
 
   const hasAdminRole = user?.roles?.some(
     (role) => role === "ROLE_ADMIN" || role === "ADMIN"
@@ -70,7 +75,7 @@ export default function Navbar() {
 
   return (
     <nav className="bg-primary shadow-md text-white">
-      <div className="container mx-auto px-4">
+      <div className="container px-4">
         <div className="flex justify-between items-center h-16">
           {/* Seção esquerda - Logo e Dropdown */}
           <div className="flex items-center space-x-4">
@@ -90,6 +95,9 @@ export default function Navbar() {
                 style={{ objectFit: "contain" }}
               />
             </Link>
+
+            {/* Componente de Notificações */}
+            <NotificationPanel />
 
             {/* Dropdown de navegação */}
             <div className="relative" ref={dropdownRef}>
@@ -133,6 +141,18 @@ export default function Navbar() {
                     }}>
                     <Table className="mr-2" size={16} />
                     <span>Tabelas</span>
+                  </Link>
+
+                  {/* Adicionando o item de Fluxos de Trabalho */}
+                  <Link
+                    href="/workflows"
+                    className="flex items-center px-4 py-2 hover:bg-gray-100"
+                    onClick={(e: any) => {
+                      e.preventDefault();
+                      navigateTo("/workflows");
+                    }}>
+                    <GitBranch className="mr-2" size={16} />
+                    <span>Fluxos de Trabalho</span>
                   </Link>
 
                   {(hasSupervisorRole || hasAdminRole) && (

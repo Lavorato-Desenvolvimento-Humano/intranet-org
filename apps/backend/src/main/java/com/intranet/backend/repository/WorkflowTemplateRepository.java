@@ -1,12 +1,15 @@
 package com.intranet.backend.repository;
 
 import com.intranet.backend.model.WorkflowTemplate;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -24,4 +27,10 @@ public interface WorkflowTemplateRepository extends JpaRepository<WorkflowTempla
 
     @Query("SELECT COUNT(w) FROM Workflow w WHERE w.template.id = :templateId")
     int countWorkflowsByTemplateId(@Param("templateId") UUID templateId);
+
+    @Query("SELECT t FROM WorkflowTemplate t LEFT JOIN FETCH t.createdBy WHERE t.id = :id")
+    Optional<WorkflowTemplate> findByIdWithCreatedBy(@Param("id") UUID id);
+
+    @Query("SELECT DISTINCT t FROM WorkflowTemplate t LEFT JOIN FETCH t.createdBy")
+    Page<WorkflowTemplate> findAllWithCreatedBy(Pageable pageable);
 }
