@@ -14,6 +14,7 @@ import {
   UserCheck,
   BarChart2,
   ChevronRight,
+  RefreshCw,
 } from "lucide-react";
 import {
   WorkflowStatsDto,
@@ -23,6 +24,10 @@ import {
 import workflowService from "@/services/workflow";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import Navbar from "@/components/layout/Navbar";
+import user from "@/services/user";
+import CustomButton from "@/components/ui/custom-button";
+import { useAuth } from "@/context/AuthContext";
+import toastUtil from "@/utils/toast";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -38,6 +43,8 @@ export default function DashboardPage() {
     WorkflowSummaryDto[]
   >([]);
   const [usersWorkload, setUsersWorkload] = useState<UserWorkloadDto[]>([]);
+  const [retryCount, setRetryCount] = useState(0);
+  const { user, logout } = useAuth();
 
   const [loading, setLoading] = useState({
     stats: true,
@@ -118,7 +125,66 @@ export default function DashboardPage() {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    // Verificar se o usuário tem a role de ADMIN
+    const isAdmin = user?.roles?.some(
+      (role) => role === "ROLE_ADMIN" || role === "ADMIN"
+    );
+
+    if (!isAdmin) {
+      setError(
+        "Você não tem permissões de administrador para acessar esta página"
+      );
+    } else {
+      setError(null);
+    }
+  }, [user]);
+
+  // Função para forçar o recarregamento da pagina
+  const handleRetry = () => {
+    setRetryCount((prev) => prev + 1);
+    window.location.reload();
+  };
+
+  // Função para tentar reautenticar o usuário
+  const handleReauth = () => {
+    logout();
+    toastUtil.info("Por favor, faça login novamente para continuar.");
+    window.location.href = "/auth/login?callback=/admin";
+  };
+
   const isLoading = Object.values(loading).some((value) => value);
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+        <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
+          <div className="flex items-center text-red-500 mb-4">
+            <AlertTriangle className="mr-2" />
+            <h2 className="text-xl font-bold">Erro de Acesso</h2>
+          </div>
+
+          <p className="mb-6 text-gray-700">{error}</p>
+
+          <div className="flex flex-col gap-3">
+            <CustomButton
+              onClick={handleRetry}
+              icon={RefreshCw}
+              className="w-full">
+              Tentar novamente
+            </CustomButton>
+
+            <CustomButton
+              onClick={handleReauth}
+              variant="secondary"
+              className="w-full border border-gray-300">
+              Fazer login novamente
+            </CustomButton>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
