@@ -361,7 +361,7 @@ export default function TemplatePage({ params }: TemplatePageProps) {
           title="Usar Template"
           message={`Deseja criar um novo fluxo de trabalho usando o template "${template.name}"?`}
           confirmText="Criar Fluxo"
-          cancelText="Cancelar"
+          cancelText="Voltar"
           onConfirm={handleUseTemplate}
           onCancel={() => setShowUseTemplateDialog(false)}
           variant="info"
