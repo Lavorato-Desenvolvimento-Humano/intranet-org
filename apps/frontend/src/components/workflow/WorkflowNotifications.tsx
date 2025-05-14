@@ -43,7 +43,7 @@ const WorkflowNotifications: React.FC<WorkflowNotificationsProps> = ({
   return (
     <div className="bg-white rounded-lg shadow-md max-h-[80vh] flex flex-col">
       <div className="flex justify-between items-center p-3 border-b sticky top-0 bg-white z-10">
-        <h3 className="text-lg font-semibold">Notificações</h3>
+        <h3 className="text-lg font-semibold text-gray-700">Notificações</h3>
         <div className="flex items-center">
           {notifications.length > 0 && !loading && (
             <button
