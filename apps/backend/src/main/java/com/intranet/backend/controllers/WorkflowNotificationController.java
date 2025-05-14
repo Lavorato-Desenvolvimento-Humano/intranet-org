@@ -34,7 +34,8 @@ public class WorkflowNotificationController {
     @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
     public ResponseEntity<Page<WorkflowNotificationDto>> getMyNotifications(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "false") boolean unreadOnly) {
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String email = authentication.getName();
@@ -47,7 +48,14 @@ public class WorkflowNotificationController {
         logger.info("Buscando notificações do usuário: {}", userId);
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<WorkflowNotificationDto> notifications = notificationService.getUserNotifications(userId, pageable);
+        Page<WorkflowNotificationDto> notifications;
+
+        if (unreadOnly) {
+            notifications = notificationService.getUnreadUserNotifications(userId, pageable);
+        } else {
+            notifications = notificationService.getUserNotifications(userId, pageable);
+        }
+
         return ResponseEntity.ok(notifications);
     }
 

@@ -294,12 +294,14 @@ const workflowService = {
     }
   },
 
-  getNotifications: async (page = 0, size = 10) => {
+  getNotifications: async (page = 0, size = 10, unreadOnly = true) => {
     try {
       const response = await api.get<{
         content: WorkflowNotificationDto[];
         totalElements: number;
-      }>(`/api/workflow-notifications?page=${page}&size=${size}`);
+      }>(
+        `/api/workflow-notifications?page=${page}&size=${size}${unreadOnly ? "&unreadOnly=true" : ""}`
+      );
       return response.data;
     } catch (error) {
       console.error("Erro ao buscar notificações:", error);
