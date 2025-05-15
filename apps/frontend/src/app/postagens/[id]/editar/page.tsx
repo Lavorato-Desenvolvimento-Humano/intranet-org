@@ -200,6 +200,16 @@ export default function EditarPostagemPage() {
     }
   };
 
+  // Função para lidar com mudanças no editor rico
+  const handleEditorChange = (content: string) => {
+    //Garantir que as quebras de linha HTML sejam preservadas
+    const processedContent = content
+      .replace(/<p>\s*<\/p>/g, "<br />")
+      .replace(/\n/g, "<br />");
+
+    setFormData((prev) => ({ ...prev, text: processedContent }));
+  };
+
   // Função para lidar com o envio do formulário
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -594,7 +604,7 @@ export default function EditarPostagemPage() {
                     </label>
                     <SimpleRichEditor
                       value={formData.text}
-                      onChange={handleChange}
+                      onChange={handleEditorChange}
                       placeholder="Digite o conteúdo da postagem..."
                       height="400px"
                       error={errors.text}
