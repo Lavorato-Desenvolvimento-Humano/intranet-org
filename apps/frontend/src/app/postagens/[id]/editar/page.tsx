@@ -98,14 +98,20 @@ export default function EditarPostagemPage() {
         setConvenios(conveniosData);
         setEquipes(equipesData);
 
+        // Detectar automaticamente o tipo de destino com base nos dados carregados
+        let tipoDestino: "geral" | "equipe" | "convenio" = "geral";
+
+        if (postagemData.equipeId) {
+          tipoDestino = "equipe";
+        } else if (postagemData.convenioId) {
+          tipoDestino = "convenio";
+        }
+
         // Preencher formulário com dados da postagem
         setFormData({
           title: postagemData.title || "",
           text: postagemData.text || "",
-          tipoDestino: postagemData.tipoDestino as
-            | "geral"
-            | "equipe"
-            | "convenio",
+          tipoDestino: tipoDestino,
           convenioId: postagemData.convenioId || "",
           equipeId: postagemData.equipeId || "",
         });
@@ -160,7 +166,7 @@ export default function EditarPostagemPage() {
           newErrors.equipeId = "Selecione uma equipe";
         }
         break;
-      // Para tipo "geral" não há validação adicional
+      // Tipo "geral" não precisa de validação adicional
     }
 
     setErrors(newErrors);
@@ -174,17 +180,24 @@ export default function EditarPostagemPage() {
     >
   ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
 
-  // Função para lidar com mudanças no editor rico
-  const handleEditorChange = (content: string) => {
-    //Garantir que as quebras de linha HTML sejam preservadas
-    const processedContent = content
-      .replace(/<p>\s*<\/p>/g, "<br />")
-      .replace(/\n/g, "<br />");
+    // Lógica especial para quando o tipo de destino muda
+    if (name === "tipoDestino") {
+      const newTipoDestino = value as "geral" | "equipe" | "convenio";
 
-    setFormData((prev) => ({ ...prev, text: processedContent }));
+      // Limpar valores de campos não relacionados ao tipo selecionado
+      setFormData((prev) => ({
+        ...prev,
+        tipoDestino: newTipoDestino,
+        // Limpar convenioId se não for "convenio"
+        convenioId: newTipoDestino === "convenio" ? prev.convenioId : "",
+        // Limpar equipeId se não for "equipe"
+        equipeId: newTipoDestino === "equipe" ? prev.equipeId : "",
+      }));
+    } else {
+      // Para outros campos, atualize normalmente
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   // Função para lidar com o envio do formulário
@@ -507,6 +520,72 @@ export default function EditarPostagemPage() {
                     </select>
                   </div>
 
+                  {/* Renderização condicional para Convênio */}
+                  {formData.tipoDestino === "convenio" && (
+                    <div className="mb-4">
+                      <label
+                        htmlFor="convenioId"
+                        className="block text-sm font-medium text-gray-700 mb-1">
+                        Convênio *
+                      </label>
+                      <select
+                        id="convenioId"
+                        name="convenioId"
+                        value={formData.convenioId}
+                        onChange={handleChange}
+                        className={`w-full px-3 py-2 border rounded-md ${
+                          errors.convenioId
+                            ? "border-red-500"
+                            : "border-gray-300"
+                        } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
+                        disabled={submitting}>
+                        <option value="">Selecione um convênio</option>
+                        {convenios.map((convenio) => (
+                          <option key={convenio.id} value={convenio.id}>
+                            {convenio.name}
+                          </option>
+                        ))}
+                      </select>
+                      {errors.convenioId && (
+                        <p className="mt-1 text-sm text-red-500">
+                          {errors.convenioId}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Renderização condicional para Equipe */}
+                  {formData.tipoDestino === "equipe" && (
+                    <div className="mb-4">
+                      <label
+                        htmlFor="equipeId"
+                        className="block text-sm font-medium text-gray-700 mb-1">
+                        Equipe *
+                      </label>
+                      <select
+                        id="equipeId"
+                        name="equipeId"
+                        value={formData.equipeId}
+                        onChange={handleChange}
+                        className={`w-full px-3 py-2 border rounded-md ${
+                          errors.equipeId ? "border-red-500" : "border-gray-300"
+                        } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
+                        disabled={submitting}>
+                        <option value="">Selecione uma equipe</option>
+                        {equipes.map((equipe) => (
+                          <option key={equipe.id} value={equipe.id}>
+                            {equipe.nome}
+                          </option>
+                        ))}
+                      </select>
+                      {errors.equipeId && (
+                        <p className="mt-1 text-sm text-red-500">
+                          {errors.equipeId}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
                   <div className="mb-6">
                     <label
                       htmlFor="text"
@@ -515,7 +594,7 @@ export default function EditarPostagemPage() {
                     </label>
                     <SimpleRichEditor
                       value={formData.text}
-                      onChange={handleEditorChange}
+                      onChange={handleChange}
                       placeholder="Digite o conteúdo da postagem..."
                       height="400px"
                       error={errors.text}
