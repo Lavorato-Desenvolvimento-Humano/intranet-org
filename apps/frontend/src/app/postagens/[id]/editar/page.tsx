@@ -21,7 +21,7 @@ import postagemService, {
   PostagemDto,
   ImagemDto,
   AnexoDto,
-  TabelaPostagemDto,
+  PostagemCreateDto,
 } from "@/services/postagem";
 import convenioService, { ConvenioDto } from "@/services/convenio";
 import toastUtil from "@/utils/toast";
@@ -30,6 +30,7 @@ import dynamic from "next/dynamic";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
 import RichTextPreview from "@/components/ui/rich-text-preview";
 import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
+import equipeService, { EquipeDto } from "@/services/equipe";
 
 // Importar o editor de texto rico dinamicamente para evitar problemas de SSR
 const SimpleRichEditor = dynamic(
@@ -59,14 +60,15 @@ export default function EditarPostagemPage() {
     equipeId: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [activeTab, setActiveTab] = useState<
-    "conteudo" | "imagens" | "anexos" | "tabelas"
-  >("conteudo");
+  const [activeTab, setActiveTab] = useState<"conteudo" | "imagens" | "anexos">(
+    "conteudo"
+  );
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingAnexo, setUploadingAnexo] = useState(false);
+  const [equipes, setEquipes] = useState<EquipeDto[]>([]); // Adicionei o estado para equipes
   const [confirmDeleteItem, setConfirmDeleteItem] = useState<{
     show: boolean;
-    type: "imagem" | "anexo" | "tabela";
+    type: "imagem" | "anexo";
     id: string;
     name: string;
     isDeleting: boolean;
@@ -86,22 +88,30 @@ export default function EditarPostagemPage() {
       setLoading(true);
       try {
         // Carregar dados em paralelo
-        const [postagemData, conveniosData] = await Promise.all([
+        const [postagemData, conveniosData, equipesData] = await Promise.all([
           postagemService.getPostagemById(postagemId),
           convenioService.getAllConvenios(),
+          equipeService.getAllEquipes(),
         ]);
 
         setPostagem(postagemData);
         setConvenios(conveniosData);
+        setEquipes(equipesData);
+
+        // Detectar automaticamente o tipo de destino com base nos dados carregados
+        let tipoDestino: "geral" | "equipe" | "convenio" = "geral";
+
+        if (postagemData.equipeId) {
+          tipoDestino = "equipe";
+        } else if (postagemData.convenioId) {
+          tipoDestino = "convenio";
+        }
 
         // Preencher formulário com dados da postagem
         setFormData({
           title: postagemData.title || "",
           text: postagemData.text || "",
-          tipoDestino: (postagemData.equipeId ? "equipe" : "convenio") as
-            | "geral"
-            | "equipe"
-            | "convenio",
+          tipoDestino: tipoDestino,
           convenioId: postagemData.convenioId || "",
           equipeId: postagemData.equipeId || "",
         });
@@ -144,8 +154,19 @@ export default function EditarPostagemPage() {
       newErrors.text = "O conteúdo da postagem é obrigatório";
     }
 
-    if (!formData.convenioId) {
-      newErrors.convenioId = "Selecione um convênio";
+    // Validar campos específicos com base no tipo de destino
+    switch (formData.tipoDestino) {
+      case "convenio":
+        if (!formData.convenioId) {
+          newErrors.convenioId = "Selecione um convênio";
+        }
+        break;
+      case "equipe":
+        if (!formData.equipeId) {
+          newErrors.equipeId = "Selecione uma equipe";
+        }
+        break;
+      // Tipo "geral" não precisa de validação adicional
     }
 
     setErrors(newErrors);
@@ -159,7 +180,24 @@ export default function EditarPostagemPage() {
     >
   ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    // Lógica especial para quando o tipo de destino muda
+    if (name === "tipoDestino") {
+      const newTipoDestino = value as "geral" | "equipe" | "convenio";
+
+      // Limpar valores de campos não relacionados ao tipo selecionado
+      setFormData((prev) => ({
+        ...prev,
+        tipoDestino: newTipoDestino,
+        // Limpar convenioId se não for "convenio"
+        convenioId: newTipoDestino === "convenio" ? prev.convenioId : "",
+        // Limpar equipeId se não for "equipe"
+        equipeId: newTipoDestino === "equipe" ? prev.equipeId : "",
+      }));
+    } else {
+      // Para outros campos, atualize normalmente
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   // Função para lidar com mudanças no editor rico
@@ -182,10 +220,22 @@ export default function EditarPostagemPage() {
 
     setSubmitting(true);
     try {
+      // Dados para atualizar a postagem, usando undefined em vez de null
+      const updateData: PostagemCreateDto = {
+        title: formData.title,
+        text: formData.text,
+        tipoDestino: formData.tipoDestino,
+        convenioId:
+          formData.tipoDestino === "convenio" ? formData.convenioId : undefined,
+        equipeId:
+          formData.tipoDestino === "equipe" ? formData.equipeId : undefined,
+      };
+
       const updatedPostagem = await postagemService.updatePostagem(
         postagemId,
-        formData
+        updateData
       );
+
       toastUtil.success("Postagem atualizada com sucesso!");
       router.push(`/postagens/${updatedPostagem.id}`);
     } catch (err: any) {
@@ -268,44 +318,9 @@ export default function EditarPostagemPage() {
     }
   };
 
-  // Função para adicionar uma nova tabela
-  const handleAddTabela = async () => {
-    // Exemplo de estrutura inicial para uma tabela vazia
-    const tabelaBase = {
-      headers: ["Coluna 1", "Coluna 2", "Coluna 3"],
-      rows: [
-        ["", "", ""],
-        ["", "", ""],
-        ["", "", ""],
-      ],
-    };
-
-    try {
-      const conteudoJson = JSON.stringify(tabelaBase);
-      const novaTabela = await postagemService.addTabela(
-        postagemId,
-        conteudoJson
-      );
-
-      // Atualizar a lista de tabelas localmente
-      if (postagem) {
-        setPostagem({
-          ...postagem,
-          tabelas: [...postagem.tabelas, novaTabela],
-        });
-      }
-
-      toastUtil.success("Tabela adicionada com sucesso!");
-      setActiveTab("tabelas");
-    } catch (err) {
-      console.error("Erro ao adicionar tabela:", err);
-      toastUtil.error("Erro ao adicionar tabela. Tente novamente.");
-    }
-  };
-
   // Função para confirmar exclusão de um item
   const confirmDeleteItemAction = (
-    type: "imagem" | "anexo" | "tabela",
+    type: "imagem" | "anexo",
     id: string,
     name: string
   ) => {
@@ -345,92 +360,16 @@ export default function EditarPostagemPage() {
             anexos: postagem.anexos.filter((anexo) => anexo.id !== id),
           });
         }
-      } else if (type === "tabela") {
-        await postagemService.deleteTabela(id);
-        // Atualizar a lista localmente
-        if (postagem) {
-          setPostagem({
-            ...postagem,
-            tabelas: postagem.tabelas.filter((tabela) => tabela.id !== id),
-          });
-        }
       }
 
       toastUtil.success(
-        `${type === "imagem" ? "Imagem" : type === "anexo" ? "Anexo" : "Tabela"} excluído(a) com sucesso!`
+        `${type === "imagem" ? "Imagem" : "Anexo"} excluído(a) com sucesso!`
       );
     } catch (err) {
       console.error(`Erro ao excluir ${type}:`, err);
       toastUtil.error(`Erro ao excluir ${type}. Tente novamente.`);
     } finally {
       setConfirmDeleteItem(null);
-    }
-  };
-
-  // Renderizar tabela em modo de edição
-  const renderTabelaPreview = (tabela: TabelaPostagemDto) => {
-    try {
-      // Tentar analisar o JSON da tabela
-      const tabelaData = JSON.parse(tabela.conteudo);
-
-      // Verificar se é um array de objetos com cabeçalhos e linhas
-      if (
-        tabelaData &&
-        tabelaData.headers &&
-        Array.isArray(tabelaData.headers) &&
-        tabelaData.rows &&
-        Array.isArray(tabelaData.rows)
-      ) {
-        return (
-          <div className="overflow-x-auto mt-2 mb-2">
-            <table className="min-w-full border border-gray-300">
-              <thead className="bg-gray-100">
-                <tr>
-                  {tabelaData.headers.map((header: string, index: number) => (
-                    <th
-                      key={index}
-                      className="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase border-r border-gray-300 last:border-r-0">
-                      {header}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {tabelaData.rows
-                  .slice(0, 3)
-                  .map((row: any[], rowIndex: number) => (
-                    <tr key={rowIndex} className="border-t border-gray-300">
-                      {row.map((cell, cellIndex) => (
-                        <td
-                          key={cellIndex}
-                          className="px-3 py-2 text-sm text-gray-500 border-r border-gray-300 last:border-r-0">
-                          {cell}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-            {tabelaData.rows.length > 3 && (
-              <div className="mt-1 text-xs text-gray-500 text-right">
-                + {tabelaData.rows.length - 3} linhas adicionais
-              </div>
-            )}
-          </div>
-        );
-      } else {
-        return (
-          <div className="bg-gray-50 p-2 rounded mt-2 mb-2">
-            <p className="text-xs text-gray-500">Visualização não disponível</p>
-          </div>
-        );
-      }
-    } catch (error) {
-      return (
-        <div className="bg-red-50 p-2 rounded mt-2 mb-2">
-          <p className="text-xs text-red-500">Formato de tabela inválido</p>
-        </div>
-      );
     }
   };
 
@@ -475,7 +414,6 @@ export default function EditarPostagemPage() {
 
   const hasImagens = postagem.imagens && postagem.imagens.length > 0;
   const hasAnexos = postagem.anexos && postagem.anexos.length > 0;
-  const hasTabelas = postagem.tabelas && postagem.tabelas.length > 0;
 
   return (
     <ProtectedRoute>
@@ -541,18 +479,6 @@ export default function EditarPostagemPage() {
                     Anexos {hasAnexos && `(${postagem.anexos.length})`}
                   </div>
                 </button>
-                <button
-                  onClick={() => setActiveTab("tabelas")}
-                  className={`py-4 px-6 border-b-2 font-medium text-sm ${
-                    activeTab === "tabelas"
-                      ? "border-primary text-primary"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                  }`}>
-                  <div className="flex items-center">
-                    <TableIcon size={16} className="mr-2" />
-                    Tabelas {hasTabelas && `(${postagem.tabelas.length})`}
-                  </div>
-                </button>
               </nav>
             </div>
 
@@ -587,34 +513,88 @@ export default function EditarPostagemPage() {
 
                   <div className="mb-4">
                     <label
-                      htmlFor="convenioId"
+                      htmlFor="tipoDestino"
                       className="block text-sm font-medium text-gray-700 mb-1">
-                      Convênio *
+                      Visibilidade da Postagem *
                     </label>
                     <select
-                      id="convenioId"
-                      name="convenioId"
-                      value={formData.convenioId}
+                      id="tipoDestino"
+                      name="tipoDestino"
+                      value={formData.tipoDestino}
                       onChange={handleChange}
-                      className={`w-full px-3 py-2 border rounded-md ${
-                        errors.convenioId ? "border-red-500" : "border-gray-300"
-                      } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                       disabled={submitting}>
-                      <option value="" disabled>
-                        Selecione um convênio
-                      </option>
-                      {convenios.map((convenio) => (
-                        <option key={convenio.id} value={convenio.id}>
-                          {convenio.name}
-                        </option>
-                      ))}
+                      <option value="geral">Geral</option>
+                      <option value="equipe">Equipe específica</option>
+                      <option value="convenio">Convênio específico</option>
                     </select>
-                    {errors.convenioId && (
-                      <p className="mt-1 text-sm text-red-500">
-                        {errors.convenioId}
-                      </p>
-                    )}
                   </div>
+
+                  {/* Renderização condicional para Convênio */}
+                  {formData.tipoDestino === "convenio" && (
+                    <div className="mb-4">
+                      <label
+                        htmlFor="convenioId"
+                        className="block text-sm font-medium text-gray-700 mb-1">
+                        Convênio *
+                      </label>
+                      <select
+                        id="convenioId"
+                        name="convenioId"
+                        value={formData.convenioId}
+                        onChange={handleChange}
+                        className={`w-full px-3 py-2 border rounded-md ${
+                          errors.convenioId
+                            ? "border-red-500"
+                            : "border-gray-300"
+                        } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
+                        disabled={submitting}>
+                        <option value="">Selecione um convênio</option>
+                        {convenios.map((convenio) => (
+                          <option key={convenio.id} value={convenio.id}>
+                            {convenio.name}
+                          </option>
+                        ))}
+                      </select>
+                      {errors.convenioId && (
+                        <p className="mt-1 text-sm text-red-500">
+                          {errors.convenioId}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Renderização condicional para Equipe */}
+                  {formData.tipoDestino === "equipe" && (
+                    <div className="mb-4">
+                      <label
+                        htmlFor="equipeId"
+                        className="block text-sm font-medium text-gray-700 mb-1">
+                        Equipe *
+                      </label>
+                      <select
+                        id="equipeId"
+                        name="equipeId"
+                        value={formData.equipeId}
+                        onChange={handleChange}
+                        className={`w-full px-3 py-2 border rounded-md ${
+                          errors.equipeId ? "border-red-500" : "border-gray-300"
+                        } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
+                        disabled={submitting}>
+                        <option value="">Selecione uma equipe</option>
+                        {equipes.map((equipe) => (
+                          <option key={equipe.id} value={equipe.id}>
+                            {equipe.nome}
+                          </option>
+                        ))}
+                      </select>
+                      {errors.equipeId && (
+                        <p className="mt-1 text-sm text-red-500">
+                          {errors.equipeId}
+                        </p>
+                      )}
+                    </div>
+                  )}
 
                   <div className="mb-6">
                     <label
@@ -631,10 +611,12 @@ export default function EditarPostagemPage() {
                       disabled={submitting}
                       onImageUpload={async (file: File) => {
                         try {
+                          // Chamar a API para adicionar imagem
                           const imagem = await postagemService.addImagem(
                             postagemId,
                             file
                           );
+
                           // Atualizar a lista de imagens localmente
                           if (postagem) {
                             setPostagem({
@@ -642,19 +624,27 @@ export default function EditarPostagemPage() {
                               imagens: [...postagem.imagens, imagem],
                             });
                           }
-                          // Retornar a URL da imagem para inserir no editor
+
                           return imagem.url;
-                        } catch (err) {
-                          console.error("Erro ao fazer upload da imagem:", err);
-                          throw err;
+                        } catch (error) {
+                          console.error(
+                            "Erro ao fazer upload da imagem:",
+                            error
+                          );
+                          toastUtil.error(
+                            "Erro ao fazer upload da imagem. Tente novamente."
+                          );
+                          throw error;
                         }
                       }}
                       onFileUpload={async (file: File) => {
                         try {
+                          // Chamar a API para adicionar anexo
                           const anexo = await postagemService.addAnexo(
                             postagemId,
                             file
                           );
+
                           // Atualizar a lista de anexos localmente
                           if (postagem) {
                             setPostagem({
@@ -662,11 +652,17 @@ export default function EditarPostagemPage() {
                               anexos: [...postagem.anexos, anexo],
                             });
                           }
-                          // Retornar a URL do anexo para inserir no editor
+
                           return anexo.url;
-                        } catch (err) {
-                          console.error("Erro ao fazer upload do anexo:", err);
-                          throw err;
+                        } catch (error) {
+                          console.error(
+                            "Erro ao fazer upload do anexo:",
+                            error
+                          );
+                          toastUtil.error(
+                            "Erro ao fazer upload do anexo. Tente novamente."
+                          );
+                          throw error;
                         }
                       }}
                     />
@@ -860,124 +856,6 @@ export default function EditarPostagemPage() {
                   )}
                 </div>
               )}
-
-              {activeTab === "tabelas" && (
-                <div>
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-lg font-semibold text-gray-800">
-                      Tabelas
-                    </h2>
-                    <CustomButton
-                      type="button"
-                      variant="primary"
-                      icon={Plus}
-                      onClick={handleAddTabela}>
-                      Adicionar Tabela
-                    </CustomButton>
-                  </div>
-
-                  {!hasTabelas ? (
-                    <div className="bg-gray-50 p-8 text-center rounded-md">
-                      <TableIcon
-                        size={48}
-                        className="mx-auto text-gray-400 mb-2"
-                      />
-                      <p className="text-gray-600 mb-4">
-                        Esta postagem ainda não possui tabelas.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {postagem.tabelas.map((tabela, index) => (
-                        <div
-                          key={tabela.id}
-                          className="border border-gray-300 rounded-lg p-4 relative group">
-                          <div className="flex justify-between items-center mb-2">
-                            <h3 className="font-medium text-gray-800">
-                              Tabela {index + 1}
-                            </h3>
-                            <div className="flex space-x-2">
-                              <button
-                                onClick={() => {
-                                  // Implementação para edição da tabela (simplificada)
-                                  try {
-                                    const tabelaJson = JSON.parse(
-                                      tabela.conteudo
-                                    );
-                                    const editedJson = window.prompt(
-                                      "Edite o JSON da tabela:",
-                                      JSON.stringify(tabelaJson, null, 2)
-                                    );
-
-                                    if (editedJson) {
-                                      // Validar JSON
-                                      const parsedJson = JSON.parse(editedJson);
-                                      // Atualizar tabela
-                                      postagemService
-                                        .updateTabela(tabela.id, editedJson)
-                                        .then((updatedTabela) => {
-                                          // Atualizar localmente
-                                          if (postagem) {
-                                            const updatedTabelas =
-                                              postagem.tabelas.map((t) =>
-                                                t.id === updatedTabela.id
-                                                  ? updatedTabela
-                                                  : t
-                                              );
-                                            setPostagem({
-                                              ...postagem,
-                                              tabelas: updatedTabelas,
-                                            });
-                                          }
-                                          toastUtil.success(
-                                            "Tabela atualizada com sucesso!"
-                                          );
-                                        })
-                                        .catch((err) => {
-                                          console.error(
-                                            "Erro ao atualizar tabela:",
-                                            err
-                                          );
-                                          toastUtil.error(
-                                            "Erro ao atualizar tabela."
-                                          );
-                                        });
-                                    }
-                                  } catch (err) {
-                                    console.error(
-                                      "Erro ao editar tabela:",
-                                      err
-                                    );
-                                    toastUtil.error(
-                                      "Erro ao processar JSON da tabela."
-                                    );
-                                  }
-                                }}
-                                className="p-1 text-blue-500 hover:text-blue-700"
-                                title="Editar tabela">
-                                <Edit size={18} />
-                              </button>
-                              <button
-                                onClick={() =>
-                                  confirmDeleteItemAction(
-                                    "tabela",
-                                    tabela.id,
-                                    `Tabela ${index + 1}`
-                                  )
-                                }
-                                className="p-1 text-red-500 hover:text-red-700"
-                                title="Excluir tabela">
-                                <Trash size={18} />
-                              </button>
-                            </div>
-                          </div>
-                          {renderTabelaPreview(tabela)}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           </div>
         </main>
@@ -987,11 +865,7 @@ export default function EditarPostagemPage() {
           <ConfirmDialog
             isOpen={true}
             title={`Excluir ${
-              confirmDeleteItem.type === "imagem"
-                ? "Imagem"
-                : confirmDeleteItem.type === "anexo"
-                  ? "Anexo"
-                  : "Tabela"
+              confirmDeleteItem.type === "imagem" ? "Imagem" : "Anexo"
             }`}
             message={`Tem certeza que deseja excluir ${
               confirmDeleteItem.type === "imagem"
