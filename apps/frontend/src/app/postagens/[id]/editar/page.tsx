@@ -262,25 +262,17 @@ export default function EditarPostagemPage() {
 
     setUploadingImage(true);
     try {
-      // Primeiro upload a imagem temporária
-      const tempImagem = await postagemService.addTempImagem(
+      const novaImagem = await postagemService.addImagem(
+        postagemId,
         file,
         description || undefined
       );
-      console.log("Imagem temporária criada:", tempImagem);
-
-      // Depois associa à postagem
-      const imagemAssociada = await postagemService.associarImagem(
-        postagemId,
-        tempImagem.id
-      );
-      console.log("Imagem associada com sucesso:", imagemAssociada);
 
       // Atualizar a lista de imagens localmente
       if (postagem) {
         setPostagem({
           ...postagem,
-          imagens: [...postagem.imagens, imagemAssociada],
+          imagens: [...postagem.imagens, novaImagem],
         });
       }
 
@@ -288,11 +280,9 @@ export default function EditarPostagemPage() {
 
       // Limpar input para permitir selecionar o mesmo arquivo novamente
       e.target.value = "";
-    } catch (err: any) {
+    } catch (err) {
       console.error("Erro ao adicionar imagem:", err);
-      toastUtil.error(
-        err.message || "Erro ao adicionar imagem. Tente novamente."
-      );
+      toastUtil.error("Erro ao adicionar imagem. Tente novamente.");
     } finally {
       setUploadingImage(false);
     }
@@ -306,22 +296,13 @@ export default function EditarPostagemPage() {
 
     setUploadingAnexo(true);
     try {
-      // Primeiro upload o anexo temporário
-      const tempAnexo = await postagemService.addTempAnexo(file);
-      console.log("Anexo temporário criado:", tempAnexo);
-
-      // Depois associa à postagem
-      const anexoAssociado = await postagemService.associarAnexo(
-        postagemId,
-        tempAnexo.id
-      );
-      console.log("Anexo associado com sucesso:", anexoAssociado);
+      const novoAnexo = await postagemService.addAnexo(postagemId, file);
 
       // Atualizar a lista de anexos localmente
       if (postagem) {
         setPostagem({
           ...postagem,
-          anexos: [...postagem.anexos, anexoAssociado],
+          anexos: [...postagem.anexos, novoAnexo],
         });
       }
 
@@ -329,11 +310,9 @@ export default function EditarPostagemPage() {
 
       // Limpar input para permitir selecionar o mesmo arquivo novamente
       e.target.value = "";
-    } catch (err: any) {
+    } catch (err) {
       console.error("Erro ao adicionar anexo:", err);
-      toastUtil.error(
-        err.message || "Erro ao adicionar anexo. Tente novamente."
-      );
+      toastUtil.error("Erro ao adicionar anexo. Tente novamente.");
     } finally {
       setUploadingAnexo(false);
     }
@@ -632,64 +611,65 @@ export default function EditarPostagemPage() {
                       disabled={submitting}
                       onImageUpload={async (file: File) => {
                         try {
-                          // Upload temporário e associação
-                          const tempImagem =
-                            await postagemService.addTempImagem(file);
-                          const imagemAssociada =
-                            await postagemService.associarImagem(
-                              postagemId,
-                              tempImagem.id
-                            );
+                          // Chamar a API para adicionar imagem
+                          const imagem = await postagemService.addImagem(
+                            postagemId,
+                            file
+                          );
 
                           // Atualizar a lista de imagens localmente
                           if (postagem) {
                             setPostagem({
                               ...postagem,
-                              imagens: [...postagem.imagens, imagemAssociada],
+                              imagens: [...postagem.imagens, imagem],
                             });
                           }
 
-                          // Garantir que a URL esteja formatada corretamente
-                          return imagemAssociada.url;
-                        } catch (err: any) {
-                          console.error("Erro ao fazer upload da imagem:", err);
-                          toastUtil.error(
-                            err.message ||
-                              "Erro ao fazer upload da imagem. Tente novamente."
+                          return imagem.url;
+                        } catch (error) {
+                          console.error(
+                            "Erro ao fazer upload da imagem:",
+                            error
                           );
-                          throw err;
+                          toastUtil.error(
+                            "Erro ao fazer upload da imagem. Tente novamente."
+                          );
+                          throw error;
                         }
                       }}
                       onFileUpload={async (file: File) => {
                         try {
-                          // Upload temporário e associação
-                          const tempAnexo =
-                            await postagemService.addTempAnexo(file);
-                          const anexoAssociado =
-                            await postagemService.associarAnexo(
-                              postagemId,
-                              tempAnexo.id
-                            );
+                          // Chamar a API para adicionar anexo
+                          const anexo = await postagemService.addAnexo(
+                            postagemId,
+                            file
+                          );
 
                           // Atualizar a lista de anexos localmente
                           if (postagem) {
                             setPostagem({
                               ...postagem,
-                              anexos: [...postagem.anexos, anexoAssociado],
+                              anexos: [...postagem.anexos, anexo],
                             });
                           }
 
-                          return anexoAssociado.url;
-                        } catch (err: any) {
-                          console.error("Erro ao fazer upload do anexo:", err);
-                          toastUtil.error(
-                            err.message ||
-                              "Erro ao fazer upload do anexo. Tente novamente."
+                          return anexo.url;
+                        } catch (error) {
+                          console.error(
+                            "Erro ao fazer upload do anexo:",
+                            error
                           );
-                          throw err;
+                          toastUtil.error(
+                            "Erro ao fazer upload do anexo. Tente novamente."
+                          );
+                          throw error;
                         }
                       }}
                     />
+                    {errors.text && (
+                      <p className="mt-1 text-sm text-red-500">{errors.text}</p>
+                    )}
+
                     {/* Componente de pré-visualização */}
                     <RichTextPreview content={formData.text} />
                   </div>
