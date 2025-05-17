@@ -82,7 +82,7 @@ const WorkflowForm: React.FC<WorkflowFormProps> = ({
   }, [formData.templateId, templates]);
 
   const handleChange = (
-    e: React.ChangeEvent
+    e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
     >
   ) => {
@@ -315,7 +315,13 @@ const WorkflowForm: React.FC<WorkflowFormProps> = ({
           Cancelar
         </CustomButton>
         <CustomButton type="submit" variant="primary" disabled={isLoading}>
-          {isLoading ? (isEditing ? "Salvando..." : "Criando...") : isEditing ? "Salvar Alterações" : "Criar Fluxo"}
+          {isLoading
+            ? isEditing
+              ? "Salvando..."
+              : "Criando..."
+            : isEditing
+              ? "Salvar Alterações"
+              : "Criar Fluxo"}
         </CustomButton>
       </div>
     </form>
