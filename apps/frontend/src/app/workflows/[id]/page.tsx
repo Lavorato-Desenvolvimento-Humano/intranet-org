@@ -25,6 +25,7 @@ import {
   Eye,
   EyeOff,
   Users,
+  Edit,
 } from "lucide-react";
 import {
   WorkflowDto,
@@ -451,6 +452,14 @@ export default function WorkflowPage({ params }: WorkflowPageProps) {
                     setShowStatusDialog(true);
                   }}>
                   Concluir
+                </CustomButton>
+
+                <CustomButton
+                  variant="primary"
+                  size="small"
+                  icon={Edit}
+                  onClick={() => router.push(`/workflows/${params.id}/edit`)}>
+                  Editar
                 </CustomButton>
 
                 <CustomButton

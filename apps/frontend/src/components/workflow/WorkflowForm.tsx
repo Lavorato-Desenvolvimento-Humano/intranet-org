@@ -1,4 +1,4 @@
-// src/components/workflow/WorkflowForm.tsx
+// Modificações no src/components/workflow/WorkflowForm.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -14,12 +14,14 @@ interface WorkflowFormProps {
   initialData?: Partial<WorkflowCreateDto>;
   onSubmit: (data: WorkflowCreateDto) => Promise<void>;
   isLoading: boolean;
+  isEditing?: boolean; // Nova prop para indicar se estamos editando
 }
 
 const WorkflowForm: React.FC<WorkflowFormProps> = ({
   initialData,
   onSubmit,
   isLoading,
+  isEditing = false, // Por padrão, é criação
 }) => {
   const [formData, setFormData] = useState<WorkflowCreateDto>({
     templateId: initialData?.templateId || "",
@@ -80,7 +82,7 @@ const WorkflowForm: React.FC<WorkflowFormProps> = ({
   }, [formData.templateId, templates]);
 
   const handleChange = (
-    e: React.ChangeEvent<
+    e: React.ChangeEvent
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
     >
   ) => {
@@ -139,8 +141,15 @@ const WorkflowForm: React.FC<WorkflowFormProps> = ({
     try {
       await onSubmit(formData);
     } catch (error) {
-      console.error("Erro ao criar fluxo:", error);
+      console.error("Erro ao salvar fluxo:", error);
     }
+  };
+
+  // Formatar a data para o formato aceito pelo input type="date"
+  const formatDateForInput = (dateString: string | null) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toISOString().split("T")[0];
   };
 
   return (
@@ -154,7 +163,10 @@ const WorkflowForm: React.FC<WorkflowFormProps> = ({
             name="templateId"
             value={formData.templateId}
             onChange={handleChange}
-            className="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-transparent">
+            disabled={isEditing} // Desabilitar se estiver editando
+            className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-transparent ${
+              isEditing ? "bg-gray-100" : ""
+            }`}>
             <option value="">Selecione um template</option>
             {templates.map((template) => (
               <option key={template.id} value={template.id}>
@@ -207,6 +219,7 @@ const WorkflowForm: React.FC<WorkflowFormProps> = ({
             <input
               type="date"
               name="deadline"
+              value={formatDateForInput(formData.deadline)}
               onChange={handleDateChange}
               className="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-transparent"
               min={new Date().toISOString().split("T")[0]}
@@ -255,41 +268,43 @@ const WorkflowForm: React.FC<WorkflowFormProps> = ({
         />
       </div>
 
-      <div>
-        <label className="flex items-center space-x-2 mb-3">
-          <input
-            type="checkbox"
-            checked={isSameUser}
-            onChange={() => setIsSameUser(!isSameUser)}
-            className="w-4 h-4 text-primary"
-          />
-          <span>Começar este fluxo pessoalmente</span>
-        </label>
+      {!isEditing && (
+        <div>
+          <label className="flex items-center space-x-2 mb-3">
+            <input
+              type="checkbox"
+              checked={isSameUser}
+              onChange={() => setIsSameUser(!isSameUser)}
+              className="w-4 h-4 text-primary"
+            />
+            <span>Começar este fluxo pessoalmente</span>
+          </label>
 
-        {!isSameUser && (
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Atribuir à:
-            </label>
-            {isLoadingUsers ? (
-              <div className="p-2 text-center">Carregando usuários...</div>
-            ) : (
-              <select
-                name="assignToId"
-                value={formData.assignToId || ""}
-                onChange={handleChange}
-                className="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-transparent">
-                <option value="">Selecione um usuário</option>
-                {users.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.fullName}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-        )}
-      </div>
+          {!isSameUser && (
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Atribuir à:
+              </label>
+              {isLoadingUsers ? (
+                <div className="p-2 text-center">Carregando usuários...</div>
+              ) : (
+                <select
+                  name="assignToId"
+                  value={formData.assignToId || ""}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-transparent">
+                  <option value="">Selecione um usuário</option>
+                  {users.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.fullName}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="flex justify-end space-x-3">
         <CustomButton
@@ -300,7 +315,7 @@ const WorkflowForm: React.FC<WorkflowFormProps> = ({
           Cancelar
         </CustomButton>
         <CustomButton type="submit" variant="primary" disabled={isLoading}>
-          {isLoading ? "Criando..." : "Criar Fluxo"}
+          {isLoading ? (isEditing ? "Salvando..." : "Criando...") : isEditing ? "Salvar Alterações" : "Criar Fluxo"}
         </CustomButton>
       </div>
     </form>
