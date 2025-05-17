@@ -5,7 +5,11 @@ import { CheckCircle, Circle } from "lucide-react";
 interface WorkflowProgressProps {
   currentStep: number;
   totalSteps: number;
-  steps: { name: string; status?: "pending" | "in_progress" | "completed" }[];
+  steps: {
+    name: string;
+    description?: string;
+    status?: "pending" | "in_progress" | "completed";
+  }[];
 }
 
 const WorkflowProgress: React.FC<WorkflowProgressProps> = ({
@@ -49,7 +53,9 @@ const WorkflowProgress: React.FC<WorkflowProgressProps> = ({
                   )}
                 </div>
                 <span
-                  className={`text-xs mt-2 max-w-24 text-center ${isCurrent ? "text-primary font-medium" : isCompleted ? "text-primary" : "text-gray-500"}`}>
+                  className={`text-xs mt-2 max-w-24 text-center ${isCurrent ? "text-primary font-medium" : isCompleted ? "text-primary" : "text-gray-500"}`}
+                  title={step.description || step.name} // Mostrar a descrição como tooltip
+                >
                   {step.name}
                 </span>
               </div>

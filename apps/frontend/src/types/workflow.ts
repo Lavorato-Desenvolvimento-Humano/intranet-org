@@ -97,6 +97,7 @@ export interface WorkflowAssignmentDto {
   workflowTitle: string;
   stepNumber: number;
   stepName: string;
+  stepDescription?: string;
   assignedToId: string;
   assignedToName: string;
   status: "pending" | "in_progress" | "completed";
