@@ -945,7 +945,12 @@ public class WorkflowServiceImpl implements WorkflowService {
         String stepName = stepRepository.findStepNameByTemplateIdAndStepOrder(
                 assignment.getWorkflow().getTemplate().getId(), assignment.getStepNumber());
         dto.setStepName(stepName != null ? stepName : "Etapa " + assignment.getStepNumber());
+        
+        String stepDescription = stepRepository.findStepDescriptionByTemplateIdAndStepOrder(
+                assignment.getWorkflow().getTemplate().getId(), assignment.getStepNumber()
+        );
 
+        dto.setStepDescription(stepDescription);
         dto.setAssignedToId(assignment.getAssignedTo().getId());
         dto.setAssignedToName(assignment.getAssignedTo().getFullName());
         dto.setStatus(assignment.getStatus());

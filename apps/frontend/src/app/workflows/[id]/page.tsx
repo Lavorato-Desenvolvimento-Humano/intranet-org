@@ -509,6 +509,7 @@ export default function WorkflowPage({ params }: WorkflowPageProps) {
             totalSteps={workflow.totalSteps}
             steps={workflow.assignments.map((a) => ({
               name: a.stepName || `Etapa ${a.stepNumber}`,
+              description: a.stepDescription,
               status: a.status,
             }))}
           />
@@ -538,7 +539,12 @@ export default function WorkflowPage({ params }: WorkflowPageProps) {
                       {currentAssignment?.stepName ||
                         `Etapa ${workflow.currentStep}`}
                     </h4>
-                    <p className="text-sm text-gray-600 mt-1">
+                    {currentAssignment?.stepDescription && (
+                      <p className="text-sm text-gray-600 mt-1">
+                        {currentAssignment.stepDescription}
+                      </p>
+                    )}
+                    <p className="text-sm text-gray-600 mt-2">
                       Atribuído a:{" "}
                       {currentAssignment?.assignedToName || "Não atribuído"}
                     </p>
