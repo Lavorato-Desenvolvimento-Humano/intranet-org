@@ -181,7 +181,7 @@ const postagemService = {
       console.log("Enviando imagem para o servidor...");
 
       const response = await api.post<ImagemDto>(
-        "/api/postagens/temp/imagens",
+        "/api/temp/imagens",
         formData,
         {
           headers: {
@@ -249,16 +249,12 @@ const postagemService = {
       const formData = new FormData();
       formData.append("file", file);
 
-      const response = await api.post<AnexoDto>(
-        "/api/postagens/temp/anexos",
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-          timeout: 30000, // 30 segundos
-        }
-      );
+      const response = await api.post<AnexoDto>("/api/temp/anexos", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+        timeout: 30000, // 30 segundos
+      });
       return response.data;
     } catch (error: any) {
       console.error(`Erro ao adicionar anexo temporário:`, error);

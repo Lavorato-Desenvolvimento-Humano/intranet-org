@@ -65,6 +65,8 @@ export default function EditarPostagemPage() {
   );
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingAnexo, setUploadingAnexo] = useState(false);
+  const [imagens, setImagens] = useState<ImagemDto[]>([]);
+  const [anexos, setAnexos] = useState<AnexoDto[]>([]);
   const [equipes, setEquipes] = useState<EquipeDto[]>([]); // Adicionei o estado para equipes
   const [confirmDeleteItem, setConfirmDeleteItem] = useState<{
     show: boolean;
@@ -254,65 +256,91 @@ export default function EditarPostagemPage() {
   };
 
   // Função para adicionar uma nova imagem
-  const handleAddImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0) return;
-
-    const file = e.target.files[0];
-    const description = window.prompt("Descrição da imagem (opcional):");
-
-    setUploadingImage(true);
+  const handleAddImage = async (file: File) => {
     try {
-      const novaImagem = await postagemService.addImagem(
-        postagemId,
-        file,
-        description || undefined
-      );
+      setUploadingImage(true);
 
-      // Atualizar a lista de imagens localmente
-      if (postagem) {
-        setPostagem({
-          ...postagem,
-          imagens: [...postagem.imagens, novaImagem],
-        });
+      // Usar a função existente do serviço
+      const imagem = await postagemService.addTempImagem(file);
+
+      // Processar a URL para garantir acesso correto (mesma lógica da página de nova postagem)
+      let url = imagem.url;
+      if (!url.startsWith("http") && !url.startsWith("/")) {
+        url = "/" + url;
       }
 
-      toastUtil.success("Imagem adicionada com sucesso!");
+      // Verificar se a URL existe e é acessível
+      try {
+        const response = await fetch(url, { method: "HEAD" });
+        if (!response.ok) {
+          console.warn(
+            `A URL da imagem ${url} não está acessível diretamente. Tentando URL alternativa.`
+          );
+          // Tentar URL alternativa
+          url = `/api${url}`;
+        }
+      } catch (err) {
+        console.warn(
+          `Erro ao verificar URL da imagem: ${err}. Tentando URL alternativa.`
+        );
+        url = `/api${url}`;
+      }
 
-      // Limpar input para permitir selecionar o mesmo arquivo novamente
-      e.target.value = "";
-    } catch (err) {
-      console.error("Erro ao adicionar imagem:", err);
-      toastUtil.error("Erro ao adicionar imagem. Tente novamente.");
+      // Atualizar a URL da imagem se necessário
+      imagem.url = url;
+
+      // Adicionar imagem à lista
+      setImagens((prev) => [...prev, imagem]);
+
+      // Associar a imagem à postagem
+      await postagemService.associarImagem(postagemId, imagem.id);
+
+      toastUtil.success("Imagem adicionada com sucesso");
+    } catch (error) {
+      console.error("Erro ao adicionar imagem:", error);
+      toastUtil.error("Erro ao adicionar imagem");
     } finally {
       setUploadingImage(false);
     }
   };
 
   // Função para adicionar um novo anexo
-  const handleAddAnexo = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0) return;
-
-    const file = e.target.files[0];
-
-    setUploadingAnexo(true);
+  const handleAddAnexo = async (file: File) => {
     try {
-      const novoAnexo = await postagemService.addAnexo(postagemId, file);
+      setUploadingAnexo(true);
 
-      // Atualizar a lista de anexos localmente
-      if (postagem) {
-        setPostagem({
-          ...postagem,
-          anexos: [...postagem.anexos, novoAnexo],
-        });
+      // Usar a função existente do serviço
+      const anexo = await postagemService.addTempAnexo(file);
+
+      // Processar a URL conforme necessário (similar à imagem)
+      let url = anexo.url;
+      if (!url.startsWith("http") && !url.startsWith("/")) {
+        url = "/" + url;
       }
 
-      toastUtil.success("Anexo adicionado com sucesso!");
+      // Podemos adicionar a mesma verificação se necessário
+      try {
+        const response = await fetch(url, { method: "HEAD" });
+        if (!response.ok) {
+          url = `/api${url}`;
+        }
+      } catch (err) {
+        url = `/api${url}`;
+      }
 
-      // Limpar input para permitir selecionar o mesmo arquivo novamente
-      e.target.value = "";
-    } catch (err) {
-      console.error("Erro ao adicionar anexo:", err);
-      toastUtil.error("Erro ao adicionar anexo. Tente novamente.");
+      // Atualizar a URL do anexo se necessário
+      anexo.url = url;
+
+      // Adicionar anexo à lista
+      setAnexos((prev) => [...prev, anexo]);
+
+      // Associar o anexo à postagem
+      await postagemService.associarAnexo(postagemId, anexo.id);
+
+      toastUtil.success("Anexo adicionado com sucesso");
+    } catch (error) {
+      console.error("Erro ao adicionar anexo:", error);
+      toastUtil.error("Erro ao adicionar anexo");
     } finally {
       setUploadingAnexo(false);
     }
@@ -706,7 +734,14 @@ export default function EditarPostagemPage() {
                         type="file"
                         id="image-upload"
                         accept="image/*"
-                        onChange={handleAddImage}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            await handleAddImage(file);
+                            // Limpar o input para permitir o mesmo arquivo novamente
+                            e.target.value = "";
+                          }
+                        }}
                         className="hidden"
                         disabled={uploadingImage}
                       />
@@ -781,7 +816,14 @@ export default function EditarPostagemPage() {
                       <input
                         type="file"
                         id="anexo-upload"
-                        onChange={handleAddAnexo}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            await handleAddAnexo(file);
+                            // Limpar o input para permitir o mesmo arquivo novamente
+                            e.target.value = "";
+                          }
+                        }}
                         className="hidden"
                         disabled={uploadingAnexo}
                       />
