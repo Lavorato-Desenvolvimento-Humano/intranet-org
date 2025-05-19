@@ -20,6 +20,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -355,5 +356,69 @@ public class WorkflowController {
 
         WorkflowDto restoredWorkflow = workflowService.restoreWorkflow(id);
         return ResponseEntity.ok(restoredWorkflow);
+    }
+
+    @GetMapping("/custom-status/{statusId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    public ResponseEntity<Page<WorkflowSummaryDto>> getWorkflowsByCustomStatus(
+            @PathVariable UUID statusId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        logger.info("Buscando fluxos de trabalho com status personalizado: {}", statusId);
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<WorkflowSummaryDto> workflows = workflowService.getWorkflowsByCustomStatus(statusId, pageable);
+        return ResponseEntity.ok(workflows);
+    }
+
+    @GetMapping("/step/{stepNumber}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    public ResponseEntity<Page<WorkflowSummaryDto>> getWorkflowsByStepNumber(
+            @PathVariable int stepNumber,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        logger.info("Buscando fluxos de trabalho na etapa: {}", stepNumber);
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<WorkflowSummaryDto> workflows = workflowService.getWorkflowsByStepNumber(stepNumber, pageable);
+        return ResponseEntity.ok(workflows);
+    }
+
+    @GetMapping("/template/{templateId}/status-counts")
+    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    public ResponseEntity<Map<String, Integer>> getWorkflowCountByCustomStatus(@PathVariable UUID templateId) {
+        logger.info("Contando fluxos de trabalho por status personalizado para o template: {}", templateId);
+
+        Map<String, Integer> counts = workflowService.getWorkflowCountByCustomStatus(templateId);
+        return ResponseEntity.ok(counts);
+    }
+
+    @PostMapping("/{id}/custom-status")
+    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    public ResponseEntity<WorkflowDto> updateWorkflowCustomStatus(
+            @PathVariable UUID id,
+            @RequestParam UUID statusId,
+            @RequestParam(required = false) String comments) {
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String email = authentication.getName();
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Usuário não encontrado com o email: " + email));
+
+        UUID userId = user.getId();
+
+        // Verificar se o usuário tem permissão para modificar o fluxo
+        if (!workflowService.canUserModifyWorkflow(userId, id)) {
+            logger.warn("Usuário {} tentou modificar status do fluxo {} sem permissão", userId, id);
+            return ResponseUtil.forbidden("Você não tem permissão para modificar este fluxo");
+        }
+
+        logger.info("Atualizando status personalizado do fluxo {} para: {}", id, statusId);
+
+        WorkflowDto updatedWorkflow = workflowService.updateWorkflowCustomStatus(id, statusId, comments);
+        return ResponseEntity.ok(updatedWorkflow);
     }
 }
