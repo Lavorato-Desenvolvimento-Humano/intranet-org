@@ -29,24 +29,14 @@ const WorkflowProgress: React.FC<WorkflowProgressProps> = ({
     const existingStep = sortedSteps.find((step) => step.stepNumber === i);
 
     if (existingStep) {
-      // Se a etapa existe, usá-la diretamente
-      safeSteps.push({
-        ...existingStep,
-        status:
-          i < currentStep
-            ? "completed"
-            : i === currentStep
-              ? "in_progress"
-              : "pending",
-      });
+      // Se a etapa existe, usá-la mantendo seu status original
+      safeSteps.push(existingStep);
     } else {
-      // Tentar encontrar uma etapa com o mesmo índice no array original (para manter compatibilidade)
-      const fallbackStep = i <= steps.length ? steps[i - 1] : null;
-
+      // Se não existir, cria uma nova com status baseado na posição relativa
       safeSteps.push({
-        name: fallbackStep?.name || `Etapa ${i}`,
+        name: `Etapa ${i}`,
         stepNumber: i,
-        description: fallbackStep?.description,
+        description: "",
         status:
           i < currentStep
             ? "completed"
@@ -57,6 +47,17 @@ const WorkflowProgress: React.FC<WorkflowProgressProps> = ({
     }
   }
 
+  // Calcular a largura da barra de progresso com base nas etapas COMPLETADAS
+  const completedSteps = safeSteps.filter(
+    (step) => step.status === "completed"
+  ).length;
+  const progressPercentage =
+    totalSteps > 1
+      ? (completedSteps / (totalSteps - 1)) * 100
+      : completedSteps === totalSteps
+        ? 100
+        : 0;
+
   return (
     <div className="w-full py-6">
       <div className="relative">
@@ -65,15 +66,15 @@ const WorkflowProgress: React.FC<WorkflowProgressProps> = ({
         <div
           className="absolute top-4 left-0 h-1 bg-primary"
           style={{
-            width: `${((currentStep - 1) / Math.max(totalSteps - 1, 1)) * 100}%`,
+            width: `${progressPercentage}%`,
           }}></div>
 
         {/* Etapas */}
         <div className="relative flex justify-between">
           {safeSteps.map((step, index) => {
-            const isCompleted =
-              step.status === "completed" || index + 1 < currentStep;
-            const isCurrent = index + 1 === currentStep;
+            const isCompleted = step.status === "completed";
+            const isCurrent =
+              step.status === "in_progress" || index + 1 === currentStep;
 
             return (
               <div key={index} className="flex flex-col items-center">
