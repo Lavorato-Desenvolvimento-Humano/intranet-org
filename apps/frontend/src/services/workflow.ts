@@ -11,6 +11,9 @@ import {
   WorkflowStatsDto,
   UserWorkloadDto,
   WorkflowNotificationDto,
+  WorkflowStatusTemplateDto,
+  WorkflowStatusTemplateCreateDto,
+  WorkflowStatusItemDto,
 } from "@/types/workflow";
 
 const workflowService = {
@@ -342,6 +345,147 @@ const workflowService = {
       return response.data;
     } catch (error) {
       console.error(`Erro ao buscar fluxos com status ${status}:`, error);
+      throw error;
+    }
+  },
+
+  getAllStatusTemplates: async (page = 0, size = 10) => {
+    try {
+      const response = await api.get<{
+        content: WorkflowStatusTemplateDto[];
+        totalElements: number;
+      }>(`/api/workflow-status-templates?page=${page}&size=${size}`);
+      return response.data;
+    } catch (error) {
+      console.error("Erro ao buscar templates de status:", error);
+      throw error;
+    }
+  },
+
+  getStatusTemplateById: async (id: string) => {
+    try {
+      const response = await api.get<WorkflowStatusTemplateDto>(
+        `/api/workflow-status-templates/${id}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Erro ao buscar template de status ${id}:`, error);
+      throw error;
+    }
+  },
+
+  createStatusTemplate: async (template: WorkflowStatusTemplateCreateDto) => {
+    try {
+      const response = await api.post<WorkflowStatusTemplateDto>(
+        "/api/workflow-status-templates",
+        template
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Erro ao criar template de status:", error);
+      throw error;
+    }
+  },
+
+  updateStatusTemplate: async (
+    id: string,
+    template: WorkflowStatusTemplateCreateDto
+  ) => {
+    try {
+      const response = await api.put<WorkflowStatusTemplateDto>(
+        `/api/workflow-status-templates/${id}`,
+        template
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Erro ao atualizar template de status ${id}:`, error);
+      throw error;
+    }
+  },
+
+  deleteStatusTemplate: async (id: string) => {
+    try {
+      await api.delete(`/api/workflow-status-templates/${id}`);
+    } catch (error) {
+      console.error(`Erro ao excluir template de status ${id}:`, error);
+      throw error;
+    }
+  },
+
+  getStatusItems: async (templateId: string) => {
+    try {
+      const response = await api.get<WorkflowStatusItemDto[]>(
+        `/api/workflow-status-templates/${templateId}/items`
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Erro ao buscar status do template ${templateId}:`, error);
+      throw error;
+    }
+  },
+
+  getInitialStatus: async (templateId: string) => {
+    try {
+      const response = await api.get<WorkflowStatusItemDto>(
+        `/api/workflow-status-templates/${templateId}/initial-status`
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Erro ao buscar status inicial do template ${templateId}:`,
+        error
+      );
+      throw error;
+    }
+  },
+
+  // Atualizar o status customizado de um workflow
+  updateWorkflowCustomStatus: async (
+    workflowId: string,
+    statusId: string,
+    comments?: string
+  ) => {
+    try {
+      const response = await api.post<WorkflowDto>(
+        `/api/workflows/${workflowId}/custom-status?statusId=${statusId}${comments ? `&comments=${encodeURIComponent(comments)}` : ""}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Erro ao atualizar status customizado do fluxo ${workflowId}:`,
+        error
+      );
+      throw error;
+    }
+  },
+
+  // Filtrar workflows por status customizado
+  getWorkflowsByCustomStatus: async (statusId: string, page = 0, size = 10) => {
+    try {
+      const response = await api.get<{
+        content: WorkflowSummaryDto[];
+        totalElements: number;
+      }>(`/api/workflows/custom-status/${statusId}?page=${page}&size=${size}`);
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Erro ao buscar fluxos com status customizado ${statusId}:`,
+        error
+      );
+      throw error;
+    }
+  },
+
+  // Filtrar workflows por etapa
+  getWorkflowsByStepNumber: async (stepNumber: number, page = 0, size = 10) => {
+    try {
+      const response = await api.get<{
+        content: WorkflowSummaryDto[];
+        totalElements: number;
+      }>(`/api/workflows/step/${stepNumber}?page=${page}&size=${size}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Erro ao buscar fluxos na etapa ${stepNumber}:`, error);
       throw error;
     }
   },

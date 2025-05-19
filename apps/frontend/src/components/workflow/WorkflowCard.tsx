@@ -1,4 +1,3 @@
-// src/components/workflow/WorkflowCard.tsx
 "use client";
 
 import React from "react";
@@ -32,20 +31,29 @@ const WorkflowCard: React.FC<WorkflowCardProps> = ({ workflow }) => {
   const daysRemaining = workflow.daysRemaining || 0;
   const currentAssigneeName = workflow.currentAssigneeName || "";
 
+  // Verificar se há status personalizado
+  const hasCustomStatus = workflow.customStatusId && workflow.customStatusName;
+
   const getStatusColor = () => {
+    // Se tiver status customizado, usar a cor dele
+    if (hasCustomStatus && workflow.customStatusColor) {
+      return workflow.customStatusColor;
+    }
+
+    // Caso contrário, usar as cores padrão
     switch (status) {
       case "in_progress":
-        return "bg-blue-500";
+        return "#3498db"; // Azul
       case "paused":
-        return "bg-orange-500";
+        return "#f39c12"; // Laranja
       case "completed":
-        return "bg-green-500";
+        return "#2ecc71"; // Verde
       case "canceled":
-        return "bg-red-500";
+        return "#e74c3c"; // Vermelho
       case "archived":
-        return "bg-gray-500";
+        return "#95a5a6"; // Cinza
       default:
-        return "bg-gray-300";
+        return "#808080"; // Cinza padrão
     }
   };
 
@@ -102,7 +110,16 @@ const WorkflowCard: React.FC<WorkflowCardProps> = ({ workflow }) => {
             className={`px-2 py-1 rounded-full text-xs ${getPriorityColor()}`}>
             {getPriorityDisplayName(priority)}
           </span>
-          <span className={`w-3 h-3 rounded-full ${getStatusColor()}`}></span>
+          <div className="flex items-center">
+            <div
+              className="h-3 w-3 rounded-full mr-1"
+              style={{ backgroundColor: getStatusColor() }}></div>
+            <span className="text-xs text-gray-600">
+              {hasCustomStatus
+                ? workflow.customStatusName
+                : getStatusDisplayName(status)}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -132,8 +149,11 @@ const WorkflowCard: React.FC<WorkflowCardProps> = ({ workflow }) => {
       <div className="flex flex-col">
         <div className="w-full bg-gray-200 rounded-full h-2 mb-1">
           <div
-            className="bg-primary h-2 rounded-full"
-            style={{ width: `${progressPercentage}%` }}></div>
+            className="h-2 rounded-full"
+            style={{
+              width: `${progressPercentage}%`,
+              backgroundColor: getStatusColor(),
+            }}></div>
         </div>
         <div className="flex justify-between text-xs text-gray-500">
           <span>
@@ -159,6 +179,24 @@ const WorkflowCard: React.FC<WorkflowCardProps> = ({ workflow }) => {
       </div>
     </div>
   );
+};
+
+// Função auxiliar para obter o nome mais legível do status
+const getStatusDisplayName = (status: string) => {
+  switch (status) {
+    case "in_progress":
+      return "Em Andamento";
+    case "paused":
+      return "Pausado";
+    case "completed":
+      return "Concluído";
+    case "canceled":
+      return "Cancelado";
+    case "archived":
+      return "Arquivado";
+    default:
+      return status;
+  }
 };
 
 export default WorkflowCard;
