@@ -518,6 +518,7 @@ export default function WorkflowPage({ params }: WorkflowPageProps) {
             totalSteps={workflow.totalSteps}
             steps={workflow.assignments.map((a) => ({
               name: a.stepName || `Etapa ${a.stepNumber}`,
+              stepNumber: a.stepNumber,
               description: a.stepDescription,
               status: a.status,
             }))}
