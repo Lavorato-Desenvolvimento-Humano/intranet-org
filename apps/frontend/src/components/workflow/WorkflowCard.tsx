@@ -16,7 +16,6 @@ const WorkflowCard: React.FC<WorkflowCardProps> = ({ workflow }) => {
   if (!workflow || !workflow.id) {
     return null;
   }
-
   // Valores seguros com fallbacks
   const title = workflow.title || "Sem título";
   const templateName = workflow.templateName || "Template não disponível";
@@ -31,7 +30,6 @@ const WorkflowCard: React.FC<WorkflowCardProps> = ({ workflow }) => {
   const daysRemaining = workflow.daysRemaining || 0;
   const currentAssigneeName = workflow.currentAssigneeName || "";
 
-  // Verificar se há status personalizado
   const hasCustomStatus = workflow.customStatusId && workflow.customStatusName;
 
   const getStatusColor = () => {
@@ -110,16 +108,32 @@ const WorkflowCard: React.FC<WorkflowCardProps> = ({ workflow }) => {
             className={`px-2 py-1 rounded-full text-xs ${getPriorityColor()}`}>
             {getPriorityDisplayName(priority)}
           </span>
-          <div className="flex items-center">
+          {/* Status personalizado ou padrão */}
+          {hasCustomStatus ? (
             <div
-              className="h-3 w-3 rounded-full mr-1"
-              style={{ backgroundColor: getStatusColor() }}></div>
-            <span className="text-xs text-gray-600">
-              {hasCustomStatus
-                ? workflow.customStatusName
-                : getStatusDisplayName(status)}
-            </span>
-          </div>
+              className="flex items-center px-2 py-1 rounded-full text-xs"
+              style={{
+                backgroundColor: `${workflow.customStatusColor}20`,
+                color: workflow.customStatusColor ?? "#808080",
+                border: `1px solid ${workflow.customStatusColor ?? "#808080"}`,
+              }}>
+              <div
+                className="h-2 w-2 rounded-full mr-1"
+                style={{
+                  backgroundColor: workflow.customStatusColor ?? "#808080",
+                }}></div>
+              <span>{workflow.customStatusName}</span>
+            </div>
+          ) : (
+            <div className="flex items-center">
+              <div
+                className="h-3 w-3 rounded-full mr-1"
+                style={{ backgroundColor: getStatusColor() }}></div>
+              <span className="text-xs text-gray-600">
+                {getStatusDisplayName(status)}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
