@@ -1,3 +1,4 @@
+// src/components/workflow/WorkflowProgress.tsx
 import React from "react";
 import { CheckCircle, Circle } from "lucide-react";
 
@@ -17,29 +18,41 @@ const WorkflowProgress: React.FC<WorkflowProgressProps> = ({
   totalSteps,
   steps,
 }) => {
-  // Criar um array com todas as etapas do fluxo de trabalho
+  // Ordene as etapas fornecidas pelo stepNumber
+  const sortedSteps = [...steps].sort((a, b) => a.stepNumber - b.stepNumber);
+
+  // Verificar se todas as etapas estão presentes, do 1 até totalSteps
   const safeSteps = [];
 
-  // Preencher o array com as etapas fornecidas
   for (let i = 1; i <= totalSteps; i++) {
-    // Procurar a etapa correspondente pelo stepNumber
-    const existingStep = steps.find((step) => step.stepNumber === i);
+    // Buscar etapa no array ordenado
+    const existingStep = sortedSteps.find((step) => step.stepNumber === i);
 
     if (existingStep) {
-      // Se encontrou a etapa, adiciona ao array
-      safeSteps.push(existingStep);
-    } else {
-      // Se não encontrou, cria uma etapa padrão
+      // Se a etapa existe, usá-la diretamente
       safeSteps.push({
-        name: `Etapa ${i}`,
-        stepNumber: i,
+        ...existingStep,
         status:
           i < currentStep
             ? "completed"
             : i === currentStep
               ? "in_progress"
               : "pending",
-        description: undefined,
+      });
+    } else {
+      // Tentar encontrar uma etapa com o mesmo índice no array original (para manter compatibilidade)
+      const fallbackStep = i <= steps.length ? steps[i - 1] : null;
+
+      safeSteps.push({
+        name: fallbackStep?.name || `Etapa ${i}`,
+        stepNumber: i,
+        description: fallbackStep?.description,
+        status:
+          i < currentStep
+            ? "completed"
+            : i === currentStep
+              ? "in_progress"
+              : "pending",
       });
     }
   }
