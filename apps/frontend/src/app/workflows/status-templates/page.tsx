@@ -1,33 +1,47 @@
-// src/app/workflows/status-templates/create/page.tsx
+// src/app/workflows/status-templates/page.tsx
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { Plus, FileText, FolderPlus } from "lucide-react";
 import Breadcrumb from "@/components/ui/breadcrumb";
-import StatusTemplateForm from "@/components/workflow/StatusTemplateForm";
-import { WorkflowStatusTemplateCreateDto } from "@/types/workflow";
+import { CustomButton } from "@/components/ui/custom-button";
+import StatusTemplateCard from "@/components/workflow/StatusTemplateCard";
+import { Loading } from "@/components/ui/loading";
 import workflowService from "@/services/workflow";
-import toastUtil from "@/utils/toast";
+import { WorkflowStatusTemplateDto } from "@/types/workflow";
 import Navbar from "@/components/layout/Navbar";
 
-export default function CreateStatusTemplatePage() {
+export default function StatusTemplatesPage() {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
+  const [templates, setTemplates] = useState<WorkflowStatusTemplateDto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
-  const handleSubmit = async (data: WorkflowStatusTemplateCreateDto) => {
+  const fetchTemplates = async () => {
     try {
-      setIsLoading(true);
-      await workflowService.createStatusTemplate(data);
-      toastUtil.success("Template de status criado com sucesso!");
-      router.push("/workflows/status-templates");
-    } catch (error) {
-      console.error("Erro ao criar template de status:", error);
-      toastUtil.error(
-        "Não foi possível criar o template de status. Tente novamente."
+      setLoading(true);
+      const response = await workflowService.getAllStatusTemplates(page, 12);
+      setTemplates(response.content || []);
+      setTotalPages(Math.ceil((response.totalElements || 0) / 12));
+    } catch (err) {
+      console.error("Erro ao carregar templates de status:", err);
+      setError(
+        "Não foi possível carregar os templates de status. Tente novamente mais tarde."
       );
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    fetchTemplates();
+  }, [page]);
+
+  const handleCreateTemplate = () => {
+    router.push("/workflows/status-templates/create");
   };
 
   return (
@@ -37,24 +51,96 @@ export default function CreateStatusTemplatePage() {
         <Breadcrumb
           items={[
             { label: "Fluxos de Trabalho", href: "/workflows" },
-            {
-              label: "Templates de Status",
-              href: "/workflows/status-templates",
-            },
-            { label: "Novo Template" },
+            { label: "Templates de Status" },
           ]}
         />
 
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold">Criar Novo Template de Status</h1>
-          <p className="text-gray-600">
-            Defina os status e suas propriedades para o novo template
-          </p>
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-2xl font-bold">Templates de Status</h1>
+            <p className="text-gray-600">
+              Gerencie os modelos de status para os fluxos de trabalho
+            </p>
+          </div>
+
+          <CustomButton
+            variant="primary"
+            icon={Plus}
+            onClick={handleCreateTemplate}>
+            Novo Template de Status
+          </CustomButton>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <StatusTemplateForm onSubmit={handleSubmit} isLoading={isLoading} />
-        </div>
+        {loading ? (
+          <Loading size="medium" message="Carregando templates de status..." />
+        ) : error ? (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            {error}
+          </div>
+        ) : templates.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {templates.map((template) => (
+              <StatusTemplateCard key={template.id} template={template} />
+            ))}
+          </div>
+        ) : (
+          <div className="bg-white rounded-lg shadow-md p-8 text-center">
+            <FileText size={48} className="mx-auto text-gray-400 mb-4" />
+            <h3 className="text-lg font-semibold mb-2">
+              Nenhum template de status encontrado
+            </h3>
+            <p className="text-gray-600 mb-6">
+              Crie seu primeiro template de status para começar
+            </p>
+            <CustomButton
+              variant="primary"
+              icon={FolderPlus}
+              onClick={handleCreateTemplate}>
+              Criar Primeiro Template
+            </CustomButton>
+          </div>
+        )}
+
+        {totalPages > 1 && (
+          <div className="flex justify-center mt-6">
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                disabled={page === 0}
+                className={`px-4 py-2 rounded ${
+                  page === 0
+                    ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                }`}>
+                Anterior
+              </button>
+
+              {Array.from({ length: totalPages }).map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => setPage(index)}
+                  className={`px-4 py-2 rounded ${
+                    page === index
+                      ? "bg-primary text-white"
+                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                  }`}>
+                  {index + 1}
+                </button>
+              ))}
+
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                disabled={page === totalPages - 1}
+                className={`px-4 py-2 rounded ${
+                  page === totalPages - 1
+                    ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                }`}>
+                Próxima
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

@@ -3,7 +3,14 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, FileText, FilterIcon, Settings, Home } from "lucide-react";
+import {
+  Plus,
+  FileText,
+  FilterIcon,
+  Settings,
+  Home,
+  CircleEqualIcon,
+} from "lucide-react";
 import Breadcrumb from "@/components/ui/breadcrumb";
 import { CustomButton } from "@/components/ui/custom-button";
 import WorkflowCard from "@/components/workflow/WorkflowCard";
@@ -83,6 +90,10 @@ export default function WorkflowsPage() {
     router.push("/workflows/templates");
   };
 
+  const handleViewStatusTemplates = () => {
+    router.push("/workflows/status-templates");
+  };
+
   const handleDashboard = () => {
     router.push("/workflows/dashboard");
   };
@@ -113,6 +124,12 @@ export default function WorkflowsPage() {
               icon={Settings}
               onClick={handleViewTemplates}>
               Templates
+            </CustomButton>
+            <CustomButton
+              variant="primary"
+              icon={CircleEqualIcon}
+              onClick={handleViewStatusTemplates}>
+              Templates de Status
             </CustomButton>
             <CustomButton
               variant="primary"
