@@ -35,4 +35,9 @@ public class WorkflowDto {
     private boolean isOverdue;
     private boolean isNearDeadline;
     private int daysRemaining;
+    private UUID statusTemplateId;
+    private String statusTemplateName;
+    private UUID customStatusId;
+    private String customStatusName;
+    private String customStatusColor;
 }
