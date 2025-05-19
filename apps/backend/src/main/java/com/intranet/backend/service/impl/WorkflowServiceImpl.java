@@ -163,6 +163,11 @@ public class WorkflowServiceImpl implements WorkflowService {
     }
 
     @Override
+    public Page<WorkflowSummaryDto> getWorkflowsByCustomStatus(UUID statusId, Pageable pageable) {
+        return null;
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public Page<WorkflowSummaryDto> getWorkflowsByTeam(UUID teamId, Pageable pageable) {
         logger.info("Buscando fluxos de trabalho da equipe: {}", teamId);
@@ -170,6 +175,11 @@ public class WorkflowServiceImpl implements WorkflowService {
         Page<Workflow> workflows = workflowRepository.findByTeamId(teamId, pageable);
 
         return workflows.map(this::mapToWorkflowSummaryDto);
+    }
+
+    @Override
+    public Page<WorkflowSummaryDto> getWorkflowsByStepNumber(int stepNumber, Pageable pageable) {
+        return null;
     }
 
     @Override
@@ -427,6 +437,11 @@ public class WorkflowServiceImpl implements WorkflowService {
         logger.info("Status do fluxo atualizado para: {}", newStatus);
 
         return mapToWorkflowDto(updatedWorkflow);
+    }
+
+    @Override
+    public WorkflowDto updateWorkflowCustomStatus(UUID workflowId, UUID statusId, String comments) {
+        return null;
     }
 
     @Override
