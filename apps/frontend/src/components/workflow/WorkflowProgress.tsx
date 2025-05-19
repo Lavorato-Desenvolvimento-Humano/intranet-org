@@ -1,4 +1,3 @@
-// src/components/workflow/WorkflowProgress.tsx
 import React from "react";
 import { CheckCircle, Circle } from "lucide-react";
 
@@ -29,14 +28,24 @@ const WorkflowProgress: React.FC<WorkflowProgressProps> = ({
     const existingStep = sortedSteps.find((step) => step.stepNumber === i);
 
     if (existingStep) {
-      // Se a etapa existe, usá-la mantendo seu status original
-      safeSteps.push(existingStep);
-    } else {
-      // Se não existir, cria uma nova com status baseado na posição relativa
+      // Se a etapa existe, usá-la diretamente
       safeSteps.push({
-        name: `Etapa ${i}`,
+        ...existingStep,
+        status:
+          i < currentStep
+            ? "completed"
+            : i === currentStep
+              ? "in_progress"
+              : "pending",
+      });
+    } else {
+      // Tentar encontrar uma etapa com o mesmo índice no array original (para manter compatibilidade)
+      const fallbackStep = i <= steps.length ? steps[i - 1] : null;
+
+      safeSteps.push({
+        name: fallbackStep?.name || `Etapa ${i}`,
         stepNumber: i,
-        description: "",
+        description: fallbackStep?.description,
         status:
           i < currentStep
             ? "completed"
@@ -47,64 +56,63 @@ const WorkflowProgress: React.FC<WorkflowProgressProps> = ({
     }
   }
 
-  // Calcular a largura da barra de progresso com base nas etapas COMPLETADAS
-  const completedSteps = safeSteps.filter(
-    (step) => step.status === "completed"
-  ).length;
-  const progressPercentage =
-    totalSteps > 1
-      ? (completedSteps / (totalSteps - 1)) * 100
-      : completedSteps === totalSteps
-        ? 100
-        : 0;
-
   return (
-    <div className="w-full py-6">
-      <div className="relative">
-        {/* Linha de progresso */}
-        <div className="absolute top-4 left-0 right-0 h-1 bg-gray-200"></div>
-        <div
-          className="absolute top-4 left-0 h-1 bg-primary"
-          style={{
-            width: `${progressPercentage}%`,
-          }}></div>
+    <div className="w-full py-8">
+      {/* Container externo com margens para não vazar */}
+      <div className="mx-8 relative">
+        {/* Container para linha de progresso e etapas */}
+        <div className="relative">
+          {/* Linha de progresso de fundo */}
+          <div className="absolute top-4 inset-x-0 h-1 bg-gray-200"></div>
 
-        {/* Etapas */}
-        <div className="relative flex justify-between">
-          {safeSteps.map((step, index) => {
-            const isCompleted = step.status === "completed";
-            const isCurrent =
-              step.status === "in_progress" || index + 1 === currentStep;
+          {/* Linha de progresso colorida - só aparece se estivermos além da etapa 1 */}
+          {currentStep > 1 && (
+            <div
+              className="absolute top-4 left-0 h-1 bg-primary"
+              style={{
+                // Calcula largura para parar antes da etapa atual (nunca vai até a borda)
+                width: `${((currentStep - 1) / (totalSteps - 1)) * 100}%`,
+              }}></div>
+          )}
 
-            return (
-              <div key={index} className="flex flex-col items-center">
-                {/* Ícone da etapa com espaçamento adequado */}
-                <div className="mb-8">
-                  {isCompleted ? (
-                    <CheckCircle className="w-8 h-8 text-primary bg-white rounded-full fill-primary" />
-                  ) : isCurrent ? (
-                    <Circle className="w-8 h-8 text-primary bg-white rounded-full stroke-primary stroke-2" />
-                  ) : (
-                    <Circle className="w-8 h-8 text-gray-300 bg-white rounded-full" />
-                  )}
+          {/* Etapas */}
+          <div className="flex justify-between">
+            {safeSteps.map((step, index) => {
+              const isCompleted =
+                step.status === "completed" || index + 1 < currentStep;
+              const isCurrent = index + 1 === currentStep;
+
+              return (
+                <div
+                  key={index}
+                  className="flex flex-col items-center relative z-10">
+                  {/* Círculo da etapa */}
+                  <div className="mb-8">
+                    {isCompleted ? (
+                      <CheckCircle className="w-8 h-8 text-primary bg-white rounded-full fill-primary" />
+                    ) : isCurrent ? (
+                      <Circle className="w-8 h-8 text-primary bg-white rounded-full stroke-primary stroke-2" />
+                    ) : (
+                      <Circle className="w-8 h-8 text-gray-300 bg-white rounded-full" />
+                    )}
+                  </div>
+
+                  {/* Nome da etapa */}
+                  <span
+                    className={`text-xs text-center w-20 ${
+                      isCurrent
+                        ? "text-primary font-medium"
+                        : isCompleted
+                          ? "text-primary"
+                          : "text-gray-500"
+                    }`}
+                    title={step.description || step.name}>
+                    {step.name}
+                  </span>
                 </div>
-
-                {/* Nome da etapa com tooltip para descrição quando disponível */}
-                <span
-                  className={`text-xs max-w-24 text-center ${
-                    isCurrent
-                      ? "text-primary font-medium"
-                      : isCompleted
-                        ? "text-primary"
-                        : "text-gray-500"
-                  }`}
-                  title={step.description || step.name} // Mostrar a descrição como tooltip
-                >
-                  {step.name}
-                </span>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>
