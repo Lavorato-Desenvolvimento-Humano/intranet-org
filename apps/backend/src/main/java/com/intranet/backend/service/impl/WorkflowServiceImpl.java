@@ -163,6 +163,11 @@ public class WorkflowServiceImpl implements WorkflowService {
     }
 
     @Override
+    public Page<WorkflowSummaryDto> getWorkflowsByCustomStatus(UUID statusId, Pageable pageable) {
+        return null;
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public Page<WorkflowSummaryDto> getWorkflowsByTeam(UUID teamId, Pageable pageable) {
         logger.info("Buscando fluxos de trabalho da equipe: {}", teamId);
@@ -170,6 +175,11 @@ public class WorkflowServiceImpl implements WorkflowService {
         Page<Workflow> workflows = workflowRepository.findByTeamId(teamId, pageable);
 
         return workflows.map(this::mapToWorkflowSummaryDto);
+    }
+
+    @Override
+    public Page<WorkflowSummaryDto> getWorkflowsByStepNumber(int stepNumber, Pageable pageable) {
+        return null;
     }
 
     @Override
@@ -257,8 +267,24 @@ public class WorkflowServiceImpl implements WorkflowService {
         int nextStepNumber = workflow.getCurrentStep() + 1;
         workflow.setCurrentStep(nextStepNumber);
 
-        // Calcular porcentagem de progresso
-        workflow.setProgressPercentage((int) Math.floor((double) nextStepNumber / totalSteps * 100));
+        // Calcular porcentagem de progresso - AJUSTE AQUI
+        // Em vez de usar a coleção lazy do workflow, buscar as atribuições diretamente
+        List<WorkflowAssignment> assignments = assignmentRepository.findByWorkflowIdOrderByStepNumber(workflowId);
+
+        // Contar atribuições completadas de forma segura
+        int completedSteps = 0;
+        for (WorkflowAssignment assignment : assignments) {
+            if ("completed".equals(assignment.getStatus())) {
+                completedSteps++;
+            }
+        }
+
+        // Ajuste do progresso baseado em etapas completadas
+        int progressPercentage = totalSteps > 0
+                ? (int) Math.floor((double) completedSteps / totalSteps * 100)
+                : 0;
+
+        workflow.setProgressPercentage(progressPercentage);
 
         // Buscar usuário para atribuição
         User assignedTo = userRepository.findById(assignToId)
@@ -329,10 +355,33 @@ public class WorkflowServiceImpl implements WorkflowService {
         String oldStatus = workflow.getStatus();
         workflow.setStatus(newStatus);
 
+        // Buscar total de etapas no template
+        int totalSteps = stepRepository.countStepsByTemplateId(workflow.getTemplate().getId());
+
         // Se estiver sendo concluído, definir progresso como 100%
         if ("completed".equals(newStatus)) {
             workflow.setProgressPercentage(100);
+        } else if ("in_progress".equals(newStatus)) {
+            // Se estiver sendo retomado, recalcular com base nas etapas concluídas
+            // Buscar atribuições diretamente do repositório para evitar ConcurrentModificationException
+            List<WorkflowAssignment> assignments = assignmentRepository.findByWorkflowIdOrderByStepNumber(workflowId);
+
+            // Contar atribuições completadas de forma segura
+            int completedSteps = 0;
+            for (WorkflowAssignment assignment : assignments) {
+                if ("completed".equals(assignment.getStatus())) {
+                    completedSteps++;
+                }
+            }
+
+            // Ajuste do progresso baseado em etapas completadas
+            int progressPercentage = totalSteps > 0
+                    ? (int) Math.floor((double) completedSteps / totalSteps * 100)
+                    : 0;
+
+            workflow.setProgressPercentage(progressPercentage);
         }
+        // Para outros status (pausado, cancelado, arquivado), manter o percentual atual
 
         // Buscar a atribuição atual, se houver
         Optional<WorkflowAssignment> currentAssignmentOpt = assignmentRepository.findByWorkflowIdAndStepNumber(
@@ -388,6 +437,11 @@ public class WorkflowServiceImpl implements WorkflowService {
         logger.info("Status do fluxo atualizado para: {}", newStatus);
 
         return mapToWorkflowDto(updatedWorkflow);
+    }
+
+    @Override
+    public WorkflowDto updateWorkflowCustomStatus(UUID workflowId, UUID statusId, String comments) {
+        return null;
     }
 
     @Override
@@ -840,7 +894,31 @@ public class WorkflowServiceImpl implements WorkflowService {
         int totalSteps = stepRepository.countStepsByTemplateId(workflow.getTemplate().getId());
         dto.setTotalSteps(totalSteps);
 
-        dto.setProgressPercentage(workflow.getProgressPercentage());
+        // Verificar o status do workflow para definir o percentual
+        if ("completed".equals(workflow.getStatus())) {
+            // Se o workflow estiver concluído, percentual é 100%
+            dto.setProgressPercentage(100);
+        } else {
+            // Caso contrário, carregar as atribuições de forma segura e calcular com base nas etapas concluídas
+            // Buscar atribuições diretamente do repositório para evitar ConcurrentModificationException
+            List<WorkflowAssignment> assignments = assignmentRepository.findByWorkflowIdOrderByStepNumber(workflow.getId());
+
+            // Contar atribuições completadas de forma segura
+            int completedSteps = 0;
+            for (WorkflowAssignment assignment : assignments) {
+                if ("completed".equals(assignment.getStatus())) {
+                    completedSteps++;
+                }
+            }
+
+            // Ajuste do progresso baseado em etapas completadas
+            int progressPercentage = totalSteps > 0
+                    ? (int) Math.floor((double) completedSteps / totalSteps * 100)
+                    : 0;
+
+            dto.setProgressPercentage(progressPercentage);
+        }
+
         dto.setCreatedAt(workflow.getCreatedAt());
         dto.setUpdatedAt(workflow.getUpdatedAt());
 
@@ -861,13 +939,13 @@ public class WorkflowServiceImpl implements WorkflowService {
             }
         }
 
-        // Buscar atribuições
+        // Buscar atribuições de forma segura
         List<WorkflowAssignment> assignments = assignmentRepository.findByWorkflowIdOrderByStepNumber(workflow.getId());
         dto.setAssignments(assignments.stream()
                 .map(this::mapToAssignmentDto)
                 .collect(Collectors.toList()));
 
-        // Buscar transições
+        // Buscar transições de forma segura
         List<WorkflowTransition> transitions = transitionRepository.findByWorkflowIdOrderByCreatedAtDesc(workflow.getId());
         dto.setTransitions(transitions.stream()
                 .map(this::mapToTransitionDto)
@@ -899,14 +977,39 @@ public class WorkflowServiceImpl implements WorkflowService {
         int totalSteps = stepRepository.countStepsByTemplateId(workflow.getTemplate().getId());
         dto.setTotalSteps(totalSteps);
 
-        dto.setProgressPercentage(workflow.getProgressPercentage());
+        // Verificar o status do workflow para definir o percentual
+        if ("completed".equals(workflow.getStatus())) {
+            // Se o workflow estiver concluído, percentual é 100%
+            dto.setProgressPercentage(100);
+        } else {
+            // Caso contrário, carregar as atribuições de forma segura e calcular com base nas etapas concluídas
+            // Buscar atribuições diretamente do repositório para evitar ConcurrentModificationException
+            List<WorkflowAssignment> assignments = assignmentRepository.findByWorkflowIdOrderByStepNumber(workflow.getId());
 
-        // Buscar responsável atual
-        assignmentRepository.findByWorkflowIdAndStepNumber(workflow.getId(), workflow.getCurrentStep())
-                .ifPresent(assignment -> {
-                    dto.setCurrentAssigneeId(assignment.getAssignedTo().getId());
-                    dto.setCurrentAssigneeName(assignment.getAssignedTo().getFullName());
-                });
+            // Contar atribuições completadas de forma segura
+            int completedSteps = 0;
+            for (WorkflowAssignment assignment : assignments) {
+                if ("completed".equals(assignment.getStatus())) {
+                    completedSteps++;
+                }
+            }
+
+            // Ajuste do progresso baseado em etapas completadas
+            int progressPercentage = totalSteps > 0
+                    ? (int) Math.floor((double) completedSteps / totalSteps * 100)
+                    : 0;
+
+            dto.setProgressPercentage(progressPercentage);
+        }
+
+        // Buscar responsável atual de forma segura, evitando acesso lazy
+        Optional<WorkflowAssignment> currentAssignment = assignmentRepository.findByWorkflowIdAndStepNumber(
+                workflow.getId(), workflow.getCurrentStep());
+
+        currentAssignment.ifPresent(assignment -> {
+            dto.setCurrentAssigneeId(assignment.getAssignedTo().getId());
+            dto.setCurrentAssigneeName(assignment.getAssignedTo().getFullName());
+        });
 
         dto.setCreatedAt(workflow.getCreatedAt());
         dto.setUpdatedAt(workflow.getUpdatedAt());
@@ -945,7 +1048,12 @@ public class WorkflowServiceImpl implements WorkflowService {
         String stepName = stepRepository.findStepNameByTemplateIdAndStepOrder(
                 assignment.getWorkflow().getTemplate().getId(), assignment.getStepNumber());
         dto.setStepName(stepName != null ? stepName : "Etapa " + assignment.getStepNumber());
+        
+        String stepDescription = stepRepository.findStepDescriptionByTemplateIdAndStepOrder(
+                assignment.getWorkflow().getTemplate().getId(), assignment.getStepNumber()
+        );
 
+        dto.setStepDescription(stepDescription);
         dto.setAssignedToId(assignment.getAssignedTo().getId());
         dto.setAssignedToName(assignment.getAssignedTo().getFullName());
         dto.setStatus(assignment.getStatus());

@@ -19,4 +19,7 @@ public interface WorkflowTemplateStepRepository extends JpaRepository<WorkflowTe
 
     @Query("SELECT s.name FROM WorkflowTemplateStep s WHERE s.template.id = :templateId AND s.stepOrder = :stepOrder")
     String findStepNameByTemplateIdAndStepOrder(@Param("templateId") UUID templateId, @Param("stepOrder") int stepOrder);
+
+    @Query("SELECT s.description FROM WorkflowTemplateStep s WHERE s.template.id = :templateId AND s.stepOrder = :stepOrder")
+    String findStepDescriptionByTemplateIdAndStepOrder(@Param("templateId") UUID templateId, @Param("stepOrder") int stepOrder);
 }

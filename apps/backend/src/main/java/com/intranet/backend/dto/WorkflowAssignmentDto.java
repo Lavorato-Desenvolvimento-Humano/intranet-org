@@ -16,6 +16,7 @@ public class WorkflowAssignmentDto {
     private String workflowTitle;
     private int stepNumber;
     private String stepName;
+    private String stepDescription;
     private UUID assignedToId;
     private String assignedToName;
     private String status; // pending, in_progress, completed
