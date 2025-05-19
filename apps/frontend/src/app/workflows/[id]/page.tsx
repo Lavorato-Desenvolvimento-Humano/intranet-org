@@ -25,6 +25,7 @@ import {
   Eye,
   EyeOff,
   Users,
+  Edit,
 } from "lucide-react";
 import {
   WorkflowDto,
@@ -456,6 +457,14 @@ export default function WorkflowPage({ params }: WorkflowPageProps) {
                 <CustomButton
                   variant="primary"
                   size="small"
+                  icon={Edit}
+                  onClick={() => router.push(`/workflows/${params.id}/edit`)}>
+                  Editar
+                </CustomButton>
+
+                <CustomButton
+                  variant="primary"
+                  size="small"
                   className="bg-red-600 hover:bg-red-700 text-white border-none"
                   icon={XCircle}
                   onClick={() => {
@@ -508,7 +517,9 @@ export default function WorkflowPage({ params }: WorkflowPageProps) {
             currentStep={workflow.currentStep}
             totalSteps={workflow.totalSteps}
             steps={workflow.assignments.map((a) => ({
-              name: a.stepName || `Etapa ${a.stepNumber}`,
+              name: a.stepName,
+              stepNumber: a.stepNumber,
+              description: a.stepDescription,
               status: a.status,
             }))}
           />
@@ -538,7 +549,12 @@ export default function WorkflowPage({ params }: WorkflowPageProps) {
                       {currentAssignment?.stepName ||
                         `Etapa ${workflow.currentStep}`}
                     </h4>
-                    <p className="text-sm text-gray-600 mt-1">
+                    {currentAssignment?.stepDescription && (
+                      <p className="text-sm text-gray-600 mt-1">
+                        {currentAssignment.stepDescription}
+                      </p>
+                    )}
+                    <p className="text-sm text-gray-600 mt-2">
                       Atribuído a:{" "}
                       {currentAssignment?.assignedToName || "Não atribuído"}
                     </p>
