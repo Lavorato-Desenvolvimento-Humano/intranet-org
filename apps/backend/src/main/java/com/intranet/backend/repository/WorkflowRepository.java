@@ -49,4 +49,21 @@ public interface WorkflowRepository extends JpaRepository<Workflow, UUID> {
 
     @Query("SELECT COUNT(w) FROM Workflow w WHERE w.createdBy.id = :userId AND w.status = :status")
     int countByCreatedByIdAndStatus(@Param("userId") UUID userId, @Param("status") String status);
+
+    @Query("SELECT w FROM Workflow w WHERE w.customStatus.id = :statusId")
+    Page<Workflow> findByCustomStatusId(@Param("statusId") UUID statusId, Pageable pageable);
+
+    @Query("SELECT w FROM Workflow w WHERE w.currentStep = :stepNumber")
+    Page<Workflow> findByCurrentStep(@Param("stepNumber") int stepNumber, Pageable pageable);
+
+    @Query("SELECT COUNT(w) FROM Workflow w WHERE w.customStatus.id = :statusId")
+    int countByCustomStatusId(@Param("statusId") UUID statusId);
+
+    @Query("SELECT w.customStatus.id as statusId, COUNT(w) as count FROM Workflow w WHERE w.customStatus IS NOT NULL GROUP BY w.customStatus.id")
+    List<Object[]> countByCustomStatusGrouped();
+
+    @Query("SELECT s.name as statusName, s.color as statusColor, COUNT(w) as count FROM Workflow w JOIN w.customStatus s WHERE w.statusTemplate.id = :templateId GROUP BY s.id, s.name, s.color")
+    List<Object[]> countByCustomStatusInTemplate(@Param("templateId") UUID templateId);
+
+
 }
