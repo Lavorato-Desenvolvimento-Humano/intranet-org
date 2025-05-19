@@ -16,6 +16,7 @@ const WorkflowCard: React.FC<WorkflowCardProps> = ({ workflow }) => {
   if (!workflow || !workflow.id) {
     return null;
   }
+
   // Valores seguros com fallbacks
   const title = workflow.title || "Sem título";
   const templateName = workflow.templateName || "Template não disponível";
@@ -30,16 +31,16 @@ const WorkflowCard: React.FC<WorkflowCardProps> = ({ workflow }) => {
   const daysRemaining = workflow.daysRemaining || 0;
   const currentAssigneeName = workflow.currentAssigneeName || "";
 
+  // Verificar se há status personalizado
   const hasCustomStatus = workflow.customStatusId && workflow.customStatusName;
+  const statusColor =
+    hasCustomStatus && workflow.customStatusColor
+      ? workflow.customStatusColor
+      : getDefaultStatusColor(status);
 
-  const getStatusColor = () => {
-    // Se tiver status customizado, usar a cor dele
-    if (hasCustomStatus && workflow.customStatusColor) {
-      return workflow.customStatusColor;
-    }
-
-    // Caso contrário, usar as cores padrão
-    switch (status) {
+  // Obter a cor padrão do status quando não há status personalizado
+  function getDefaultStatusColor(statusType: string): string {
+    switch (statusType) {
       case "in_progress":
         return "#3498db"; // Azul
       case "paused":
@@ -53,7 +54,7 @@ const WorkflowCard: React.FC<WorkflowCardProps> = ({ workflow }) => {
       default:
         return "#808080"; // Cinza padrão
     }
-  };
+  }
 
   const getPriorityColor = () => {
     switch (priority) {
@@ -97,6 +98,11 @@ const WorkflowCard: React.FC<WorkflowCardProps> = ({ workflow }) => {
     router.push(`/workflows/${workflow.id}`);
   };
 
+  // Status name to display
+  const statusDisplayName = hasCustomStatus
+    ? workflow.customStatusName
+    : getStatusDisplayName(status);
+
   return (
     <div
       className="bg-white rounded-lg shadow-md p-4 cursor-pointer hover:shadow-lg transition-shadow"
@@ -108,32 +114,12 @@ const WorkflowCard: React.FC<WorkflowCardProps> = ({ workflow }) => {
             className={`px-2 py-1 rounded-full text-xs ${getPriorityColor()}`}>
             {getPriorityDisplayName(priority)}
           </span>
-          {/* Status personalizado ou padrão */}
-          {hasCustomStatus ? (
+          <div className="flex items-center">
             <div
-              className="flex items-center px-2 py-1 rounded-full text-xs"
-              style={{
-                backgroundColor: `${workflow.customStatusColor}20`,
-                color: workflow.customStatusColor ?? "#808080",
-                border: `1px solid ${workflow.customStatusColor ?? "#808080"}`,
-              }}>
-              <div
-                className="h-2 w-2 rounded-full mr-1"
-                style={{
-                  backgroundColor: workflow.customStatusColor ?? "#808080",
-                }}></div>
-              <span>{workflow.customStatusName}</span>
-            </div>
-          ) : (
-            <div className="flex items-center">
-              <div
-                className="h-3 w-3 rounded-full mr-1"
-                style={{ backgroundColor: getStatusColor() }}></div>
-              <span className="text-xs text-gray-600">
-                {getStatusDisplayName(status)}
-              </span>
-            </div>
-          )}
+              className="h-3 w-3 rounded-full mr-1"
+              style={{ backgroundColor: statusColor }}></div>
+            <span className="text-xs text-gray-600">{statusDisplayName}</span>
+          </div>
         </div>
       </div>
 
@@ -166,7 +152,7 @@ const WorkflowCard: React.FC<WorkflowCardProps> = ({ workflow }) => {
             className="h-2 rounded-full"
             style={{
               width: `${progressPercentage}%`,
-              backgroundColor: getStatusColor(),
+              backgroundColor: statusColor,
             }}></div>
         </div>
         <div className="flex justify-between text-xs text-gray-500">
