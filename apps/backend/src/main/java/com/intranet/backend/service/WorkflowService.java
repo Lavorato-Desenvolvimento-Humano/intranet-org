@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public interface WorkflowService {
@@ -60,4 +61,6 @@ public interface WorkflowService {
     WorkflowStatsDto getGeneralWorkflowStats();
 
     List<UserWorkloadDto> getUsersWorkload();
+
+    Map<String, Integer> getWorkflowCountByCustomStatus(UUID templateId);
 }

@@ -19,4 +19,5 @@ public class WorkflowCreateDto {
     private LocalDateTime deadline;
     private UUID teamId;
     private UUID assignToId; // ID do usuário para a primeira etapa
+    private UUID statusTemplateId;
 }
