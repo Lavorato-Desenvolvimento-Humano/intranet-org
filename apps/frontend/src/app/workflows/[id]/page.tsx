@@ -37,6 +37,7 @@ import userService from "@/services/user";
 import { User } from "@/services/auth";
 import toastUtil from "@/utils/toast";
 import Navbar from "@/components/layout/Navbar";
+import StatusDropdown from "@/components/workflow/StatusDropdown";
 
 interface WorkflowPageProps {
   params: {
@@ -66,6 +67,11 @@ export default function WorkflowPage({ params }: WorkflowPageProps) {
   const [advanceComment, setAdvanceComment] = useState("");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [statusChanged, setStatusChanged] = useState(false);
+
+  const handleCustomStatusChange = (newStatusId: string) => {
+    setNewStatus(newStatusId);
+  };
 
   const fetchWorkflow = async () => {
     try {
@@ -96,8 +102,11 @@ export default function WorkflowPage({ params }: WorkflowPageProps) {
 
   useEffect(() => {
     fetchWorkflow();
+    if (statusChanged) {
+      setStatusChanged(false);
+    }
     fetchUsers();
-  }, [params.id]);
+  }, [params.id, statusChanged]);
 
   const handleUpdateStatus = async () => {
     try {
@@ -395,16 +404,32 @@ export default function WorkflowPage({ params }: WorkflowPageProps) {
                 className={`px-2 py-1 rounded-full text-xs ${getPriorityColor(workflow.priority)}`}>
                 {getPriorityDisplayName(workflow.priority)}
               </span>
-              <span
-                className={`w-3 h-3 rounded-full ${getStatusColor(workflow.status)}`}></span>
-              <span className="text-gray-600">
-                {getStatusDisplayName(workflow.status)}
-              </span>
-            </div>
-            <div className="flex items-center text-gray-600 mt-1">
-              <span className="mr-4">Baseado em: {workflow.templateName}</span>
-              {getVisibilityIcon()}
-              <span>{getVisibilityText()}</span>
+
+              {/* Status do workflow - condicional baseado na presença de template de status */}
+              {workflow.statusTemplateId ? (
+                <StatusDropdown
+                  workflowId={params.id}
+                  statusTemplateId={workflow.statusTemplateId}
+                  currentStatusId={workflow.customStatusId}
+                  onStatusChange={handleCustomStatusChange}
+                  disabled={workflow.status !== "in_progress"}
+                />
+              ) : (
+                <div className="flex items-center">
+                  <span
+                    className={`w-3 h-3 rounded-full ${getStatusColor(workflow.status)}`}></span>
+                  <span className="ml-1 text-gray-600">
+                    {getStatusDisplayName(workflow.status)}
+                  </span>
+                </div>
+              )}
+              <div className="flex items-center text-gray-600 mt-1">
+                <span className="mr-4">
+                  Baseado em: {workflow.templateName}
+                </span>
+                {getVisibilityIcon()}
+                <span>{getVisibilityText()}</span>
+              </div>
             </div>
           </div>
 
@@ -651,6 +676,15 @@ export default function WorkflowPage({ params }: WorkflowPageProps) {
                       Equipe
                     </h3>
                     <p>{workflow.teamName}</p>
+                  </div>
+                )}
+
+                {workflow.statusTemplateId && (
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500">
+                      Template de Status
+                    </h3>
+                    <p>{workflow.statusTemplateName}</p>
                   </div>
                 )}
               </div>

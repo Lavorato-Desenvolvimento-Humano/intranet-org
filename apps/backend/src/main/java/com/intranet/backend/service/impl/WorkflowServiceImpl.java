@@ -12,6 +12,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +36,8 @@ public class WorkflowServiceImpl implements WorkflowService {
     private final UserRepository userRepository;
     private final EquipeRepository equipeRepository;
     private final WorkflowNotificationService notificationService;
+    private final WorkflowStatusTemplateRepository statusTemplateRepository;
+    private final WorkflowStatusItemRepository statusItemRepository;
 
     // Constante para definir quando um fluxo está próximo do vencimento (em dias)
     private static final int NEAR_DEADLINE_DAYS = 3;
@@ -77,6 +81,17 @@ public class WorkflowServiceImpl implements WorkflowService {
         workflow.setCreatedBy(createdBy);
         workflow.setCurrentStep(1);
         workflow.setProgressPercentage(0);
+
+        if (workflowDto.getStatusTemplateId() != null) {
+            WorkflowStatusTemplate statusTemplate = statusTemplateRepository.findById(workflowDto.getStatusTemplateId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Template de status não encontrado com o ID: " + workflowDto.getStatusTemplateId()));
+
+            workflow.setStatusTemplate(statusTemplate);
+
+            // Buscar o status inicial
+            Optional<WorkflowStatusItem> initialStatus = statusItemRepository.findInitialStatusByTemplateId(statusTemplate.getId());
+            initialStatus.ifPresent(workflow::setCustomStatus);
+        }
 
         Workflow savedWorkflow = workflowRepository.save(workflow);
 
@@ -163,8 +178,13 @@ public class WorkflowServiceImpl implements WorkflowService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Page<WorkflowSummaryDto> getWorkflowsByCustomStatus(UUID statusId, Pageable pageable) {
-        return null;
+        logger.info("Buscando fluxos de trabalho com status personalizado: {}", statusId);
+
+        Page<Workflow> workflows = workflowRepository.findByCustomStatusId(statusId, pageable);
+
+        return workflows.map(this::mapToWorkflowSummaryDto);
     }
 
     @Override
@@ -178,8 +198,32 @@ public class WorkflowServiceImpl implements WorkflowService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Page<WorkflowSummaryDto> getWorkflowsByStepNumber(int stepNumber, Pageable pageable) {
-        return null;
+        logger.info("Buscando fluxos de trabalho na etapa: {}", stepNumber);
+
+        Page<Workflow> workflows = workflowRepository.findByCurrentStep(stepNumber, pageable);
+
+        return workflows.map(this::mapToWorkflowSummaryDto);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Integer> getWorkflowCountByCustomStatus(UUID templateId) {
+        logger.info("Contando fluxos de trabalho por status personalizado para o template: {}", templateId);
+
+        List<Object[]> results = workflowRepository.countByCustomStatusInTemplate(templateId);
+
+        Map<String, Integer> counts = new HashMap<>();
+        for (Object[] result : results) {
+            String statusName = (String) result[0];
+            String statusColor = (String) result[1];
+            Integer count = ((Number) result[2]).intValue();
+
+            counts.put(statusName, count);
+        }
+
+        return counts;
     }
 
     @Override
@@ -440,8 +484,65 @@ public class WorkflowServiceImpl implements WorkflowService {
     }
 
     @Override
+    @Transactional
     public WorkflowDto updateWorkflowCustomStatus(UUID workflowId, UUID statusId, String comments) {
-        return null;
+        logger.info("Atualizando status personalizado do fluxo {} para: {}", workflowId, statusId);
+
+        Workflow workflow = workflowRepository.findById(workflowId)
+                .orElseThrow(() -> new ResourceNotFoundException("Fluxo não encontrado com o ID: " + workflowId));
+
+        // Verificar se o fluxo tem um template de status
+        if (workflow.getStatusTemplate() == null) {
+            throw new IllegalStateException("Este fluxo não possui um template de status associado.");
+        }
+
+        // Buscar o novo status
+        WorkflowStatusItem newStatus = statusItemRepository.findById(statusId)
+                .orElseThrow(() -> new ResourceNotFoundException("Status não encontrado com o ID: " + statusId));
+
+        // Verificar se o status pertence ao template do fluxo
+        if (!newStatus.getTemplate().getId().equals(workflow.getStatusTemplate().getId())) {
+            throw new IllegalArgumentException("O status não pertence ao template de status do fluxo.");
+        }
+
+        // Guardar o status anterior para o histórico
+        WorkflowStatusItem oldStatus = workflow.getCustomStatus();
+
+        // Atualizar o status
+        workflow.setCustomStatus(newStatus);
+
+        // Se o status for final, atualizar o status padrão do fluxo
+        if (newStatus.isFinal()) {
+            if (newStatus.getName().toLowerCase().contains("conclu")) {
+                workflow.setStatus("completed");
+            } else if (newStatus.getName().toLowerCase().contains("cancel")) {
+                workflow.setStatus("canceled");
+            }
+        }
+
+        // Registrar a transição
+        WorkflowTransition transition = new WorkflowTransition();
+        transition.setWorkflow(workflow);
+        transition.setFromStatus(oldStatus != null ? oldStatus.getName() : null);
+        transition.setToStatus(newStatus.getName());
+        transition.setFromStep(workflow.getCurrentStep());
+        transition.setToStep(workflow.getCurrentStep());
+        transition.setComments(comments);
+        transition.setTransitionType("custom_status_change");
+
+        // Buscar o usuário atual para o histórico
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String email = authentication.getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
+
+        transition.setCreatedBy(user);
+        transitionRepository.save(transition);
+
+        // Salvar o fluxo atualizado
+        Workflow updatedWorkflow = workflowRepository.save(workflow);
+
+        return mapToWorkflowDto(updatedWorkflow);
     }
 
     @Override
@@ -950,6 +1051,17 @@ public class WorkflowServiceImpl implements WorkflowService {
         dto.setTransitions(transitions.stream()
                 .map(this::mapToTransitionDto)
                 .collect(Collectors.toList()));
+
+        if (workflow.getStatusTemplate() != null) {
+            dto.setStatusTemplateId(workflow.getStatusTemplate().getId());
+            dto.setStatusTemplateName(workflow.getStatusTemplate().getName());
+        }
+
+        if (workflow.getCustomStatus() != null) {
+            dto.setCustomStatusId(workflow.getCustomStatus().getId());
+            dto.setCustomStatusName(workflow.getCustomStatus().getName());
+            dto.setCustomStatusColor(workflow.getCustomStatus().getColor());
+        }
 
         return dto;
     }

@@ -52,6 +52,10 @@ export interface WorkflowSummaryDto {
   isOverdue: boolean;
   isNearDeadline: boolean;
   daysRemaining: number;
+  statusTemplateId?: string | null;
+  customStatusId?: string | null;
+  customStatusName?: string | null;
+  customStatusColor?: string | null;
 }
 
 export interface WorkflowDto {
@@ -78,6 +82,11 @@ export interface WorkflowDto {
   isOverdue: boolean;
   isNearDeadline: boolean;
   daysRemaining: number;
+  statusTemplateId?: string | null;
+  statusTemplateName?: string | null;
+  customStatusId?: string | null;
+  customStatusName?: string | null;
+  customStatusColor?: string | null;
 }
 
 export interface WorkflowCreateDto {
@@ -89,6 +98,7 @@ export interface WorkflowCreateDto {
   deadline: string | null;
   teamId: string | null;
   assignToId: string | null;
+  statusTemplateId?: string | null; // Campo novo
 }
 
 export interface WorkflowAssignmentDto {
@@ -178,4 +188,44 @@ export interface WorkflowNotificationDto {
   type: "assignment" | "deadline" | "status_change";
   read: boolean;
   createdAt: string;
+}
+
+export interface WorkflowStatusItemDto {
+  id: string;
+  templateId: string;
+  name: string;
+  description: string;
+  color: string;
+  orderIndex: number;
+  isInitial: boolean;
+  isFinal: boolean;
+}
+
+export interface WorkflowStatusTemplateDto {
+  id: string;
+  name: string;
+  description: string;
+  createdById: string;
+  createdByName: string;
+  statusItems: WorkflowStatusItemDto[];
+  workflowCount: number;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorkflowStatusItemCreateDto {
+  name: string;
+  description: string;
+  color: string;
+  orderIndex: number;
+  isInitial: boolean;
+  isFinal: boolean;
+}
+
+export interface WorkflowStatusTemplateCreateDto {
+  name: string;
+  description: string;
+  statusItems: WorkflowStatusItemCreateDto[];
+  isDefault: boolean;
 }

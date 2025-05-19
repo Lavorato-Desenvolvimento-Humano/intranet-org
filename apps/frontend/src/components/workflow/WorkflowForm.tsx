@@ -1,11 +1,14 @@
-// Modificações no src/components/workflow/WorkflowForm.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
 import { CustomButton } from "@/components/ui/custom-button";
 import Input from "@/components/ui/input";
-import { Calendar, Clock, Users, EyeOff, Globe } from "lucide-react";
-import { WorkflowCreateDto, WorkflowTemplateDto } from "@/types/workflow";
+import { Calendar, Clock, Users, EyeOff, Globe, ListTodo } from "lucide-react";
+import {
+  WorkflowCreateDto,
+  WorkflowTemplateDto,
+  WorkflowStatusTemplateDto,
+} from "@/types/workflow";
 import workflowService from "@/services/workflow";
 import userService from "@/services/user";
 import { User } from "@/services/auth";
@@ -14,14 +17,14 @@ interface WorkflowFormProps {
   initialData?: Partial<WorkflowCreateDto>;
   onSubmit: (data: WorkflowCreateDto) => Promise<void>;
   isLoading: boolean;
-  isEditing?: boolean; // Nova prop para indicar se estamos editando
+  isEditing?: boolean;
 }
 
 const WorkflowForm: React.FC<WorkflowFormProps> = ({
   initialData,
   onSubmit,
   isLoading,
-  isEditing = false, // Por padrão, é criação
+  isEditing = false,
 }) => {
   const [formData, setFormData] = useState<WorkflowCreateDto>({
     templateId: initialData?.templateId || "",
@@ -32,14 +35,20 @@ const WorkflowForm: React.FC<WorkflowFormProps> = ({
     deadline: initialData?.deadline || null,
     teamId: initialData?.teamId || null,
     assignToId: initialData?.assignToId || null,
+    statusTemplateId: initialData?.statusTemplateId || null,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [templates, setTemplates] = useState<WorkflowTemplateDto[]>([]);
+  const [statusTemplates, setStatusTemplates] = useState<
+    WorkflowStatusTemplateDto[]
+  >([]);
   const [users, setUsers] = useState<User[]>([]);
   const [selectedTemplate, setSelectedTemplate] =
     useState<WorkflowTemplateDto | null>(null);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
+  const [isLoadingStatusTemplates, setIsLoadingStatusTemplates] =
+    useState(true);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
   const [isSameUser, setIsSameUser] = useState(true);
 
@@ -56,6 +65,18 @@ const WorkflowForm: React.FC<WorkflowFormProps> = ({
       }
     };
 
+    const fetchStatusTemplates = async () => {
+      try {
+        setIsLoadingStatusTemplates(true);
+        const response = await workflowService.getAllStatusTemplates(0, 100);
+        setStatusTemplates(response.content || []);
+      } catch (error) {
+        console.error("Erro ao buscar templates de status:", error);
+      } finally {
+        setIsLoadingStatusTemplates(false);
+      }
+    };
+
     const fetchUsers = async () => {
       try {
         setIsLoadingUsers(true);
@@ -69,6 +90,7 @@ const WorkflowForm: React.FC<WorkflowFormProps> = ({
     };
 
     fetchTemplates();
+    fetchStatusTemplates();
     fetchUsers();
   }, []);
 
@@ -87,7 +109,7 @@ const WorkflowForm: React.FC<WorkflowFormProps> = ({
     >
   ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value === "" ? null : value }));
 
     // Limpar erro do campo
     if (errors[name]) {
@@ -152,6 +174,11 @@ const WorkflowForm: React.FC<WorkflowFormProps> = ({
     return date.toISOString().split("T")[0];
   };
 
+  // Encontrar o template default caso exista
+  const defaultStatusTemplate = statusTemplates.find(
+    (template) => template.isDefault
+  );
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
@@ -163,7 +190,7 @@ const WorkflowForm: React.FC<WorkflowFormProps> = ({
             name="templateId"
             value={formData.templateId}
             onChange={handleChange}
-            disabled={isEditing} // Desabilitar se estiver editando
+            disabled={isEditing}
             className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-transparent ${
               isEditing ? "bg-gray-100" : ""
             }`}>
@@ -254,6 +281,44 @@ const WorkflowForm: React.FC<WorkflowFormProps> = ({
             </div>
           </div>
         </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium mb-2">
+          Template de Status (opcional)
+        </label>
+        {isLoadingStatusTemplates ? (
+          <div className="p-2 text-center">
+            Carregando templates de status...
+          </div>
+        ) : (
+          <div className="relative">
+            <select
+              name="statusTemplateId"
+              value={formData.statusTemplateId || ""}
+              onChange={handleChange}
+              className="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-transparent appearance-none">
+              <option value="">
+                {defaultStatusTemplate
+                  ? `Padrão: ${defaultStatusTemplate.name} (${defaultStatusTemplate.statusItems.length} status)`
+                  : "Sem template de status"}
+              </option>
+              {statusTemplates.map((template) => (
+                <option key={template.id} value={template.id}>
+                  {template.name} ({template.statusItems.length} status)
+                  {template.isDefault ? " (Padrão)" : ""}
+                </option>
+              ))}
+            </select>
+            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+              <ListTodo size={20} className="text-gray-500" />
+            </div>
+          </div>
+        )}
+        <p className="mt-1 text-xs text-gray-500">
+          Os templates de status permitem acompanhar em detalhes o progresso do
+          fluxo.
+        </p>
       </div>
 
       <div>
