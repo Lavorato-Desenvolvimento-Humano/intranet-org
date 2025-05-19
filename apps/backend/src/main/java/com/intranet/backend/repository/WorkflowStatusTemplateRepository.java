@@ -17,9 +17,11 @@ public interface WorkflowStatusTemplateRepository extends JpaRepository<Workflow
 
     List<WorkflowStatusTemplate> findByCreatedById(UUID createdById);
 
-    @Query("SELECT t FROM WorkflowStatusTemplate t WHERE t.createdBy.id = :userId OR EXISTS " +
-            "(SELECT 1 FROM User u JOIN u.roles r JOIN r.permissions p " +
-            "WHERE u.id = :userId AND p.name = 'workflow_status:manage')")
+    @Query("SELECT t FROM WorkflowStatusTemplate t WHERE t.createdBy.id = :userId " +
+            "OR EXISTS (SELECT 1 FROM UserRole ur " +
+            "JOIN RolePermission rp ON ur.role.id = rp.role.id " +
+            "JOIN Permission p ON rp.permission.id = p.id " +
+            "WHERE ur.user.id = :userId AND p.name = 'workflow_status:manage')")
     List<WorkflowStatusTemplate> findAvailableTemplates(@Param("userId") UUID userId);
 
     @Query("SELECT COUNT(w) FROM Workflow w WHERE w.statusTemplate.id = :templateId")
