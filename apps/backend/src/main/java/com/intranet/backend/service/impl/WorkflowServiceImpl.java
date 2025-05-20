@@ -1143,7 +1143,6 @@ public class WorkflowServiceImpl implements WorkflowService {
             }
         }
 
-        // Adicionar campos de status personalizado
         if (workflow.getCustomStatus() != null) {
             dto.setCustomStatusId(workflow.getCustomStatus().getId());
             dto.setCustomStatusName(workflow.getCustomStatus().getName());
