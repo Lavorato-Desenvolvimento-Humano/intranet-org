@@ -883,9 +883,17 @@ public class WorkflowServiceImpl implements WorkflowService {
         }
 
         // Verificar se o usuário é o responsável pela etapa atual
-        return assignmentRepository.findByWorkflowIdAndStepNumber(workflowId, workflow.getCurrentStep())
+        boolean isCurrentAssignee = assignmentRepository.findByWorkflowIdAndStepNumber(workflowId, workflow.getCurrentStep())
                 .map(assignment -> assignment.getAssignedTo().getId().equals(userId))
                 .orElse(false);
+
+        if (isCurrentAssignee) {
+            return true;
+        }
+
+        List<String> roles = userRepository.findRoleNamesByUserId(userId);
+        return roles.stream().anyMatch(role ->
+                role.equals("EDITOR") || role.equals("ROLE_EDITOR") || role.equals("ADMIN") || role.equals("ROLE_ADMIN"));
     }
 
     @Override
