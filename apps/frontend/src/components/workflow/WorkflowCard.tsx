@@ -115,7 +115,13 @@ const WorkflowCard: React.FC<WorkflowCardProps> = ({ workflow }) => {
             <div
               className="h-3 w-3 rounded-full mr-1"
               style={{ backgroundColor: getStatusColor() }}></div>
-            <span className="text-xs text-gray-600">
+            <span
+              className={`text-xs ${hasCustomStatus ? "font-medium" : "text-gray-600"}`}
+              style={
+                hasCustomStatus && workflow.customStatusColor
+                  ? { color: workflow.customStatusColor }
+                  : {}
+              }>
               {hasCustomStatus
                 ? workflow.customStatusName
                 : getStatusDisplayName(status)}
