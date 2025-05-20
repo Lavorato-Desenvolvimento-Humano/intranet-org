@@ -1,4 +1,4 @@
-// src/app/workflows/dashboard/page.tsx
+// apps/frontend/src/app/workflows/dashboard/page.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -15,17 +15,18 @@ import {
   BarChart2,
   ChevronRight,
   RefreshCw,
+  Filter,
 } from "lucide-react";
 import {
   WorkflowStatsDto,
   WorkflowSummaryDto,
   UserWorkloadDto,
+  WorkflowTemplateDto,
+  WorkflowStatusTemplateDto,
 } from "@/types/workflow";
 import workflowService from "@/services/workflow";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import Navbar from "@/components/layout/Navbar";
-import user from "@/services/user";
-import CustomButton from "@/components/ui/custom-button";
 import { useAuth } from "@/context/AuthContext";
 import toastUtil from "@/utils/toast";
 
@@ -46,6 +47,17 @@ export default function DashboardPage() {
   const [retryCount, setRetryCount] = useState(0);
   const { user, logout } = useAuth();
 
+  // Novo estado para filtros
+  const [templates, setTemplates] = useState<WorkflowTemplateDto[]>([]);
+  const [statusTemplates, setStatusTemplates] = useState<
+    WorkflowStatusTemplateDto[]
+  >([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const [selectedStatusTemplateId, setSelectedStatusTemplateId] =
+    useState<string>("");
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
+  const [loadingStatusTemplates, setLoadingStatusTemplates] = useState(false);
+
   const [loading, setLoading] = useState({
     stats: true,
     userStats: true,
@@ -58,10 +70,58 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Função para carregar templates
+    const fetchTemplates = async () => {
+      try {
+        setLoadingTemplates(true);
+        const response = await workflowService.getAllTemplates(0, 100);
+        setTemplates(response.content || []);
+      } catch (err) {
+        console.error("Erro ao carregar templates:", err);
+      } finally {
+        setLoadingTemplates(false);
+      }
+    };
+
+    // Função para carregar templates de status
+    const fetchStatusTemplates = async () => {
+      try {
+        setLoadingStatusTemplates(true);
+        const response = await workflowService.getAllStatusTemplates(0, 100);
+        setStatusTemplates(response.content || []);
+      } catch (err) {
+        console.error("Erro ao carregar templates de status:", err);
+      } finally {
+        setLoadingStatusTemplates(false);
+      }
+    };
+
+    // Carregar templates e templates de status
+    fetchTemplates();
+    fetchStatusTemplates();
+  }, []);
+
+  useEffect(() => {
     const fetchData = async () => {
       try {
-        // Carregar estatísticas gerais
-        const statsData = await workflowService.getGeneralStats();
+        // Carregar estatísticas gerais com base no filtro de template
+        setLoading((prev) => ({ ...prev, stats: true }));
+        let statsData;
+
+        if (selectedTemplateId) {
+          // Se um template de fluxo está selecionado
+          statsData =
+            await workflowService.getStatsByTemplate(selectedTemplateId);
+        } else if (selectedStatusTemplateId) {
+          // Se um template de status está selecionado
+          statsData = await workflowService.getStatsByStatusTemplate(
+            selectedStatusTemplateId
+          );
+        } else {
+          // Sem filtro
+          statsData = await workflowService.getGeneralStats();
+        }
+
         setStats(statsData);
       } catch (err) {
         console.error("Erro ao carregar estatísticas gerais:", err);
@@ -123,7 +183,7 @@ export default function DashboardPage() {
     };
 
     fetchData();
-  }, []);
+  }, [selectedTemplateId, selectedStatusTemplateId]);
 
   useEffect(() => {
     // Verificar se o usuário tem a role de ADMIN
@@ -153,6 +213,36 @@ export default function DashboardPage() {
     window.location.href = "/auth/login?callback=/admin";
   };
 
+  // Função para lidar com mudanças no filtro de template
+  const handleTemplateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const templateId = e.target.value;
+    setSelectedTemplateId(templateId);
+
+    // Limpar o filtro de template de status se um template de fluxo for selecionado
+    if (templateId) {
+      setSelectedStatusTemplateId("");
+    }
+  };
+
+  // Função para lidar com mudanças no filtro de template de status
+  const handleStatusTemplateChange = (
+    e: React.ChangeEvent<HTMLSelectElement>
+  ) => {
+    const statusTemplateId = e.target.value;
+    setSelectedStatusTemplateId(statusTemplateId);
+
+    // Limpar o filtro de template se um template de status for selecionado
+    if (statusTemplateId) {
+      setSelectedTemplateId("");
+    }
+  };
+
+  // Função para limpar os filtros
+  const clearFilters = () => {
+    setSelectedTemplateId("");
+    setSelectedStatusTemplateId("");
+  };
+
   const isLoading = Object.values(loading).some((value) => value);
 
   if (error) {
@@ -167,19 +257,18 @@ export default function DashboardPage() {
           <p className="mb-6 text-gray-700">{error}</p>
 
           <div className="flex flex-col gap-3">
-            <CustomButton
+            <button
               onClick={handleRetry}
-              icon={RefreshCw}
-              className="w-full">
+              className="w-full bg-primary text-white px-4 py-2 rounded hover:bg-primary-dark flex items-center justify-center">
+              <RefreshCw size={16} className="mr-2" />
               Tentar novamente
-            </CustomButton>
+            </button>
 
-            <CustomButton
+            <button
               onClick={handleReauth}
-              variant="secondary"
-              className="w-full border border-gray-300">
+              className="w-full border border-gray-300 px-4 py-2 rounded hover:bg-gray-100">
               Fazer login novamente
-            </CustomButton>
+            </button>
           </div>
         </div>
       </div>
@@ -204,12 +293,61 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {error && (
-          <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4">
-            {error}
+        {/* Filtros */}
+        <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+          <div className="flex items-center mb-4">
+            <Filter size={20} className="text-gray-500 mr-2" />
+            <h2 className="text-lg font-semibold">Filtros</h2>
           </div>
-        )}
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Template de Fluxo
+              </label>
+              <select
+                value={selectedTemplateId}
+                onChange={handleTemplateChange}
+                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                disabled={loadingTemplates}>
+                <option value="">Todos os templates</option>
+                {templates.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Template de Status
+              </label>
+              <select
+                value={selectedStatusTemplateId}
+                onChange={handleStatusTemplateChange}
+                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                disabled={loadingStatusTemplates}>
+                <option value="">Todos os templates de status</option>
+                {statusTemplates.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="mt-4 flex justify-end">
+            <button
+              onClick={clearFilters}
+              className="bg-gray-100 text-gray-700 px-4 py-2 rounded hover:bg-gray-200 transition-colors">
+              Limpar Filtros
+            </button>
+          </div>
+        </div>
+
+        {/* Resto do conteúdo do dashboard */}
         <Tabs defaultValue="general">
           <TabsList className="bg-white rounded-lg shadow-sm p-1 mb-4">
             <TabsTrigger value="general" className="py-2 px-4">

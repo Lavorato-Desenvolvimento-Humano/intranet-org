@@ -496,6 +496,36 @@ const workflowService = {
       throw error;
     }
   },
+
+  getStatsByTemplate: async (templateId: string) => {
+    try {
+      const response = await api.get<WorkflowStatsDto>(
+        `/api/workflows/stats/template/${templateId}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Erro ao buscar estatísticas por template ${templateId}:`,
+        error
+      );
+      throw error;
+    }
+  },
+
+  getStatsByStatusTemplate: async (statusTemplateId: string) => {
+    try {
+      const response = await api.get<WorkflowStatsDto>(
+        `/api/workflows/stats/status-template/${statusTemplateId}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Erro ao buscar estatísticas por template de status ${statusTemplateId}:`,
+        error
+      );
+      throw error;
+    }
+  },
 };
 
 export default workflowService;

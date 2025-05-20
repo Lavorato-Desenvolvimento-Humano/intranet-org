@@ -715,6 +715,69 @@ public class WorkflowServiceImpl implements WorkflowService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public WorkflowStatsDto getGeneralWorkflowStatsByTemplate(UUID templateId) {
+        logger.info("Obtendo estatísticas gerais de fluxos para o template: {}", templateId);
+
+        // Verificar se o template existe
+        templateRepository.findById(templateId)
+                .orElseThrow(() -> new ResourceNotFoundException("Template não encontrado com o ID: " + templateId));
+
+        WorkflowStatsDto stats = new WorkflowStatsDto();
+
+        // Contagens por status
+        stats.setInProgressCount(workflowRepository.countByTemplateIdAndStatus(templateId, "in_progress"));
+        stats.setPausedCount(workflowRepository.countByTemplateIdAndStatus(templateId, "paused"));
+        stats.setCompletedCount(workflowRepository.countByTemplateIdAndStatus(templateId, "completed"));
+        stats.setCanceledCount(workflowRepository.countByTemplateIdAndStatus(templateId, "canceled"));
+        stats.setArchivedCount(workflowRepository.countByTemplateIdAndStatus(templateId, "archived"));
+
+        stats.setTotalWorkflows(stats.getInProgressCount() + stats.getPausedCount() +
+                stats.getCompletedCount() + stats.getCanceledCount() + stats.getArchivedCount());
+
+        // Fluxos atrasados
+        LocalDateTime now = LocalDateTime.now();
+        stats.setOverdueCount(workflowRepository.countOverdueWorkflowsByTemplateId(templateId, now));
+
+        // Consultas adicionais para outras estatísticas como você faz no método getGeneralWorkflowStats()
+        // ...
+
+        return stats;
+    }
+
+
+    @Override
+    @Transactional(readOnly = true)
+    public WorkflowStatsDto getGeneralWorkflowStatsByStatusTemplate(UUID statusTemplateId) {
+        logger.info("Obtendo estatísticas gerais de fluxos para o template de status: {}", statusTemplateId);
+
+        // Verificar se o template de status existe
+        statusTemplateRepository.findById(statusTemplateId)
+                .orElseThrow(() -> new ResourceNotFoundException("Template de status não encontrado com o ID: " + statusTemplateId));
+
+        WorkflowStatsDto stats = new WorkflowStatsDto();
+
+        // Contagens por status
+        stats.setInProgressCount(workflowRepository.countByStatusTemplateIdAndStatus(statusTemplateId, "in_progress"));
+        stats.setPausedCount(workflowRepository.countByStatusTemplateIdAndStatus(statusTemplateId, "paused"));
+        stats.setCompletedCount(workflowRepository.countByStatusTemplateIdAndStatus(statusTemplateId, "completed"));
+        stats.setCanceledCount(workflowRepository.countByStatusTemplateIdAndStatus(statusTemplateId, "canceled"));
+        stats.setArchivedCount(workflowRepository.countByStatusTemplateIdAndStatus(statusTemplateId, "archived"));
+
+        stats.setTotalWorkflows(stats.getInProgressCount() + stats.getPausedCount() +
+                stats.getCompletedCount() + stats.getCanceledCount() + stats.getArchivedCount());
+
+        // Fluxos atrasados
+        LocalDateTime now = LocalDateTime.now();
+        stats.setOverdueCount(workflowRepository.countOverdueWorkflowsByStatusTemplateId(statusTemplateId, now));
+
+        // Consultas adicionais para outras estatísticas como você faz no método getGeneralWorkflowStats()
+        // ...
+
+        return stats;
+    }
+
+    @Override
     @Transactional
     public WorkflowDto archiveWorkflow(UUID workflowId) {
         logger.info("Arquivando fluxo de trabalho: {}", workflowId);
