@@ -1,13 +1,7 @@
 "use client";
 
 import React from "react";
-import {
-  ChevronRight,
-  Calendar,
-  Clock,
-  AlertTriangle,
-  Tag,
-} from "lucide-react";
+import { ChevronRight, Calendar, Clock, AlertTriangle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { WorkflowSummaryDto } from "@/types/workflow";
 
@@ -116,39 +110,29 @@ const WorkflowCard: React.FC<WorkflowCardProps> = ({ workflow }) => {
             className={`px-2 py-1 rounded-full text-xs ${getPriorityColor()}`}>
             {getPriorityDisplayName(priority)}
           </span>
-          <div className="flex items-center">
-            <div
-              className="h-3 w-3 rounded-full mr-1"
-              style={{ backgroundColor: getStatusColor() }}></div>
-            <span className="text-xs text-gray-600">
-              {getStatusDisplayName(status)}
-            </span>
-          </div>
+
+          {/* Exibir status personalizado quando disponível */}
+          {hasCustomStatus && (
+            <div className="flex items-center">
+              <div
+                className="px-2 py-1 rounded-md flex items-center"
+                style={{
+                  backgroundColor: `${workflow.customStatusColor}20`, // 20% de opacidade
+                  color: workflow.customStatusColor ?? "#000",
+                }}>
+                <div
+                  className="h-3 w-3 rounded-full mr-1"
+                  style={{
+                    backgroundColor: workflow.customStatusColor ?? "",
+                  }}></div>
+                <span className="text-xs">{workflow.customStatusName}</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
       <p className="text-gray-600 text-sm mb-3">Template: {templateName}</p>
-
-      {/* Adicionar exibição do status personalizado */}
-      {hasCustomStatus && (
-        <div
-          className="flex items-center mb-3 px-3 py-1 rounded-md"
-          style={{
-            backgroundColor: `${workflow.customStatusColor}15`, // 15% de opacidade
-            borderLeft: `3px solid ${workflow.customStatusColor}`,
-          }}>
-          <Tag
-            size={14}
-            style={{ color: workflow.customStatusColor ?? "#000" }}
-            className="mr-2"
-          />
-          <span
-            style={{ color: workflow.customStatusColor ?? "#000" }}
-            className="text-sm font-medium">
-            {workflow.customStatusName}
-          </span>
-        </div>
-      )}
 
       <div className="flex justify-between items-center mb-3">
         <div className="flex items-center text-sm text-gray-500">
@@ -156,19 +140,31 @@ const WorkflowCard: React.FC<WorkflowCardProps> = ({ workflow }) => {
           <span>{formatDate(deadline)}</span>
         </div>
 
-        {isOverdue && (
-          <div className="flex items-center text-red-500 text-sm">
-            <AlertTriangle size={16} className="mr-1" />
-            <span>Atrasado ({Math.abs(daysRemaining)} dias)</span>
+        <div className="flex items-center">
+          {/* Status padrão do sistema */}
+          <div className="flex items-center text-gray-500 text-sm">
+            <div
+              className="h-3 w-3 rounded-full mr-1"
+              style={{
+                backgroundColor: hasCustomStatus ? "#808080" : getStatusColor(),
+              }}></div>
+            <span>{getStatusDisplayName(status)}</span>
           </div>
-        )}
 
-        {isNearDeadline && !isOverdue && (
-          <div className="flex items-center text-orange-500 text-sm">
-            <Clock size={16} className="mr-1" />
-            <span>Prazo próximo ({daysRemaining} dias)</span>
-          </div>
-        )}
+          {isOverdue && (
+            <div className="flex items-center text-red-500 text-sm ml-3">
+              <AlertTriangle size={16} className="mr-1" />
+              <span>Atrasado ({Math.abs(daysRemaining)} dias)</span>
+            </div>
+          )}
+
+          {isNearDeadline && !isOverdue && (
+            <div className="flex items-center text-orange-500 text-sm ml-3">
+              <Clock size={16} className="mr-1" />
+              <span>Prazo próximo ({daysRemaining} dias)</span>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-col">
