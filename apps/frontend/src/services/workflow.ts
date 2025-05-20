@@ -85,6 +85,13 @@ const workflowService = {
         content: WorkflowSummaryDto[];
         totalElements: number;
       }>(`/api/workflows?page=${page}&size=${size}`);
+
+      // Debug: verificar se os dados incluem status personalizado
+      console.log("Response dos workflows:", response.data);
+      if (response.data.content && response.data.content.length > 0) {
+        console.log("Primeiro workflow:", response.data.content[0]);
+      }
+
       return response.data;
     } catch (error) {
       console.error("Erro ao buscar fluxos:", error);
