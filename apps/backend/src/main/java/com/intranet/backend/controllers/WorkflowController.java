@@ -421,4 +421,22 @@ public class WorkflowController {
         WorkflowDto updatedWorkflow = workflowService.updateWorkflowCustomStatus(id, statusId, comments);
         return ResponseEntity.ok(updatedWorkflow);
     }
+
+    @GetMapping("/stats/template/{templateId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR')")
+    public ResponseEntity<WorkflowStatsDto> getWorkflowStatsByTemplate(@PathVariable UUID templateId) {
+        logger.info("Obtendo estatísticas de fluxos para o template: {}", templateId);
+
+        WorkflowStatsDto stats = workflowService.getGeneralWorkflowStatsByTemplate(templateId);
+        return ResponseEntity.ok(stats);
+    }
+
+    @GetMapping("/stats/status-template/{statusTemplateId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR')")
+    public ResponseEntity<WorkflowStatsDto> getWorkflowStatsByStatusTemplate(@PathVariable UUID statusTemplateId) {
+        logger.info("Obtendo estatísticas de fluxos para o template de status: {}", statusTemplateId);
+
+        WorkflowStatsDto stats = workflowService.getGeneralWorkflowStatsByStatusTemplate(statusTemplateId);
+        return ResponseEntity.ok(stats);
+    }
 }

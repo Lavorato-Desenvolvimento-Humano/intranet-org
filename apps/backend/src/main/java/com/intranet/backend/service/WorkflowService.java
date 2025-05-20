@@ -63,4 +63,8 @@ public interface WorkflowService {
     List<UserWorkloadDto> getUsersWorkload();
 
     Map<String, Integer> getWorkflowCountByCustomStatus(UUID templateId);
+
+    WorkflowStatsDto getGeneralWorkflowStatsByTemplate(UUID templateId);
+
+    WorkflowStatsDto getGeneralWorkflowStatsByStatusTemplate(UUID statusTemplateId);
 }
