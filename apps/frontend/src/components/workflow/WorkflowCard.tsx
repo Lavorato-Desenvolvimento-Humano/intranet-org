@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react"; // Adicionando useEffect para debug
 import { ChevronRight, Calendar, Clock, AlertTriangle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { WorkflowSummaryDto } from "@/types/workflow";
@@ -11,6 +11,20 @@ interface WorkflowCardProps {
 
 const WorkflowCard: React.FC<WorkflowCardProps> = ({ workflow }) => {
   const router = useRouter();
+
+  // Debug: verificar se os dados de status personalizado estão chegando
+  useEffect(() => {
+    console.log("Workflow recebido:", workflow);
+    if (workflow.customStatusId) {
+      console.log("Status personalizado detectado:", {
+        customStatusId: workflow.customStatusId,
+        customStatusName: workflow.customStatusName,
+        customStatusColor: workflow.customStatusColor,
+      });
+    } else {
+      console.log("Nenhum status personalizado detectado para este workflow");
+    }
+  }, [workflow]);
 
   // Verificar se workflow está definido
   if (!workflow || !workflow.id) {
@@ -33,6 +47,7 @@ const WorkflowCard: React.FC<WorkflowCardProps> = ({ workflow }) => {
 
   // Verificar se há status personalizado
   const hasCustomStatus = workflow.customStatusId && workflow.customStatusName;
+  console.log("hasCustomStatus:", hasCustomStatus);
 
   const getStatusColor = () => {
     // Se tiver status customizado, usar a cor dele
@@ -111,22 +126,22 @@ const WorkflowCard: React.FC<WorkflowCardProps> = ({ workflow }) => {
             {getPriorityDisplayName(priority)}
           </span>
 
-          {/* Exibir status personalizado quando disponível */}
+          {/* Status personalizado exibido como um badge ao lado da prioridade */}
           {hasCustomStatus && (
-            <div className="flex items-center">
+            <div
+              className="px-2 py-1 rounded-full flex items-center text-xs"
+              style={{
+                backgroundColor: workflow.customStatusColor
+                  ? `${workflow.customStatusColor}20`
+                  : "#f0f0f0",
+                color: workflow.customStatusColor || "#666",
+              }}>
               <div
-                className="px-2 py-1 rounded-md flex items-center"
+                className="h-2 w-2 rounded-full mr-1"
                 style={{
-                  backgroundColor: `${workflow.customStatusColor}20`, // 20% de opacidade
-                  color: workflow.customStatusColor ?? "#000",
-                }}>
-                <div
-                  className="h-3 w-3 rounded-full mr-1"
-                  style={{
-                    backgroundColor: workflow.customStatusColor ?? "",
-                  }}></div>
-                <span className="text-xs">{workflow.customStatusName}</span>
-              </div>
+                  backgroundColor: workflow.customStatusColor || "#666",
+                }}></div>
+              <span>{workflow.customStatusName}</span>
             </div>
           )}
         </div>
@@ -140,8 +155,8 @@ const WorkflowCard: React.FC<WorkflowCardProps> = ({ workflow }) => {
           <span>{formatDate(deadline)}</span>
         </div>
 
+        {/* Sempre mostrar o status padrão */}
         <div className="flex items-center">
-          {/* Status padrão do sistema */}
           <div className="flex items-center text-gray-500 text-sm">
             <div
               className="h-3 w-3 rounded-full mr-1"
