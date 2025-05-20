@@ -109,46 +109,48 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled || isLoading}
-        className={`flex items-center px-3 py-2 rounded-md border ${
+        className={`flex items-center py-1 px-2 rounded-md text-sm border ${
           disabled ? "opacity-70 cursor-not-allowed" : "hover:bg-gray-50"
         }`}
         style={{
-          backgroundColor: currentStatus ? `${currentStatus.color}20` : "white", // 20% de opacidade
+          backgroundColor: currentStatus ? `${currentStatus.color}20` : "white",
           borderColor: currentStatus ? currentStatus.color : "#e5e7eb",
           color: currentStatus ? currentStatus.color : "inherit",
         }}>
         <div
-          className="w-3 h-3 rounded-full mr-2"
+          className="w-2 h-2 rounded-full mr-1"
           style={{
             backgroundColor: currentStatus ? currentStatus.color : "#808080",
           }}></div>
-        <span>{currentStatus ? currentStatus.name : "Selecionar Status"}</span>
-        <ChevronDown size={16} className="ml-2" />
+        <span className="truncate max-w-[80px]">
+          {currentStatus ? currentStatus.name : "Status"}
+        </span>
+        <ChevronDown size={12} className="ml-1" />
       </button>
 
       {isOpen && (
-        <div className="absolute mt-1 z-50 bg-white rounded-md shadow-lg py-1 w-64 max-h-60 overflow-y-auto">
+        <div className="absolute mt-1 z-50 bg-white rounded-md shadow-lg py-1 w-48 max-h-48 overflow-y-auto">
           {statusItems.map((status) => (
             <button
               key={status.id}
               type="button"
-              className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center"
+              className="w-full text-left px-3 py-1.5 hover:bg-gray-100 flex items-center text-sm"
               style={{
                 color: status.color,
               }}
               onClick={() => handleStatusChange(status)}>
               <div
-                className="w-3 h-3 rounded-full mr-2"
+                className="w-2 h-2 rounded-full mr-2"
                 style={{ backgroundColor: status.color }}></div>
-              <span>{status.name}</span>
+              <span className="truncate">{status.name}</span>
               {status.isInitial && (
                 <span className="ml-auto text-xs bg-blue-100 text-blue-800 px-1 rounded">
-                  Inicial
+                  I
                 </span>
               )}
               {status.isFinal && (
                 <span className="ml-auto text-xs bg-green-100 text-green-800 px-1 rounded">
-                  Final
+                  F
                 </span>
               )}
             </button>
