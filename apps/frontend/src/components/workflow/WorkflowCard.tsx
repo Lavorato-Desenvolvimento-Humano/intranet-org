@@ -1,6 +1,7 @@
+// src/components/workflow/WorkflowCard.tsx
 "use client";
 
-import React, { useEffect } from "react"; // Adicionando useEffect para debug
+import React from "react";
 import { ChevronRight, Calendar, Clock, AlertTriangle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { WorkflowSummaryDto } from "@/types/workflow";
@@ -11,20 +12,6 @@ interface WorkflowCardProps {
 
 const WorkflowCard: React.FC<WorkflowCardProps> = ({ workflow }) => {
   const router = useRouter();
-
-  // Debug: verificar se os dados de status personalizado estão chegando
-  useEffect(() => {
-    console.log("Workflow recebido:", workflow);
-    if (workflow.customStatusId) {
-      console.log("Status personalizado detectado:", {
-        customStatusId: workflow.customStatusId,
-        customStatusName: workflow.customStatusName,
-        customStatusColor: workflow.customStatusColor,
-      });
-    } else {
-      console.log("Nenhum status personalizado detectado para este workflow");
-    }
-  }, [workflow]);
 
   // Verificar se workflow está definido
   if (!workflow || !workflow.id) {
@@ -47,7 +34,6 @@ const WorkflowCard: React.FC<WorkflowCardProps> = ({ workflow }) => {
 
   // Verificar se há status personalizado
   const hasCustomStatus = workflow.customStatusId && workflow.customStatusName;
-  console.log("hasCustomStatus:", hasCustomStatus);
 
   const getStatusColor = () => {
     // Se tiver status customizado, usar a cor dele
@@ -125,25 +111,22 @@ const WorkflowCard: React.FC<WorkflowCardProps> = ({ workflow }) => {
             className={`px-2 py-1 rounded-full text-xs ${getPriorityColor()}`}>
             {getPriorityDisplayName(priority)}
           </span>
-
-          {/* Status personalizado exibido como um badge ao lado da prioridade */}
-          {hasCustomStatus && (
+          <div className="flex items-center">
             <div
-              className="px-2 py-1 rounded-full flex items-center text-xs"
-              style={{
-                backgroundColor: workflow.customStatusColor
-                  ? `${workflow.customStatusColor}20`
-                  : "#f0f0f0",
-                color: workflow.customStatusColor || "#666",
-              }}>
-              <div
-                className="h-2 w-2 rounded-full mr-1"
-                style={{
-                  backgroundColor: workflow.customStatusColor || "#666",
-                }}></div>
-              <span>{workflow.customStatusName}</span>
-            </div>
-          )}
+              className="h-3 w-3 rounded-full mr-1"
+              style={{ backgroundColor: getStatusColor() }}></div>
+            <span
+              className={`text-xs ${hasCustomStatus ? "font-medium" : "text-gray-600"}`}
+              style={
+                hasCustomStatus && workflow.customStatusColor
+                  ? { color: workflow.customStatusColor }
+                  : {}
+              }>
+              {hasCustomStatus
+                ? workflow.customStatusName
+                : getStatusDisplayName(status)}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -155,31 +138,19 @@ const WorkflowCard: React.FC<WorkflowCardProps> = ({ workflow }) => {
           <span>{formatDate(deadline)}</span>
         </div>
 
-        {/* Sempre mostrar o status padrão */}
-        <div className="flex items-center">
-          <div className="flex items-center text-gray-500 text-sm">
-            <div
-              className="h-3 w-3 rounded-full mr-1"
-              style={{
-                backgroundColor: hasCustomStatus ? "#808080" : getStatusColor(),
-              }}></div>
-            <span>{getStatusDisplayName(status)}</span>
+        {isOverdue && (
+          <div className="flex items-center text-red-500 text-sm">
+            <AlertTriangle size={16} className="mr-1" />
+            <span>Atrasado ({Math.abs(daysRemaining)} dias)</span>
           </div>
+        )}
 
-          {isOverdue && (
-            <div className="flex items-center text-red-500 text-sm ml-3">
-              <AlertTriangle size={16} className="mr-1" />
-              <span>Atrasado ({Math.abs(daysRemaining)} dias)</span>
-            </div>
-          )}
-
-          {isNearDeadline && !isOverdue && (
-            <div className="flex items-center text-orange-500 text-sm ml-3">
-              <Clock size={16} className="mr-1" />
-              <span>Prazo próximo ({daysRemaining} dias)</span>
-            </div>
-          )}
-        </div>
+        {isNearDeadline && !isOverdue && (
+          <div className="flex items-center text-orange-500 text-sm">
+            <Clock size={16} className="mr-1" />
+            <span>Prazo próximo ({daysRemaining} dias)</span>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col">
