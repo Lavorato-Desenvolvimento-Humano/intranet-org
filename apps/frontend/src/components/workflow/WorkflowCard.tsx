@@ -1,7 +1,13 @@
 "use client";
 
 import React from "react";
-import { ChevronRight, Calendar, Clock, AlertTriangle } from "lucide-react";
+import {
+  ChevronRight,
+  Calendar,
+  Clock,
+  AlertTriangle,
+  Tag,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { WorkflowSummaryDto } from "@/types/workflow";
 
@@ -16,6 +22,7 @@ const WorkflowCard: React.FC<WorkflowCardProps> = ({ workflow }) => {
   if (!workflow || !workflow.id) {
     return null;
   }
+
   // Valores seguros com fallbacks
   const title = workflow.title || "Sem título";
   const templateName = workflow.templateName || "Template não disponível";
@@ -30,6 +37,7 @@ const WorkflowCard: React.FC<WorkflowCardProps> = ({ workflow }) => {
   const daysRemaining = workflow.daysRemaining || 0;
   const currentAssigneeName = workflow.currentAssigneeName || "";
 
+  // Verificar se há status personalizado
   const hasCustomStatus = workflow.customStatusId && workflow.customStatusName;
 
   const getStatusColor = () => {
@@ -108,36 +116,39 @@ const WorkflowCard: React.FC<WorkflowCardProps> = ({ workflow }) => {
             className={`px-2 py-1 rounded-full text-xs ${getPriorityColor()}`}>
             {getPriorityDisplayName(priority)}
           </span>
-          {/* Status personalizado ou padrão */}
-          {hasCustomStatus ? (
+          <div className="flex items-center">
             <div
-              className="flex items-center px-2 py-1 rounded-full text-xs"
-              style={{
-                backgroundColor: `${workflow.customStatusColor}20`,
-                color: workflow.customStatusColor ?? "#808080",
-                border: `1px solid ${workflow.customStatusColor ?? "#808080"}`,
-              }}>
-              <div
-                className="h-2 w-2 rounded-full mr-1"
-                style={{
-                  backgroundColor: workflow.customStatusColor ?? "#808080",
-                }}></div>
-              <span>{workflow.customStatusName}</span>
-            </div>
-          ) : (
-            <div className="flex items-center">
-              <div
-                className="h-3 w-3 rounded-full mr-1"
-                style={{ backgroundColor: getStatusColor() }}></div>
-              <span className="text-xs text-gray-600">
-                {getStatusDisplayName(status)}
-              </span>
-            </div>
-          )}
+              className="h-3 w-3 rounded-full mr-1"
+              style={{ backgroundColor: getStatusColor() }}></div>
+            <span className="text-xs text-gray-600">
+              {getStatusDisplayName(status)}
+            </span>
+          </div>
         </div>
       </div>
 
       <p className="text-gray-600 text-sm mb-3">Template: {templateName}</p>
+
+      {/* Adicionar exibição do status personalizado */}
+      {hasCustomStatus && (
+        <div
+          className="flex items-center mb-3 px-3 py-1 rounded-md"
+          style={{
+            backgroundColor: `${workflow.customStatusColor}15`, // 15% de opacidade
+            borderLeft: `3px solid ${workflow.customStatusColor}`,
+          }}>
+          <Tag
+            size={14}
+            style={{ color: workflow.customStatusColor ?? "#000" }}
+            className="mr-2"
+          />
+          <span
+            style={{ color: workflow.customStatusColor ?? "#000" }}
+            className="text-sm font-medium">
+            {workflow.customStatusName}
+          </span>
+        </div>
+      )}
 
       <div className="flex justify-between items-center mb-3">
         <div className="flex items-center text-sm text-gray-500">
