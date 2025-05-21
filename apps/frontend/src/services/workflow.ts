@@ -526,6 +526,57 @@ const workflowService = {
       throw error;
     }
   },
+
+  getWorkflowsByTemplate: async (templateId: string, page = 0, size = 10) => {
+    try {
+      const response = await api.get<{
+        content: WorkflowSummaryDto[];
+        totalElements: number;
+      }>(`/api/workflows/template/${templateId}?page=${page}&size=${size}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Erro ao buscar fluxos do template ${templateId}:`, error);
+      throw error;
+    }
+  },
+
+  getWorkflowsByTemplateAndStatus: async (
+    templateId: string,
+    status: string,
+    page = 0,
+    size = 10
+  ) => {
+    try {
+      const response = await api.get<{
+        content: WorkflowSummaryDto[];
+        totalElements: number;
+      }>(
+        `/api/workflows/template/${templateId}/status/${status}?page=${page}&size=${size}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Erro ao buscar fluxos do template ${templateId} com status ${status}:`,
+        error
+      );
+      throw error;
+    }
+  },
+
+  getAssignedWorkflowsByTemplate: async (templateId: string) => {
+    try {
+      const response = await api.get<WorkflowSummaryDto[]>(
+        `/api/workflows/assigned-to-me/template/${templateId}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Erro ao buscar fluxos atribuídos do template ${templateId}:`,
+        error
+      );
+      return [];
+    }
+  },
 };
 
 export default workflowService;

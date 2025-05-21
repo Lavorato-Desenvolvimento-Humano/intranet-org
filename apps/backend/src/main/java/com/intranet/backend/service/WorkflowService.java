@@ -67,4 +67,10 @@ public interface WorkflowService {
     WorkflowStatsDto getGeneralWorkflowStatsByTemplate(UUID templateId);
 
     WorkflowStatsDto getGeneralWorkflowStatsByStatusTemplate(UUID statusTemplateId);
+
+    Page<WorkflowSummaryDto> getWorkflowsByTemplate(UUID templateId, Pageable pageable);
+
+    List<WorkflowSummaryDto> getWorkflowsAssignedToUserByTemplate(UUID userId, UUID templateId);
+
+    Page<WorkflowSummaryDto> getWorkflowsByTemplateAndStatus(UUID templateId, String status, Pageable pageable);
 }
