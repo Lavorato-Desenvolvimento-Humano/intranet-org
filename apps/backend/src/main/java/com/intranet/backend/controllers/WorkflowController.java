@@ -422,6 +422,52 @@ public class WorkflowController {
         return ResponseEntity.ok(updatedWorkflow);
     }
 
+    @GetMapping("/template/{templateId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    public ResponseEntity<Page<WorkflowSummaryDto>> getWorkflowsByTemplate(
+            @PathVariable UUID templateId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        logger.info("Buscando fluxos de trabalho do template: {}", templateId);
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<WorkflowSummaryDto> workflows = workflowService.getWorkflowsByTemplate(templateId, pageable);
+        return ResponseEntity.ok(workflows);
+    }
+
+    @GetMapping("/template/{templateId}/status/{status}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    public ResponseEntity<Page<WorkflowSummaryDto>> getWorkflowsByTemplateAndStatus(
+            @PathVariable UUID templateId,
+            @PathVariable String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        logger.info("Buscando fluxos de trabalho do template: {} com status: {}", templateId, status);
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<WorkflowSummaryDto> workflows = workflowService.getWorkflowsByTemplateAndStatus(templateId, status, pageable);
+        return ResponseEntity.ok(workflows);
+    }
+
+    @GetMapping("/assigned-to-me/template/{templateId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    public ResponseEntity<List<WorkflowSummaryDto>> getWorkflowsAssignedToMeByTemplate(@PathVariable UUID templateId) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String email = authentication.getName();
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Usuário não encontrado com o email: " + email));
+
+        UUID userId = user.getId();
+
+        logger.info("Buscando fluxos de trabalho atribuídos ao usuário: {} filtrados pelo template: {}", userId, templateId);
+
+        List<WorkflowSummaryDto> workflows = workflowService.getWorkflowsAssignedToUserByTemplate(userId, templateId);
+        return ResponseEntity.ok(workflows);
+    }
+
     @GetMapping("/stats/template/{templateId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR')")
     public ResponseEntity<WorkflowStatsDto> getWorkflowStatsByTemplate(@PathVariable UUID templateId) {

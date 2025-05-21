@@ -1,4 +1,3 @@
-// src/app/workflows/page.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -17,7 +16,7 @@ import WorkflowCard from "@/components/workflow/WorkflowCard";
 import { Loading } from "@/components/ui/loading";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import workflowService from "@/services/workflow";
-import { WorkflowSummaryDto } from "@/types/workflow";
+import { WorkflowSummaryDto, WorkflowTemplateDto } from "@/types/workflow";
 import Navbar from "@/components/layout/Navbar";
 
 export default function WorkflowsPage() {
@@ -33,14 +32,56 @@ export default function WorkflowsPage() {
   >([]);
   const [loadingAssigned, setLoadingAssigned] = useState(true);
 
+  // Estado para os templates e filtro de template
+  const [templates, setTemplates] = useState<WorkflowTemplateDto[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+  // Função para buscar templates
+  const fetchTemplates = async () => {
+    try {
+      setLoadingTemplates(true);
+      const response = await workflowService.getAllTemplates(0, 100);
+      setTemplates(response.content || []);
+    } catch (err) {
+      console.error("Erro ao carregar templates:", err);
+    } finally {
+      setLoadingTemplates(false);
+    }
+  };
+
+  // Carregar templates ao iniciar a página
+  useEffect(() => {
+    fetchTemplates();
+  }, []);
+
   const fetchWorkflows = async (status?: string) => {
     try {
       setLoading(true);
       let response;
 
-      if (status && status !== "all") {
+      // Lógica combinada para filtrar por status e template
+      if (selectedTemplateId && status && status !== "all") {
+        // Filtrar por template E status
+        response = await workflowService.getWorkflowsByTemplateAndStatus(
+          selectedTemplateId,
+          status,
+          page,
+          12
+        );
+      } else if (selectedTemplateId) {
+        // Filtrar apenas por template
+        response = await workflowService.getWorkflowsByTemplate(
+          selectedTemplateId,
+          page,
+          12
+        );
+      } else if (status && status !== "all") {
+        // Filtrar apenas por status
         response = await workflowService.getWorkflowsByStatus(status, page, 12);
       } else {
+        // Sem filtros
         response = await workflowService.getAllWorkflows(page, 12);
       }
 
@@ -59,7 +100,18 @@ export default function WorkflowsPage() {
   const fetchAssignedWorkflows = async () => {
     try {
       setLoadingAssigned(true);
-      const data = await workflowService.getAssignedWorkflows();
+      let data;
+
+      // Se tiver um template selecionado, filtrar os fluxos atribuídos por template
+      if (selectedTemplateId) {
+        data =
+          await workflowService.getAssignedWorkflowsByTemplate(
+            selectedTemplateId
+          );
+      } else {
+        data = await workflowService.getAssignedWorkflows();
+      }
+
       setAssignedWorkflows(data);
     } catch (err) {
       console.error("Erro ao carregar fluxos atribuídos:", err);
@@ -75,11 +127,22 @@ export default function WorkflowsPage() {
       const status = activeTab === "all" ? undefined : activeTab;
       fetchWorkflows(status);
     }
-  }, [activeTab, page]);
+  }, [activeTab, page, selectedTemplateId]); // Dependências atualizadas
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
     setPage(0); // Reset para a primeira página ao mudar a tab
+    // Mantemos o filtro de template
+  };
+
+  const handleTemplateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedTemplateId(e.target.value);
+    setPage(0); // Reset para a primeira página ao aplicar filtro
+  };
+
+  const clearFilters = () => {
+    setSelectedTemplateId("");
+    setPage(0);
   };
 
   const handleCreateWorkflow = () => {
@@ -96,6 +159,11 @@ export default function WorkflowsPage() {
 
   const handleDashboard = () => {
     router.push("/workflows/dashboard");
+  };
+
+  const getSelectedTemplateName = () => {
+    const template = templates.find((t) => t.id === selectedTemplateId);
+    return template ? template.name : "";
   };
 
   return (
@@ -139,6 +207,65 @@ export default function WorkflowsPage() {
             </CustomButton>
           </div>
         </div>
+
+        {/* Filtros */}
+        <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center">
+              <FilterIcon size={20} className="text-gray-500 mr-2" />
+              <h2 className="text-lg font-semibold">Filtros</h2>
+            </div>
+            <button
+              onClick={() => setIsFilterOpen(!isFilterOpen)}
+              className="text-sm text-primary hover:text-primary-dark">
+              {isFilterOpen ? "Ocultar Filtros" : "Mostrar Filtros"}
+            </button>
+          </div>
+
+          {isFilterOpen && (
+            <div className="mb-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Template de Fluxo
+                  </label>
+                  <select
+                    value={selectedTemplateId}
+                    onChange={handleTemplateChange}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    disabled={loadingTemplates}>
+                    <option value="">Todos os templates</option>
+                    {templates.map((template) => (
+                      <option key={template.id} value={template.id}>
+                        {template.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="mt-4 flex justify-end">
+                <button
+                  onClick={clearFilters}
+                  className="bg-gray-100 text-gray-700 px-4 py-2 rounded hover:bg-gray-200 transition-colors">
+                  Limpar Filtros
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Informação sobre filtros ativos */}
+        {selectedTemplateId && (
+          <div className="bg-blue-50 text-blue-800 p-2 rounded-md mb-4">
+            Filtrando por template: {getSelectedTemplateName()}
+            <button
+              onClick={clearFilters}
+              className="ml-2 text-blue-600 hover:text-blue-800">
+              Limpar
+            </button>
+          </div>
+        )}
 
         <Tabs defaultValue="all" className="py-2 px-4">
           <TabsList className="bg-white rounded-lg shadow-sm p-1 mb-4">
@@ -209,7 +336,9 @@ export default function WorkflowsPage() {
                   Nenhum fluxo atribuído a você
                 </h3>
                 <p className="text-gray-600">
-                  Você não possui fluxos de trabalho atribuídos no momento
+                  {selectedTemplateId
+                    ? `Você não possui fluxos de trabalho do template "${getSelectedTemplateName()}" atribuídos a você no momento`
+                    : "Você não possui fluxos de trabalho atribuídos no momento"}
                 </p>
               </div>
             )}
@@ -292,15 +421,37 @@ export default function WorkflowsPage() {
         <FileText size={48} className="mx-auto text-gray-400 mb-4" />
         <h3 className="text-lg font-semibold mb-2">Nenhum fluxo encontrado</h3>
         <p className="text-gray-600 mb-6">
-          Crie seu primeiro fluxo de trabalho para começar
+          {selectedTemplateId
+            ? `Não existem fluxos para o template "${getSelectedTemplateName()}"${activeTab !== "all" ? ` com status "${getStatusDisplayName(activeTab)}"` : ""}`
+            : "Crie seu primeiro fluxo de trabalho para começar"}
         </p>
-        <CustomButton
-          variant="primary"
-          icon={Plus}
-          onClick={handleCreateWorkflow}>
-          Criar Primeiro Fluxo
-        </CustomButton>
+        {!selectedTemplateId && (
+          <CustomButton
+            variant="primary"
+            icon={Plus}
+            onClick={handleCreateWorkflow}>
+            Criar Primeiro Fluxo
+          </CustomButton>
+        )}
       </div>
     );
+  }
+
+  // Função auxiliar para obter nome legível do status
+  function getStatusDisplayName(status: string) {
+    switch (status) {
+      case "in_progress":
+        return "Em Andamento";
+      case "paused":
+        return "Pausado";
+      case "completed":
+        return "Concluído";
+      case "canceled":
+        return "Cancelado";
+      case "archived":
+        return "Arquivado";
+      default:
+        return status;
+    }
   }
 }
