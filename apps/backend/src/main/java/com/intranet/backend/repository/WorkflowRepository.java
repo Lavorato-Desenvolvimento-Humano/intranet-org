@@ -77,5 +77,17 @@ public interface WorkflowRepository extends JpaRepository<Workflow, UUID> {
     @Query("SELECT COUNT(w) FROM Workflow w WHERE w.statusTemplate.id = :statusTemplateId AND w.deadline < :date AND w.status = 'in_progress'")
     int countOverdueWorkflowsByStatusTemplateId(@Param("statusTemplateId") UUID statusTemplateId, @Param("date") LocalDateTime date);
 
+    @Query("SELECT w FROM Workflow w WHERE w.template.id = :templateId")
+    Page<Workflow> findByTemplateId(@Param("templateId") UUID templateId, Pageable pageable);
 
+    @Query("SELECT w FROM Workflow w WHERE w.template.id = :templateId AND w.status = :status")
+    Page<Workflow> findByTemplateIdAndStatus(
+            @Param("templateId") UUID templateId,
+            @Param("status") String status,
+            Pageable pageable);
+
+    @Query("SELECT w FROM Workflow w JOIN WorkflowAssignment wa ON w.id = wa.workflow.id " +
+            "WHERE wa.assignedTo.id = :userId AND wa.stepNumber = w.currentStep AND w.status = 'in_progress' " +
+            "AND w.template.id = :templateId")
+    List<Workflow> findWorkflowsAssignedToUserByTemplate(@Param("userId") UUID userId, @Param("templateId") UUID templateId);
 }

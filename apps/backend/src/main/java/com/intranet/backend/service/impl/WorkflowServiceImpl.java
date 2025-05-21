@@ -249,6 +249,53 @@ public class WorkflowServiceImpl implements WorkflowService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Page<WorkflowSummaryDto> getWorkflowsByTemplate(UUID templateId, Pageable pageable) {
+        logger.info("Buscando fluxos de trabalho do template: {}", templateId);
+
+        // Verificar se o template existe
+        templateRepository.findById(templateId)
+                .orElseThrow(() -> new ResourceNotFoundException("Template não encontrado com o ID: " + templateId));
+
+        // Consultar os workflows com o template especificado
+        Page<Workflow> workflows = workflowRepository.findByTemplateId(templateId, pageable);
+
+        return workflows.map(this::mapToWorkflowSummaryDto);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<WorkflowSummaryDto> getWorkflowsByTemplateAndStatus(UUID templateId, String status, Pageable pageable) {
+        logger.info("Buscando fluxos de trabalho do template: {} com status: {}", templateId, status);
+
+        // Verificar se o template existe
+        templateRepository.findById(templateId)
+                .orElseThrow(() -> new ResourceNotFoundException("Template não encontrado com o ID: " + templateId));
+
+        // Consultar os workflows com o template e status especificados
+        Page<Workflow> workflows = workflowRepository.findByTemplateIdAndStatus(templateId, status, pageable);
+
+        return workflows.map(this::mapToWorkflowSummaryDto);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<WorkflowSummaryDto> getWorkflowsAssignedToUserByTemplate(UUID userId, UUID templateId) {
+        logger.info("Buscando fluxos de trabalho atribuídos ao usuário: {} filtrados pelo template: {}", userId, templateId);
+
+        // Verificar se o template existe
+        templateRepository.findById(templateId)
+                .orElseThrow(() -> new ResourceNotFoundException("Template não encontrado com o ID: " + templateId));
+
+        // Consultar os workflows
+        List<Workflow> workflows = workflowRepository.findWorkflowsAssignedToUserByTemplate(userId, templateId);
+
+        return workflows.stream()
+                .map(this::mapToWorkflowSummaryDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     @Transactional
     public WorkflowDto advanceToNextStep(UUID workflowId, UUID assignToId, String comments) {
         logger.info("Avançando fluxo {} para a próxima etapa, atribuindo para usuário: {}", workflowId, assignToId);
