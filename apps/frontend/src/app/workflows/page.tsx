@@ -9,6 +9,8 @@ import {
   Settings,
   Home,
   CircleEqualIcon,
+  Search,
+  X,
 } from "lucide-react";
 import Breadcrumb from "@/components/ui/breadcrumb";
 import { CustomButton } from "@/components/ui/custom-button";
@@ -38,6 +40,10 @@ export default function WorkflowsPage() {
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
+  // Estado para pesquisa
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [isSearching, setIsSearching] = useState(false);
+
   // Função para buscar templates
   const fetchTemplates = async () => {
     try {
@@ -61,28 +67,42 @@ export default function WorkflowsPage() {
       setLoading(true);
       let response;
 
-      // Lógica combinada para filtrar por status e template
-      if (selectedTemplateId && status && status !== "all") {
-        // Filtrar por template E status
-        response = await workflowService.getWorkflowsByTemplateAndStatus(
-          selectedTemplateId,
-          status,
+      // Se há termo de pesquisa, usar endpoint de pesquisa
+      if (searchTerm.trim()) {
+        setIsSearching(true);
+        const searchStatus = status === "all" ? undefined : status;
+        response = await workflowService.searchWorkflows(
+          searchTerm.trim(),
           page,
-          12
+          12,
+          searchStatus,
+          selectedTemplateId || undefined
         );
-      } else if (selectedTemplateId) {
-        // Filtrar apenas por template
-        response = await workflowService.getWorkflowsByTemplate(
-          selectedTemplateId,
-          page,
-          12
-        );
-      } else if (status && status !== "all") {
-        // Filtrar apenas por status
-        response = await workflowService.getWorkflowsByStatus(status, page, 12);
       } else {
-        // Sem filtros
-        response = await workflowService.getAllWorkflows(page, 12);
+        setIsSearching(false);
+        // Lógica original sem pesquisa
+        if (selectedTemplateId && status && status !== "all") {
+          response = await workflowService.getWorkflowsByTemplateAndStatus(
+            selectedTemplateId,
+            status,
+            page,
+            12
+          );
+        } else if (selectedTemplateId) {
+          response = await workflowService.getWorkflowsByTemplate(
+            selectedTemplateId,
+            page,
+            12
+          );
+        } else if (status && status !== "all") {
+          response = await workflowService.getWorkflowsByStatus(
+            status,
+            page,
+            12
+          );
+        } else {
+          response = await workflowService.getAllWorkflows(page, 12);
+        }
       }
 
       setWorkflows(response.content || []);
@@ -102,14 +122,22 @@ export default function WorkflowsPage() {
       setLoadingAssigned(true);
       let data;
 
-      // Se tiver um template selecionado, filtrar os fluxos atribuídos por template
-      if (selectedTemplateId) {
-        data =
-          await workflowService.getAssignedWorkflowsByTemplate(
-            selectedTemplateId
-          );
+      // Se há termo de pesquisa, usar endpoint de pesquisa
+      if (searchTerm.trim()) {
+        data = await workflowService.searchAssignedWorkflows(
+          searchTerm.trim(),
+          selectedTemplateId || undefined
+        );
       } else {
-        data = await workflowService.getAssignedWorkflows();
+        // Lógica original sem pesquisa
+        if (selectedTemplateId) {
+          data =
+            await workflowService.getAssignedWorkflowsByTemplate(
+              selectedTemplateId
+            );
+        } else {
+          data = await workflowService.getAssignedWorkflows();
+        }
       }
 
       setAssignedWorkflows(data);
@@ -127,12 +155,11 @@ export default function WorkflowsPage() {
       const status = activeTab === "all" ? undefined : activeTab;
       fetchWorkflows(status);
     }
-  }, [activeTab, page, selectedTemplateId]); // Dependências atualizadas
+  }, [activeTab, page, selectedTemplateId, searchTerm]);
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
     setPage(0); // Reset para a primeira página ao mudar a tab
-    // Mantemos o filtro de template
   };
 
   const handleTemplateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -140,8 +167,19 @@ export default function WorkflowsPage() {
     setPage(0); // Reset para a primeira página ao aplicar filtro
   };
 
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    setPage(0); // Reset para a primeira página ao pesquisar
+  };
+
+  const clearSearch = () => {
+    setSearchTerm("");
+    setPage(0);
+  };
+
   const clearFilters = () => {
     setSelectedTemplateId("");
+    setSearchTerm("");
     setPage(0);
   };
 
@@ -165,6 +203,8 @@ export default function WorkflowsPage() {
     const template = templates.find((t) => t.id === selectedTemplateId);
     return template ? template.name : "";
   };
+
+  const hasActiveFilters = selectedTemplateId || searchTerm.trim();
 
   return (
     <>
@@ -205,6 +245,29 @@ export default function WorkflowsPage() {
               onClick={handleCreateWorkflow}>
               Novo Fluxo
             </CustomButton>
+          </div>
+        </div>
+
+        {/* Campo de Pesquisa */}
+        <div className="bg-white rounded-lg shadow-md p-4 mb-4">
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search size={20} className="text-gray-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="Pesquisar fluxos por título..."
+              value={searchTerm}
+              onChange={handleSearchChange}
+              className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            />
+            {searchTerm && (
+              <button
+                onClick={clearSearch}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
+                <X size={20} />
+              </button>
+            )}
           </div>
         </div>
 
@@ -256,12 +319,20 @@ export default function WorkflowsPage() {
         </div>
 
         {/* Informação sobre filtros ativos */}
-        {selectedTemplateId && (
-          <div className="bg-blue-50 text-blue-800 p-2 rounded-md mb-4">
-            Filtrando por template: {getSelectedTemplateName()}
+        {hasActiveFilters && (
+          <div className="bg-blue-50 text-blue-800 p-3 rounded-md mb-4 flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              {searchTerm.trim() && (
+                <span>Pesquisando: "{searchTerm.trim()}"</span>
+              )}
+              {selectedTemplateId && (
+                <span>Template: {getSelectedTemplateName()}</span>
+              )}
+            </div>
             <button
               onClick={clearFilters}
-              className="ml-2 text-blue-600 hover:text-blue-800">
+              className="text-blue-600 hover:text-blue-800 flex items-center">
+              <X size={16} className="mr-1" />
               Limpar
             </button>
           </div>
@@ -335,11 +406,7 @@ export default function WorkflowsPage() {
                 <h3 className="text-lg font-semibold mb-2">
                   Nenhum fluxo atribuído a você
                 </h3>
-                <p className="text-gray-600">
-                  {selectedTemplateId
-                    ? `Você não possui fluxos de trabalho do template "${getSelectedTemplateName()}" atribuídos a você no momento`
-                    : "Você não possui fluxos de trabalho atribuídos no momento"}
-                </p>
+                <p className="text-gray-600">{getEmptyStateMessage()}</p>
               </div>
             )}
           </TabsContent>
@@ -420,12 +487,8 @@ export default function WorkflowsPage() {
       <div className="bg-white rounded-lg shadow-md p-8 text-center">
         <FileText size={48} className="mx-auto text-gray-400 mb-4" />
         <h3 className="text-lg font-semibold mb-2">Nenhum fluxo encontrado</h3>
-        <p className="text-gray-600 mb-6">
-          {selectedTemplateId
-            ? `Não existem fluxos para o template "${getSelectedTemplateName()}"${activeTab !== "all" ? ` com status "${getStatusDisplayName(activeTab)}"` : ""}`
-            : "Crie seu primeiro fluxo de trabalho para começar"}
-        </p>
-        {!selectedTemplateId && (
+        <p className="text-gray-600 mb-6">{getEmptyStateMessage()}</p>
+        {!hasActiveFilters && (
           <CustomButton
             variant="primary"
             icon={Plus}
@@ -435,6 +498,37 @@ export default function WorkflowsPage() {
         )}
       </div>
     );
+  }
+
+  // Função para gerar mensagem do estado vazio baseada nos filtros ativos
+  function getEmptyStateMessage() {
+    const parts = [];
+
+    if (searchTerm.trim()) {
+      parts.push(`com o termo "${searchTerm.trim()}"`);
+    }
+
+    if (selectedTemplateId) {
+      parts.push(`do template "${getSelectedTemplateName()}"`);
+    }
+
+    if (activeTab !== "all" && activeTab !== "assigned") {
+      parts.push(`com status "${getStatusDisplayName(activeTab)}"`);
+    }
+
+    if (activeTab === "assigned") {
+      if (parts.length > 0) {
+        return `Você não possui fluxos atribuídos ${parts.join(" e ")} no momento`;
+      } else {
+        return "Você não possui fluxos de trabalho atribuídos no momento";
+      }
+    }
+
+    if (parts.length > 0) {
+      return `Não existem fluxos ${parts.join(" e ")}`;
+    } else {
+      return "Crie seu primeiro fluxo de trabalho para começar";
+    }
   }
 
   // Função auxiliar para obter nome legível do status
