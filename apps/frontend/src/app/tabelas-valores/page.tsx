@@ -2,12 +2,19 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Plus, Calendar, Eye, Pencil, Trash } from "lucide-react";
+import { useRouter } from "next/navigation";
+import {
+  Plus,
+  Calendar,
+  Eye,
+  Pencil,
+  Trash,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Breadcrumb from "@/components/ui/breadcrumb";
 import { Loading } from "@/components/ui/loading";
-import DataTable from "@/components/ui/data-table";
 import Pagination from "@/components/ui/pagination";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
 import { useAuth } from "@/context/AuthContext";
@@ -20,9 +27,11 @@ import { stripHtml } from "@/utils/textUtils";
 import { CustomButton } from "@/components/ui/custom-button";
 import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
 
+// Força a página a ser renderizada dinamicamente
+export const dynamic = "force-dynamic";
+
 export default function TabelasValoresPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { user } = useAuth();
 
   // Estados para dados e paginação
@@ -32,6 +41,7 @@ export default function TabelasValoresPage() {
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   // Estados para controles de paginação
   const [currentPage, setCurrentPage] = useState(0);
@@ -58,19 +68,31 @@ export default function TabelasValoresPage() {
   const canCreate = isAdmin || isEditor;
   const canDelete = isAdmin || isEditor;
 
-  // Inicializar parâmetros da URL
+  // Marcar como montado para evitar problemas de hidratação
   useEffect(() => {
-    const page = parseInt(searchParams?.get("page") || "1") - 1; // URL usa 1-based, state usa 0-based
-    const size = parseInt(searchParams?.get("size") || "10");
-    const sort = searchParams?.get("sort") || "nome";
+    setMounted(true);
+  }, []);
 
-    setCurrentPage(Math.max(0, page));
-    setPageSize(Math.max(5, Math.min(50, size))); // Limitar entre 5 e 50
-    setSortField(sort);
-  }, [searchParams]);
+  // Inicializar parâmetros da URL apenas após montar no cliente
+  useEffect(() => {
+    if (mounted && typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const page = parseInt(urlParams.get("page") || "1") - 1;
+      const size = parseInt(urlParams.get("size") || "10");
+      const sort = urlParams.get("sort") || "nome";
+      const direction = (urlParams.get("direction") || "asc") as "asc" | "desc";
+
+      setCurrentPage(Math.max(0, page));
+      setPageSize(Math.max(5, Math.min(50, size)));
+      setSortField(sort);
+      setSortDirection(direction);
+    }
+  }, [mounted]);
 
   // Função para buscar tabelas
   const fetchTabelas = useCallback(async () => {
+    if (!mounted) return; // Não buscar antes de montar
+
     setLoading(true);
     setError(null);
     try {
@@ -93,34 +115,38 @@ export default function TabelasValoresPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, pageSize, sortField, sortDirection]);
+  }, [currentPage, pageSize, sortField, sortDirection, mounted]);
 
   // Buscar tabelas quando os parâmetros mudarem
   useEffect(() => {
-    fetchTabelas();
-  }, [fetchTabelas]);
+    if (mounted) {
+      fetchTabelas();
+    }
+  }, [fetchTabelas, mounted]);
 
-  // Atualizar URL quando os parâmetros mudarem
+  // Atualizar URL quando os parâmetros mudarem - apenas no cliente
   useEffect(() => {
-    const params = new URLSearchParams();
-    params.set("page", (currentPage + 1).toString()); // URL usa 1-based
-    params.set("size", pageSize.toString());
-    params.set("sort", sortField);
+    if (mounted && typeof window !== "undefined") {
+      const params = new URLSearchParams();
+      params.set("page", (currentPage + 1).toString());
+      params.set("size", pageSize.toString());
+      params.set("sort", sortField);
+      params.set("direction", sortDirection);
 
-    // Usar replace para não adicionar ao histórico do navegador
-    const newUrl = `${window.location.pathname}?${params.toString()}`;
-    window.history.replaceState(null, "", newUrl);
-  }, [currentPage, pageSize, sortField]);
+      const newUrl = `${window.location.pathname}?${params.toString()}`;
+      window.history.replaceState(null, "", newUrl);
+    }
+  }, [currentPage, pageSize, sortField, sortDirection, mounted]);
 
   // Função para mudar página
   const handlePageChange = (newPage: number) => {
-    setCurrentPage(newPage - 1); // Pagination component usa 1-based
+    setCurrentPage(newPage - 1);
   };
 
   // Função para mudar tamanho da página
   const handlePageSizeChange = (newSize: number) => {
     setPageSize(newSize);
-    setCurrentPage(0); // Voltar para primeira página
+    setCurrentPage(0);
   };
 
   // Função para mudar ordenação
@@ -131,7 +157,7 @@ export default function TabelasValoresPage() {
       setSortField(field);
       setSortDirection("asc");
     }
-    setCurrentPage(0); // Voltar para primeira página
+    setCurrentPage(0);
   };
 
   // Função para formatar data
@@ -179,89 +205,44 @@ export default function TabelasValoresPage() {
     }
   };
 
-  // Definição das colunas da tabela
-  const columns = [
-    {
-      key: "nome",
-      header: "Nome",
-      width: "25%",
-      sortable: true,
-      render: (value: string, record: TabelaValoresDto) => (
-        <div className="font-medium text-primary hover:text-primary-dark cursor-pointer">
-          {value}
+  // Função para renderizar cabeçalho da tabela
+  const renderTableHeader = (
+    label: string,
+    field: string,
+    sortable: boolean = false
+  ) => (
+    <th
+      className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${
+        sortable ? "cursor-pointer select-none hover:bg-gray-100" : ""
+      }`}
+      onClick={() => sortable && handleSortChange(field)}>
+      <div className="flex items-center">
+        {label}
+        {sortable && sortField === field && (
+          <span className="ml-1">
+            {sortDirection === "asc" ? (
+              <ChevronUp size={14} />
+            ) : (
+              <ChevronDown size={14} />
+            )}
+          </span>
+        )}
+      </div>
+    </th>
+  );
+
+  // Não renderizar nada até estar montado no cliente
+  if (!mounted) {
+    return (
+      <ProtectedRoute>
+        <div className="min-h-screen bg-gray-50 flex flex-col">
+          <div className="flex-grow container mx-auto p-6">
+            <Loading message="Carregando página..." />
+          </div>
         </div>
-      ),
-    },
-    {
-      key: "descricao",
-      header: "Descrição",
-      width: "25%",
-      render: (value: string) => (
-        <div className="text-gray-600 truncate max-w-sm">
-          {stripHtml(value) || "Sem descrição"}
-        </div>
-      ),
-    },
-    {
-      key: "convenioNome",
-      header: "Convênio",
-      width: "20%",
-      sortable: true,
-      render: (value: string) => <div className="text-gray-700">{value}</div>,
-    },
-    {
-      key: "createdAt",
-      header: "Data de Criação",
-      width: "15%",
-      sortable: true,
-      render: (value: string) => (
-        <div className="text-gray-600 flex items-center">
-          <Calendar size={16} className="mr-2 text-gray-400" />
-          {formatDate(value)}
-        </div>
-      ),
-    },
-    {
-      key: "actions",
-      header: "Ações",
-      width: "15%",
-      render: (_: any, record: TabelaValoresDto) => (
-        <div className="flex space-x-2">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              router.push(`/tabelas-valores/${record.id}`);
-            }}
-            className="p-1 text-blue-600 hover:text-blue-800"
-            title="Visualizar">
-            <Eye size={18} />
-          </button>
-          {(isAdmin || isEditor) && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                router.push(`/tabelas-valores/${record.id}/editar`);
-              }}
-              className="p-1 text-yellow-600 hover:text-yellow-800"
-              title="Editar">
-              <Pencil size={18} />
-            </button>
-          )}
-          {(isAdmin || isEditor) && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDeleteClick(record);
-              }}
-              className="p-1 text-red-600 hover:text-red-800"
-              title="Excluir">
-              <Trash size={18} />
-            </button>
-          )}
-        </div>
-      ),
-    },
-  ];
+      </ProtectedRoute>
+    );
+  }
 
   return (
     <ProtectedRoute>
@@ -311,7 +292,7 @@ export default function TabelasValoresPage() {
                     onChange={(e) =>
                       handlePageSizeChange(parseInt(e.target.value))
                     }
-                    className="ml-2 border border-gray-300 rounded px-2 py-1 text-sm">
+                    className="ml-2 border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
                     <option value={5}>5</option>
                     <option value={10}>10</option>
                     <option value={20}>20</option>
@@ -339,29 +320,116 @@ export default function TabelasValoresPage() {
           ) : (
             <>
               <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                <DataTable
-                  data={tabelas}
-                  columns={columns.map((col) => ({
-                    ...col,
-                    sortable: col.sortable && !!col.sortable,
-                  }))}
-                  keyExtractor={(item) => item.id}
-                  searchable={false} // Desabilitado já que temos paginação no servidor
-                  onRowClick={(tabela) =>
-                    router.push(`/tabelas-valores/${tabela.id}`)
-                  }
-                  emptyMessage="Nenhuma tabela de valores encontrada."
-                  showHeader={false} // Usaremos nosso próprio cabeçalho
-                  maxHeight="calc(100vh - 400px)"
-                  enableScrolling={true}
-                />
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        {renderTableHeader("Nome", "nome", true)}
+                        {renderTableHeader("Descrição", "descricao")}
+                        {renderTableHeader("Convênio", "convenioNome", true)}
+                        {renderTableHeader(
+                          "Data de Criação",
+                          "createdAt",
+                          true
+                        )}
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Ações
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {tabelas.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan={5}
+                            className="px-6 py-16 text-center text-gray-500">
+                            Nenhuma tabela de valores encontrada.
+                          </td>
+                        </tr>
+                      ) : (
+                        tabelas.map((tabela) => (
+                          <tr
+                            key={tabela.id}
+                            className="hover:bg-gray-50 cursor-pointer"
+                            onClick={() =>
+                              router.push(`/tabelas-valores/${tabela.id}`)
+                            }>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="font-medium text-primary hover:text-primary-dark">
+                                {tabela.nome}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="text-gray-600 truncate max-w-xs">
+                                {stripHtml(tabela.descricao) || "Sem descrição"}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-gray-700">
+                                {tabela.convenioNome}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-gray-600 flex items-center">
+                                <Calendar
+                                  size={16}
+                                  className="mr-2 text-gray-400"
+                                />
+                                {formatDate(tabela.createdAt)}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                              <div className="flex justify-end space-x-2">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    router.push(
+                                      `/tabelas-valores/${tabela.id}`
+                                    );
+                                  }}
+                                  className="p-1 text-blue-600 hover:text-blue-800"
+                                  title="Visualizar">
+                                  <Eye size={18} />
+                                </button>
+                                {(isAdmin || isEditor) && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      router.push(
+                                        `/tabelas-valores/${tabela.id}/editar`
+                                      );
+                                    }}
+                                    className="p-1 text-yellow-600 hover:text-yellow-800"
+                                    title="Editar">
+                                    <Pencil size={18} />
+                                  </button>
+                                )}
+                                {(isAdmin || isEditor) && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteClick(tabela);
+                                    }}
+                                    className="p-1 text-red-600 hover:text-red-800"
+                                    title="Excluir">
+                                    <Trash size={18} />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
               {/* Paginação inferior */}
               {pageData && pageData.totalPages > 1 && (
                 <div className="mt-6">
                   <Pagination
-                    currentPage={currentPage + 1} // Pagination component usa 1-based
+                    currentPage={currentPage + 1}
                     totalPages={pageData.totalPages}
                     onPageChange={handlePageChange}
                     totalItems={pageData.totalElements}
