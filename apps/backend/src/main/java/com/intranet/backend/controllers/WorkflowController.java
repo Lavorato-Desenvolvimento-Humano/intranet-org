@@ -451,6 +451,69 @@ public class WorkflowController {
         return ResponseEntity.ok(workflows);
     }
 
+    @GetMapping("/search")
+    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    public ResponseEntity<Page<WorkflowSummaryDto>> searchWorkflows(
+            @RequestParam String searchTerm,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) UUID templateId) {
+
+        logger.info("Pesquisando fluxos de trabalho com termo: {}", searchTerm);
+
+        Sort.Direction direction = sortDir.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
+
+        Page<WorkflowSummaryDto> workflows;
+
+        // Lógica combinada para filtrar por pesquisa, status e template
+        if (templateId != null && status != null && !status.isEmpty()) {
+            // Filtrar por pesquisa, template E status
+            workflows = workflowService.searchWorkflowsByTemplateAndStatus(searchTerm, templateId, status, pageable);
+        } else if (templateId != null) {
+            // Filtrar por pesquisa e template
+            workflows = workflowService.searchWorkflowsByTemplate(searchTerm, templateId, pageable);
+        } else if (status != null && !status.isEmpty()) {
+            // Filtrar por pesquisa e status
+            workflows = workflowService.searchWorkflowsByStatus(searchTerm, status, pageable);
+        } else {
+            // Filtrar apenas por pesquisa
+            workflows = workflowService.searchWorkflows(searchTerm, pageable);
+        }
+
+        return ResponseEntity.ok(workflows);
+    }
+
+    @GetMapping("/search/assigned-to-me")
+    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    public ResponseEntity<List<WorkflowSummaryDto>> searchWorkflowsAssignedToMe(
+            @RequestParam String searchTerm,
+            @RequestParam(required = false) UUID templateId) {
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String email = authentication.getName();
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Usuário não encontrado com o email: " + email));
+
+        UUID userId = user.getId();
+
+        logger.info("Pesquisando fluxos de trabalho atribuídos ao usuário: {} com termo: {}", userId, searchTerm);
+
+        List<WorkflowSummaryDto> workflows;
+
+        if (templateId != null) {
+            workflows = workflowService.searchWorkflowsAssignedToUserByTemplate(userId, templateId, searchTerm);
+        } else {
+            workflows = workflowService.searchWorkflowsAssignedToUser(userId, searchTerm);
+        }
+
+        return ResponseEntity.ok(workflows);
+    }
+
     @GetMapping("/assigned-to-me/template/{templateId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
     public ResponseEntity<List<WorkflowSummaryDto>> getWorkflowsAssignedToMeByTemplate(@PathVariable UUID templateId) {

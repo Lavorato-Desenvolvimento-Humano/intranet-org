@@ -296,6 +296,111 @@ public class WorkflowServiceImpl implements WorkflowService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Page<WorkflowSummaryDto> searchWorkflows(String searchTerm, Pageable pageable) {
+        logger.info("Pesquisando fluxos de trabalho com termo: {}", searchTerm);
+
+        if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            return getAllWorkflows(pageable);
+        }
+
+        Page<Workflow> workflows = workflowRepository.findByTitleContaining(searchTerm.trim(), pageable);
+        return workflows.map(this::mapToWorkflowSummaryDto);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<WorkflowSummaryDto> searchWorkflowsByStatus(String searchTerm, String status, Pageable pageable) {
+        logger.info("Pesquisando fluxos de trabalho com termo: {} e status: {}", searchTerm, status);
+
+        if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            return getWorkflowsByStatus(status, pageable);
+        }
+
+        Page<Workflow> workflows = workflowRepository.findByTitleContainingAndStatus(
+                searchTerm.trim(), status, pageable);
+        return workflows.map(this::mapToWorkflowSummaryDto);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<WorkflowSummaryDto> searchWorkflowsByTemplate(String searchTerm, UUID templateId, Pageable pageable) {
+        logger.info("Pesquisando fluxos de trabalho com termo: {} do template: {}", searchTerm, templateId);
+
+        // Verificar se o template existe
+        templateRepository.findById(templateId)
+                .orElseThrow(() -> new ResourceNotFoundException("Template não encontrado com o ID: " + templateId));
+
+        if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            return getWorkflowsByTemplate(templateId, pageable);
+        }
+
+        Page<Workflow> workflows = workflowRepository.findByTitleContainingAndTemplateId(
+                searchTerm.trim(), templateId, pageable);
+        return workflows.map(this::mapToWorkflowSummaryDto);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<WorkflowSummaryDto> searchWorkflowsByTemplateAndStatus(
+            String searchTerm, UUID templateId, String status, Pageable pageable) {
+        logger.info("Pesquisando fluxos de trabalho com termo: {} do template: {} com status: {}",
+                searchTerm, templateId, status);
+
+        // Verificar se o template existe
+        templateRepository.findById(templateId)
+                .orElseThrow(() -> new ResourceNotFoundException("Template não encontrado com o ID: " + templateId));
+
+        if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            return getWorkflowsByTemplateAndStatus(templateId, status, pageable);
+        }
+
+        Page<Workflow> workflows = workflowRepository.findByTitleContainingAndTemplateIdAndStatus(
+                searchTerm.trim(), templateId, status, pageable);
+        return workflows.map(this::mapToWorkflowSummaryDto);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<WorkflowSummaryDto> searchWorkflowsAssignedToUser(UUID userId, String searchTerm) {
+        logger.info("Pesquisando fluxos de trabalho atribuídos ao usuário: {} com termo: {}", userId, searchTerm);
+
+        if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            return getWorkflowsAssignedToUser(userId);
+        }
+
+        List<Workflow> workflows = workflowRepository.findWorkflowsAssignedToUserByTitleContaining(
+                userId, searchTerm.trim());
+
+        return workflows.stream()
+                .map(this::mapToWorkflowSummaryDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<WorkflowSummaryDto> searchWorkflowsAssignedToUserByTemplate(
+            UUID userId, UUID templateId, String searchTerm) {
+        logger.info("Pesquisando fluxos de trabalho atribuídos ao usuário: {} filtrados pelo template: {} com termo: {}",
+                userId, templateId, searchTerm);
+
+        // Verificar se o template existe
+        templateRepository.findById(templateId)
+                .orElseThrow(() -> new ResourceNotFoundException("Template não encontrado com o ID: " + templateId));
+
+        if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            return getWorkflowsAssignedToUserByTemplate(userId, templateId);
+        }
+
+        List<Workflow> workflows = workflowRepository.findWorkflowsAssignedToUserByTemplateAndTitleContaining(
+                userId, templateId, searchTerm.trim());
+
+        return workflows.stream()
+                .map(this::mapToWorkflowSummaryDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     @Transactional
     public WorkflowDto advanceToNextStep(UUID workflowId, UUID assignToId, String comments) {
         logger.info("Avançando fluxo {} para a próxima etapa, atribuindo para usuário: {}", workflowId, assignToId);
