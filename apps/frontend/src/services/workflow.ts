@@ -577,6 +577,60 @@ const workflowService = {
       return [];
     }
   },
+
+  searchWorkflows: async (
+    searchTerm: string,
+    page = 0,
+    size = 10,
+    status?: string,
+    templateId?: string
+  ) => {
+    try {
+      const params = new URLSearchParams({
+        searchTerm,
+        page: page.toString(),
+        size: size.toString(),
+      });
+
+      if (status) {
+        params.append("status", status);
+      }
+
+      if (templateId) {
+        params.append("templateId", templateId);
+      }
+
+      const response = await api.get<{
+        content: WorkflowSummaryDto[];
+        totalElements: number;
+      }>(`/api/workflows/search?${params.toString()}`);
+
+      return response.data;
+    } catch (error) {
+      console.error("Erro ao pesquisar fluxos:", error);
+      throw error;
+    }
+  },
+
+  searchAssignedWorkflows: async (searchTerm: string, templateId?: string) => {
+    try {
+      const params = new URLSearchParams({
+        searchTerm,
+      });
+
+      if (templateId) {
+        params.append("templateId", templateId);
+      }
+
+      const response = await api.get<WorkflowSummaryDto[]>(
+        `/api/workflows/search/assigned-to-me?${params.toString()}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Erro ao pesquisar fluxos atribuídos:", error);
+      throw error;
+    }
+  },
 };
 
 export default workflowService;

@@ -90,4 +90,46 @@ public interface WorkflowRepository extends JpaRepository<Workflow, UUID> {
             "WHERE wa.assignedTo.id = :userId AND wa.stepNumber = w.currentStep AND w.status = 'in_progress' " +
             "AND w.template.id = :templateId")
     List<Workflow> findWorkflowsAssignedToUserByTemplate(@Param("userId") UUID userId, @Param("templateId") UUID templateId);
+
+    @Query("SELECT w FROM Workflow w WHERE " +
+            "LOWER(w.title) LIKE LOWER(CONCAT('%', :searchTerm, '%'))")
+    Page<Workflow> findByTitleContaining(@Param("searchTerm") String searchTerm, Pageable pageable);
+
+    @Query("SELECT w FROM Workflow w WHERE " +
+            "LOWER(w.title) LIKE LOWER(CONCAT('%', :searchTerm, '%')) AND w.status = :status")
+    Page<Workflow> findByTitleContainingAndStatus(
+            @Param("searchTerm") String searchTerm,
+            @Param("status") String status,
+            Pageable pageable);
+
+    @Query("SELECT w FROM Workflow w WHERE " +
+            "LOWER(w.title) LIKE LOWER(CONCAT('%', :searchTerm, '%')) AND w.template.id = :templateId")
+    Page<Workflow> findByTitleContainingAndTemplateId(
+            @Param("searchTerm") String searchTerm,
+            @Param("templateId") UUID templateId,
+            Pageable pageable);
+
+    @Query("SELECT w FROM Workflow w WHERE " +
+            "LOWER(w.title) LIKE LOWER(CONCAT('%', :searchTerm, '%')) AND " +
+            "w.template.id = :templateId AND w.status = :status")
+    Page<Workflow> findByTitleContainingAndTemplateIdAndStatus(
+            @Param("searchTerm") String searchTerm,
+            @Param("templateId") UUID templateId,
+            @Param("status") String status,
+            Pageable pageable);
+
+    @Query("SELECT w FROM Workflow w JOIN WorkflowAssignment wa ON w.id = wa.workflow.id " +
+            "WHERE wa.assignedTo.id = :userId AND wa.stepNumber = w.currentStep AND w.status = 'in_progress' " +
+            "AND LOWER(w.title) LIKE LOWER(CONCAT('%', :searchTerm, '%'))")
+    List<Workflow> findWorkflowsAssignedToUserByTitleContaining(
+            @Param("userId") UUID userId,
+            @Param("searchTerm") String searchTerm);
+
+    @Query("SELECT w FROM Workflow w JOIN WorkflowAssignment wa ON w.id = wa.workflow.id " +
+            "WHERE wa.assignedTo.id = :userId AND wa.stepNumber = w.currentStep AND w.status = 'in_progress' " +
+            "AND w.template.id = :templateId AND LOWER(w.title) LIKE LOWER(CONCAT('%', :searchTerm, '%'))")
+    List<Workflow> findWorkflowsAssignedToUserByTemplateAndTitleContaining(
+            @Param("userId") UUID userId,
+            @Param("templateId") UUID templateId,
+            @Param("searchTerm") String searchTerm);
 }

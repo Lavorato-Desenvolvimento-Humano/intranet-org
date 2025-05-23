@@ -73,4 +73,18 @@ public interface WorkflowService {
     List<WorkflowSummaryDto> getWorkflowsAssignedToUserByTemplate(UUID userId, UUID templateId);
 
     Page<WorkflowSummaryDto> getWorkflowsByTemplateAndStatus(UUID templateId, String status, Pageable pageable);
+
+    Page<WorkflowSummaryDto> searchWorkflows(String searchTerm, Pageable pageable);
+
+    Page<WorkflowSummaryDto> searchWorkflowsByStatus(String searchTerm, String status, Pageable pageable);
+
+    Page<WorkflowSummaryDto> searchWorkflowsByTemplate(String searchTerm, UUID templateId, Pageable pageable);
+
+    Page<WorkflowSummaryDto> searchWorkflowsByTemplateAndStatus(
+            String searchTerm, UUID templateId, String status, Pageable pageable);
+
+    List<WorkflowSummaryDto> searchWorkflowsAssignedToUser(UUID userId, String searchTerm);
+
+    List<WorkflowSummaryDto> searchWorkflowsAssignedToUserByTemplate(
+            UUID userId, UUID templateId, String searchTerm);
 }
