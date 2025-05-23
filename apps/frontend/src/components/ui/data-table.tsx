@@ -37,6 +37,8 @@ interface DataTableProps<T> {
   canEdit?: (item: T) => boolean;
   canDelete?: (item: T) => boolean;
   showHeader?: boolean;
+  maxHeight?: string; // Nova prop para altura máxima
+  enableScrolling?: boolean; // Nova prop para habilitar rolagem
 }
 
 export function DataTable<T>({
@@ -57,6 +59,8 @@ export function DataTable<T>({
   canEdit,
   canDelete,
   showHeader = true,
+  maxHeight = "600px", // Altura padrão
+  enableScrolling = true, // Habilitado por padrão
 }: DataTableProps<T>) {
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredData, setFilteredData] = useState<T[]>(data);
@@ -163,10 +167,12 @@ export function DataTable<T>({
         </div>
       )}
 
-      {/* Tabela */}
-      <div className="overflow-x-auto">
+      {/* Container da tabela com rolagem condicional */}
+      <div
+        className={`overflow-x-auto ${enableScrolling ? "overflow-y-auto" : ""}`}
+        style={enableScrolling ? { maxHeight } : undefined}>
         <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+          <thead className="bg-gray-50 sticky top-0 z-10">
             <tr>
               {columns.map((column) => (
                 <th
@@ -196,7 +202,7 @@ export function DataTable<T>({
               {showActions && (onEdit || onDelete) && (
                 <th
                   scope="col"
-                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider sticky top-0 bg-gray-50">
                   Ações
                 </th>
               )}
