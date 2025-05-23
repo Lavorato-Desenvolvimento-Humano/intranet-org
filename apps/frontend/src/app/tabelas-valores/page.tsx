@@ -237,6 +237,8 @@ export default function TabelasValoresPage() {
               }
               emptyMessage="Nenhuma tabela de valores encontrada."
               title="Lista de Tabelas de Valores"
+              maxHeight="calc(100vh - 280px)" // Altura dinâmica baseada na viewport
+              enableScrolling={true} // Explicitamente habilitado
             />
           )}
         </main>

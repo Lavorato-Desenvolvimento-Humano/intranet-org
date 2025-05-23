@@ -17,7 +17,7 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
       - /opt/deploy/develop/certbot/conf/live/lavorato.app.br/:/certs
-      - /upload-data:/app/uploads/images
+      - /upload-data:/app/uploads/
     depends_on:
       postgres:
         condition: service_healthy
