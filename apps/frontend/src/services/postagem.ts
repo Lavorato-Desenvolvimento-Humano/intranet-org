@@ -513,6 +513,22 @@ const postagemService = {
       throw error;
     }
   },
+
+  /**
+   * Obtém TODAS as postagens para administradores (sem restrições)
+   */
+  getAllPostagensForAdmin: async (): Promise<PostagemSummaryDto[]> => {
+    try {
+      const response = await api.get<PostagemSummaryDto[]>(
+        "/api/postagens/admin/todas"
+      );
+      console.log("Todas as postagens (admin) retornadas:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("Erro ao buscar todas as postagens para admin:", error);
+      throw error;
+    }
+  },
 };
 
 export default postagemService;

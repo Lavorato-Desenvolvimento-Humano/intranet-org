@@ -47,6 +47,16 @@ public interface PostagemRepository extends JpaRepository<Postagem, UUID> {
 
     List<Postagem> findByTipoDestinoOrderByCreatedAtDesc(String tipoDestino);
 
+    /**
+     * Busca TODAS as postagens para administradores (sem restrições de visibilidade)
+     * Inclui postagens de equipes, convênios e gerais
+     */
+    @Query("SELECT p FROM Postagem p " +
+            "LEFT JOIN FETCH p.convenio " +
+            "LEFT JOIN FETCH p.equipe " +
+            "LEFT JOIN FETCH p.createdBy " +
+            "ORDER BY p.createdAt DESC")
+    List<Postagem> findAllPostagensForAdmin();
 }
 
 
