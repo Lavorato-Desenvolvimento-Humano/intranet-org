@@ -21,6 +21,17 @@ export interface TabelaValoresCreateDto {
   convenioId: string;
 }
 
+export interface TabelaValoresPageResponse {
+  content: TabelaValoresDto[];
+  totalPages: number;
+  totalElements: number;
+  size: number;
+  number: number;
+  first: boolean;
+  last: boolean;
+  numberOfElements: number;
+}
+
 /**
  * Serviço para operações com tabelas de valores
  */
@@ -30,15 +41,12 @@ const tabelaValoresService = {
    */
   getAllTabelas: async (
     page: number = 0,
-    size: number = 10
-  ): Promise<{
-    content: TabelaValoresDto[];
-    totalPages: number;
-    totalElements: number;
-  }> => {
+    size: number = 10,
+    sort: string = "nome"
+  ): Promise<TabelaValoresPageResponse> => {
     try {
-      const response = await api.get<any>(
-        `/api/tabelas-valores?page=${page}&size=${size}`
+      const response = await api.get<TabelaValoresPageResponse>(
+        `/api/tabelas-valores?page=${page}&size=${size}&sort=${sort}`
       );
       return response.data;
     } catch (error) {
