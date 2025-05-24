@@ -14,6 +14,7 @@ import {
   PieChart,
   Building,
   Globe,
+  Shield,
 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import { Loading } from "@/components/ui/loading";
@@ -59,10 +60,15 @@ export default function DashboardPage() {
     const fetchData = async () => {
       setLoading(true);
       try {
+        // Determinar qual endpoint usar baseado nas permissões do usuário
+        const postagensPromise = isAdmin
+          ? postagemService.getAllPostagensForAdmin() // Admin vê todas as postagens
+          : postagemService.getPostagensVisiveis(); // Usuários comuns veem apenas as visíveis
+
         // Carregar dados em paralelo
         const [postagensData, conveniosData, minhasPostagensData] =
           await Promise.all([
-            postagemService.getPostagensVisiveis(), // Usar a função correta para obter todas as postagens visíveis
+            postagensPromise,
             convenioService.getAllConvenios(),
             user ? postagemService.getMinhasPostagens() : Promise.resolve([]),
           ]);
@@ -75,8 +81,8 @@ export default function DashboardPage() {
             .length,
         };
 
-        // Definir dados básicos
-        setRecentPostagens(postagensData || []);
+        // Definir dados básicos - pegar apenas as 10 mais recentes para o dashboard
+        setRecentPostagens(postagensData.slice(0, 10) || []);
         setConvenios(conveniosData);
         setMinhasPostagens(minhasPostagensData);
 
@@ -97,14 +103,16 @@ export default function DashboardPage() {
           [key: string]: { name: string; count: number };
         } = {};
         postagensData.forEach((postagem: PostagemSummaryDto) => {
-          const convenioKey = postagem.convenioId ?? "desconhecido";
-          if (!convenioCount[convenioKey]) {
-            convenioCount[convenioKey] = {
-              name: postagem.convenioName ?? "Convênio Desconhecido",
-              count: 0,
-            };
+          if (postagem.tipoDestino === "convenio" && postagem.convenioId) {
+            const convenioKey = postagem.convenioId;
+            if (!convenioCount[convenioKey]) {
+              convenioCount[convenioKey] = {
+                name: postagem.convenioName ?? "Convênio Desconhecido",
+                count: 0,
+              };
+            }
+            convenioCount[convenioKey].count += 1;
           }
-          convenioCount[convenioKey].count += 1;
         });
 
         let convenioMaisAtivo = { name: "Nenhum", count: 0 };
@@ -122,6 +130,11 @@ export default function DashboardPage() {
           convenioMaisAtivo,
           postagensByType,
         });
+
+        // Log para depuração
+        console.log(
+          `Dashboard carregado: ${postagensData.length} postagens ${isAdmin ? "(admin - todas)" : "(usuário - visíveis)"}`
+        );
       } catch (err) {
         console.error("Erro ao carregar dados do dashboard:", err);
         setError(
@@ -133,7 +146,7 @@ export default function DashboardPage() {
     };
 
     fetchData();
-  }, [user]);
+  }, [user, isAdmin]); // Adicionado isAdmin como dependência
 
   // Função para formatar data
   const formatDate = (dateString: string) => {
@@ -173,7 +186,18 @@ export default function DashboardPage() {
         <main className="flex-grow container mx-auto p-6">
           {(isAdmin || isEditor) && (
             <div className="flex justify-between items-center mb-8">
-              <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
+                {isAdmin && (
+                  <div className="flex items-center mt-2">
+                    <Shield size={16} className="text-primary mr-2" />
+                    <p className="text-sm text-primary">
+                      <strong>Modo Administrador:</strong> Visualizando todas as
+                      postagens do sistema
+                    </p>
+                  </div>
+                )}
+              </div>
               {canCreatePostagem && (
                 <CustomButton
                   variant="primary"
@@ -191,13 +215,17 @@ export default function DashboardPage() {
           )}
 
           {/* Cards de estatísticas */}
-          {/* <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <div className="bg-white rounded-lg shadow-md p-6 flex items-start">
               <div className="rounded-full p-3 bg-blue-100 mr-4">
                 <FileText className="h-6 w-6 text-blue-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">Total de Postagens</p>
+                <p className="text-sm text-gray-500">
+                  {isAdmin
+                    ? "Total de Postagens (Sistema)"
+                    : "Postagens Visíveis"}
+                </p>
                 <p className="text-2xl font-semibold">{stats.totalPostagens}</p>
               </div>
             </div>
@@ -237,7 +265,46 @@ export default function DashboardPage() {
                 </p>
               </div>
             </div>
-          </div> */}
+          </div>
+
+          {/* Card adicional para mostrar distribuição por tipo (apenas para admin) */}
+          {isAdmin && (
+            <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                <PieChart className="h-5 w-5 mr-2" />
+                Distribuição de Postagens por Tipo
+              </h3>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-purple-600">
+                    {stats.postagensByType.geral}
+                  </div>
+                  <div className="text-sm text-gray-500 flex items-center justify-center">
+                    <Globe size={14} className="mr-1" />
+                    Gerais
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-green-600">
+                    {stats.postagensByType.equipe}
+                  </div>
+                  <div className="text-sm text-gray-500 flex items-center justify-center">
+                    <Users size={14} className="mr-1" />
+                    Equipes
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600">
+                    {stats.postagensByType.convenio}
+                  </div>
+                  <div className="text-sm text-gray-500 flex items-center justify-center">
+                    <Building size={14} className="mr-1" />
+                    Convênios
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Layout principal de dois painéis */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -247,7 +314,7 @@ export default function DashboardPage() {
                 <div className="p-6 border-b border-gray-200">
                   <div className="flex justify-between items-center">
                     <h2 className="text-lg font-semibold text-gray-800">
-                      Postagens Recentes
+                      Postagens Recentes {isAdmin && "(Todas)"}
                     </h2>
                     <button
                       onClick={() => router.push("/postagens")}
@@ -366,8 +433,27 @@ export default function DashboardPage() {
                           <h3 className="font-medium text-primary text-sm">
                             {postagem.title}
                           </h3>
-                          <div className="text-xs text-gray-600 mt-1">
-                            {postagem.convenioName}
+                          <div className="text-xs text-gray-600 mt-1 flex items-center">
+                            {postagem.tipoDestino === "convenio" &&
+                              postagem.convenioName && (
+                                <>
+                                  <Building size={10} className="mr-1" />
+                                  {postagem.convenioName}
+                                </>
+                              )}
+                            {postagem.tipoDestino === "equipe" &&
+                              postagem.equipeName && (
+                                <>
+                                  <Users size={10} className="mr-1" />
+                                  {postagem.equipeName}
+                                </>
+                              )}
+                            {postagem.tipoDestino === "geral" && (
+                              <>
+                                <Globe size={10} className="mr-1" />
+                                Geral
+                              </>
+                            )}
                           </div>
                         </div>
                       ))
@@ -432,14 +518,19 @@ export default function DashboardPage() {
                   Links Rápidos
                 </h2>
                 <div className="space-y-2">
-                  {isEditor && (
+                  {canCreatePostagem && (
                     <button
                       onClick={() => router.push("/postagens/nova")}
                       className="w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 rounded-md text-left text-sm font-medium text-gray-800 transition-colors">
                       Criar nova postagem
                     </button>
                   )}
-                  {isEditor && (
+                  <button
+                    onClick={() => router.push("/postagens")}
+                    className="w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 rounded-md text-left text-sm font-medium text-gray-800 transition-colors">
+                    Ver todas as postagens
+                  </button>
+                  {(isEditor || isAdmin) && (
                     <button
                       onClick={() => router.push("/convenios")}
                       className="w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 rounded-md text-left text-sm font-medium text-gray-800 transition-colors">
