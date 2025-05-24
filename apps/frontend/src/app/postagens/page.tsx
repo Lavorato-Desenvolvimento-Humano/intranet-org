@@ -57,9 +57,14 @@ export default function PostagensPage() {
     const fetchData = async () => {
       setLoading(true);
       try {
+        // Determinar qual endpoint usar baseado nas permissões do usuário
+        const postagensPromise = isAdmin
+          ? postagemService.getAllPostagensForAdmin() // Admin vê todas as postagens
+          : postagemService.getPostagensVisiveis(); // Usuários comuns veem apenas as visíveis
+
         // Carregar dados em paralelo
         const [postagensData, conveniosData, equipesData] = await Promise.all([
-          postagemService.getPostagensVisiveis(),
+          postagensPromise,
           convenioService.getAllConvenios(),
           equipeService.getAllEquipes(),
         ]);
@@ -67,6 +72,11 @@ export default function PostagensPage() {
         setPostagens(postagensData);
         setConvenios(conveniosData);
         setEquipes(equipesData);
+
+        // Log para depuração
+        console.log(
+          `Carregadas ${postagensData.length} postagens ${isAdmin ? "(admin - todas)" : "(usuário - visíveis)"}`
+        );
       } catch (err) {
         console.error("Erro ao carregar dados:", err);
         setError(
@@ -78,7 +88,7 @@ export default function PostagensPage() {
     };
 
     fetchData();
-  }, []);
+  }, [isAdmin]); // Adicionar isAdmin como dependência
 
   // Função para formatar data
   const formatDate = (dateString: string) => {

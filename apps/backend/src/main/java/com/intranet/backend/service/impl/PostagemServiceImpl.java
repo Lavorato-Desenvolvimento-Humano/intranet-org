@@ -304,6 +304,24 @@ public class PostagemServiceImpl implements PostagemService {
         logger.info("Postagem excluída com sucesso. ID: {}", id);
     }
 
+    /**
+     * Busca todas as postagens para administradores (sem restrições de visibilidade)
+     * @return Lista de todas as postagens do sistema
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<PostagemSummaryDto> getAllPostagensForAdmin() {
+        logger.info("Buscando todas as postagens para administrador");
+
+        List<Postagem> postagens = postagemRepository.findAllPostagensForAdmin();
+
+        logger.debug("Total de postagens encontradas: {}", postagens.size());
+
+        return postagens.stream()
+                .map(DTOMapperUtil::mapToPostagemSummaryDto)
+                .collect(Collectors.toList());
+    }
+
     @Override
     @Transactional
     public ImagemDto addImagem(UUID postagemId, MultipartFile file, String description) {

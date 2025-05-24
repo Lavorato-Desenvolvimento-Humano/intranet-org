@@ -96,6 +96,14 @@ public class PostagemController {
         return ResponseUtil.noContent();
     }
 
+    @GetMapping("/admin/todas")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<PostagemSummaryDto>> getAllPostagensForAdmin() {
+        logger.info("Requisição de administrador para listar TODAS as postagens do sistema");
+        List<PostagemSummaryDto> postagens = postagemService.getAllPostagensForAdmin();
+        return ResponseUtil.success(postagens);
+    }
+
     // Endpoints para manipulação de imagens
     @PostMapping(value = "/{id}/imagens", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR') or hasRole('USER')")

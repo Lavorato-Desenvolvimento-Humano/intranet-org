@@ -45,4 +45,10 @@ public interface PostagemService {
     List<PostagemSummaryDto> getPostagensByTipoDestino(String tipoDestino);
     
     List<PostagemSummaryDto> getPostagensVisibleToCurrentUser();
+
+    /**
+     * Busca todas as postagens para administradores (sem restrições de visibilidade)
+     * @return Lista de todas as postagens do sistema
+     */
+    List<PostagemSummaryDto> getAllPostagensForAdmin();
 }
