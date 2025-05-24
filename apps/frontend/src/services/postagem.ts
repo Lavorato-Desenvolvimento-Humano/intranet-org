@@ -513,6 +513,47 @@ const postagemService = {
       throw error;
     }
   },
+
+  /**
+   * Obtém todas as postagens para administradores (sem restrições de visibilidade)
+   */
+  getAllPostagensForAdmin: async (): Promise<PostagemSummaryDto[]> => {
+    try {
+      const response = await api.get<PostagemSummaryDto[]>(
+        "/api/postagens/admin/all"
+      );
+      console.log("Postagens para admin retornadas:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("Erro ao buscar postagens para admin:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Obtém postagens visíveis para o usuário atual com privilégios administrativos
+   * Se for admin, retorna todas as postagens. Caso contrário, aplica regras normais.
+   */
+  getPostagensVisiveisComPrivilegiosAdmin: async (): Promise<
+    PostagemSummaryDto[]
+  > => {
+    try {
+      const response = await api.get<PostagemSummaryDto[]>(
+        "/api/postagens/visiveis-admin"
+      );
+      console.log(
+        "Postagens visíveis com privilégios admin retornadas:",
+        response.data
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        "Erro ao buscar postagens visíveis com privilégios admin:",
+        error
+      );
+      throw error;
+    }
+  },
 };
 
 export default postagemService;

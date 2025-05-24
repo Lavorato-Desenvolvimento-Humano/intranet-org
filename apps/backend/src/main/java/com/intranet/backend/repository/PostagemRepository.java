@@ -47,6 +47,20 @@ public interface PostagemRepository extends JpaRepository<Postagem, UUID> {
 
     List<Postagem> findByTipoDestinoOrderByCreatedAtDesc(String tipoDestino);
 
+    /**
+     * Busca todas as postagens sem filtros de visibilidade (para administradores)
+     * Ordena por data de criação em ordem decrescente
+     */
+    @Query("SELECT p FROM Postagem p ORDER BY p.createdAt DESC")
+    List<Postagem> findAllOrderByCreatedAtDesc();
+
+    /**
+     * Versão paginada para buscar todas as postagens sem filtros
+     */
+    @Query(value = "SELECT p FROM Postagem p JOIN FETCH p.convenio JOIN FETCH p.createdBy ORDER BY p.createdAt DESC",
+            countQuery = "SELECT COUNT(p) FROM Postagem p")
+    Page<Postagem> findAllWithConvenioAndCreatedByOrderByCreatedAtDesc(Pageable pageable);
+
 }
 
 
