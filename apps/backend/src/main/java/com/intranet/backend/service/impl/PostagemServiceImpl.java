@@ -275,52 +275,6 @@ public class PostagemServiceImpl implements PostagemService {
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public List<PostagemSummaryDto> getAllPostagensForAdmin() {
-        logger.info("Buscando todas as postagens para administrador");
-
-        List<Postagem> postagens = postagemRepository.findAllOrderByCreatedAtDesc();
-
-        logger.debug("Total de postagens encontradas para admin: {}", postagens.size());
-
-        return postagens.stream()
-                .map(DTOMapperUtil::mapToPostagemSummaryDto)
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<PostagemSummaryDto> getPostagensVisibleToCurrentUserWithAdminPrivileges() {
-        User currentUser = getCurrentUser();
-        logger.info("Buscando postagens visíveis para o usuário: {} (ID: {})",
-                currentUser.getEmail(), currentUser.getId());
-
-        // Verificar se o usuário é administrador
-        List<String> userRoles = userRepository.findRoleNamesByUserId(currentUser.getId());
-        boolean isAdmin = userRoles.contains("ADMIN") || userRoles.contains("ROLE_ADMIN");
-
-        logger.debug("Usuário {} é administrador: {}", currentUser.getEmail(), isAdmin);
-
-        List<Postagem> postagens;
-
-        if (isAdmin) {
-            // Se for administrador, buscar todas as postagens
-            logger.info("Usuário é administrador - buscando todas as postagens");
-            postagens = postagemRepository.findAllOrderByCreatedAtDesc();
-        } else {
-            // Se não for administrador, aplicar regras de visibilidade normais
-            logger.info("Usuário não é administrador - aplicando regras de visibilidade");
-            postagens = postagemRepository.findVisibleToUserOrderByCreatedAtDesc(currentUser.getId());
-        }
-
-        logger.debug("Total de postagens visíveis: {}", postagens.size());
-
-        return postagens.stream()
-                .map(DTOMapperUtil::mapToPostagemSummaryDto)
-                .collect(Collectors.toList());
-    }
-
-    @Override
     @Transactional
     public void deletePostagem(UUID id) {
         logger.info("Excluindo postagem com ID: {}", id);

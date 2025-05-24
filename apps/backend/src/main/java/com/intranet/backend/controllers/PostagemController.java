@@ -88,21 +88,6 @@ public class PostagemController {
         return ResponseUtil.success(updatedPostagem);
     }
 
-    @GetMapping("/admin/all")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<PostagemSummaryDto>> getAllPostagensForAdmin() {
-        logger.info("Requisição para listar todas as postagens para administrador");
-        List<PostagemSummaryDto> postagens = postagemService.getAllPostagensForAdmin();
-        return ResponseUtil.success(postagens);
-    }
-
-    @GetMapping("/visiveis-admin")
-    public ResponseEntity<List<PostagemSummaryDto>> getPostagensVisiveisComPrivilegiosAdmin() {
-        logger.info("Requisição para listar postagens visíveis com privilégios de admin");
-        List<PostagemSummaryDto> postagens = postagemService.getPostagensVisibleToCurrentUserWithAdminPrivileges();
-        return ResponseUtil.success(postagens);
-    }
-
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR') or hasRole('USER')")
     public ResponseEntity<Void> deletePostagem(@PathVariable UUID id) {
