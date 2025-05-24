@@ -45,4 +45,18 @@ public interface PostagemService {
     List<PostagemSummaryDto> getPostagensByTipoDestino(String tipoDestino);
     
     List<PostagemSummaryDto> getPostagensVisibleToCurrentUser();
+
+    /**
+     * Obtém todas as postagens sem restrições de visibilidade (para administradores)
+     * @return Lista de DTOs das postagens ordenadas por data de criação
+     */
+    List<PostagemSummaryDto> getAllPostagensForAdmin();
+
+    /**
+     * Obtém postagens visíveis para o usuário atual, com tratamento especial para administradores
+     * Se for administrador, retorna todas as postagens
+     * Caso contrário, aplica as regras de visibilidade normais
+     * @return Lista de DTOs das postagens visíveis para o usuário atual
+     */
+    List<PostagemSummaryDto> getPostagensVisibleToCurrentUserWithAdminPrivileges();
 }
