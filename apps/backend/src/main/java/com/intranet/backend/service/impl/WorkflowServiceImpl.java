@@ -10,7 +10,9 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -160,10 +162,16 @@ public class WorkflowServiceImpl implements WorkflowService {
     @Override
     @Transactional(readOnly = true)
     public Page<WorkflowSummaryDto> getAllWorkflows(Pageable pageable) {
-        logger.info("Buscando todos os fluxos de trabalho com paginação");
+        logger.info("Buscando todos os fluxos de trabalho com paginação e ordenação alfabética");
 
-        Page<Workflow> workflows = workflowRepository.findAll(pageable);
+        // Criar um novo Pageable com ordenação por título
+        Pageable sortedPageable = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by(Sort.Direction.ASC, "title")
+        );
 
+        Page<Workflow> workflows = workflowRepository.findAll(sortedPageable);
         return workflows.map(this::mapToWorkflowSummaryDto);
     }
 
@@ -226,12 +234,11 @@ public class WorkflowServiceImpl implements WorkflowService {
         return counts;
     }
 
-    @Override
     @Transactional(readOnly = true)
     public List<WorkflowSummaryDto> getWorkflowsAssignedToUser(UUID userId) {
         logger.info("Buscando fluxos de trabalho atribuídos ao usuário: {}", userId);
 
-        List<Workflow> workflows = workflowRepository.findWorkflowsAssignedToUser(userId);
+        List<Workflow> workflows = workflowRepository.findWorkflowsAssignedToUserOrderByTitle(userId);
 
         return workflows.stream()
                 .map(this::mapToWorkflowSummaryDto)
@@ -287,13 +294,13 @@ public class WorkflowServiceImpl implements WorkflowService {
         templateRepository.findById(templateId)
                 .orElseThrow(() -> new ResourceNotFoundException("Template não encontrado com o ID: " + templateId));
 
-        // Consultar os workflows
-        List<Workflow> workflows = workflowRepository.findWorkflowsAssignedToUserByTemplate(userId, templateId);
+        List<Workflow> workflows = workflowRepository.findWorkflowsAssignedToUserByTemplateOrderByTitle(userId, templateId);
 
         return workflows.stream()
                 .map(this::mapToWorkflowSummaryDto)
                 .collect(Collectors.toList());
     }
+
 
     @Override
     @Transactional(readOnly = true)
@@ -369,12 +376,65 @@ public class WorkflowServiceImpl implements WorkflowService {
             return getWorkflowsAssignedToUser(userId);
         }
 
-        List<Workflow> workflows = workflowRepository.findWorkflowsAssignedToUserByTitleContaining(
+        List<Workflow> workflows = workflowRepository.findWorkflowsAssignedToUserByTitleContainingOrderByTitle(
                 userId, searchTerm.trim());
 
         return workflows.stream()
                 .map(this::mapToWorkflowSummaryDto)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<WorkflowSummaryDto> getAllWorkflowsGroupedByStatus(Pageable pageable) {
+        logger.info("Buscando todos os fluxos de trabalho agrupados por status (incluindo status personalizados)");
+
+        Page<Workflow> workflows = workflowRepository.findAllGroupedByStatusAndCustomStatusOrderByTitle(pageable);
+        return workflows.map(this::mapToWorkflowSummaryDto);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<WorkflowSummaryDto> getWorkflowsByTemplateGroupedByStatus(UUID templateId, Pageable pageable) {
+        logger.info("Buscando fluxos de trabalho do template {} agrupados por status (incluindo status personalizados)", templateId);
+
+        // Verificar se o template existe
+        templateRepository.findById(templateId)
+                .orElseThrow(() -> new ResourceNotFoundException("Template não encontrado com o ID: " + templateId));
+
+        Page<Workflow> workflows = workflowRepository.findByTemplateIdGroupedByStatusAndCustomStatusOrderByTitle(templateId, pageable);
+        return workflows.map(this::mapToWorkflowSummaryDto);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<WorkflowSummaryDto> searchWorkflowsGroupedByStatus(String searchTerm, Pageable pageable) {
+        logger.info("Pesquisando fluxos de trabalho agrupados por status (incluindo status personalizados) com termo: {}", searchTerm);
+
+        if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            return getAllWorkflowsGroupedByStatus(pageable);
+        }
+
+        Page<Workflow> workflows = workflowRepository.findByTitleContainingGroupedByStatusAndCustomStatusOrderByTitle(searchTerm.trim(), pageable);
+        return workflows.map(this::mapToWorkflowSummaryDto);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<WorkflowSummaryDto> searchWorkflowsByTemplateGroupedByStatus(String searchTerm, UUID templateId, Pageable pageable) {
+        logger.info("Pesquisando fluxos de trabalho do template {} agrupados por status (incluindo status personalizados) com termo: {}", templateId, searchTerm);
+
+        // Verificar se o template existe
+        templateRepository.findById(templateId)
+                .orElseThrow(() -> new ResourceNotFoundException("Template não encontrado com o ID: " + templateId));
+
+        if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            return getWorkflowsByTemplateGroupedByStatus(templateId, pageable);
+        }
+
+        Page<Workflow> workflows = workflowRepository.findByTitleContainingAndTemplateIdGroupedByStatusAndCustomStatusOrderByTitle(
+                searchTerm.trim(), templateId, pageable);
+        return workflows.map(this::mapToWorkflowSummaryDto);
     }
 
     @Override
@@ -392,7 +452,7 @@ public class WorkflowServiceImpl implements WorkflowService {
             return getWorkflowsAssignedToUserByTemplate(userId, templateId);
         }
 
-        List<Workflow> workflows = workflowRepository.findWorkflowsAssignedToUserByTemplateAndTitleContaining(
+        List<Workflow> workflows = workflowRepository.findWorkflowsAssignedToUserByTemplateAndTitleContainingOrderByTitle(
                 userId, templateId, searchTerm.trim());
 
         return workflows.stream()

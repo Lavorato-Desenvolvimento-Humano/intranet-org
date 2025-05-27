@@ -132,4 +132,118 @@ public interface WorkflowRepository extends JpaRepository<Workflow, UUID> {
             @Param("userId") UUID userId,
             @Param("templateId") UUID templateId,
             @Param("searchTerm") String searchTerm);
+
+    @Query("SELECT w FROM Workflow w ORDER BY w.status ASC, w.title ASC")
+    Page<Workflow> findAllOrderByStatusAndTitle(Pageable pageable);
+
+    @Query("SELECT w FROM Workflow w WHERE w.template.id = :templateId ORDER BY w.status ASC, w.title ASC")
+    Page<Workflow> findByTemplateIdOrderByStatusAndTitle(@Param("templateId") UUID templateId, Pageable pageable);
+
+    @Query("SELECT w FROM Workflow w WHERE " +
+            "LOWER(w.title) LIKE LOWER(CONCAT('%', :searchTerm, '%')) ORDER BY w.status ASC, w.title ASC")
+    Page<Workflow> findByTitleContainingOrderByStatusAndTitle(@Param("searchTerm") String searchTerm, Pageable pageable);
+
+    @Query("SELECT w FROM Workflow w WHERE " +
+            "LOWER(w.title) LIKE LOWER(CONCAT('%', :searchTerm, '%')) AND w.template.id = :templateId " +
+            "ORDER BY w.status ASC, w.title ASC")
+    Page<Workflow> findByTitleContainingAndTemplateIdOrderByStatusAndTitle(
+            @Param("searchTerm") String searchTerm,
+            @Param("templateId") UUID templateId,
+            Pageable pageable);
+
+    @Query("SELECT w FROM Workflow w JOIN WorkflowAssignment wa ON w.id = wa.workflow.id " +
+            "WHERE wa.assignedTo.id = :userId AND wa.stepNumber = w.currentStep AND w.status = 'in_progress' " +
+            "ORDER BY w.title ASC")
+    List<Workflow> findWorkflowsAssignedToUserOrderByTitle(@Param("userId") UUID userId);
+
+    @Query("SELECT w FROM Workflow w JOIN WorkflowAssignment wa ON w.id = wa.workflow.id " +
+            "WHERE wa.assignedTo.id = :userId AND wa.stepNumber = w.currentStep AND w.status = 'in_progress' " +
+            "AND w.template.id = :templateId ORDER BY w.title ASC")
+    List<Workflow> findWorkflowsAssignedToUserByTemplateOrderByTitle(@Param("userId") UUID userId, @Param("templateId") UUID templateId);
+
+    @Query("SELECT w FROM Workflow w JOIN WorkflowAssignment wa ON w.id = wa.workflow.id " +
+            "WHERE wa.assignedTo.id = :userId AND wa.stepNumber = w.currentStep AND w.status = 'in_progress' " +
+            "AND LOWER(w.title) LIKE LOWER(CONCAT('%', :searchTerm, '%')) ORDER BY w.title ASC")
+    List<Workflow> findWorkflowsAssignedToUserByTitleContainingOrderByTitle(
+            @Param("userId") UUID userId,
+            @Param("searchTerm") String searchTerm);
+
+    @Query("SELECT w FROM Workflow w JOIN WorkflowAssignment wa ON w.id = wa.workflow.id " +
+            "WHERE wa.assignedTo.id = :userId AND wa.stepNumber = w.currentStep AND w.status = 'in_progress' " +
+            "AND w.template.id = :templateId AND LOWER(w.title) LIKE LOWER(CONCAT('%', :searchTerm, '%')) " +
+            "ORDER BY w.title ASC")
+    List<Workflow> findWorkflowsAssignedToUserByTemplateAndTitleContainingOrderByTitle(
+            @Param("userId") UUID userId,
+            @Param("templateId") UUID templateId,
+            @Param("searchTerm") String searchTerm);
+
+    // Consulta para buscar fluxos agrupados por status
+    @Query("SELECT w FROM Workflow w ORDER BY " +
+            "CASE w.status " +
+            "WHEN 'in_progress' THEN 1 " +
+            "WHEN 'paused' THEN 2 " +
+            "WHEN 'completed' THEN 3 " +
+            "WHEN 'canceled' THEN 4 " +
+            "WHEN 'archived' THEN 5 " +
+            "ELSE 6 END, w.title ASC")
+    Page<Workflow> findAllGroupedByStatusOrderByTitle(Pageable pageable);
+
+    @Query("SELECT w FROM Workflow w WHERE w.template.id = :templateId ORDER BY " +
+            "CASE w.status " +
+            "WHEN 'in_progress' THEN 1 " +
+            "WHEN 'paused' THEN 2 " +
+            "WHEN 'completed' THEN 3 " +
+            "WHEN 'canceled' THEN 4 " +
+            "WHEN 'archived' THEN 5 " +
+            "ELSE 6 END, w.title ASC")
+    Page<Workflow> findByTemplateIdGroupedByStatusOrderByTitle(@Param("templateId") UUID templateId, Pageable pageable);
+
+    @Query("SELECT w FROM Workflow w LEFT JOIN w.customStatus cs ORDER BY " +
+            "CASE " +
+            "WHEN w.customStatus IS NOT NULL THEN cs.orderIndex " +
+            "WHEN w.status = 'in_progress' THEN 1000 " +
+            "WHEN w.status = 'paused' THEN 2000 " +
+            "WHEN w.status = 'completed' THEN 3000 " +
+            "WHEN w.status = 'canceled' THEN 4000 " +
+            "WHEN w.status = 'archived' THEN 5000 " +
+            "ELSE 6000 END, w.title ASC")
+    Page<Workflow> findAllGroupedByStatusAndCustomStatusOrderByTitle(Pageable pageable);
+
+    @Query("SELECT w FROM Workflow w LEFT JOIN w.customStatus cs WHERE w.template.id = :templateId ORDER BY " +
+            "CASE " +
+            "WHEN w.customStatus IS NOT NULL THEN cs.orderIndex " +
+            "WHEN w.status = 'in_progress' THEN 1000 " +
+            "WHEN w.status = 'paused' THEN 2000 " +
+            "WHEN w.status = 'completed' THEN 3000 " +
+            "WHEN w.status = 'canceled' THEN 4000 " +
+            "WHEN w.status = 'archived' THEN 5000 " +
+            "ELSE 6000 END, w.title ASC")
+    Page<Workflow> findByTemplateIdGroupedByStatusAndCustomStatusOrderByTitle(@Param("templateId") UUID templateId, Pageable pageable);
+
+    @Query("SELECT w FROM Workflow w LEFT JOIN w.customStatus cs WHERE " +
+            "LOWER(w.title) LIKE LOWER(CONCAT('%', :searchTerm, '%')) ORDER BY " +
+            "CASE " +
+            "WHEN w.customStatus IS NOT NULL THEN cs.orderIndex " +
+            "WHEN w.status = 'in_progress' THEN 1000 " +
+            "WHEN w.status = 'paused' THEN 2000 " +
+            "WHEN w.status = 'completed' THEN 3000 " +
+            "WHEN w.status = 'canceled' THEN 4000 " +
+            "WHEN w.status = 'archived' THEN 5000 " +
+            "ELSE 6000 END, w.title ASC")
+    Page<Workflow> findByTitleContainingGroupedByStatusAndCustomStatusOrderByTitle(@Param("searchTerm") String searchTerm, Pageable pageable);
+
+    @Query("SELECT w FROM Workflow w LEFT JOIN w.customStatus cs WHERE " +
+            "LOWER(w.title) LIKE LOWER(CONCAT('%', :searchTerm, '%')) AND w.template.id = :templateId ORDER BY " +
+            "CASE " +
+            "WHEN w.customStatus IS NOT NULL THEN cs.orderIndex " +
+            "WHEN w.status = 'in_progress' THEN 1000 " +
+            "WHEN w.status = 'paused' THEN 2000 " +
+            "WHEN w.status = 'completed' THEN 3000 " +
+            "WHEN w.status = 'canceled' THEN 4000 " +
+            "WHEN w.status = 'archived' THEN 5000 " +
+            "ELSE 6000 END, w.title ASC")
+    Page<Workflow> findByTitleContainingAndTemplateIdGroupedByStatusAndCustomStatusOrderByTitle(
+            @Param("searchTerm") String searchTerm,
+            @Param("templateId") UUID templateId,
+            Pageable pageable);
 }
