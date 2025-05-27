@@ -548,4 +548,53 @@ public class WorkflowController {
         WorkflowStatsDto stats = workflowService.getGeneralWorkflowStatsByStatusTemplate(statusTemplateId);
         return ResponseEntity.ok(stats);
     }
+
+    @GetMapping("/grouped-by-status")
+    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    public ResponseEntity<Page<WorkflowSummaryDto>> getAllWorkflowsGroupedByStatus(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        logger.info("Buscando todos os fluxos de trabalho agrupados por status");
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<WorkflowSummaryDto> workflows = workflowService.getAllWorkflowsGroupedByStatus(pageable);
+        return ResponseEntity.ok(workflows);
+    }
+
+    @GetMapping("/template/{templateId}/grouped-by-status")
+    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    public ResponseEntity<Page<WorkflowSummaryDto>> getWorkflowsByTemplateGroupedByStatus(
+            @PathVariable UUID templateId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        logger.info("Buscando fluxos de trabalho do template {} agrupados por status", templateId);
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<WorkflowSummaryDto> workflows = workflowService.getWorkflowsByTemplateGroupedByStatus(templateId, pageable);
+        return ResponseEntity.ok(workflows);
+    }
+
+    @GetMapping("/search/grouped-by-status")
+    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    public ResponseEntity<Page<WorkflowSummaryDto>> searchWorkflowsGroupedByStatus(
+            @RequestParam String searchTerm,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) UUID templateId) {
+
+        logger.info("Pesquisando fluxos de trabalho agrupados por status com termo: {}", searchTerm);
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<WorkflowSummaryDto> workflows;
+
+        if (templateId != null) {
+            workflows = workflowService.searchWorkflowsByTemplateGroupedByStatus(searchTerm, templateId, pageable);
+        } else {
+            workflows = workflowService.searchWorkflowsGroupedByStatus(searchTerm, pageable);
+        }
+
+        return ResponseEntity.ok(workflows);
+    }
 }

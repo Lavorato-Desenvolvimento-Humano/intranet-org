@@ -11,10 +11,14 @@ import {
   CircleEqualIcon,
   Search,
   X,
+  Grid3X3,
+  List,
+  SortAsc,
 } from "lucide-react";
 import Breadcrumb from "@/components/ui/breadcrumb";
 import { CustomButton } from "@/components/ui/custom-button";
 import WorkflowCard from "@/components/workflow/WorkflowCard";
+import WorkflowGroupedView from "@/components/workflow/WorkflowGroupedView";
 import { Loading } from "@/components/ui/loading";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import workflowService from "@/services/workflow";
@@ -44,6 +48,12 @@ export default function WorkflowsPage() {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [isSearching, setIsSearching] = useState(false);
 
+  // Estado para visualização
+  const [viewMode, setViewMode] = useState<"list" | "grouped">("list");
+  const [sortMode, setSortMode] = useState<"default" | "alphabetical">(
+    "alphabetical"
+  );
+
   // Função para buscar templates
   const fetchTemplates = async () => {
     try {
@@ -71,37 +81,65 @@ export default function WorkflowsPage() {
       if (searchTerm.trim()) {
         setIsSearching(true);
         const searchStatus = status === "all" ? undefined : status;
-        response = await workflowService.searchWorkflows(
-          searchTerm.trim(),
-          page,
-          12,
-          searchStatus,
-          selectedTemplateId || undefined
-        );
-      } else {
-        setIsSearching(false);
-        // Lógica original sem pesquisa
-        if (selectedTemplateId && status && status !== "all") {
-          response = await workflowService.getWorkflowsByTemplateAndStatus(
-            selectedTemplateId,
-            status,
+
+        if (viewMode === "grouped") {
+          response = await workflowService.searchWorkflowsGroupedByStatus(
+            searchTerm.trim(),
             page,
-            12
-          );
-        } else if (selectedTemplateId) {
-          response = await workflowService.getWorkflowsByTemplate(
-            selectedTemplateId,
-            page,
-            12
-          );
-        } else if (status && status !== "all") {
-          response = await workflowService.getWorkflowsByStatus(
-            status,
-            page,
-            12
+            12,
+            selectedTemplateId || undefined
           );
         } else {
-          response = await workflowService.getAllWorkflows(page, 12);
+          response = await workflowService.searchWorkflows(
+            searchTerm.trim(),
+            page,
+            12,
+            searchStatus,
+            selectedTemplateId || undefined
+          );
+        }
+      } else {
+        setIsSearching(false);
+
+        // Lógica para visualização agrupada por status
+        if (viewMode === "grouped") {
+          if (selectedTemplateId) {
+            response =
+              await workflowService.getWorkflowsByTemplateGroupedByStatus(
+                selectedTemplateId,
+                page,
+                12
+              );
+          } else {
+            response = await workflowService.getAllWorkflowsGroupedByStatus(
+              page,
+              12
+            );
+          }
+        } else {
+          // Lógica original para visualização em lista
+          if (selectedTemplateId && status && status !== "all") {
+            response = await workflowService.getWorkflowsByTemplateAndStatus(
+              selectedTemplateId,
+              status,
+              page,
+              12
+            );
+          } else if (selectedTemplateId) {
+            response = await workflowService.getWorkflowsByTemplate(
+              selectedTemplateId,
+              page,
+              12
+            );
+          } else if (status && status !== "all") {
+            response = await workflowService.getWorkflowsByStatus(
+              status,
+              page,
+              12
+            );
+          } else {
+            response = await workflowService.getAllWorkflows(page, 12);
+          }
         }
       }
 
@@ -155,7 +193,7 @@ export default function WorkflowsPage() {
       const status = activeTab === "all" ? undefined : activeTab;
       fetchWorkflows(status);
     }
-  }, [activeTab, page, selectedTemplateId, searchTerm]);
+  }, [activeTab, page, selectedTemplateId, searchTerm, viewMode]);
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
@@ -181,6 +219,11 @@ export default function WorkflowsPage() {
     setSelectedTemplateId("");
     setSearchTerm("");
     setPage(0);
+  };
+
+  const handleViewModeChange = (mode: "list" | "grouped") => {
+    setViewMode(mode);
+    setPage(0); // Reset para a primeira página ao mudar o modo de visualização
   };
 
   const handleCreateWorkflow = () => {
@@ -271,6 +314,46 @@ export default function WorkflowsPage() {
           </div>
         </div>
 
+        {/* Controles de Visualização */}
+        <div className="bg-white rounded-lg shadow-md p-4 mb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <span className="text-sm font-medium text-gray-700">
+                Visualização:
+              </span>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => handleViewModeChange("list")}
+                  className={`flex items-center px-3 py-2 rounded-md text-sm transition-colors ${
+                    viewMode === "list"
+                      ? "bg-primary text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}>
+                  <List size={16} className="mr-1" />
+                  Lista
+                </button>
+                <button
+                  onClick={() => handleViewModeChange("grouped")}
+                  className={`flex items-center px-3 py-2 rounded-md text-sm transition-colors ${
+                    viewMode === "grouped"
+                      ? "bg-primary text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}>
+                  <Grid3X3 size={16} className="mr-1" />
+                  Agrupado por Status
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <SortAsc size={16} className="text-gray-500" />
+              <span className="text-sm text-gray-600">
+                Ordenação alfabética
+              </span>
+            </div>
+          </div>
+        </div>
+
         {/* Filtros */}
         <div className="bg-white rounded-lg shadow-md p-4 mb-6">
           <div className="flex items-center justify-between mb-4">
@@ -338,81 +421,93 @@ export default function WorkflowsPage() {
           </div>
         )}
 
-        <Tabs defaultValue="all" className="py-2 px-4">
-          <TabsList className="bg-white rounded-lg shadow-sm p-1 mb-4">
-            <TabsTrigger
-              value="all"
-              className="py-2 px-4"
-              onClick={() => handleTabChange("all")}>
-              Todos
-            </TabsTrigger>
-            <TabsTrigger
-              value="in_progress"
-              className="py-2 px-4"
-              onClick={() => handleTabChange("in_progress")}>
-              Em Andamento
-            </TabsTrigger>
-            <TabsTrigger
-              value="paused"
-              className="py-2 px-4"
-              onClick={() => handleTabChange("paused")}>
-              Pausados
-            </TabsTrigger>
-            <TabsTrigger
-              value="completed"
-              className="py-2 px-4"
-              onClick={() => handleTabChange("completed")}>
-              Concluídos
-            </TabsTrigger>
-            <TabsTrigger
-              value="assigned"
-              className="py-2 px-4"
-              onClick={() => handleTabChange("assigned")}>
-              Atribuídos a Mim
-            </TabsTrigger>
-          </TabsList>
+        {/* Conteúdo baseado no modo de visualização */}
+        {viewMode === "grouped" ? (
+          // Visualização agrupada por status (sem abas)
+          <WorkflowGroupedView
+            workflows={workflows}
+            loading={loading}
+            error={error}
+          />
+        ) : (
+          // Visualização tradicional com abas
+          <Tabs defaultValue="all" className="py-2 px-4">
+            <TabsList className="bg-white rounded-lg shadow-sm p-1 mb-4">
+              <TabsTrigger
+                value="all"
+                className="py-2 px-4"
+                onClick={() => handleTabChange("all")}>
+                Todos
+              </TabsTrigger>
+              <TabsTrigger
+                value="in_progress"
+                className="py-2 px-4"
+                onClick={() => handleTabChange("in_progress")}>
+                Em Andamento
+              </TabsTrigger>
+              <TabsTrigger
+                value="paused"
+                className="py-2 px-4"
+                onClick={() => handleTabChange("paused")}>
+                Pausados
+              </TabsTrigger>
+              <TabsTrigger
+                value="completed"
+                className="py-2 px-4"
+                onClick={() => handleTabChange("completed")}>
+                Concluídos
+              </TabsTrigger>
+              <TabsTrigger
+                value="assigned"
+                className="py-2 px-4"
+                onClick={() => handleTabChange("assigned")}>
+                Atribuídos a Mim
+              </TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="all">
-            {renderWorkflowList(workflows, loading, error)}
-          </TabsContent>
+            <TabsContent value="all">
+              {renderWorkflowList(workflows, loading, error)}
+            </TabsContent>
 
-          <TabsContent value="in_progress">
-            {renderWorkflowList(workflows, loading, error)}
-          </TabsContent>
+            <TabsContent value="in_progress">
+              {renderWorkflowList(workflows, loading, error)}
+            </TabsContent>
 
-          <TabsContent value="paused">
-            {renderWorkflowList(workflows, loading, error)}
-          </TabsContent>
+            <TabsContent value="paused">
+              {renderWorkflowList(workflows, loading, error)}
+            </TabsContent>
 
-          <TabsContent value="completed">
-            {renderWorkflowList(workflows, loading, error)}
-          </TabsContent>
+            <TabsContent value="completed">
+              {renderWorkflowList(workflows, loading, error)}
+            </TabsContent>
 
-          <TabsContent value="assigned">
-            {loadingAssigned ? (
-              <Loading
-                size="medium"
-                message="Carregando fluxos atribuídos..."
-              />
-            ) : assignedWorkflows.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {assignedWorkflows.map((workflow) => (
-                  <WorkflowCard key={workflow.id} workflow={workflow} />
-                ))}
-              </div>
-            ) : (
-              <div className="bg-white rounded-lg shadow-md p-8 text-center">
-                <FileText size={48} className="mx-auto text-gray-400 mb-4" />
-                <h3 className="text-lg font-semibold mb-2">
-                  Nenhum fluxo atribuído a você
-                </h3>
-                <p className="text-gray-600">{getEmptyStateMessage()}</p>
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="assigned">
+              {loadingAssigned ? (
+                <Loading
+                  size="medium"
+                  message="Carregando fluxos atribuídos..."
+                />
+              ) : assignedWorkflows.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {assignedWorkflows.map((workflow) => (
+                    <WorkflowCard key={workflow.id} workflow={workflow} />
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-white rounded-lg shadow-md p-8 text-center">
+                  <FileText size={48} className="mx-auto text-gray-400 mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">
+                    Nenhum fluxo atribuído a você
+                  </h3>
+                  <p className="text-gray-600">{getEmptyStateMessage()}</p>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        )}
 
-        {totalPages > 1 && activeTab !== "assigned" && (
+        {/* Paginação - apenas para visualização em lista */}
+        {viewMode === "list" && totalPages > 1 && activeTab !== "assigned" && (
           <div className="flex justify-center mt-6">
             <div className="flex space-x-2">
               <button

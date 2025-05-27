@@ -146,7 +146,7 @@ export default function DashboardPage() {
     };
 
     fetchData();
-  }, [user, isAdmin]); // Adicionado isAdmin como dependência
+  }, [user, isAdmin]);
 
   // Função para formatar data
   const formatDate = (dateString: string) => {
