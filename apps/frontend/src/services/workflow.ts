@@ -631,6 +631,70 @@ const workflowService = {
       throw error;
     }
   },
+
+  getAllWorkflowsGroupedByStatus: async (page = 0, size = 10) => {
+    try {
+      const response = await api.get<{
+        content: WorkflowSummaryDto[];
+        totalElements: number;
+      }>(`/api/workflows/grouped-by-status?page=${page}&size=${size}`);
+      return response.data;
+    } catch (error) {
+      console.error("Erro ao buscar fluxos agrupados por status:", error);
+      throw error;
+    }
+  },
+
+  getWorkflowsByTemplateGroupedByStatus: async (
+    templateId: string,
+    page = 0,
+    size = 10
+  ) => {
+    try {
+      const response = await api.get<{
+        content: WorkflowSummaryDto[];
+        totalElements: number;
+      }>(
+        `/api/workflows/template/${templateId}/grouped-by-status?page=${page}&size=${size}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Erro ao buscar fluxos do template ${templateId} agrupados por status:`,
+        error
+      );
+      throw error;
+    }
+  },
+
+  searchWorkflowsGroupedByStatus: async (
+    searchTerm: string,
+    page = 0,
+    size = 10,
+    templateId?: string
+  ) => {
+    try {
+      const params = new URLSearchParams({
+        searchTerm,
+        page: page.toString(),
+        size: size.toString(),
+      });
+
+      if (templateId) {
+        params.append("templateId", templateId);
+      }
+
+      const response = await api.get<{
+        content: WorkflowSummaryDto[];
+        totalElements: number;
+      }>(`/api/workflows/search/grouped-by-status?${params.toString()}`);
+
+      return response.data;
+    } catch (error) {
+      console.error("Erro ao pesquisar fluxos agrupados por status:", error);
+      throw error;
+    }
+  },
 };
 
 export default workflowService;
