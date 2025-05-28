@@ -33,10 +33,6 @@ public interface WorkflowRepository extends JpaRepository<Workflow, UUID> {
             @Param("endDate") LocalDateTime endDate
     );
 
-    @Query("SELECT w FROM Workflow w JOIN WorkflowAssignment wa ON w.id = wa.workflow.id " +
-            "WHERE wa.assignedTo.id = :userId AND wa.stepNumber = w.currentStep AND w.status = 'in_progress'")
-    List<Workflow> findWorkflowsAssignedToUser(@Param("userId") UUID userId);
-
     @Query("SELECT w FROM Workflow w WHERE " +
             "(w.visibility = 'public') OR " +
             "(w.visibility = 'team' AND w.team.id IN (SELECT ue.equipe.id FROM UserEquipe ue WHERE ue.user.id = :userId)) OR " +
@@ -55,12 +51,6 @@ public interface WorkflowRepository extends JpaRepository<Workflow, UUID> {
 
     @Query("SELECT w FROM Workflow w WHERE w.currentStep = :stepNumber")
     Page<Workflow> findByCurrentStep(@Param("stepNumber") int stepNumber, Pageable pageable);
-
-    @Query("SELECT COUNT(w) FROM Workflow w WHERE w.customStatus.id = :statusId")
-    int countByCustomStatusId(@Param("statusId") UUID statusId);
-
-    @Query("SELECT w.customStatus.id as statusId, COUNT(w) as count FROM Workflow w WHERE w.customStatus IS NOT NULL GROUP BY w.customStatus.id")
-    List<Object[]> countByCustomStatusGrouped();
 
     @Query("SELECT s.name as statusName, s.color as statusColor, COUNT(w) as count FROM Workflow w JOIN w.customStatus s WHERE w.statusTemplate.id = :templateId GROUP BY s.id, s.name, s.color")
     List<Object[]> countByCustomStatusInTemplate(@Param("templateId") UUID templateId);
@@ -85,11 +75,6 @@ public interface WorkflowRepository extends JpaRepository<Workflow, UUID> {
             @Param("templateId") UUID templateId,
             @Param("status") String status,
             Pageable pageable);
-
-    @Query("SELECT w FROM Workflow w JOIN WorkflowAssignment wa ON w.id = wa.workflow.id " +
-            "WHERE wa.assignedTo.id = :userId AND wa.stepNumber = w.currentStep AND w.status = 'in_progress' " +
-            "AND w.template.id = :templateId")
-    List<Workflow> findWorkflowsAssignedToUserByTemplate(@Param("userId") UUID userId, @Param("templateId") UUID templateId);
 
     @Query("SELECT w FROM Workflow w WHERE " +
             "LOWER(w.title) LIKE LOWER(CONCAT('%', :searchTerm, '%'))")
@@ -120,39 +105,6 @@ public interface WorkflowRepository extends JpaRepository<Workflow, UUID> {
 
     @Query("SELECT w FROM Workflow w JOIN WorkflowAssignment wa ON w.id = wa.workflow.id " +
             "WHERE wa.assignedTo.id = :userId AND wa.stepNumber = w.currentStep AND w.status = 'in_progress' " +
-            "AND LOWER(w.title) LIKE LOWER(CONCAT('%', :searchTerm, '%'))")
-    List<Workflow> findWorkflowsAssignedToUserByTitleContaining(
-            @Param("userId") UUID userId,
-            @Param("searchTerm") String searchTerm);
-
-    @Query("SELECT w FROM Workflow w JOIN WorkflowAssignment wa ON w.id = wa.workflow.id " +
-            "WHERE wa.assignedTo.id = :userId AND wa.stepNumber = w.currentStep AND w.status = 'in_progress' " +
-            "AND w.template.id = :templateId AND LOWER(w.title) LIKE LOWER(CONCAT('%', :searchTerm, '%'))")
-    List<Workflow> findWorkflowsAssignedToUserByTemplateAndTitleContaining(
-            @Param("userId") UUID userId,
-            @Param("templateId") UUID templateId,
-            @Param("searchTerm") String searchTerm);
-
-    @Query("SELECT w FROM Workflow w ORDER BY w.status ASC, w.title ASC")
-    Page<Workflow> findAllOrderByStatusAndTitle(Pageable pageable);
-
-    @Query("SELECT w FROM Workflow w WHERE w.template.id = :templateId ORDER BY w.status ASC, w.title ASC")
-    Page<Workflow> findByTemplateIdOrderByStatusAndTitle(@Param("templateId") UUID templateId, Pageable pageable);
-
-    @Query("SELECT w FROM Workflow w WHERE " +
-            "LOWER(w.title) LIKE LOWER(CONCAT('%', :searchTerm, '%')) ORDER BY w.status ASC, w.title ASC")
-    Page<Workflow> findByTitleContainingOrderByStatusAndTitle(@Param("searchTerm") String searchTerm, Pageable pageable);
-
-    @Query("SELECT w FROM Workflow w WHERE " +
-            "LOWER(w.title) LIKE LOWER(CONCAT('%', :searchTerm, '%')) AND w.template.id = :templateId " +
-            "ORDER BY w.status ASC, w.title ASC")
-    Page<Workflow> findByTitleContainingAndTemplateIdOrderByStatusAndTitle(
-            @Param("searchTerm") String searchTerm,
-            @Param("templateId") UUID templateId,
-            Pageable pageable);
-
-    @Query("SELECT w FROM Workflow w JOIN WorkflowAssignment wa ON w.id = wa.workflow.id " +
-            "WHERE wa.assignedTo.id = :userId AND wa.stepNumber = w.currentStep AND w.status = 'in_progress' " +
             "ORDER BY w.title ASC")
     List<Workflow> findWorkflowsAssignedToUserOrderByTitle(@Param("userId") UUID userId);
 
@@ -176,27 +128,6 @@ public interface WorkflowRepository extends JpaRepository<Workflow, UUID> {
             @Param("userId") UUID userId,
             @Param("templateId") UUID templateId,
             @Param("searchTerm") String searchTerm);
-
-    // Consulta para buscar fluxos agrupados por status
-    @Query("SELECT w FROM Workflow w ORDER BY " +
-            "CASE w.status " +
-            "WHEN 'in_progress' THEN 1 " +
-            "WHEN 'paused' THEN 2 " +
-            "WHEN 'completed' THEN 3 " +
-            "WHEN 'canceled' THEN 4 " +
-            "WHEN 'archived' THEN 5 " +
-            "ELSE 6 END, w.title ASC")
-    Page<Workflow> findAllGroupedByStatusOrderByTitle(Pageable pageable);
-
-    @Query("SELECT w FROM Workflow w WHERE w.template.id = :templateId ORDER BY " +
-            "CASE w.status " +
-            "WHEN 'in_progress' THEN 1 " +
-            "WHEN 'paused' THEN 2 " +
-            "WHEN 'completed' THEN 3 " +
-            "WHEN 'canceled' THEN 4 " +
-            "WHEN 'archived' THEN 5 " +
-            "ELSE 6 END, w.title ASC")
-    Page<Workflow> findByTemplateIdGroupedByStatusOrderByTitle(@Param("templateId") UUID templateId, Pageable pageable);
 
     @Query("SELECT w FROM Workflow w LEFT JOIN w.customStatus cs ORDER BY " +
             "CASE " +
