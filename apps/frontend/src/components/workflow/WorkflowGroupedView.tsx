@@ -4,6 +4,7 @@
 import React from "react";
 import { WorkflowSummaryDto } from "@/types/workflow";
 import WorkflowCard from "./WorkflowCard";
+import Pagination from "@/components/ui/pagination";
 import {
   PlayCircle,
   PauseCircle,
@@ -16,6 +17,12 @@ interface WorkflowGroupedViewProps {
   workflows: WorkflowSummaryDto[];
   loading: boolean;
   error: string | null;
+  // Novas props para paginação
+  currentPage: number;
+  totalPages: number;
+  totalElements: number;
+  onPageChange: (page: number) => void;
+  pageSize?: number;
 }
 
 interface StatusGroup {
@@ -31,6 +38,11 @@ const WorkflowGroupedView: React.FC<WorkflowGroupedViewProps> = ({
   workflows,
   loading,
   error,
+  currentPage,
+  totalPages,
+  totalElements,
+  onPageChange,
+  pageSize = 12,
 }) => {
   // Criar grupos de status considerando status personalizados e padrão
   const createStatusGroups = (): StatusGroup[] => {
@@ -204,6 +216,20 @@ const WorkflowGroupedView: React.FC<WorkflowGroupedViewProps> = ({
 
   return (
     <div className="space-y-8">
+      {/* Informações de paginação no topo */}
+      <div className="bg-white rounded-lg shadow-md p-4">
+        <div className="flex justify-between items-center">
+          <div className="text-sm text-gray-600">
+            Página {currentPage} de {totalPages} • {totalElements} fluxos no
+            total
+          </div>
+          <div className="text-sm text-gray-500">
+            Mostrando {workflows.length} fluxos nesta página
+          </div>
+        </div>
+      </div>
+
+      {/* Grupos de status */}
       {statusGroups.map((group) => {
         return (
           <div
@@ -247,6 +273,15 @@ const WorkflowGroupedView: React.FC<WorkflowGroupedViewProps> = ({
           </div>
         );
       })}
+
+      {/* Componente de paginação */}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={onPageChange}
+        totalItems={totalElements}
+        pageSize={pageSize}
+      />
     </div>
   );
 };

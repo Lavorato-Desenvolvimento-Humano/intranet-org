@@ -19,6 +19,7 @@ import Breadcrumb from "@/components/ui/breadcrumb";
 import { CustomButton } from "@/components/ui/custom-button";
 import WorkflowCard from "@/components/workflow/WorkflowCard";
 import WorkflowGroupedView from "@/components/workflow/WorkflowGroupedView";
+import Pagination from "@/components/ui/pagination"; // Importar componente de paginação
 import { Loading } from "@/components/ui/loading";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import workflowService from "@/services/workflow";
@@ -30,8 +31,10 @@ export default function WorkflowsPage() {
   const [workflows, setWorkflows] = useState<WorkflowSummaryDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(0); // Para visualização em lista (0-indexed)
+  const [groupedPage, setGroupedPage] = useState(1); // Para visualização agrupada (1-indexed)
   const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
   const [activeTab, setActiveTab] = useState("all");
   const [assignedWorkflows, setAssignedWorkflows] = useState<
     WorkflowSummaryDto[]
@@ -77,6 +80,9 @@ export default function WorkflowsPage() {
       setLoading(true);
       let response;
 
+      // Determinar qual página usar baseado no modo de visualização
+      const currentPageToUse = viewMode === "grouped" ? groupedPage - 1 : page; // Converter para 0-indexed
+
       // Se há termo de pesquisa, usar endpoint de pesquisa
       if (searchTerm.trim()) {
         setIsSearching(true);
@@ -85,14 +91,14 @@ export default function WorkflowsPage() {
         if (viewMode === "grouped") {
           response = await workflowService.searchWorkflowsGroupedByStatus(
             searchTerm.trim(),
-            page,
+            currentPageToUse,
             12,
             selectedTemplateId || undefined
           );
         } else {
           response = await workflowService.searchWorkflows(
             searchTerm.trim(),
-            page,
+            currentPageToUse,
             12,
             searchStatus,
             selectedTemplateId || undefined
@@ -107,12 +113,12 @@ export default function WorkflowsPage() {
             response =
               await workflowService.getWorkflowsByTemplateGroupedByStatus(
                 selectedTemplateId,
-                page,
+                currentPageToUse,
                 12
               );
           } else {
             response = await workflowService.getAllWorkflowsGroupedByStatus(
-              page,
+              currentPageToUse,
               12
             );
           }
@@ -122,29 +128,33 @@ export default function WorkflowsPage() {
             response = await workflowService.getWorkflowsByTemplateAndStatus(
               selectedTemplateId,
               status,
-              page,
+              currentPageToUse,
               12
             );
           } else if (selectedTemplateId) {
             response = await workflowService.getWorkflowsByTemplate(
               selectedTemplateId,
-              page,
+              currentPageToUse,
               12
             );
           } else if (status && status !== "all") {
             response = await workflowService.getWorkflowsByStatus(
               status,
-              page,
+              currentPageToUse,
               12
             );
           } else {
-            response = await workflowService.getAllWorkflows(page, 12);
+            response = await workflowService.getAllWorkflows(
+              currentPageToUse,
+              12
+            );
           }
         }
       }
 
       setWorkflows(response.content || []);
       setTotalPages(Math.ceil((response.totalElements || 0) / 12));
+      setTotalElements(response.totalElements || 0);
     } catch (err) {
       console.error("Erro ao carregar fluxos:", err);
       setError(
@@ -193,37 +203,57 @@ export default function WorkflowsPage() {
       const status = activeTab === "all" ? undefined : activeTab;
       fetchWorkflows(status);
     }
-  }, [activeTab, page, selectedTemplateId, searchTerm, viewMode]);
+  }, [activeTab, page, groupedPage, selectedTemplateId, searchTerm, viewMode]);
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
-    setPage(0); // Reset para a primeira página ao mudar a tab
+    // Reset das páginas ao mudar a tab
+    setPage(0);
+    setGroupedPage(1);
   };
 
   const handleTemplateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedTemplateId(e.target.value);
-    setPage(0); // Reset para a primeira página ao aplicar filtro
+    // Reset das páginas ao aplicar filtro
+    setPage(0);
+    setGroupedPage(1);
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
-    setPage(0); // Reset para a primeira página ao pesquisar
+    // Reset das páginas ao pesquisar
+    setPage(0);
+    setGroupedPage(1);
   };
 
   const clearSearch = () => {
     setSearchTerm("");
     setPage(0);
+    setGroupedPage(1);
   };
 
   const clearFilters = () => {
     setSelectedTemplateId("");
     setSearchTerm("");
     setPage(0);
+    setGroupedPage(1);
   };
 
   const handleViewModeChange = (mode: "list" | "grouped") => {
     setViewMode(mode);
-    setPage(0); // Reset para a primeira página ao mudar o modo de visualização
+    // Reset das páginas ao mudar o modo de visualização
+    setPage(0);
+    setGroupedPage(1);
+  };
+
+  // Função para lidar com mudança de página na visualização agrupada
+  const handleGroupedPageChange = (newPage: number) => {
+    setGroupedPage(newPage);
+  };
+
+  // Função para lidar com mudança de página na visualização em lista
+  const handleListPageChange = (newPage: number) => {
+    setPage(newPage - 1); // Converter para 0-indexed
   };
 
   const handleCreateWorkflow = () => {
@@ -428,6 +458,11 @@ export default function WorkflowsPage() {
             workflows={workflows}
             loading={loading}
             error={error}
+            currentPage={groupedPage}
+            totalPages={totalPages}
+            totalElements={totalElements}
+            onPageChange={handleGroupedPageChange}
+            pageSize={12}
           />
         ) : (
           // Visualização tradicional com abas
@@ -503,49 +538,18 @@ export default function WorkflowsPage() {
                 </div>
               )}
             </TabsContent>
+
+            {/* Paginação para visualização em lista - apenas para tabs que não sejam "assigned" */}
+            {totalPages > 1 && activeTab !== "assigned" && (
+              <Pagination
+                currentPage={page + 1} // Converter para 1-indexed
+                totalPages={totalPages}
+                onPageChange={handleListPageChange}
+                totalItems={totalElements}
+                pageSize={12}
+              />
+            )}
           </Tabs>
-        )}
-
-        {/* Paginação - apenas para visualização em lista */}
-        {viewMode === "list" && totalPages > 1 && activeTab !== "assigned" && (
-          <div className="flex justify-center mt-6">
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
-                disabled={page === 0}
-                className={`px-4 py-2 rounded ${
-                  page === 0
-                    ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                }`}>
-                Anterior
-              </button>
-
-              {Array.from({ length: totalPages }).map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setPage(index)}
-                  className={`px-4 py-2 rounded ${
-                    page === index
-                      ? "bg-primary text-white"
-                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                  }`}>
-                  {index + 1}
-                </button>
-              ))}
-
-              <button
-                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                disabled={page === totalPages - 1}
-                className={`px-4 py-2 rounded ${
-                  page === totalPages - 1
-                    ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                }`}>
-                Próxima
-              </button>
-            </div>
-          </div>
         )}
       </div>
     </>
