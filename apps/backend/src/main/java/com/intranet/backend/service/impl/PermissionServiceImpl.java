@@ -46,13 +46,6 @@ public class PermissionServiceImpl implements PermissionService {
     }
 
     @Override
-    public PermissionDto getPermissionByName(String name) {
-        Permission permission = permissionRepository.findByName(name)
-                .orElseThrow(() -> new ResourceNotFoundException("Permissão não encontrada com nome: " + name));
-        return convertToDto(permission);
-    }
-
-    @Override
     @Transactional
     public PermissionDto createPermission(PermissionCreateRequest request) {
         // Verificar se a permissão já existe

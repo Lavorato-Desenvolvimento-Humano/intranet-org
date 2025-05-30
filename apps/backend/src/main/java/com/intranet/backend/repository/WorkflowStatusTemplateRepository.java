@@ -26,10 +26,4 @@ public interface WorkflowStatusTemplateRepository extends JpaRepository<Workflow
 
     @Query("SELECT COUNT(w) FROM Workflow w WHERE w.statusTemplate.id = :templateId")
     int countWorkflowsByTemplateId(@Param("templateId") UUID templateId);
-
-    @Query("SELECT t FROM WorkflowStatusTemplate t LEFT JOIN FETCH t.createdBy WHERE t.id = :id")
-    Optional<WorkflowStatusTemplate> findByIdWithCreatedBy(@Param("id") UUID id);
-
-    @Query("SELECT DISTINCT t FROM WorkflowStatusTemplate t LEFT JOIN FETCH t.createdBy")
-    Page<WorkflowStatusTemplate> findAllWithCreatedBy(Pageable pageable);
 }

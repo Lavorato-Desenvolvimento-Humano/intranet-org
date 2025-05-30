@@ -13,16 +13,6 @@ import java.util.UUID;
 @Repository
 public interface AnexoRepository extends JpaRepository<Anexo, UUID> {
 
-    @Query("SELECT a FROM Anexo a WHERE a.postagem.id = :postagemId")
-    List<Anexo> findByPostagemId(@Param("postagemId") UUID postagemId);
-
-    void deleteByPostagemId(UUID postagemId);
-
-    // Adicione este método à interface
-    @Query("SELECT a FROM Anexo a WHERE a.postagem IS NULL")
-    List<Anexo> findOrphanedAnexos();
-
-    // Se a entidade tiver um campo createdAt, adicione também:
     @Query("SELECT a FROM Anexo a WHERE a.postagem IS NULL AND a.createdAt < :date")
     List<Anexo> findOrphanedAnexosCreatedBefore(LocalDateTime date);
 }

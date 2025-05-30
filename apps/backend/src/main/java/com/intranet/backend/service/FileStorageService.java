@@ -180,55 +180,6 @@ public class FileStorageService {
     }
 
     /**
-     * Retorna o caminho absoluto de um arquivo
-     */
-    public Path resolveFilePath(String filePath) {
-        if (filePath == null || filePath.isEmpty()) {
-            throw new FileStorageException("Caminho de arquivo vazio");
-        }
-
-        String fileName = FileHelper.extractFileNameFromUrl(filePath);
-        logger.debug("Resolvendo caminho para o arquivo: {}", fileName);
-
-        // Determinar o subdiretório, se presente no caminho
-        String subdir = "";
-        if (filePath.startsWith("images/")) {
-            subdir = "images";
-        } else if (filePath.startsWith("files/")) {
-            subdir = "files";
-        } else if (filePath.startsWith("profiles/")) {
-            subdir = "profiles";
-        }
-
-        // Resolver o caminho
-        if (!subdir.isEmpty()) {
-            Path path = fileStorageLocation.resolve(subdir).resolve(fileName);
-            logger.debug("Caminho resolvido (com subdir): {}", path);
-            return path;
-        }
-
-        // Verificar em diferentes locais possíveis
-        Path[] possibleLocations = {
-                fileStorageLocation.resolve("profiles").resolve(fileName),
-                fileStorageLocation.resolve("images").resolve(fileName),
-                fileStorageLocation.resolve("files").resolve(fileName),
-                fileStorageLocation.resolve(fileName)
-        };
-
-        for (Path location : possibleLocations) {
-            if (Files.exists(location)) {
-                logger.debug("Arquivo encontrado em: {}", location);
-                return location;
-            }
-        }
-
-        // Se não encontrou, retorna o caminho padrão (poderá lançar exceção depois)
-        Path defaultPath = fileStorageLocation.resolve(fileName);
-        logger.debug("Arquivo não encontrado, retornando caminho padrão: {}", defaultPath);
-        return defaultPath;
-    }
-
-    /**
      * Armazena uma imagem de perfil
      */
     public String storeProfileImage(MultipartFile file) {

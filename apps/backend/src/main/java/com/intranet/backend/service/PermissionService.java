@@ -11,8 +11,6 @@ public interface PermissionService {
 
     PermissionDto getPermissionById(Integer id);
 
-    PermissionDto getPermissionByName(String name);
-
     PermissionDto createPermission(PermissionCreateRequest request);
 
     PermissionDto updatePermission(Integer id, PermissionCreateRequest request);

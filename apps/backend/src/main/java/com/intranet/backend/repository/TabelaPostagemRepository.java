@@ -12,8 +12,4 @@ import java.util.UUID;
 @Repository
 public interface TabelaPostagemRepository extends JpaRepository<TabelaPostagem, UUID> {
 
-    @Query("SELECT t FROM TabelaPostagem t WHERE t.postagem.id = :postagemId")
-    List<TabelaPostagem> findByPostagemId(@Param("postagemId") UUID postagemId);
-
-    void deleteByPostagemId(UUID postagemId);
 }

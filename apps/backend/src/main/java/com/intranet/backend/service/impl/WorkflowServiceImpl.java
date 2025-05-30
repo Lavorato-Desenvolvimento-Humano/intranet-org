@@ -523,7 +523,6 @@ public class WorkflowServiceImpl implements WorkflowService {
         int nextStepNumber = workflow.getCurrentStep() + 1;
         workflow.setCurrentStep(nextStepNumber);
 
-        // Calcular porcentagem de progresso - AJUSTE AQUI
         // Em vez de usar a coleção lazy do workflow, buscar as atribuições diretamente
         List<WorkflowAssignment> assignments = assignmentRepository.findByWorkflowIdOrderByStepNumber(workflowId);
 
@@ -951,9 +950,6 @@ public class WorkflowServiceImpl implements WorkflowService {
         LocalDateTime now = LocalDateTime.now();
         stats.setOverdueCount(workflowRepository.countOverdueWorkflowsByTemplateId(templateId, now));
 
-        // Consultas adicionais para outras estatísticas como você faz no método getGeneralWorkflowStats()
-        // ...
-
         return stats;
     }
 
@@ -982,9 +978,6 @@ public class WorkflowServiceImpl implements WorkflowService {
         // Fluxos atrasados
         LocalDateTime now = LocalDateTime.now();
         stats.setOverdueCount(workflowRepository.countOverdueWorkflowsByStatusTemplateId(statusTemplateId, now));
-
-        // Consultas adicionais para outras estatísticas como você faz no método getGeneralWorkflowStats()
-        // ...
 
         return stats;
     }
@@ -1157,8 +1150,6 @@ public class WorkflowServiceImpl implements WorkflowService {
         stats.setTotalWorkflows(stats.getInProgressCount() + stats.getPausedCount() +
                 stats.getCompletedCount() + stats.getCanceledCount() + stats.getArchivedCount());
 
-        // Outras estatísticas podem ser adicionadas conforme necessário
-
         return stats;
     }
 
@@ -1178,8 +1169,6 @@ public class WorkflowServiceImpl implements WorkflowService {
 
         stats.setTotalWorkflows(stats.getInProgressCount() + stats.getPausedCount() +
                 stats.getCompletedCount() + stats.getCanceledCount() + stats.getArchivedCount());
-
-        // Outras estatísticas podem ser adicionadas conforme necessário
 
         return stats;
     }

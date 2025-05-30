@@ -23,9 +23,6 @@ public interface WorkflowAssigmentRepository extends JpaRepository<WorkflowAssig
             @Param("stepNumber") int stepNumber
     );
 
-    @Query("SELECT COUNT(wa) FROM WorkflowAssignment wa WHERE wa.assignedTo.id = :userId AND wa.status = 'in_progress'")
-    int countActiveAssignmentsByUserId(@Param("userId") UUID userId);
-
     @Query("SELECT wa FROM WorkflowAssignment wa WHERE wa.workflow.id = :workflowId AND wa.workflow.currentStep = wa.stepNumber")
     Optional<WorkflowAssignment> findCurrentAssignment(@Param("workflowId") UUID workflowId);
 }
