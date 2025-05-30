@@ -18,6 +18,4 @@ public interface EquipeRepository extends JpaRepository<Equipe, UUID> {
     @Query("SELECT COUNT(ue) FROM UserEquipe ue WHERE ue.equipe.id = :equipeId")
     int countMembrosByEquipeId(@Param("equipeId") UUID equipeId);
 
-    @Query("SELECT e FROM Equipe e JOIN FETCH e.membros m JOIN FETCH m.user WHERE e.id = :id")
-    Equipe findByIdWithMembros(@Param("id") UUID id);
 }

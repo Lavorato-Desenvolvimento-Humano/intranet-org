@@ -33,7 +33,7 @@ public class ConvenioController {
             return ResponseEntity.ok(convenios);
         } catch (Exception e) {
             logger.error("Erro ao buscar convênios: ", e);
-            throw e; // Relançar para ser capturado pelo handler global
+            throw e;
         }
     }
 

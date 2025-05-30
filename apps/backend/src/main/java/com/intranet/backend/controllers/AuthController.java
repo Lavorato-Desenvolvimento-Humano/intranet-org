@@ -42,7 +42,7 @@ public class AuthController {
             return ResponseEntity.ok(jwtResponse);
         } catch (Exception e) {
             logger.error("Login falhou para {}: {}", loginRequest.getEmail(), e.getMessage());
-            throw e; // Deixe o manipulador global de exceções lidar com isso
+            throw e;
         }
     }
 
@@ -54,20 +54,6 @@ public class AuthController {
         JwtResponse jwtResponse = authService.register(registerRequest);
 
         logger.info("Registro bem-sucedido para o email: {}", registerRequest.getEmail());
-        return ResponseEntity.status(HttpStatus.CREATED).body(jwtResponse);
-    }
-
-    @PostMapping(value = "/register-with-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<JwtResponse> registerWithImage(
-            @RequestParam("fullName") String fullName,
-            @RequestParam("email") String email,
-            @RequestParam("password") String password,
-            @RequestParam(value = "githubId", required = false) String githubId,
-            @RequestParam(value = "profileImage", required = false) MultipartFile profileImage) {
-
-        logger.info("Solicitação de registro com imagem recebida para o email: {}", email);
-        JwtResponse jwtResponse = authService.registerWithImage(fullName, email, password, githubId, profileImage);
-        logger.info("Registro com imagem bem-sucedido para o email: {}", email);
         return ResponseEntity.status(HttpStatus.CREATED).body(jwtResponse);
     }
 

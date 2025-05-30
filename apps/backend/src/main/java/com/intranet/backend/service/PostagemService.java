@@ -12,8 +12,6 @@ public interface PostagemService {
 
     Page<PostagemSummaryDto> getAllPostagens(Pageable pageable);
 
-    List<PostagemSummaryDto> getPostagensByConvenioId(UUID convenioId);
-
     List<PostagemSummaryDto> getPostagensByCurrentUser();
 
     PostagemDto getPostagemById(UUID id);
@@ -28,15 +26,7 @@ public interface PostagemService {
 
     void deleteImagem(UUID id);
 
-    AnexoDto addAnexo(UUID postagemId, MultipartFile file);
-
     void deleteAnexo(UUID id);
-
-    TabelaPostagemDto addTabelaPostagem(UUID postagemId, String conteudoJson);
-
-    TabelaPostagemDto updateTabelaPostagem(UUID id, String conteudoJson);
-
-    void deleteTabelaPostagem(UUID id);
 
     AnexoDto associarAnexo(UUID postagemId, UUID anexoId);
 

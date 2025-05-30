@@ -82,8 +82,8 @@ public class UserController {
                 return ResponseEntity.badRequest().build();
             }
 
-            // Validar tamanho do arquivo (5MB máximo)
-            long maxSize = 5 * 1024 * 1024; // 5MB
+            // Validar tamanho do arquivo (100MB máximo)
+            long maxSize = 100 * 1024 * 1024; // 5MB
             if (image.getSize() > maxSize) {
                 logger.warn("Arquivo muito grande: {} bytes para usuário: {}", image.getSize(), id);
                 return ResponseEntity.badRequest().build();

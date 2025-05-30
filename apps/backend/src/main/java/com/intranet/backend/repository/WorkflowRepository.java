@@ -16,8 +16,6 @@ import java.util.UUID;
 @Repository
 public interface WorkflowRepository extends JpaRepository<Workflow, UUID> {
 
-    List<Workflow> findByCreatedById(UUID createdById);
-
     @Query("SELECT w FROM Workflow w WHERE w.status = :status")
     Page<Workflow> findByStatus(@Param("status") String status, Pageable pageable);
 

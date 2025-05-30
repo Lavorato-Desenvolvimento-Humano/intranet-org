@@ -194,35 +194,6 @@ public class PostagemController {
         return ResponseUtil.noContent();
     }
 
-    // Endpoints para manipulação de tabelas
-    @PostMapping("/{id}/tabelas")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR') or hasRole('USER')")
-    public ResponseEntity<TabelaPostagemDto> addTabela(
-            @PathVariable UUID id,
-            @RequestBody String conteudoJson) {
-        logger.info("Requisição para adicionar tabela à postagem com ID: {}", id);
-        TabelaPostagemDto tabela = postagemService.addTabelaPostagem(id, conteudoJson);
-        return ResponseUtil.created(tabela);
-    }
-
-    @PutMapping("/tabelas/{id}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR') or hasRole('USER')")
-    public ResponseEntity<TabelaPostagemDto> updateTabela(
-            @PathVariable UUID id,
-            @RequestBody String conteudoJson) {
-        logger.info("Requisição para atualizar tabela com ID: {}", id);
-        TabelaPostagemDto tabela = postagemService.updateTabelaPostagem(id, conteudoJson);
-        return ResponseUtil.success(tabela);
-    }
-
-    @DeleteMapping("/tabelas/{id}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR') or hasRole('USER')")
-    public ResponseEntity<Void> deleteTabela(@PathVariable UUID id) {
-        logger.info("Requisição para deletar tabela com ID: {}", id);
-        postagemService.deleteTabelaPostagem(id);
-        return ResponseUtil.noContent();
-    }
-
     @GetMapping("/nova")
     public ResponseEntity<PostagemCreateDto> getNovaPostagemFormulario() {
         // Retornar um modelo vazio para o formulário de nova postagem
@@ -250,7 +221,6 @@ public class PostagemController {
                 return ResponseUtil.<ImagemDto>forbidden("Apenas o criador da postagem pode associar imagens");
             }
 
-            // Buscar imagem
             Imagem imagem = imagemRepository.findById(imagemId)
                     .orElseThrow(() -> new ResourceNotFoundException("Imagem não encontrada"));
 
@@ -258,7 +228,6 @@ public class PostagemController {
             imagem.setPostagem(postagem);
             postagem.getImagens().add(imagem);
 
-            // Salvar
             Imagem savedImagem = imagemRepository.save(imagem);
 
             // Retornar DTO atualizado

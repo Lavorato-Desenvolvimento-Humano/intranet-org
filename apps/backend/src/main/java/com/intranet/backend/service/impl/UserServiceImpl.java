@@ -171,7 +171,6 @@ public class UserServiceImpl implements UserService {
                 emailService.sendAccountApprovalEmail(user.getEmail(), user.getFullName());
             } catch (Exception e) {
                 logger.error("Erro ao enviar email de aprovação: {}", e.getMessage());
-                // Não falhar a operação se o email não puder ser enviado
             }
         }
 

@@ -94,8 +94,6 @@ public class TabelaValoresServiceImpl implements TabelaValoresService {
 
         User currentUser = getCurrentUser();
 
-        // Validar se o JSON está bem formado (você pode adicionar validação de JSON aqui)
-
         TabelaValores tabela = new TabelaValores();
         tabela.setNome(tabelaCreateDto.getNome());
         tabela.setDescricao(tabelaCreateDto.getDescricao());
@@ -136,9 +134,7 @@ public class TabelaValoresServiceImpl implements TabelaValoresService {
             tabela.setConvenio(convenio);
         }
 
-        // Validar se o JSON está bem formado (você pode adicionar validação de JSON aqui)
         try {
-            // Tentar verificar se é um JSON válido
             new ObjectMapper().readTree(tabelaUpdateDto.getConteudo());
         } catch (Exception e) {
             throw new IllegalArgumentException("O conteúdo da tabela não é um JSON válido: " + e.getMessage());

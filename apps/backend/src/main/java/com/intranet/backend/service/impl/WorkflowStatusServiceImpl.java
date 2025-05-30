@@ -9,7 +9,6 @@ import com.intranet.backend.model.User;
 import com.intranet.backend.model.WorkflowStatusItem;
 import com.intranet.backend.model.WorkflowStatusTemplate;
 import com.intranet.backend.repository.UserRepository;
-import com.intranet.backend.repository.WorkflowRepository;
 import com.intranet.backend.repository.WorkflowStatusItemRepository;
 import com.intranet.backend.repository.WorkflowStatusTemplateRepository;
 import com.intranet.backend.service.WorkflowStatusService;
@@ -19,7 +18,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,7 +32,6 @@ public class WorkflowStatusServiceImpl implements WorkflowStatusService {
 
     private final WorkflowStatusTemplateRepository templateRepository;
     private final WorkflowStatusItemRepository itemRepository;
-    private final WorkflowRepository workflowRepository;
     private final UserRepository userRepository;
 
     @Override

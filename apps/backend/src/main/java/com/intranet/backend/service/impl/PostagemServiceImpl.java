@@ -49,21 +49,6 @@ public class PostagemServiceImpl implements PostagemService {
     }
 
     @Override
-    public List<PostagemSummaryDto> getPostagensByConvenioId(UUID convenioId) {
-        logger.info("Buscando postagens para o convênio com ID: {}", convenioId);
-
-        if (!convenioRepository.existsById(convenioId)) {
-            throw new ResourceNotFoundException("Convênio não encontrado com ID: " + convenioId);
-        }
-
-        List<Postagem> postagens = postagemRepository.findByConvenioIdOrderByCreatedAtDesc(convenioId);
-
-        return postagens.stream()
-                .map(DTOMapperUtil::mapToPostagemSummaryDto)
-                .collect(Collectors.toList());
-    }
-
-    @Override
     public List<PostagemSummaryDto> getPostagensByTipoDestino(String tipoDestino) {
         logger.info("Buscando postagens do tipo: {}", tipoDestino);
 
@@ -160,7 +145,7 @@ public class PostagemServiceImpl implements PostagemService {
             case "geral":
                 // Não precisa de configuração adicional
                 postagem.setConvenio(null);  // Explicitamente definir como null para garantir
-                postagem.setEquipe(null);    // Explicitamente definir como null para garantir
+                postagem.setEquipe(null);
                 break;
 
             default:
@@ -188,13 +173,6 @@ public class PostagemServiceImpl implements PostagemService {
         if (!postagem.getCreatedBy().getId().equals(currentUser.getId())) {
             throw new IllegalStateException("Apenas o criador da postagem pode atualizá-la");
         }
-
-//        // Verificar se o convênio existe, caso esteja sendo alterado
-//        if (!postagem.getConvenio().getId().equals(postagemUpdateDto.getConvenioId())) {
-//            Convenio convenio = convenioRepository.findById(postagemUpdateDto.getConvenioId())
-//                    .orElseThrow(() -> new ResourceNotFoundException("Convênio não encontrado com ID: " + postagemUpdateDto.getConvenioId()));
-//            postagem.setConvenio(convenio);
-//        }
 
         String tipoDestino = postagemUpdateDto.getTipoDestino();
         postagem.setTipoDestino(tipoDestino);
@@ -228,7 +206,7 @@ public class PostagemServiceImpl implements PostagemService {
             case "geral":
                 // Não precisa de configuração adicional
                 postagem.setConvenio(null);  // Explicitamente definir como null para garantir
-                postagem.setEquipe(null);    // Explicitamente definir como null para garantir
+                postagem.setEquipe(null);
                 break;
 
             default:
@@ -381,38 +359,6 @@ public class PostagemServiceImpl implements PostagemService {
 
     @Override
     @Transactional
-    public AnexoDto addAnexo(UUID postagemId, MultipartFile file) {
-        logger.info("Adicionando anexo à postagem com ID: {}", postagemId);
-
-        Postagem postagem = postagemRepository.findById(postagemId)
-                .orElseThrow(() -> new ResourceNotFoundException("Postagem não encontrada com ID: " + postagemId));
-
-        // Verificar se o usuário atual é o criador da postagem
-        User currentUser = getCurrentUser();
-        if (!postagem.getCreatedBy().getId().equals(currentUser.getId())) {
-            throw new IllegalStateException("Apenas o criador da postagem pode adicionar anexos");
-        }
-
-        // Salvar arquivo e obter URL
-        String fileName = fileStorageService.storeFile(file);
-        String fileUrl = "/uploads/files/" + fileName;
-
-        Anexo anexo = new Anexo();
-        anexo.setPostagem(postagem);
-        anexo.setNameFile(file.getOriginalFilename());
-        anexo.setTypeFile(file.getContentType());
-        anexo.setUrl(fileUrl);
-
-        Anexo savedAnexo = anexoRepository.save(anexo);
-        postagem.getAnexos().add(savedAnexo);
-
-        logger.info("Anexo adicionado com sucesso. ID: {}", savedAnexo.getId());
-
-        return DTOMapperUtil.mapToAnexoDto(savedAnexo);
-    }
-
-    @Override
-    @Transactional
     public void deleteAnexo(UUID id) {
         logger.info("Excluindo anexo com ID: {}", id);
 
@@ -437,79 +383,7 @@ public class PostagemServiceImpl implements PostagemService {
         logger.info("Anexo excluído com sucesso. ID: {}", id);
     }
 
-    @Override
-    @Transactional
-    public TabelaPostagemDto addTabelaPostagem(UUID postagemId, String conteudoJson) {
-        logger.info("Adicionando tabela à postagem com ID: {}", postagemId);
-
-        Postagem postagem = postagemRepository.findById(postagemId)
-                .orElseThrow(() -> new ResourceNotFoundException("Postagem não encontrada com ID: " + postagemId));
-
-        // Verificar se o usuário atual é o criador da postagem
-        User currentUser = getCurrentUser();
-        if (!postagem.getCreatedBy().getId().equals(currentUser.getId())) {
-            throw new IllegalStateException("Apenas o criador da postagem pode adicionar tabelas");
-        }
-
-        TabelaPostagem tabelaPostagem = new TabelaPostagem();
-        tabelaPostagem.setPostagem(postagem);
-        tabelaPostagem.setConteudo(conteudoJson);
-
-        TabelaPostagem savedTabela = tabelaPostagemRepository.save(tabelaPostagem);
-        postagem.getTabelas().add(savedTabela);
-
-        logger.info("Tabela adicionada com sucesso. ID: {}", savedTabela.getId());
-
-        return DTOMapperUtil.mapToTabelaDto(savedTabela);
-    }
-
-    @Override
-    @Transactional
-    public TabelaPostagemDto updateTabelaPostagem(UUID id, String conteudoJson) {
-        logger.info("Atualizando tabela com ID: {}", id);
-
-        TabelaPostagem tabela = tabelaPostagemRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Tabela não encontrada com ID: " + id));
-
-        // Verificar se o usuário atual é o criador da postagem
-        User currentUser = getCurrentUser();
-        if (!tabela.getPostagem().getCreatedBy().getId().equals(currentUser.getId())) {
-            throw new IllegalStateException("Apenas o criador da postagem pode atualizar tabelas");
-        }
-
-        tabela.setConteudo(conteudoJson);
-
-        TabelaPostagem updatedTabela = tabelaPostagemRepository.save(tabela);
-        logger.info("Tabela atualizada com sucesso. ID: {}", updatedTabela.getId());
-
-        return DTOMapperUtil.mapToTabelaDto(updatedTabela);
-    }
-
-    @Override
-    @Transactional
-    public void deleteTabelaPostagem(UUID id) {
-        logger.info("Excluindo tabela com ID: {}", id);
-
-        TabelaPostagem tabela = tabelaPostagemRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Tabela não encontrada com ID: " + id));
-
-        // Verificar se o usuário atual é o criador da postagem
-        User currentUser = getCurrentUser();
-        if (!tabela.getPostagem().getCreatedBy().getId().equals(currentUser.getId())) {
-            throw new IllegalStateException("Apenas o criador da postagem pode excluir tabelas");
-        }
-
-        // Remover da lista de tabelas da postagem
-        tabela.getPostagem().getTabelas().remove(tabela);
-
-        // Excluir a tabela
-        tabelaPostagemRepository.delete(tabela);
-        logger.info("Tabela excluída com sucesso. ID: {}", id);
-    }
-
-    // Método a ser adicionado no PostagemService após salvar uma postagem
     private void associarImagensTemporarias(Postagem postagem, String conteudoHtml) {
-        // Usar regex ou parser HTML para extrair URLs de imagens
         Pattern pattern = Pattern.compile("<img[^>]+src=\"([^\"]+)\"");
         Matcher matcher = pattern.matcher(conteudoHtml);
 

@@ -51,7 +51,6 @@ public class FileController {
     public ResponseEntity<Map<String, Object>> diagnoseFileSystem() {
         Map<String, Object> diagnosticInfo = new HashMap<>();
 
-        // Adicionar informações básicas
         diagnosticInfo.put("uploadDir", fileStorageService.getStorageLocation().toString());
         diagnosticInfo.put("dirExists", Files.exists(fileStorageService.getStorageLocation()));
         diagnosticInfo.put("dirWritable", Files.isWritable(fileStorageService.getStorageLocation()));
