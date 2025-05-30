@@ -17,7 +17,4 @@ public interface WorkflowStatusItemRepository extends JpaRepository<WorkflowStat
 
     @Query("SELECT s FROM WorkflowStatusItem s WHERE s.template.id = :templateId AND s.isInitial = true")
     Optional<WorkflowStatusItem> findInitialStatusByTemplateId(@Param("templateId") UUID templateId);
-
-    @Query("SELECT COUNT(s) FROM WorkflowStatusItem s WHERE s.template.id = :templateId")
-    int countStatusItemsByTemplateId(@Param("templateId") UUID templateId);
 }

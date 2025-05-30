@@ -12,8 +12,6 @@ public interface AuthService {
 
     JwtResponse register(RegisterRequest registerRequest);
 
-    JwtResponse registerWithImage(String fullName, String email, String password, String githubId, MultipartFile profileImage);
-
     void requestPasswordReset(String email);
 
     void verifyResetCode(String email, String code);

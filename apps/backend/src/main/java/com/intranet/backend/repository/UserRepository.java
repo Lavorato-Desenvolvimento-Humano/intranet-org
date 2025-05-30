@@ -22,21 +22,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     boolean existsByGithubId(String githubId);
 
-    // Consulta JPQL otimizada com referência explícita ao parâmetro
-    @Query("SELECT u FROM User u LEFT JOIN FETCH u.userRoles ur LEFT JOIN FETCH ur.role WHERE u.id = :id")
-    Optional<User> findByIdWithRoles(@Param("id") UUID id);
-
-    // Consulta JPQL otimizada com referência explícita ao parâmetro
-    @Query("SELECT u FROM User u LEFT JOIN FETCH u.userRoles ur LEFT JOIN FETCH ur.role WHERE u.email = :email")
-    Optional<User> findByEmailWithRoles(@Param("email") String email);
-
-    // Consulta nativa alternativa (use se a JPQL não funcionar)
-    @Query(value =
-            "SELECT u.* FROM users u " +
-                    "WHERE u.email = :email",
-            nativeQuery = true)
-    Optional<User> findByEmailNative(@Param("email") String email);
-
     @Query("SELECT r.name FROM Role r JOIN UserRole ur ON r.id = ur.role.id WHERE ur.user.id = :userId")
     List<String> findRoleNamesByUserId(UUID userId);
 
@@ -46,9 +31,4 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Query("SELECT u.id FROM User u JOIN UserEquipe ue ON u.id = ue.user.id WHERE ue.equipe.id = :equipeId")
     List<UUID> findUserIdsByEquipeId(@Param("equipeId") UUID equipeId);
 
-    /**
-     * Encontra usuários por uma lista de IDs
-     */
-    @Query("SELECT u FROM User u WHERE u.id IN :ids")
-    List<User> findByIdIn(@Param("ids") List<UUID> ids);
 }

@@ -24,18 +24,6 @@ public class EmailVerificationService {
     private final EmailService emailService;
 
     @Transactional
-    public void createVerificationTokenAndSendEmail(User user) {
-        // Criar um novo token de verificação
-        EmailVerificationToken verificationToken = new EmailVerificationToken(user);
-        tokenRepository.save(verificationToken);
-
-        // Enviar email de verificação
-        emailService.sendEmailVerification(user.getEmail(), verificationToken.getToken(), user.getFullName());
-
-        logger.info("Token de verificação criado e enviado para: {}", user.getEmail());
-    }
-
-    @Transactional
     public void resendVerificationEmail(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> {

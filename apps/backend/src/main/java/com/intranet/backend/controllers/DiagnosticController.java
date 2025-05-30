@@ -76,8 +76,6 @@ public class DiagnosticController {
         response.put("freeMemory", Runtime.getRuntime().freeMemory());
         response.put("maxMemory", Runtime.getRuntime().maxMemory());
 
-        // Pode adicionar mais verificações específicas aqui
-
         return ResponseEntity.ok(response);
     }
 

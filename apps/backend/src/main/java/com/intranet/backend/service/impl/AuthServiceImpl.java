@@ -205,20 +205,6 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public JwtResponse registerWithImage(String fullName, String email, String password,
-                                         String githubId, MultipartFile profileImage) {
-        RegisterRequest request = new RegisterRequest();
-        request.setFullName(fullName);
-        request.setEmail(email);
-        request.setPassword(password);
-        request.setGithubId(githubId);
-        request.setProfileImage(profileImage);
-
-        return register(request);
-    }
-
-    @Override
-    @Transactional
     public void requestPasswordReset(String email) {
         logger.info("Processando solicitação de redefinição de senha para: {}", email);
         tokenService.createOrReusePasswordResetToken(email);

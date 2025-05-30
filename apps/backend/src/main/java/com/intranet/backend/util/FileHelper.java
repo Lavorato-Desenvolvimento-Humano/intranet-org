@@ -34,7 +34,7 @@ public class FileHelper {
     );
 
     // Tamanho máximo de arquivo: 10MB
-    private static final long MAX_FILE_SIZE = 10 * 1024 * 1024;
+    private static final long MAX_FILE_SIZE = 100 * 1024 * 1024;
 
     private FileHelper() {
         // Classe utilitária com construtor privado
