@@ -16,14 +16,10 @@ public interface WorkflowTransitionRepository extends JpaRepository<WorkflowTran
 
     List<WorkflowTransition> findByWorkflowIdOrderByCreatedAtDesc(UUID workflowId);
 
-    Page<WorkflowTransition> findByWorkflowId(UUID workflowId, Pageable pageable);
-
     @Query("SELECT wt FROM WorkflowTransition wt WHERE wt.workflow.id = :workflowId AND wt.transitionType = :transitionType")
     List<WorkflowTransition> findByWorkflowIdAndTransitionType(
             @Param("workflowId") UUID workflowId,
             @Param("transitionType") String transitionType
     );
 
-    @Query("SELECT COUNT(wt) FROM WorkflowTransition wt WHERE wt.workflow.id = :workflowId")
-    int  CountByWorkflowId(@Param("workflowId") UUID workflowId);
 }

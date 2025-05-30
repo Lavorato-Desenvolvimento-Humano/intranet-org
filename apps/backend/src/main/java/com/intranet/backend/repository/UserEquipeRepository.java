@@ -16,8 +16,6 @@ public interface UserEquipeRepository extends JpaRepository<UserEquipe, Long> {
 
     List<UserEquipe> findByUserId(UUID userId);
 
-    List<UserEquipe> findByEquipeId(UUID equipeId);
-
     boolean existsByUserIdAndEquipeId(UUID userId, UUID equipeId);
 
     void deleteByUserIdAndEquipeId(UUID userId, UUID equipeId);

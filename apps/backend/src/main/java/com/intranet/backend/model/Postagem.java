@@ -62,35 +62,4 @@ public class Postagem {
     @LastModifiedDate
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
-
-    // Métodos helper para manter a associação bidirecional
-    public void addImagem(Imagem imagem) {
-        imagens.add(imagem);
-        imagem.setPostagem(this);
-    }
-
-    public void removeImagem(Imagem imagem) {
-        imagens.remove(imagem);
-        imagem.setPostagem(null);
-    }
-
-    public void addAnexo(Anexo anexo) {
-        anexos.add(anexo);
-        anexo.setPostagem(this);
-    }
-
-    public void removeAnexo(Anexo anexo) {
-        anexos.remove(anexo);
-        anexo.setPostagem(null);
-    }
-
-    public void addTabela(TabelaPostagem tabela) {
-        tabelas.add(tabela);
-        tabela.setPostagem(this);
-    }
-
-    public void removeTabela(TabelaPostagem tabela) {
-        tabelas.remove(tabela);
-        tabela.setPostagem(null);
-    }
 }

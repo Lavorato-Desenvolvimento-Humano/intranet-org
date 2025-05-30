@@ -71,24 +71,20 @@ public class SecurityConfig {
 
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .csrf(csrf -> csrf.disable())
+                    .csrf(csrf -> csrf.disable())
                 .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth ->
                         auth
-                                // Public endpoints for authentication - always start with /api
                                 .requestMatchers("/api/auth/**", "/auth/**").permitAll()
                                 .requestMatchers("/api/public/**", "/public/**").permitAll()
-
-                                // Endpoint específico para calendário
-                                .requestMatchers("/api/demandas/calendario").authenticated()
 
                                 // Public access to image and file resources
                                 .requestMatchers("/api/uploads/**").permitAll()
                                 .requestMatchers("/api/uploads/temp/**").permitAll()
                                 .requestMatchers("/uploads/temp/**").permitAll() // Permitir acesso a todos os arquivos temporários
                                 .requestMatchers("/uploads/temp/anexos/**").permitAll()
-                                .requestMatchers("/uploads/temp/imagens/**").permitAll() // Adicionar esta linha específica para imagens
+                                .requestMatchers("/uploads/temp/imagens/**").permitAll()
                                 .requestMatchers("/api/images/**").permitAll()
                                 .requestMatchers("/api/files/check/**").permitAll()
                                 .requestMatchers("/api/profile-images/**", "/profile-images/**").permitAll()

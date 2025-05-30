@@ -78,7 +78,6 @@ public class RoleServiceImpl implements RoleService {
     @Override
     public RoleDto getRoleById(Integer id) {
         try {
-            // Buscar role com permissões usando consulta JPQL otimizada
             Role role = roleRepository.findByIdWithPermissions(id)
                     .orElseThrow(() -> new ResourceNotFoundException("Role não encontrada com ID: " + id));
 
@@ -125,7 +124,6 @@ public class RoleServiceImpl implements RoleService {
     @Override
     @Transactional
     public RoleDto createRole(RoleCreateRequest request) {
-        // Verificar se a role já existe
         if (roleRepository.findByName(request.getName()).isPresent()) {
             throw new IllegalArgumentException("Uma role com este nome já existe: " + request.getName());
         }

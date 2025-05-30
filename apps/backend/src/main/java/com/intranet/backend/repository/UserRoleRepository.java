@@ -16,31 +16,6 @@ import java.util.UUID;
 public interface UserRoleRepository extends JpaRepository<UserRole, Integer> {
 
     /**
-     * Encontra todas as associações de funções para um usuário específico
-     *
-     * @param user O usuário
-     * @return Lista de associações usuário-função
-     */
-    List<UserRole> findByUser(User user);
-
-    /**
-     * Encontra todas as associações de usuários para uma função específica
-     *
-     * @param role A função
-     * @return Lista de associações usuário-função
-     */
-    List<UserRole> findByRole(Role role);
-
-    /**
-     * Encontra uma associação específica de usuário e função
-     *
-     * @param user O usuário
-     * @param role A função
-     * @return A associação usuário-função, se existir
-     */
-    Optional<UserRole> findByUserAndRole(User user, Role role);
-
-    /**
      * Verifica se um usuário tem uma função específica
      *
      * @param userId ID do usuário
