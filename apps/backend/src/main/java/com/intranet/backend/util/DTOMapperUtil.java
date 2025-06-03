@@ -181,6 +181,175 @@ public class DTOMapperUtil {
         return dto;
     }
 
+    /**
+     * Mapeia um paciente para um DTO de paciente
+     */
+    public static PacienteDto mapToPacienteDto(Paciente paciente, long totalGuias) {
+        return new PacienteDto(
+                paciente.getId(),
+                paciente.getNome(),
+                paciente.getDataNascimento(),
+                paciente.getResponsavel(),
+                paciente.getConvenio().getId(),
+                paciente.getConvenio().getName(),
+                paciente.getUnidade(),
+                paciente.getCreatedBy().getId(),
+                paciente.getCreatedBy().getFullName(),
+                paciente.getCreatedAt(),
+                paciente.getUpdatedAt(),
+                totalGuias
+        );
+    }
+
+    /**
+     * Mapeia um paciente para um DTO de resumo de paciente
+     */
+    public static PacienteSummaryDto mapToPacienteSummaryDto(Paciente paciente, long totalGuias, boolean hasGuiasVencidas) {
+        return new PacienteSummaryDto(
+                paciente.getId(),
+                paciente.getNome(),
+                paciente.getDataNascimento(),
+                paciente.getConvenio().getName(),
+                paciente.getUnidade(),
+                totalGuias,
+                hasGuiasVencidas
+        );
+    }
+
+    /**
+     * Mapeia uma guia para um DTO de guia
+     */
+    public static GuiaDto mapToGuiaDto(Guia guia, long totalFichas) {
+        return new GuiaDto(
+                guia.getId(),
+                guia.getPaciente().getId(),
+                guia.getPaciente().getNome(),
+                guia.getEspecialidades(),
+                guia.getQuantidadeAutorizada(),
+                guia.getConvenio().getId(),
+                guia.getConvenio().getName(),
+                guia.getMes(),
+                guia.getAno(),
+                guia.getValidade(),
+                guia.getLote(),
+                guia.getQuantidadeFaturada(),
+                guia.getValorReais(),
+                guia.getUsuarioResponsavel().getId(),
+                guia.getUsuarioResponsavel().getFullName(),
+                guia.getCreatedAt(),
+                guia.getUpdatedAt(),
+                totalFichas,
+                guia.isVencida(),
+                guia.isQuantidadeExcedida(),
+                guia.getQuantidadeRestante()
+        );
+    }
+
+    /**
+     * Mapeia uma guia para um DTO de resumo de guia
+     */
+    public static GuiaSummaryDto mapToGuiaSummaryDto(Guia guia, long totalFichas) {
+        return new GuiaSummaryDto(
+                guia.getId(),
+                guia.getPaciente().getNome(),
+                guia.getEspecialidades(),
+                guia.getQuantidadeAutorizada(),
+                guia.getConvenio().getName(),
+                guia.getMes(),
+                guia.getAno(),
+                guia.getValidade(),
+                guia.getQuantidadeFaturada(),
+                guia.getValorReais(),
+                guia.getUsuarioResponsavel().getFullName(),
+                totalFichas,
+                guia.isVencida(),
+                guia.isQuantidadeExcedida()
+        );
+    }
+
+    /**
+     * Mapeia uma ficha para um DTO de ficha
+     */
+    public static FichaDto mapToFichaDto(Ficha ficha) {
+        return new FichaDto(
+                ficha.getId(),
+                ficha.getGuia().getId(),
+                ficha.getPacienteNome(),
+                ficha.getEspecialidade(),
+                ficha.getQuantidadeAutorizada(),
+                ficha.getConvenio().getId(),
+                ficha.getConvenioNome(),
+                ficha.getMes(),
+                ficha.getAno(),
+                ficha.getUsuarioResponsavel().getId(),
+                ficha.getUsuarioResponsavel().getFullName(),
+                ficha.getCreatedAt(),
+                ficha.getUpdatedAt()
+        );
+    }
+
+    /**
+     * Mapeia uma ficha para um DTO de resumo de ficha
+     */
+    public static FichaSummaryDto mapToFichaSummaryDto(Ficha ficha) {
+        return new FichaSummaryDto(
+                ficha.getId(),
+                ficha.getPacienteNome(),
+                ficha.getEspecialidade(),
+                ficha.getQuantidadeAutorizada(),
+                ficha.getConvenioNome(),
+                ficha.getMes(),
+                ficha.getAno(),
+                ficha.getUsuarioResponsavel().getFullName(),
+                ficha.getCreatedAt()
+        );
+    }
+
+    /**
+     * Mapeia uma página de pacientes para uma página de DTOs de resumo
+     */
+    public static Page<PacienteSummaryDto> mapToPacienteSummaryDtoPage(Page<Paciente> page) {
+        return page.map(paciente -> {
+            return new PacienteSummaryDto(
+                    paciente.getId(),
+                    paciente.getNome(),
+                    paciente.getDataNascimento(),
+                    paciente.getConvenio().getName(),
+                    paciente.getUnidade(),
+                    0L, // totalGuias - deve ser calculado no serviço
+                    false // hasGuiasVencidas - deve ser calculado no serviço
+            );
+        });
+    }
+
+    /**
+     * Mapeia uma página de guias para uma página de DTOs de resumo
+     */
+    public static Page<GuiaSummaryDto> mapToGuiaSummaryDtoPage(Page<Guia> page) {
+        return page.map(guia -> new GuiaSummaryDto(
+                guia.getId(),
+                guia.getPaciente().getNome(),
+                guia.getEspecialidades(),
+                guia.getQuantidadeAutorizada(),
+                guia.getConvenio().getName(),
+                guia.getMes(),
+                guia.getAno(),
+                guia.getValidade(),
+                guia.getQuantidadeFaturada(),
+                guia.getValorReais(),
+                guia.getUsuarioResponsavel().getFullName(),
+                0L, // totalFichas - deve ser calculado no serviço
+                guia.isVencida(),
+                guia.isQuantidadeExcedida()
+        ));
+    }
+
+    /**
+     * Mapeia uma página de fichas para uma página de DTOs de resumo
+     */
+    public static Page<FichaSummaryDto> mapToFichaSummaryDtoPage(Page<Ficha> page) {
+        return page.map(DTOMapperUtil::mapToFichaSummaryDto);
+    }
 
     /**
      * Extrai o nome do arquivo de uma URL
