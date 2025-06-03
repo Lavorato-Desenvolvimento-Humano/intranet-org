@@ -1,0 +1,254 @@
+package com.intranet.backend.service.impl;
+
+import com.intranet.backend.dto.*;
+import com.intranet.backend.exception.ResourceNotFoundException;
+import com.intranet.backend.model.Convenio;
+import com.intranet.backend.model.Ficha;
+import com.intranet.backend.model.Guia;
+import com.intranet.backend.model.User;
+import com.intranet.backend.repository.*;
+import com.intranet.backend.service.FichaService;
+import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class FichaServiceImpl implements FichaService {
+
+    private static final Logger logger = LoggerFactory.getLogger(FichaServiceImpl.class);
+
+    private final FichaRepository fichaRepository;
+    private final GuiaRepository guiaRepository;
+    private final ConvenioRepository convenioRepository;
+    private final UserRepository userRepository;
+
+    @Override
+    public Page<FichaSummaryDto> getAllFichas(Pageable pageable) {
+        logger.info("Buscando todas as fichas - página: {}, tamanho: {}",
+                pageable.getPageNumber(), pageable.getPageSize());
+
+        Page<Ficha> fichas = fichaRepository.findAllWithRelations(pageable);
+        return fichas.map(this::mapToFichaSummaryDto);
+    }
+
+    @Override
+    public FichaDto getFichaById(UUID id) {
+        logger.info("Buscando ficha com ID: {}", id);
+
+        Ficha ficha = fichaRepository.findByIdWithRelations(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Ficha não encontrada com ID: " + id));
+
+        return mapToFichaDto(ficha);
+    }
+
+    @Override
+    @Transactional
+    public FichaDto createFicha(FichaCreateRequest request) {
+        logger.info("Criando nova ficha para guia: {}", request.getGuiaId());
+
+        Guia guia = guiaRepository.findById(request.getGuiaId())
+                .orElseThrow(() -> new ResourceNotFoundException("Guia não encontrada com ID: " + request.getGuiaId()));
+
+        Convenio convenio = convenioRepository.findById(request.getConvenioId())
+                .orElseThrow(() -> new ResourceNotFoundException("Convênio não encontrado com ID: " + request.getConvenioId()));
+
+        if (fichaRepository.existsByGuiaIdAndEspecialidade(request.getGuiaId(), request.getEspecialidade())) {
+            throw new IllegalArgumentException("Já existe uma ficha para esta guia com a especialidade: " + request.getEspecialidade());
+        }
+
+        if (!guia.getEspecialidades().contains(request.getEspecialidade())) {
+            throw new IllegalArgumentException("A especialidade informada não está presente nas especialidades da guia");
+        }
+
+        User currentUser = getCurrentUser();
+
+        Ficha ficha = new Ficha();
+        ficha.setGuia(guia);
+        ficha.setEspecialidade(request.getEspecialidade());
+        ficha.setQuantidadeAutorizada(request.getQuantidadeAutorizada());
+        ficha.setConvenio(convenio);
+        ficha.setMes(request.getMes());
+        ficha.setAno(request.getAno());
+        ficha.setUsuarioResponsavel(currentUser);
+
+        Ficha savedFicha = fichaRepository.save(ficha);
+        logger.info("Ficha criada com sucesso. ID: {}", savedFicha.getId());
+
+        return mapToFichaDto(savedFicha);
+    }
+
+    @Override
+    @Transactional
+    public FichaDto updateFicha(UUID id, FichaUpdateRequest request) {
+        logger.info("Atualizando ficha com ID: {}", id);
+
+        Ficha ficha = fichaRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Ficha não encontrada com ID: " + id));
+
+        // Atualizar campos se fornecidos
+        if (request.getEspecialidade() != null) {
+            // Verificar se a nova especialidade está disponível na guia
+            if (!ficha.getGuia().getEspecialidades().contains(request.getEspecialidade())) {
+                throw new IllegalArgumentException("A especialidade informada não está presente nas especialidades da guia");
+            }
+
+            // Verificar se não existe outra ficha com a mesma especialidade na mesma guia
+            if (!ficha.getEspecialidade().equals(request.getEspecialidade()) &&
+                    fichaRepository.existsByGuiaIdAndEspecialidade(ficha.getGuia().getId(), request.getEspecialidade())) {
+                throw new IllegalArgumentException("Já existe uma ficha para esta guia com a especialidade: " + request.getEspecialidade());
+            }
+
+            ficha.setEspecialidade(request.getEspecialidade());
+        }
+
+        if (request.getQuantidadeAutorizada() != null) {
+            ficha.setQuantidadeAutorizada(request.getQuantidadeAutorizada());
+        }
+
+        if (request.getConvenioId() != null) {
+            Convenio convenio = convenioRepository.findById(request.getConvenioId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Convênio não encontrado com ID: " + request.getConvenioId()));
+            ficha.setConvenio(convenio);
+        }
+
+        if (request.getMes() != null) {
+            ficha.setMes(request.getMes());
+        }
+
+        if (request.getAno() != null) {
+            ficha.setAno(request.getAno());
+        }
+
+        Ficha updatedFicha = fichaRepository.save(ficha);
+        logger.info("Ficha atualizada com sucesso. ID: {}", updatedFicha.getId());
+
+        return mapToFichaDto(updatedFicha);
+    }
+
+    @Override
+    @Transactional
+    public void deleteFicha(UUID id) {
+        logger.info("Excluindo ficha com ID: {}", id);
+
+        if (!fichaRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Ficha não encontrada com ID: " + id);
+        }
+
+        fichaRepository.deleteById(id);
+        logger.info("Ficha excluída com sucesso. ID: {}", id);
+    }
+
+    @Override
+    public List<FichaDto> getFichasByGuiaId(UUID guiaId) {
+        logger.info("Buscando fichas da guia: {}", guiaId);
+
+        List<Ficha> fichas = fichaRepository.findByGuiaId(guiaId);
+        return fichas.stream()
+                .map(this::mapToFichaDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public Page<FichaSummaryDto> getFichasByPacienteId(UUID pacienteId, Pageable pageable) {
+        logger.info("Buscando fichas do paciente: {}", pacienteId);
+
+        Page<Ficha> fichas = fichaRepository.findByPacienteId(pacienteId, pageable);
+        return fichas.map(this::mapToFichaSummaryDto);
+    }
+
+    @Override
+    public Page<FichaSummaryDto> getFichasByConvenioId(UUID convenioId, Pageable pageable) {
+        logger.info("Buscando fichas do convênio: {}", convenioId);
+
+        Page<Ficha> fichas = fichaRepository.findByConvenioId(convenioId, pageable);
+        return fichas.map(this::mapToFichaSummaryDto);
+    }
+
+    @Override
+    public Page<FichaSummaryDto> searchFichasByEspecialidade(String especialidade, Pageable pageable) {
+        logger.info("Buscando fichas por especialidade: {}", especialidade);
+
+        Page<Ficha> fichas = fichaRepository.findByEspecialidadeContainingIgnoreCase(especialidade, pageable);
+        return fichas.map(this::mapToFichaSummaryDto);
+    }
+
+    @Override
+    public Page<FichaSummaryDto> getFichasByMesEAno(Integer mes, Integer ano, Pageable pageable) {
+        logger.info("Buscando fichas do mês {} de {}", mes, ano);
+
+        Page<Ficha> fichas = fichaRepository.findByMesAndAno(mes, ano, pageable);
+        return fichas.map(this::mapToFichaSummaryDto);
+    }
+
+    @Override
+    public Page<FichaSummaryDto> getFichasByUsuarioResponsavel(UUID userId, Pageable pageable) {
+        logger.info("Buscando fichas do usuário responsável: {}", userId);
+
+        Page<Ficha> fichas = fichaRepository.findByUsuarioResponsavelId(userId, pageable);
+        return fichas.map(this::mapToFichaSummaryDto);
+    }
+
+    @Override
+    public long countTotalFichas() {
+        return fichaRepository.count();
+    }
+
+    @Override
+    public long countFichasByGuia(UUID guiaId) {
+        return fichaRepository.findByGuiaId(guiaId).size();
+    }
+
+    @Override
+    public long countFichasByConvenio(UUID convenioId) {
+        return fichaRepository.findByConvenioId(convenioId, Pageable.unpaged()).getTotalElements();
+    }
+
+    private User getCurrentUser() {
+        UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        return userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("Usuário atual não encontrado"));
+    }
+
+    private FichaDto mapToFichaDto(Ficha ficha) {
+        return new FichaDto(
+                ficha.getId(),
+                ficha.getGuia().getId(),
+                ficha.getPacienteNome(),
+                ficha.getEspecialidade(),
+                ficha.getQuantidadeAutorizada(),
+                ficha.getConvenio().getId(),
+                ficha.getConvenioNome(),
+                ficha.getMes(),
+                ficha.getAno(),
+                ficha.getUsuarioResponsavel().getId(),
+                ficha.getUsuarioResponsavel().getFullName(),
+                ficha.getCreatedAt(),
+                ficha.getUpdatedAt()
+        );
+    }
+
+    private FichaSummaryDto mapToFichaSummaryDto(Ficha ficha) {
+        return new FichaSummaryDto(
+                ficha.getId(),
+                ficha.getPacienteNome(),
+                ficha.getEspecialidade(),
+                ficha.getQuantidadeAutorizada(),
+                ficha.getConvenioNome(),
+                ficha.getMes(),
+                ficha.getAno(),
+                ficha.getUsuarioResponsavel().getFullName(),
+                ficha.getCreatedAt()
+        );
+    }
+}
