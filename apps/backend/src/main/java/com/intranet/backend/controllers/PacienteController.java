@@ -24,7 +24,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/pacientes")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyAuthority('paciente:read')")
+@PreAuthorize("hasAnyAuthority('paciente:read') or hasRole('ADMIN')")
 public class PacienteController {
 
     private static final Logger logger = LoggerFactory.getLogger(PacienteController.class);
