@@ -46,7 +46,7 @@ public class FichaController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('ficha:create')")
+    @PreAuthorize("hasAnyAuthority('ficha:create') or hasAnyRole('ADMIN')")
     public ResponseEntity<FichaDto> createFicha(@Valid @RequestBody FichaCreateRequest request) {
         logger.info("Requisição para criar nova ficha para guia: {}", request.getGuiaId());
 
@@ -55,7 +55,7 @@ public class FichaController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ficha:update')")
+    @PreAuthorize("hasAnyAuthority('ficha:update') or hasAnyRole('ADMIN')")
     public ResponseEntity<FichaDto> updateFicha(
             @PathVariable UUID id,
             @Valid @RequestBody FichaUpdateRequest request) {
@@ -66,7 +66,7 @@ public class FichaController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ficha:delete')")
+    @PreAuthorize("hasAnyAuthority('ficha:delete') or hasAnyRole('ADMIN')")
     public ResponseEntity<Void> deleteFicha(@PathVariable UUID id) {
         logger.info("Requisição para deletar ficha com ID: {}", id);
 

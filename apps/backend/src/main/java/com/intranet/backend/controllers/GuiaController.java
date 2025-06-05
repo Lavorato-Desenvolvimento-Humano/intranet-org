@@ -23,7 +23,6 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/guias")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyAuthority('guia:read')")
 public class GuiaController {
 
     private static final Logger logger = LoggerFactory.getLogger(GuiaController.class);
@@ -47,7 +46,7 @@ public class GuiaController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('guia:create')")
+    @PreAuthorize("hasAnyAuthority('guia:create') or hasAnyRole('ADMIN')")
     public ResponseEntity<GuiaDto> createGuia(@Valid @RequestBody GuiaCreateRequest request) {
         logger.info("Requisição para criar nova guia para paciente: {}", request.getPacienteId());
 
@@ -56,7 +55,7 @@ public class GuiaController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('guia:update')")
+    @PreAuthorize("hasAnyAuthority('guia:update') or hasAnyRole('ADMIN')")
     public ResponseEntity<GuiaDto> updateGuia(
             @PathVariable UUID id,
             @Valid @RequestBody GuiaUpdateRequest request) {
@@ -67,7 +66,7 @@ public class GuiaController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('guia:delete')")
+    @PreAuthorize("hasAnyAuthority('guia:delete') or hasAnyRole('ADMIN')")
     public ResponseEntity<Void> deleteGuia(@PathVariable UUID id) {
         logger.info("Requisição para deletar guia com ID: {}", id);
 
