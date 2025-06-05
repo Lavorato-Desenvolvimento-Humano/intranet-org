@@ -119,7 +119,7 @@ public class PacienteController {
         return ResponseUtil.success(pacientes);
     }
 
-    @GetMapping("{id/guias")
+    @GetMapping("{id}/guias")
     public ResponseEntity<Page<GuiaSummaryDto>> getGuiasByPacienteId(
             @PathVariable UUID id,
             @PageableDefault(size = 20) Pageable pageable
