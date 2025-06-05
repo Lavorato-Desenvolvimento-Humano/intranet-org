@@ -96,7 +96,7 @@ public class PacienteController {
         return ResponseUtil.success(pacientes);
     }
 
-    @GetMapping("/unidade/{unidade")
+    @GetMapping("/unidade/{unidade}")
     public ResponseEntity<Page<PacienteSummaryDto>> getPacientesByUnidade(
             @RequestParam Paciente.UnidadeEnum unidade,
             @PageableDefault(size = 20) Pageable pageable
