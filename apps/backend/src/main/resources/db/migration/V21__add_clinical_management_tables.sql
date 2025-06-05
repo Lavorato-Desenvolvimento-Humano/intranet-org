@@ -1,5 +1,4 @@
--- V21__add_clinical_management_tables.sql
-
+-- Criação das tabelas principais
 -- Tabela de Pacientes
 CREATE TABLE pacientes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -43,7 +42,8 @@ CREATE TABLE fichas (
     usuario_responsavel UUID NOT NULL REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    -- Constraint para garantir que uma ficha tenha apenas uma guia
+
+    -- Constraint para garantir que uma ficha tenha apenas uma especialidade por guia
     UNIQUE(guia_id, especialidade)
 );
 
@@ -82,45 +82,68 @@ VALUES
     ('ficha:delete', 'Permissão para excluir fichas');
 
 -- Atribuir permissões aos papéis existentes
+-- Primeiro, vamos verificar se os roles existem e criar se não existirem
 
+-- Criar roles que podem não existir
+INSERT INTO roles (name, description)
+VALUES
+    ('SUPERVISOR', 'Supervisor com permissões estendidas para gerenciar equipes e demandas'),
+    ('GERENTE', 'Gerente com permissões para visualizar todos os dados e gerenciar demandas')
+    ON CONFLICT (name) DO NOTHING;
+
+-- Agora vamos atribuir as permissões de forma segura
 -- Administradores têm todas as permissões
 INSERT INTO role_permissions (role_id, permission_id)
-SELECT
-    (SELECT id FROM roles WHERE name = 'ADMIN'),
-    id
-FROM permissions
-WHERE name LIKE 'paciente:%' OR name LIKE 'guia:%' OR name LIKE 'ficha:%';
+SELECT r.id, p.id
+FROM roles r, permissions p
+WHERE r.name = 'ADMIN'
+  AND p.name IN (
+                 'paciente:create', 'paciente:read', 'paciente:update', 'paciente:delete',
+                 'guia:create', 'guia:read', 'guia:update', 'guia:delete',
+                 'ficha:create', 'ficha:read', 'ficha:update', 'ficha:delete'
+    )
+    ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 -- Supervisores têm todas as permissões clínicas
 INSERT INTO role_permissions (role_id, permission_id)
-SELECT
-    (SELECT id FROM roles WHERE name = 'SUPERVISOR'),
-    id
-FROM permissions
-WHERE name LIKE 'paciente:%' OR name LIKE 'guia:%' OR name LIKE 'ficha:%';
+SELECT r.id, p.id
+FROM roles r, permissions p
+WHERE r.name = 'SUPERVISOR'
+  AND p.name IN (
+                 'paciente:create', 'paciente:read', 'paciente:update', 'paciente:delete',
+                 'guia:create', 'guia:read', 'guia:update', 'guia:delete',
+                 'ficha:create', 'ficha:read', 'ficha:update', 'ficha:delete'
+    )
+    ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 -- Gerentes têm todas as permissões clínicas
 INSERT INTO role_permissions (role_id, permission_id)
-SELECT
-    (SELECT id FROM roles WHERE name = 'GERENTE'),
-    id
-FROM permissions
-WHERE name LIKE 'paciente:%' OR name LIKE 'guia:%' OR name LIKE 'ficha:%';
+SELECT r.id, p.id
+FROM roles r, permissions p
+WHERE r.name = 'GERENTE'
+  AND p.name IN (
+                 'paciente:create', 'paciente:read', 'paciente:update', 'paciente:delete',
+                 'guia:create', 'guia:read', 'guia:update', 'guia:delete',
+                 'ficha:create', 'ficha:read', 'ficha:update', 'ficha:delete'
+    )
+    ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 -- Editores podem criar e editar, mas não excluir
 INSERT INTO role_permissions (role_id, permission_id)
-SELECT
-    (SELECT id FROM roles WHERE name = 'EDITOR'),
-    id
-FROM permissions
-WHERE name LIKE 'paciente:create' OR name LIKE 'paciente:read' OR name LIKE 'paciente:update'
-   OR name LIKE 'guia:create' OR name LIKE 'guia:read' OR name LIKE 'guia:update'
-   OR name LIKE 'ficha:create' OR name LIKE 'ficha:read' OR name LIKE 'ficha:update';
+SELECT r.id, p.id
+FROM roles r, permissions p
+WHERE r.name = 'EDITOR'
+  AND p.name IN (
+                 'paciente:create', 'paciente:read', 'paciente:update',
+                 'guia:create', 'guia:read', 'guia:update',
+                 'ficha:create', 'ficha:read', 'ficha:update'
+    )
+    ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 -- Usuários comuns podem apenas ler
 INSERT INTO role_permissions (role_id, permission_id)
-SELECT
-    (SELECT id FROM roles WHERE name = 'USER'),
-    id
-FROM permissions
-WHERE name LIKE 'paciente:read' OR name LIKE 'guia:read' OR name LIKE 'ficha:read';
+SELECT r.id, p.id
+FROM roles r, permissions p
+WHERE r.name = 'USER'
+  AND p.name IN ('paciente:read', 'guia:read', 'ficha:read')
+    ON CONFLICT (role_id, permission_id) DO NOTHING;
