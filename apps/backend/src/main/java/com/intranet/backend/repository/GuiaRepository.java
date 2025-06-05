@@ -9,7 +9,6 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -46,6 +45,9 @@ public interface GuiaRepository extends JpaRepository<Guia, UUID> {
             "LEFT JOIN FETCH g.usuarioResponsavel WHERE g.id = :id")
     Optional<Guia> findByIdWithRelations(@Param("id") UUID id);
 
-    @Query("SELECT g FROM Guia g WHERE :especialidade = ANY(g.especialidades)")
+    // ✅ CORRIGIDO: Query nativa para buscar em array PostgreSQL
+    @Query(value = "SELECT * FROM guias g WHERE :especialidade = ANY(g.especialidades) ORDER BY g.created_at DESC",
+            countQuery = "SELECT COUNT(*) FROM guias g WHERE :especialidade = ANY(g.especialidades)",
+            nativeQuery = true)
     Page<Guia> findByEspecialidadesContaining(@Param("especialidade") String especialidade, Pageable pageable);
 }
