@@ -22,7 +22,6 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/fichas")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyAuthority('ficha:read')")
 public class FichaController {
 
     private static final Logger logger = LoggerFactory.getLogger(FichaController.class);
