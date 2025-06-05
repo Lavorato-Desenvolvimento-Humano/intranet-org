@@ -9,21 +9,11 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface PacienteRepository extends JpaRepository<Paciente, Integer> {
-
-    @Query("SELECT p FROM Paciente p WHERE p.id = :id")
-    Optional<Paciente> findById(UUID id);
-
-    @Query("SELECT p FROM Paciente p WHERE p.id = :id")
-    boolean existsById(UUID id);
-
-    @Query("DELETE FROM Paciente p WHERE p.id = :id")
-    void deleteById(UUID id);
+public interface PacienteRepository extends JpaRepository<Paciente, UUID> {
 
     @Query("SELECT p FROM Paciente p WHERE p.nome ILIKE %:nome%")
     Page<Paciente> findByNomeContainingIgnoreCase(@Param("nome") String nome, Pageable pageable);
