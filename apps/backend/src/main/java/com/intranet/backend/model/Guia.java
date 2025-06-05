@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -31,9 +33,9 @@ public class Guia {
     @JoinColumn(name = "paciente_id", nullable = false)
     private Paciente paciente;
 
-    @ElementCollection
-    @CollectionTable(name = "guia_especialidades", joinColumns = @JoinColumn(name = "guia_id"))
-    @Column(name = "especialidade")
+
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "especialidades", columnDefinition = "text[]")
     private List<String> especialidades = new ArrayList<>();
 
     @Column(name = "quantidade_autorizada", nullable = false)
