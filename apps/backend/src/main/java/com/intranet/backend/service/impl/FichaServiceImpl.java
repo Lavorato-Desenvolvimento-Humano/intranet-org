@@ -268,9 +268,11 @@ public class FichaServiceImpl implements FichaService {
     }
 
     private FichaDto mapToFichaDto(Ficha ficha) {
+        UUID guiaId = ficha.getGuia() != null ? ficha.getGuia().getId() : null;
+
         return new FichaDto(
                 ficha.getId(),
-                ficha.getGuia().getId(),
+                guiaId,
                 ficha.getPacienteNome(),
                 ficha.getEspecialidade(),
                 ficha.getQuantidadeAutorizada(),
