@@ -15,6 +15,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class GuiaDto {
     private UUID id;
+    private String numeroGuia;
     private UUID pacienteId;
     private String pacienteNome;
     private List<String> especialidades;

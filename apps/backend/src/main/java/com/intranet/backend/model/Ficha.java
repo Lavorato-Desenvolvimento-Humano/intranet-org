@@ -25,6 +25,9 @@ public class Ficha {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private UUID id;
 
+    @Column(name = "codigo_ficha", nullable = false, unique = true, length = 6)
+    private String codigoFicha;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "guia_id", nullable = true)
     private Guia guia;

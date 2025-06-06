@@ -40,4 +40,8 @@ public interface FichaService {
     long countFichasByGuia(UUID guiaId);
 
     long countFichasByConvenio(UUID convenioId);
+
+    FichaDto findByCodigoFicha(String codigoFicha);
+
+    Page<FichaSummaryDto> searchByCodigoFicha(String termo, Pageable pageable);
 }

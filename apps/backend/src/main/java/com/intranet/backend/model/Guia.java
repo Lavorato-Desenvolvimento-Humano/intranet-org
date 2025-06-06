@@ -33,6 +33,9 @@ public class Guia {
     @JoinColumn(name = "paciente_id", nullable = false)
     private Paciente paciente;
 
+    @Column(name = "numero_guia", nullable = false, unique = false, length = 50)
+    private String numeroGuia;
+
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "especialidades", columnDefinition = "text[]")
     private List<String> especialidades = new ArrayList<>();
