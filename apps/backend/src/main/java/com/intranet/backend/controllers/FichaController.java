@@ -163,4 +163,22 @@ public class FichaController {
 
         return ResponseUtil.success(response);
     }
+
+    @PostMapping("/assinatura")
+    @PreAuthorize("hasAnyAuthority('ficha:assinatura:create') or hasAnyRole('ADMIN')")
+    public ResponseEntity<FichaDto> createFichaAssinatura(
+            @Valid @RequestBody FichaAssinaturaCreateRequest request
+    ) {
+      FichaDto ficha = fichaService.createFichaAssinatura(request);
+      return ResponseUtil.created(ficha);
+    }
+
+    @PatchMapping("/{fichaId}/vincular-guia/{guiaId}")
+    @PreAuthorize("hasAnyAuthority('ficha:update')")
+    public ResponseEntity<FichaDto> vincularGuia(
+            @PathVariable UUID fichaId,
+            @PathVariable UUID guiaId) {
+        FichaDto ficha = fichaService.vincularFichaAGuia(fichaId, guiaId);
+        return ResponseUtil.success(ficha);
+    }
 }
