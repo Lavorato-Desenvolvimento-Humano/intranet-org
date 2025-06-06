@@ -59,7 +59,12 @@ public class GuiaServiceImpl implements GuiaService {
         Convenio convenio = convenioRepository.findById(request.getConvenioId())
                 .orElseThrow(() -> new ResourceNotFoundException("Convênio com ID: " + request.getConvenioId()));
 
+        if (guiaRepository.existsByNumeroGuia(request.getNumeroGuia())) {
+            throw new IllegalArgumentException("Já existe uma guia com o número: " + request.getNumeroGuia());
+        }
+
         Guia guia = new Guia();
+        guia.setNumeroGuia(request.getNumeroGuia());
         guia.setPaciente(paciente);
         guia.setConvenio(convenio);
         guia.setEspecialidades(request.getEspecialidades());
@@ -241,6 +246,23 @@ public class GuiaServiceImpl implements GuiaService {
         return guiaRepository.findGuiasComQuantidadeExcedida(Pageable.unpaged()).getTotalElements();
     }
 
+    @Override
+    public GuiaDto findByNumeroGuia(String numeroGuia) {
+        Guia guia = guiaRepository.findByNumeroGuia(numeroGuia)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Guia não encontrada com número: " + numeroGuia
+                ));
+        return mapToGuiaDto(guia);
+    }
+
+    @Override
+    public Page<GuiaSummaryDto> searchByNumeroGuia(String termo, Pageable pageable) {
+        logger.info("Buscando guias pelo termo: {}", termo);
+
+        Page<Guia> guias = guiaRepository.searchByNumeroGuia(termo, pageable);
+        return guias.map(this::mapToGuiaSummaryDto);
+    }
+
     private User getCurrentUser() {
         UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         return userRepository.findByEmail(userDetails.getUsername())
@@ -252,6 +274,7 @@ public class GuiaServiceImpl implements GuiaService {
 
         return new GuiaDto(
                 guia.getId(),
+                guia.getNumeroGuia(),
                 guia.getPaciente().getId(),
                 guia.getPaciente().getNome(),
                 guia.getEspecialidades(),

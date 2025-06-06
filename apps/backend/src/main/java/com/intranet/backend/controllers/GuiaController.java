@@ -175,4 +175,22 @@ public class GuiaController {
 
         return ResponseUtil.success(stats);
     }
+
+    @GetMapping("/numero/{numeroGuia}")
+    public ResponseEntity<GuiaDto> getGuiaByNumero(
+            @PathVariable String numeroGuia
+    ) {
+        logger.info("Buscando guia pelo número: {}", numeroGuia);
+        GuiaDto guia = guiaService.findByNumeroGuia(numeroGuia);
+        return ResponseEntity.ok(guia);
+    }
+
+    @GetMapping
+    public ResponseEntity<Page<GuiaSummaryDto>> searchByNumero(
+            @RequestParam String termo,
+            @PageableDefault(size = 20) Pageable pageable
+    ) {
+        Page<GuiaSummaryDto> guias = guiaService.searchByNumeroGuia(termo, pageable);
+        return ResponseEntity.ok(guias);
+    }
 }
