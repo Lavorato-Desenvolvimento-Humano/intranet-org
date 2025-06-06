@@ -174,7 +174,7 @@ public class FichaController {
     }
 
     @PatchMapping("/{fichaId}/vincular-guia/{guiaId}")
-    @PreAuthorize("hasAnyAuthority('ficha:update')")
+    @PreAuthorize("hasAnyAuthority('ficha:update') or HasAnyRole('ADMIN')")
     public ResponseEntity<FichaDto> vincularGuia(
             @PathVariable UUID fichaId,
             @PathVariable UUID guiaId) {
