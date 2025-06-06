@@ -12,7 +12,9 @@ import java.util.UUID;
 @AllArgsConstructor
 public class FichaCreateRequest {
 
-    @NotNull(message = "A guia é obrigatória")
+    @NotNull(message = "O paciente é obrigatório")
+    private UUID pacienteId;
+
     private UUID guiaId;
 
     @NotBlank(message = "A especialidade é obrigatória")

@@ -15,6 +15,10 @@ public interface FichaService {
 
     FichaDto createFicha(FichaCreateRequest request);
 
+    FichaDto createFichaAssinatura(FichaAssinaturaCreateRequest request);
+
+    FichaDto vincularFichaAGuia(UUID fichaId, UUID guiaId);
+
     FichaDto updateFicha(UUID id, FichaUpdateRequest request);
 
     void deleteFicha(UUID id);
