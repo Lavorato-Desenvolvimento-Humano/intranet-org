@@ -22,6 +22,11 @@ public class GuiaUpdateRequest {
     @Max(value = 999, message = "A quantidade autorizada não pode ser maior que 999")
     private Integer quantidadeAutorizada;
 
+    @NotBlank(message = "O número da guia é obrigatório")
+    @Pattern(regexp = "^[A-Z0-9-]+$", message = "Número da guia deve conter apenas letras maiúsculas, números e hífens")
+    @Size(max = 50, message = "Número da guia deve ter no máximo 50 caracteres")
+    private String numeroGuia;
+
     private UUID convenioId;
 
     @Min(value = 1, message = "O mês deve ser pelo menos 1")
