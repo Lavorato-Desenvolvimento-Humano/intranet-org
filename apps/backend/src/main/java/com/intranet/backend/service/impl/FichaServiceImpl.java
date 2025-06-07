@@ -113,9 +113,21 @@ public class FichaServiceImpl implements FichaService {
         Convenio convenio = convenioRepository.findById(request.getConvenioId())
                 .orElseThrow(() -> new ResourceNotFoundException("Convênio não encontrado com ID: " + request.getConvenioId()));
 
+        String codigoFicha;
+        int tentativas = 0;
+        do {
+            codigoFicha = codigoGenerator.gerarCodigo();
+            tentativas++;
+
+            if (tentativas > 10) {
+                throw new IllegalStateException("Não foi possível gerar um código único para a ficha após várias tentativas");
+            }
+        } while (fichaRepository.existsByCodigoFicha(codigoFicha));
+
         Ficha ficha = new Ficha();
         ficha.setPaciente(paciente);
         ficha.setGuia(null);
+        ficha.setCodigoFicha(codigoFicha);
         ficha.setTipoFicha(Ficha.TipoFicha.ASSINATURA);
         ficha.setEspecialidade(request.getEspecialidade());
         ficha.setQuantidadeAutorizada(request.getQuantidadeAutorizada());
