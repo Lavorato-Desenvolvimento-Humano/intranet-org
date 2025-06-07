@@ -185,7 +185,7 @@ public class GuiaController {
         return ResponseEntity.ok(guia);
     }
 
-    @GetMapping
+    @GetMapping("/search/numero")
     public ResponseEntity<Page<GuiaSummaryDto>> searchByNumero(
             @RequestParam String termo,
             @PageableDefault(size = 20) Pageable pageable
