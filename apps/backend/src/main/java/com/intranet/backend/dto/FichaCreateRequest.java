@@ -17,6 +17,8 @@ public class FichaCreateRequest {
 
     private UUID guiaId;
 
+    private String codigoFicha;
+
     @NotBlank(message = "A especialidade é obrigatória")
     @Size(max = 100, message = "A especialidade deve ter no máximo 100 caracteres")
     private String especialidade;
