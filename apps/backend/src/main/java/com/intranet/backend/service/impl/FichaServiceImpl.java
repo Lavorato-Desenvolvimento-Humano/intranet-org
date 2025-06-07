@@ -337,6 +337,7 @@ public class FichaServiceImpl implements FichaService {
     private FichaSummaryDto mapToFichaSummaryDto(Ficha ficha) {
         return new FichaSummaryDto(
                 ficha.getId(),
+                ficha.getCodigoFicha(),
                 ficha.getPacienteNome(),
                 ficha.getEspecialidade(),
                 ficha.getQuantidadeAutorizada(),

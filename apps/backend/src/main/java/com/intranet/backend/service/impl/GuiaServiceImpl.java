@@ -91,7 +91,10 @@ public class GuiaServiceImpl implements GuiaService {
         Guia guia = guiaRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Guia não encontrada com ID: " + id));
 
-        // Atualizar campos se fornecidos
+        if (request.getNumeroGuia() != null) {
+            guia.setNumeroGuia(request.getNumeroGuia());
+        }
+
         if (request.getEspecialidades() != null) {
             guia.setEspecialidades(request.getEspecialidades());
         }
@@ -304,6 +307,7 @@ public class GuiaServiceImpl implements GuiaService {
         return new GuiaSummaryDto(
                 guia.getId(),
                 guia.getPaciente().getNome(),
+                guia.getNumeroGuia(),
                 guia.getEspecialidades(),
                 guia.getQuantidadeAutorizada(),
                 guia.getConvenio().getName(),
