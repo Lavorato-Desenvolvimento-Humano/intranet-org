@@ -12,6 +12,8 @@ public class FichaAssinaturaCreateRequest {
     @NotNull(message = "O paciente é obrigatório")
     private UUID pacienteId;
 
+    private String codigoFicha;
+
     @NotBlank(message = "A especialidade é obrigatória")
     private String especialidade;
 
