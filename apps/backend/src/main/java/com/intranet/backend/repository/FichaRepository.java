@@ -42,4 +42,14 @@ public interface FichaRepository extends JpaRepository<Ficha, UUID> {
     @Query("SELECT f FROM Ficha f LEFT JOIN FETCH f.guia g LEFT JOIN FETCH g.paciente " +
             "LEFT JOIN FETCH f.convenio LEFT JOIN FETCH f.usuarioResponsavel")
     Page<Ficha> findAllWithRelations(Pageable pageable);
+
+    Optional<Ficha> findByCodigoFicha(String codigoFicha);
+
+    boolean existsByCodigoFicha(String codigoFicha);
+
+    @Query("SELECT f FROM Ficha f WHERE f.codigoFicha LIKE %:termo%")
+    Page<Ficha> searchByCodigoFicha(@Param("termo") String termo, Pageable pageable);
+
+    @Query("SELECT f FROM Ficha f WHERE f.status LIKE %:status% ORDER BY f.createdAt DESC")
+    Page<Ficha> findByStatus(String status, Pageable pageable);
 }

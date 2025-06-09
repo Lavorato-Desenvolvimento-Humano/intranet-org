@@ -12,8 +12,15 @@ import java.util.UUID;
 @AllArgsConstructor
 public class FichaCreateRequest {
 
-    @NotNull(message = "A guia é obrigatória")
+    @NotNull(message = "O paciente é obrigatório")
+    private UUID pacienteId;
+
     private UUID guiaId;
+
+    private String codigoFicha;
+
+    @NotBlank(message = "O status é obrigatório")
+    private String status;
 
     @NotBlank(message = "A especialidade é obrigatória")
     @Size(max = 100, message = "A especialidade deve ter no máximo 100 caracteres")

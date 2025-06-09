@@ -15,6 +15,11 @@ public class FichaUpdateRequest {
     @Size(max = 100, message = "A especialidade deve ter no máximo 100 caracteres")
     private String especialidade;
 
+    private String codigoFicha;
+
+    @NotBlank(message = "O status é obrigatório")
+    private String status;
+
     @Min(value = 1, message = "A quantidade autorizada deve ser pelo menos 1")
     @Max(value = 999, message = "A quantidade autorizada não pode ser maior que 999")
     private Integer quantidadeAutorizada;

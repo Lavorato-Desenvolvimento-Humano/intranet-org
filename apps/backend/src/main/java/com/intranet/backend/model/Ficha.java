@@ -25,9 +25,28 @@ public class Ficha {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private UUID id;
 
+    @Column(name = "codigo_ficha", nullable = false, unique = true, length = 6)
+    private String codigoFicha;
+
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "guia_id", nullable = false)
+    @JoinColumn(name = "guia_id", nullable = true)
     private Guia guia;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "paciente_id")
+    private Paciente paciente;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_ficha")
+    private TipoFicha tipoFicha;
+
+    public enum TipoFicha {
+        COM_GUIA,
+        ASSINATURA
+    }
+
+    @Column(name = "status", nullable = false, length = 50)
+    private String status;
 
     @Column(name = "especialidade", nullable = false, length = 100)
     private String especialidade;
@@ -71,7 +90,12 @@ public class Ficha {
     }
 
     public String getPacienteNome() {
-        return guia != null && guia.getPaciente() != null ? guia.getPaciente().getNome() : null;
+        if (paciente != null) {
+            return paciente.getNome();
+        }
+        return guia != null && guia.getPaciente() != null
+                ? guia.getPaciente().getNome()
+                : null;
     }
 
     public String getConvenioNome() {

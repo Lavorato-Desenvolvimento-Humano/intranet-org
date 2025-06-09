@@ -2,15 +2,14 @@ package com.intranet.backend.service.impl;
 
 import com.intranet.backend.dto.*;
 import com.intranet.backend.exception.ResourceNotFoundException;
-import com.intranet.backend.model.Convenio;
-import com.intranet.backend.model.Ficha;
-import com.intranet.backend.model.Guia;
-import com.intranet.backend.model.User;
+import com.intranet.backend.model.*;
 import com.intranet.backend.repository.*;
 import com.intranet.backend.service.FichaService;
+import com.intranet.backend.util.CodigoGenerator;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -32,6 +31,10 @@ public class FichaServiceImpl implements FichaService {
     private final GuiaRepository guiaRepository;
     private final ConvenioRepository convenioRepository;
     private final UserRepository userRepository;
+    private final PacienteRepository pacienteRepository;
+
+    @Autowired
+    private CodigoGenerator codigoGenerator;
 
     @Override
     public Page<FichaSummaryDto> getAllFichas(Pageable pageable) {
@@ -71,9 +74,21 @@ public class FichaServiceImpl implements FichaService {
             throw new IllegalArgumentException("A especialidade informada não está presente nas especialidades da guia");
         }
 
+        String codigoFicha;
+        int tentativas = 0;
+        do {
+            codigoFicha = codigoGenerator.gerarCodigo();
+            tentativas++;
+
+            if (tentativas > 10) {
+                throw new IllegalStateException("Não foi possível gerar um código único para a ficha após várias tentativas");
+            }
+        } while (fichaRepository.existsByCodigoFicha(codigoFicha));
+
         User currentUser = getCurrentUser();
 
         Ficha ficha = new Ficha();
+        ficha.setCodigoFicha(codigoFicha);
         ficha.setGuia(guia);
         ficha.setEspecialidade(request.getEspecialidade());
         ficha.setQuantidadeAutorizada(request.getQuantidadeAutorizada());
@@ -86,6 +101,67 @@ public class FichaServiceImpl implements FichaService {
         logger.info("Ficha criada com sucesso. ID: {}", savedFicha.getId());
 
         return mapToFichaDto(savedFicha);
+    }
+
+    @Transactional
+    public FichaDto createFichaAssinatura(FichaAssinaturaCreateRequest request) {
+        logger.info("Criando nova ficha com assinatura para paciente: {}", request.getPacienteId());
+
+        Paciente paciente = pacienteRepository.findById(request.getPacienteId())
+                .orElseThrow(() -> new ResourceNotFoundException("Paciente não encontrado com ID: " + request.getPacienteId()));
+
+        Convenio convenio = convenioRepository.findById(request.getConvenioId())
+                .orElseThrow(() -> new ResourceNotFoundException("Convênio não encontrado com ID: " + request.getConvenioId()));
+
+        String codigoFicha;
+        int tentativas = 0;
+        do {
+            codigoFicha = codigoGenerator.gerarCodigo();
+            tentativas++;
+
+            if (tentativas > 10) {
+                throw new IllegalStateException("Não foi possível gerar um código único para a ficha após várias tentativas");
+            }
+        } while (fichaRepository.existsByCodigoFicha(codigoFicha));
+
+        Ficha ficha = new Ficha();
+        ficha.setPaciente(paciente);
+        ficha.setGuia(null);
+        ficha.setCodigoFicha(codigoFicha);
+        ficha.setTipoFicha(Ficha.TipoFicha.ASSINATURA);
+        ficha.setEspecialidade(request.getEspecialidade());
+        ficha.setQuantidadeAutorizada(request.getQuantidadeAutorizada());
+        ficha.setConvenio(convenio);
+        ficha.setMes(request.getMes());
+        ficha.setAno(request.getAno());
+        ficha.setUsuarioResponsavel(getCurrentUser());
+
+        Ficha saved = fichaRepository.save(ficha);
+        return mapToFichaDto(saved);
+    }
+
+    @Transactional
+    public FichaDto vincularFichaAGuia(UUID fichaId, UUID guiaId) {
+        logger.info("Vinculando ficha ID: {} à guia ID: {}", fichaId, guiaId);
+
+        Ficha ficha = fichaRepository.findById(fichaId)
+                .orElseThrow(() -> new ResourceNotFoundException("Ficha não encontrada com ID: " + fichaId));
+
+        if (ficha.getGuia() != null) {
+            throw new IllegalStateException("A ficha já está vinculada a uma guia");
+        }
+
+        Guia guia = guiaRepository.findById(guiaId)
+                .orElseThrow(() -> new ResourceNotFoundException("Guia não encontrada com ID: " + guiaId));
+
+        if (!ficha.getPaciente().getId().equals(guia.getPaciente().getId())) {
+            throw new IllegalArgumentException("A ficha não pertence ao paciente da guia");
+        }
+
+        ficha.setGuia(guia);
+        ficha.setTipoFicha(Ficha.TipoFicha.COM_GUIA);
+
+        return mapToFichaDto(fichaRepository.save(ficha));
     }
 
     @Override
@@ -214,6 +290,31 @@ public class FichaServiceImpl implements FichaService {
         return fichaRepository.findByConvenioId(convenioId, Pageable.unpaged()).getTotalElements();
     }
 
+    @Override
+    public FichaDto findByCodigoFicha(String codigoFicha) {
+        Ficha ficha = fichaRepository.findByCodigoFicha(codigoFicha)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Ficha não encontrada com código: " + codigoFicha
+                ));
+        return mapToFichaDto(ficha);
+    }
+
+    @Override
+    public Page<FichaSummaryDto> searchByCodigoFicha(String termo, Pageable pageable) {
+        logger.info("Buscando fichas por código: {}", termo);
+
+        Page<Ficha> fichas = fichaRepository.searchByCodigoFicha(termo, pageable);
+        return fichas.map(this::mapToFichaSummaryDto);
+    }
+
+    @Override
+    public Page<FichaSummaryDto> getFichasByStatus(String status, Pageable pageable) {
+        logger.info("Buscando fichas pelo status: {}", status);
+
+        Page<Ficha> fichas = fichaRepository.findByStatus(status, pageable);
+        return fichas.map(this::mapToFichaSummaryDto);
+    }
+
     private User getCurrentUser() {
         UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         return userRepository.findByEmail(userDetails.getUsername())
@@ -221,9 +322,13 @@ public class FichaServiceImpl implements FichaService {
     }
 
     private FichaDto mapToFichaDto(Ficha ficha) {
+        UUID guiaId = ficha.getGuia() != null ? ficha.getGuia().getId() : null;
+
         return new FichaDto(
                 ficha.getId(),
-                ficha.getGuia().getId(),
+                guiaId,
+                ficha.getCodigoFicha(),
+                ficha.getStatus(),
                 ficha.getPacienteNome(),
                 ficha.getEspecialidade(),
                 ficha.getQuantidadeAutorizada(),
@@ -241,6 +346,8 @@ public class FichaServiceImpl implements FichaService {
     private FichaSummaryDto mapToFichaSummaryDto(Ficha ficha) {
         return new FichaSummaryDto(
                 ficha.getId(),
+                ficha.getCodigoFicha(),
+                ficha.getStatus(),
                 ficha.getPacienteNome(),
                 ficha.getEspecialidade(),
                 ficha.getQuantidadeAutorizada(),
