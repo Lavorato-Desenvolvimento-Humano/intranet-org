@@ -14,6 +14,9 @@ public class FichaAssinaturaCreateRequest {
 
     private String codigoFicha;
 
+    @NotBlank(message = "O status é obrigatório")
+    private String status;
+
     @NotBlank(message = "A especialidade é obrigatória")
     private String especialidade;
 
