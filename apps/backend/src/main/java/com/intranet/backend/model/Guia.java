@@ -36,6 +36,9 @@ public class Guia {
     @Column(name = "numero_guia", nullable = false, unique = false, length = 50)
     private String numeroGuia;
 
+    @Column(name = "status", nullable = false, length = 50)
+    private String status;
+
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "especialidades", columnDefinition = "text[]")
     private List<String> especialidades = new ArrayList<>();

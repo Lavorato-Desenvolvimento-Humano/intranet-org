@@ -235,6 +235,14 @@ public class GuiaServiceImpl implements GuiaService {
     }
 
     @Override
+    public Page<GuiaSummaryDto> getGuiasByStatus(String status, Pageable pageable) {
+        logger.info("Buscando guias com status: {}", status);
+
+        Page<Guia> guias = guiaRepository.findGuiaByStatus(status, pageable);
+        return guias.map(this::mapToGuiaSummaryDto);
+    }
+
+    @Override
     public long countTotalGuias() {
         return guiaRepository.count();
     }
@@ -278,6 +286,7 @@ public class GuiaServiceImpl implements GuiaService {
         return new GuiaDto(
                 guia.getId(),
                 guia.getNumeroGuia(),
+                guia.getStatus(),
                 guia.getPaciente().getId(),
                 guia.getPaciente().getNome(),
                 guia.getEspecialidades(),
@@ -308,6 +317,7 @@ public class GuiaServiceImpl implements GuiaService {
                 guia.getId(),
                 guia.getPaciente().getNome(),
                 guia.getNumeroGuia(),
+                guia.getStatus(),
                 guia.getEspecialidades(),
                 guia.getQuantidadeAutorizada(),
                 guia.getConvenio().getName(),
