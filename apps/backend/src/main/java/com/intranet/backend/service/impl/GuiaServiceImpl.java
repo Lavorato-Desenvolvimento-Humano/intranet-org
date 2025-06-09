@@ -65,6 +65,7 @@ public class GuiaServiceImpl implements GuiaService {
 
         Guia guia = new Guia();
         guia.setNumeroGuia(request.getNumeroGuia());
+        guia.setStatus(request.getStatus());
         guia.setPaciente(paciente);
         guia.setConvenio(convenio);
         guia.setEspecialidades(request.getEspecialidades());
@@ -93,6 +94,10 @@ public class GuiaServiceImpl implements GuiaService {
 
         if (request.getNumeroGuia() != null) {
             guia.setNumeroGuia(request.getNumeroGuia());
+        }
+
+        if (request.getStatus() != null) {
+            guia.setStatus(request.getStatus());
         }
 
         if (request.getEspecialidades() != null) {
