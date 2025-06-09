@@ -154,16 +154,6 @@ public class GuiaController {
         return ResponseUtil.success(guias);
     }
 
-    @GetMapping("/status/{status}")
-    public ResponseEntity<Page<GuiaSummaryDto>> getGuiasByStatus(
-            @PathVariable String status,
-            @PageableDefault(size = 20) Pageable pageable) {
-        logger.info("Requisição para buscar guias com status: {}", status);
-
-        Page<GuiaSummaryDto> guias = guiaService.getGuiasByStatus(status, pageable);
-        return ResponseUtil.success(guias);
-    }
-
     @GetMapping("/{id}/fichas")
     public ResponseEntity<Page<FichaSummaryDto>> getFichasByGuiaId(
             @PathVariable UUID id,
@@ -201,6 +191,16 @@ public class GuiaController {
             @PageableDefault(size = 20) Pageable pageable
     ) {
         Page<GuiaSummaryDto> guias = guiaService.searchByNumeroGuia(termo, pageable);
+        return ResponseEntity.ok(guias);
+    }
+
+    @GetMapping("/status/status")
+    public ResponseEntity<Page<GuiaSummaryDto>> getGuiasByStatus(
+            @RequestParam String status,
+            @PageableDefault(size = 20) Pageable pageable) {
+        logger.info("Requisição para buscar guias com status: {}", status);
+
+        Page<GuiaSummaryDto> guias = guiaService.getGuiasByStatus(status, pageable);
         return ResponseEntity.ok(guias);
     }
 }
