@@ -197,7 +197,7 @@ public class FichaController {
         return ResponseEntity.ok(fichas);
     }
 
-    @GetMapping("/status/status") 
+    @GetMapping("/status/status")
     public ResponseEntity<Page<FichaSummaryDto>> getFichasByStatus(
             @RequestParam String status,
             @PageableDefault(size = 20) Pageable pageable) {
