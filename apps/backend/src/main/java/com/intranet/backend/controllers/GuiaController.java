@@ -196,11 +196,11 @@ public class GuiaController {
 
     @GetMapping("/status/status")
     public ResponseEntity<Page<GuiaSummaryDto>> getGuiasByStatus(
-            @RequestParam String status,
+            @RequestParam String termo,
             @PageableDefault(size = 20) Pageable pageable) {
-        logger.info("Requisição para buscar guias com status: {}", status);
+        logger.info("Requisição para buscar guias com status: {}", termo);
 
-        Page<GuiaSummaryDto> guias = guiaService.getGuiasByStatus(status, pageable);
+        Page<GuiaSummaryDto> guias = guiaService.getGuiasByStatus(termo, pageable);
         return ResponseEntity.ok(guias);
     }
 }
