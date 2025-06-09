@@ -1,0 +1,6 @@
+CREATE TABLE status_management (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    status VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
