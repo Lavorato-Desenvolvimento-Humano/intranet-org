@@ -61,5 +61,5 @@ public interface GuiaRepository extends JpaRepository<Guia, UUID> {
     Page<Guia> searchByNumeroGuia(@Param("termo") String termo, Pageable pageable);
 
     @Query("SELECT g FROM Guia g WHERE g.status LIKE %:status% ORDER BY g.createdAt DESC")
-    Page<Guia> findGuiaByStatus(String status, Pageable pageable);
+    Page<Guia> findGuiaByStatus(@Param("status") String status, Pageable pageable);
 }
