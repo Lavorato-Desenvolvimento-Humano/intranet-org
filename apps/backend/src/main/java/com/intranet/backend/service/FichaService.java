@@ -44,4 +44,6 @@ public interface FichaService {
     FichaDto findByCodigoFicha(String codigoFicha);
 
     Page<FichaSummaryDto> searchByCodigoFicha(String termo, Pageable pageable);
+
+    Page<FichaSummaryDto> getFichasByStatus(String status, Pageable pageable);
 }

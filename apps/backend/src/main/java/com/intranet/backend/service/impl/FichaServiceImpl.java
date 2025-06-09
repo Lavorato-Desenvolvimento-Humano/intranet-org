@@ -307,6 +307,14 @@ public class FichaServiceImpl implements FichaService {
         return fichas.map(this::mapToFichaSummaryDto);
     }
 
+    @Override
+    public Page<FichaSummaryDto> getFichasByStatus(String status, Pageable pageable) {
+        logger.info("Buscando fichas pelo status: {}", status);
+
+        Page<Ficha> fichas = fichaRepository.findByStatus(status, pageable);
+        return fichas.map(this::mapToFichaSummaryDto);
+    }
+
     private User getCurrentUser() {
         UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         return userRepository.findByEmail(userDetails.getUsername())
@@ -320,6 +328,7 @@ public class FichaServiceImpl implements FichaService {
                 ficha.getId(),
                 guiaId,
                 ficha.getCodigoFicha(),
+                ficha.getStatus(),
                 ficha.getPacienteNome(),
                 ficha.getEspecialidade(),
                 ficha.getQuantidadeAutorizada(),
@@ -338,6 +347,7 @@ public class FichaServiceImpl implements FichaService {
         return new FichaSummaryDto(
                 ficha.getId(),
                 ficha.getCodigoFicha(),
+                ficha.getStatus(),
                 ficha.getPacienteNome(),
                 ficha.getEspecialidade(),
                 ficha.getQuantidadeAutorizada(),

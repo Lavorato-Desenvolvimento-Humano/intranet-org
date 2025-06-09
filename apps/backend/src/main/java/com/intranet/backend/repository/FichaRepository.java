@@ -49,4 +49,7 @@ public interface FichaRepository extends JpaRepository<Ficha, UUID> {
 
     @Query("SELECT f FROM Ficha f WHERE f.codigoFicha LIKE %:termo%")
     Page<Ficha> searchByCodigoFicha(@Param("termo") String termo, Pageable pageable);
+
+    @Query("SELECT f FROM Ficha f WHERE f.status LIKE %:status% ORDER BY f.createdAt DESC")
+    Page<Ficha> findByStatus(String status, Pageable pageable);
 }

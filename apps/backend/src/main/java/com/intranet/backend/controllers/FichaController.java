@@ -196,4 +196,13 @@ public class FichaController {
         Page<FichaSummaryDto> fichas = fichaService.searchByCodigoFicha(termo, pageable);
         return ResponseEntity.ok(fichas);
     }
+
+    @GetMapping("/status/status") 
+    public ResponseEntity<Page<FichaSummaryDto>> getFichasByStatus(
+            @RequestParam String status,
+            @PageableDefault(size = 20) Pageable pageable) {
+        logger.info("Buscando fichas pelo status: {}", status);
+        Page<FichaSummaryDto> fichas = fichaService.getFichasByStatus(status, pageable);
+        return ResponseEntity.ok(fichas);
+    }
 }
