@@ -342,6 +342,7 @@ public class GuiaServiceImpl implements GuiaService {
         return new FichaSummaryDto(
                 ficha.getId(),
                 ficha.getCodigoFicha(),
+                ficha.getStatus(),
                 ficha.getPacienteNome(),
                 ficha.getEspecialidade(),
                 ficha.getQuantidadeAutorizada(),
