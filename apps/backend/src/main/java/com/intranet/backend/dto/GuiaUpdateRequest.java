@@ -27,6 +27,9 @@ public class GuiaUpdateRequest {
     @Size(max = 50, message = "Número da guia deve ter no máximo 50 caracteres")
     private String numeroGuia;
 
+    @NotBlank(message = "O status da guia é obrigatório")
+    private String status;
+
     private UUID convenioId;
 
     @Min(value = 1, message = "O mês deve ser pelo menos 1")

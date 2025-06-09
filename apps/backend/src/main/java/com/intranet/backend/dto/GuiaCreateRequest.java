@@ -23,6 +23,9 @@ public class GuiaCreateRequest {
     @Size(max = 50, message = "Número da guia deve ter no máximo 50 caracteres")
     private String numeroGuia;
 
+    @NotBlank(message = "O status da guia é obrigatório")
+    private String status;
+
     @NotEmpty(message = "Pelo menos uma especialidade deve ser informada")
     @Size(max = 10, message = "A quantidade máxima de especialidades é 10")
     private List<@NotBlank(message = "Especialidade não pode ser vazia") String> especialidades;

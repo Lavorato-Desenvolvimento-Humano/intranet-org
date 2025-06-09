@@ -16,6 +16,7 @@ import java.util.UUID;
 public class GuiaDto {
     private UUID id;
     private String numeroGuia;
+    private String status;
     private UUID pacienteId;
     private String pacienteNome;
     private List<String> especialidades;
