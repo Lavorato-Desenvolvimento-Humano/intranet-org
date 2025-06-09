@@ -23,8 +23,8 @@ CREATE TABLE guias (
     ano INTEGER NOT NULL CHECK (ano >= 2020),
     validade DATE NOT NULL,
     lote VARCHAR(100),
-    quantidade_faturada INTEGER NOT NULL DEFAULT 0 CHECK (quantidade_faturada >= 0),
-    valor_reais DECIMAL(10,2) NOT NULL DEFAULT 0.00 CHECK (valor_reais >= 0),
+    quantidade_faturada INTEGER DEFAULT 0 CHECK (quantidade_faturada >= 0),
+    valor_reais DECIMAL(10,2) DEFAULT 0.00 CHECK (valor_reais >= 0),
     usuario_responsavel UUID NOT NULL REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
