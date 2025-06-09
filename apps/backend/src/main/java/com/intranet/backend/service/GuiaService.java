@@ -42,4 +42,10 @@ public interface GuiaService {
     long countGuiasVencidas();
 
     long countGuiasComQuantidadeExcedida();
+
+    GuiaDto findByNumeroGuia(String numeroGuia);
+
+    Page<GuiaSummaryDto> searchByNumeroGuia(String termo, Pageable pageable);
+
+    Page<GuiaSummaryDto> getGuiasByStatus(String status, Pageable pageable);
 }

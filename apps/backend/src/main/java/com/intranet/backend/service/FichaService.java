@@ -15,6 +15,10 @@ public interface FichaService {
 
     FichaDto createFicha(FichaCreateRequest request);
 
+    FichaDto createFichaAssinatura(FichaAssinaturaCreateRequest request);
+
+    FichaDto vincularFichaAGuia(UUID fichaId, UUID guiaId);
+
     FichaDto updateFicha(UUID id, FichaUpdateRequest request);
 
     void deleteFicha(UUID id);
@@ -36,4 +40,10 @@ public interface FichaService {
     long countFichasByGuia(UUID guiaId);
 
     long countFichasByConvenio(UUID convenioId);
+
+    FichaDto findByCodigoFicha(String codigoFicha);
+
+    Page<FichaSummaryDto> searchByCodigoFicha(String termo, Pageable pageable);
+
+    Page<FichaSummaryDto> getFichasByStatus(String status, Pageable pageable);
 }

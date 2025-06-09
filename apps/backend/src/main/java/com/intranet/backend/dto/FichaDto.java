@@ -13,6 +13,8 @@ import java.util.UUID;
 public class FichaDto {
     private UUID id;
     private UUID guiaId;
+    private String codigoFicha;
+    private String status;
     private String pacienteNome;
     private String especialidade;
     private Integer quantidadeAutorizada;
@@ -24,4 +26,5 @@ public class FichaDto {
     private String usuarioResponsavelNome;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
 }

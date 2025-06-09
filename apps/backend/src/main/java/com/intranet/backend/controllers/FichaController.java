@@ -163,4 +163,46 @@ public class FichaController {
 
         return ResponseUtil.success(response);
     }
+
+    @PostMapping("/assinatura")
+    @PreAuthorize("hasAnyAuthority('ficha:assinatura:create') or hasAnyRole('ADMIN')")
+    public ResponseEntity<FichaDto> createFichaAssinatura(
+            @Valid @RequestBody FichaAssinaturaCreateRequest request
+    ) {
+      FichaDto ficha = fichaService.createFichaAssinatura(request);
+      return ResponseUtil.created(ficha);
+    }
+
+    @PatchMapping("/{fichaId}/vincular-guia/{guiaId}")
+    @PreAuthorize("hasAnyAuthority('ficha:update') or hasAnyRole('ADMIN')")
+    public ResponseEntity<FichaDto> vincularGuia(
+            @PathVariable UUID fichaId,
+            @PathVariable UUID guiaId) {
+        FichaDto ficha = fichaService.vincularFichaAGuia(fichaId, guiaId);
+        return ResponseUtil.success(ficha);
+    }
+
+    @GetMapping("/codigo/{codigoFicha}")
+    public ResponseEntity<FichaDto> getFichaByCodigo(@PathVariable String codigoFicha) {
+        logger.info("Buscando ficha pelo código: {}", codigoFicha);
+        FichaDto ficha = fichaService.findByCodigoFicha(codigoFicha);
+        return ResponseEntity.ok(ficha);
+    }
+
+    @GetMapping("/search/codigo")
+    public ResponseEntity<Page<FichaSummaryDto>> searchByCodigo(
+            @RequestParam String termo,
+            @PageableDefault(size = 20) Pageable pageable) {
+        Page<FichaSummaryDto> fichas = fichaService.searchByCodigoFicha(termo, pageable);
+        return ResponseEntity.ok(fichas);
+    }
+
+    @GetMapping("/status/status")
+    public ResponseEntity<Page<FichaSummaryDto>> getFichasByStatus(
+            @RequestParam String status,
+            @PageableDefault(size = 20) Pageable pageable) {
+        logger.info("Buscando fichas pelo status: {}", status);
+        Page<FichaSummaryDto> fichas = fichaService.getFichasByStatus(status, pageable);
+        return ResponseEntity.ok(fichas);
+    }
 }

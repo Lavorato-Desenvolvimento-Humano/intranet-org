@@ -15,6 +15,8 @@ import java.util.UUID;
 public class GuiaSummaryDto {
     private UUID id;
     private String pacienteNome;
+    private String numeroGuia;
+    private String status;
     private List<String> especialidades;
     private Integer quantidadeAutorizada;
     private String convenioNome;

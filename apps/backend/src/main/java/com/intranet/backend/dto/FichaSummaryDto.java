@@ -12,6 +12,8 @@ import java.util.UUID;
 @AllArgsConstructor
 public class FichaSummaryDto {
     private UUID id;
+    private String codigoFicha;
+    private String status;
     private String pacienteNome;
     private String especialidade;
     private Integer quantidadeAutorizada;
