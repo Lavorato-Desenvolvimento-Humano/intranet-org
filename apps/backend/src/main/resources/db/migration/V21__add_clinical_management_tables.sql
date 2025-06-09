@@ -1,50 +1,50 @@
 -- Criação das tabelas principais
 -- Tabela de Pacientes
 CREATE TABLE pacientes (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    nome VARCHAR(255) NOT NULL,
-    data_nascimento DATE NOT NULL,
-    responsavel VARCHAR(255),
-    convenio_id UUID NOT NULL REFERENCES convenios(id) ON DELETE RESTRICT,
-    unidade VARCHAR(10) NOT NULL CHECK (unidade IN ('KIDS', 'SENIOR')),
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    created_by UUID NOT NULL REFERENCES users(id) ON DELETE SET NULL
+                           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                           nome VARCHAR(255) NOT NULL,
+                           data_nascimento DATE NOT NULL,
+                           responsavel VARCHAR(255),
+                           convenio_id UUID NOT NULL REFERENCES convenios(id) ON DELETE RESTRICT,
+                           unidade VARCHAR(10) NOT NULL CHECK (unidade IN ('KIDS', 'SENIOR')),
+                           created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                           updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                           created_by UUID NOT NULL REFERENCES users(id) ON DELETE SET NULL
 );
 
 -- Tabela de Guias
 CREATE TABLE guias (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    paciente_id UUID NOT NULL REFERENCES pacientes(id) ON DELETE CASCADE,
-    especialidades TEXT[] NOT NULL, -- Array de especialidades
-    quantidade_autorizada INTEGER NOT NULL CHECK (quantidade_autorizada > 0),
-    convenio_id UUID NOT NULL REFERENCES convenios(id) ON DELETE RESTRICT,
-    mes INTEGER NOT NULL CHECK (mes BETWEEN 1 AND 12),
-    ano INTEGER NOT NULL CHECK (ano >= 2020),
-    validade DATE NOT NULL,
-    lote VARCHAR(100),
-    quantidade_faturada INTEGER DEFAULT 0 CHECK (quantidade_faturada >= 0),
-    valor_reais DECIMAL(10,2) DEFAULT 0.00 CHECK (valor_reais >= 0),
-    usuario_responsavel UUID NOT NULL REFERENCES users(id) ON DELETE SET NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                       paciente_id UUID NOT NULL REFERENCES pacientes(id) ON DELETE CASCADE,
+                       especialidades TEXT[] NOT NULL, -- Array de especialidades
+                       quantidade_autorizada INTEGER NOT NULL CHECK (quantidade_autorizada > 0),
+                       convenio_id UUID NOT NULL REFERENCES convenios(id) ON DELETE RESTRICT,
+                       mes INTEGER NOT NULL CHECK (mes BETWEEN 1 AND 12),
+                       ano INTEGER NOT NULL CHECK (ano >= 2020),
+                       validade DATE NOT NULL,
+                       lote VARCHAR(100),
+                       quantidade_faturada INTEGER NOT NULL DEFAULT 0 CHECK (quantidade_faturada >= 0),
+                       valor_reais DECIMAL(10,2) NOT NULL DEFAULT 0.00 CHECK (valor_reais >= 0),
+                       usuario_responsavel UUID NOT NULL REFERENCES users(id) ON DELETE SET NULL,
+                       created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                       updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Tabela de Fichas
 CREATE TABLE fichas (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    guia_id UUID NOT NULL REFERENCES guias(id) ON DELETE CASCADE,
-    especialidade VARCHAR(100) NOT NULL,
-    quantidade_autorizada INTEGER NOT NULL CHECK (quantidade_autorizada > 0),
-    convenio_id UUID NOT NULL REFERENCES convenios(id) ON DELETE RESTRICT,
-    mes INTEGER NOT NULL CHECK (mes BETWEEN 1 AND 12),
-    ano INTEGER NOT NULL CHECK (ano >= 2020),
-    usuario_responsavel UUID NOT NULL REFERENCES users(id) ON DELETE SET NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                        guia_id UUID NOT NULL REFERENCES guias(id) ON DELETE CASCADE,
+                        especialidade VARCHAR(100) NOT NULL,
+                        quantidade_autorizada INTEGER NOT NULL CHECK (quantidade_autorizada > 0),
+                        convenio_id UUID NOT NULL REFERENCES convenios(id) ON DELETE RESTRICT,
+                        mes INTEGER NOT NULL CHECK (mes BETWEEN 1 AND 12),
+                        ano INTEGER NOT NULL CHECK (ano >= 2020),
+                        usuario_responsavel UUID NOT NULL REFERENCES users(id) ON DELETE SET NULL,
+                        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     -- Constraint para garantir que uma ficha tenha apenas uma especialidade por guia
-    UNIQUE(guia_id, especialidade)
+                        UNIQUE(guia_id, especialidade)
 );
 
 -- Índices para melhorar performance
