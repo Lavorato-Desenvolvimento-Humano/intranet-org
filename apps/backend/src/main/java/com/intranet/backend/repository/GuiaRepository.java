@@ -62,4 +62,7 @@ public interface GuiaRepository extends JpaRepository<Guia, UUID> {
 
     @Query("SELECT g FROM Guia g WHERE g.status LIKE %:status% ORDER BY g.createdAt DESC")
     Page<Guia> findGuiaByStatus(@Param("status") String status, Pageable pageable);
+
+    @Query("SELECT COUNT(g) > 0 FROM Guia g WHERE g.numeroGuia = :numero AND g.mes = :mes AND g.ano = :ano")
+    boolean existsByNumeroGuiaAndMesAndAno(@Param("numero") String numeroGuia, @Param("mes") Integer mes, @Param("ano") Integer ano);
 }
