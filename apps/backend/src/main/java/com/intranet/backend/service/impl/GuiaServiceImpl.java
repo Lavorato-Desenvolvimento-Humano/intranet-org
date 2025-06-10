@@ -59,8 +59,8 @@ public class GuiaServiceImpl implements GuiaService {
         Convenio convenio = convenioRepository.findById(request.getConvenioId())
                 .orElseThrow(() -> new ResourceNotFoundException("Convênio com ID: " + request.getConvenioId()));
 
-        if (guiaRepository.existsByNumeroGuia(request.getNumeroGuia())) {
-            throw new IllegalArgumentException("Já existe uma guia com o número: " + request.getNumeroGuia());
+        if (guiaRepository.existsByNumeroGuiaAndMesAndAno(request.getNumeroGuia(), request.getMes(), request.getAno())) {
+            throw new IllegalArgumentException("Já existe guia com número " + request.getNumeroGuia() + " para o período " + request.getMes() + "/" + request.getAno());
         }
 
         Guia guia = new Guia();
