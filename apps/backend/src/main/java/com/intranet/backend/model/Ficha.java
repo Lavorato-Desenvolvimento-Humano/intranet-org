@@ -45,7 +45,7 @@ public class Ficha {
         ASSINATURA
     }
 
-    @Column(name = "status", nullable = false, length = 50)
+    @Column(name = "status", nullable = false, length = 100)
     private String status;
 
     @Column(name = "especialidade", nullable = false, length = 100)

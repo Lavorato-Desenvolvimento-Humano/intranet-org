@@ -36,7 +36,7 @@ public class Guia {
     @Column(name = "numero_guia", nullable = false, unique = false, length = 50)
     private String numeroGuia;
 
-    @Column(name = "status", nullable = false, length = 50)
+    @Column(name = "status", nullable = false, length = 100)
     private String status;
 
     @JdbcTypeCode(SqlTypes.ARRAY)
