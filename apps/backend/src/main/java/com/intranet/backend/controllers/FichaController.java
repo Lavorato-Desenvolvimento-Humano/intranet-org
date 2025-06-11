@@ -205,24 +205,4 @@ public class FichaController {
         Page<FichaSummaryDto> fichas = fichaService.getFichasByStatus(status, pageable);
         return ResponseEntity.ok(fichas);
     }
-
-    @GetMapping("/{id}/status-history")
-    public ResponseEntity<List<StatusHistoryDto>> getFichaStatusHistory(@PathVariable UUID id) {
-        logger.info("Requisição para buscar histórico de status da ficha: {}", id);
-
-        List<StatusHistoryDto> historico = fichaService.getHistoricoStatusFicha(id);
-        return ResponseEntity.ok(historico);
-    }
-
-    @PatchMapping("/{id}/status")
-    @PreAuthorize("hasAnyAuthority('ficha:update') or hasAnyRole('ADMIN')")
-    public ResponseEntity<FichaDto> updateFichaStatus(
-            @PathVariable UUID id,
-            @Valid @RequestBody StatusChangeRequest request) {
-        logger.info("Requisição para alterar status da ficha ID: {} para '{}'", id, request.getNovoStatus());
-
-        FichaDto updatedFicha = fichaService.updateFichaStatus(id, request.getNovoStatus(),
-                request.getMotivo(), request.getObservacoes());
-        return ResponseEntity.ok(updatedFicha);
-    }
 }
