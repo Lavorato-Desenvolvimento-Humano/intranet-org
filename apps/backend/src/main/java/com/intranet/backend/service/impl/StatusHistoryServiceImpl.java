@@ -57,7 +57,7 @@ public class StatusHistoryServiceImpl implements StatusHistoryService {
             history.setMotivo(event.getMotivo());
             history.setObservacoes(event.getObservacoes());
             history.setAlteradoPor(alteradoPor);
-            history.setDataAlteracao(event.getTimestamp());
+            history.setDataAlteracao(event.getEventTimestamp());
 
             StatusHistory savedHistory = statusHistoryRepository.save(history);
             logger.info("Histórico de status registrado automaticamente via evento. ID: {}", savedHistory.getId());
