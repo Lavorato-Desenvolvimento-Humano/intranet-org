@@ -46,8 +46,4 @@ public interface FichaService {
     Page<FichaSummaryDto> searchByCodigoFicha(String termo, Pageable pageable);
 
     Page<FichaSummaryDto> getFichasByStatus(String status, Pageable pageable);
-
-    FichaDto updateFichaStatus(UUID id, String novoStatus, String motivo, String observacoes);
-
-    List<StatusHistoryDto> getHistoricoStatusFicha(UUID fichaId);
 }
