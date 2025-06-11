@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -203,25 +202,5 @@ public class GuiaController {
 
         Page<GuiaSummaryDto> guias = guiaService.getGuiasByStatus(status, pageable);
         return ResponseEntity.ok(guias);
-    }
-
-    @GetMapping("/{id}/status-history")
-    public ResponseEntity<List<StatusHistoryDto>> getGuiaStatusHistory(@PathVariable UUID id) {
-        logger.info("Requisição para buscar histórico de status da guia: {}", id);
-
-        List<StatusHistoryDto> historico = guiaService.getHistoricoStatusGuia(id);
-        return ResponseEntity.ok(historico);
-    }
-
-    @PatchMapping("/{id}/status")
-    @PreAuthorize("hasAnyAuthority('guia:update') or hasAnyRole('ADMIN')")
-    public ResponseEntity<GuiaDto> updateGuiaStatus(
-            @PathVariable UUID id,
-            @Valid @RequestBody StatusChangeRequest request) {
-        logger.info("Requisição para alterar status da guia ID: {} para '{}'", id, request.getNovoStatus());
-
-        GuiaDto updatedGuia = guiaService.updateGuiaStatus(id, request.getNovoStatus(),
-                request.getMotivo(), request.getObservacoes());
-        return ResponseEntity.ok(updatedGuia);
     }
 }
