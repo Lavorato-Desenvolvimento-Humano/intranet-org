@@ -1,6 +1,7 @@
 package com.intranet.backend.service.impl;
 
 import com.intranet.backend.dto.*;
+import com.intranet.backend.events.StatusEventPublisher;
 import com.intranet.backend.exception.ResourceNotFoundException;
 import com.intranet.backend.model.*;
 import com.intranet.backend.repository.*;
@@ -22,6 +23,10 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+/**
+ * Implementação refatorada do FichaService usando Event-Driven Architecture
+ * Remove dependências circulares publicando eventos em vez de chamar diretamente o StatusHistoryService
+ */
 @Service
 @RequiredArgsConstructor
 public class FichaServiceImpl implements FichaService {
@@ -33,12 +38,13 @@ public class FichaServiceImpl implements FichaService {
     private final ConvenioRepository convenioRepository;
     private final UserRepository userRepository;
     private final PacienteRepository pacienteRepository;
+    private final StatusHistoryService statusHistoryService;
 
     @Autowired
     private CodigoGenerator codigoGenerator;
 
-    @Autowired
-    private StatusHistoryService statusHistoryService;
+    // Event Publisher para desacoplar mudanças de status
+    private final StatusEventPublisher statusEventPublisher;
 
     @Override
     public Page<FichaSummaryDto> getAllFichas(Pageable pageable) {
@@ -78,17 +84,7 @@ public class FichaServiceImpl implements FichaService {
             throw new IllegalArgumentException("A especialidade informada não está presente nas especialidades da guia");
         }
 
-        String codigoFicha;
-        int tentativas = 0;
-        do {
-            codigoFicha = codigoGenerator.gerarCodigo();
-            tentativas++;
-
-            if (tentativas > 10) {
-                throw new IllegalStateException("Não foi possível gerar um código único para a ficha após várias tentativas");
-            }
-        } while (fichaRepository.existsByCodigoFicha(codigoFicha));
-
+        String codigoFicha = generateUniqueCode();
         User currentUser = getCurrentUser();
 
         Ficha ficha = new Ficha();
@@ -100,23 +96,29 @@ public class FichaServiceImpl implements FichaService {
         ficha.setMes(request.getMes());
         ficha.setAno(request.getAno());
         ficha.setUsuarioResponsavel(currentUser);
-        ficha.setStatus(request.getStatus()); // Definir status inicial
+        ficha.setStatus(request.getStatus());
 
         Ficha savedFicha = fichaRepository.save(ficha);
         logger.info("Ficha criada com sucesso. ID: {}", savedFicha.getId());
 
+        // Publicar evento de mudança de status (criação)
         try {
-            statusHistoryService.registrarMudancaStatusFicha(
-                    savedFicha.getId(), null, request.getStatus(),
-                    "Criação da ficha", "Status inicial definido na criação");
-            logger.info("Histórico de status inicial registrado para ficha ID: {}", savedFicha.getId());
+            statusEventPublisher.publishFichaStatusChange(
+                    savedFicha.getId(),
+                    null, // status anterior
+                    request.getStatus(),
+                    "Criação da ficha",
+                    "Status inicial definido na criação",
+                    currentUser.getId()
+            );
         } catch (Exception e) {
-            logger.error("Erro ao registrar histórico de status inicial: {}", e.getMessage(), e);
+            logger.error("Erro ao publicar evento de status inicial: {}", e.getMessage(), e);
         }
 
         return mapToFichaDto(savedFicha);
     }
 
+    @Override
     @Transactional
     public FichaDto createFichaAssinatura(FichaAssinaturaCreateRequest request) {
         logger.info("Criando nova ficha com assinatura para paciente: {}", request.getPacienteId());
@@ -127,16 +129,8 @@ public class FichaServiceImpl implements FichaService {
         Convenio convenio = convenioRepository.findById(request.getConvenioId())
                 .orElseThrow(() -> new ResourceNotFoundException("Convênio não encontrado com ID: " + request.getConvenioId()));
 
-        String codigoFicha;
-        int tentativas = 0;
-        do {
-            codigoFicha = codigoGenerator.gerarCodigo();
-            tentativas++;
-
-            if (tentativas > 10) {
-                throw new IllegalStateException("Não foi possível gerar um código único para a ficha após várias tentativas");
-            }
-        } while (fichaRepository.existsByCodigoFicha(codigoFicha));
+        String codigoFicha = generateUniqueCode();
+        User currentUser = getCurrentUser();
 
         Ficha ficha = new Ficha();
         ficha.setPaciente(paciente);
@@ -148,23 +142,29 @@ public class FichaServiceImpl implements FichaService {
         ficha.setConvenio(convenio);
         ficha.setMes(request.getMes());
         ficha.setAno(request.getAno());
-        ficha.setUsuarioResponsavel(getCurrentUser());
-        ficha.setStatus(request.getStatus()); // Definir status inicial
+        ficha.setUsuarioResponsavel(currentUser);
+        ficha.setStatus(request.getStatus());
 
         Ficha saved = fichaRepository.save(ficha);
 
+        // Publicar evento de mudança de status (criação)
         try {
-            statusHistoryService.registrarMudancaStatusFicha(
-                    saved.getId(), null, request.getStatus(),
-                    "Criação da ficha de assinatura", "Status inicial definido na criação");
-            logger.info("Histórico de status inicial registrado para ficha ID: {}", saved.getId());
+            statusEventPublisher.publishFichaStatusChange(
+                    saved.getId(),
+                    null, // status anterior
+                    request.getStatus(),
+                    "Criação da ficha de assinatura",
+                    "Status inicial definido na criação",
+                    currentUser.getId()
+            );
         } catch (Exception e) {
-            logger.error("Erro ao registrar histórico de status inicial: {}", e.getMessage(), e);
+            logger.error("Erro ao publicar evento de status inicial: {}", e.getMessage(), e);
         }
 
         return mapToFichaDto(saved);
     }
 
+    @Override
     @Transactional
     public FichaDto vincularFichaAGuia(UUID fichaId, UUID guiaId) {
         logger.info("Vinculando ficha ID: {} à guia ID: {}", fichaId, guiaId);
@@ -197,6 +197,7 @@ public class FichaServiceImpl implements FichaService {
         Ficha ficha = fichaRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Ficha não encontrada com ID: " + id));
 
+        User currentUser = getCurrentUser();
         String statusAnterior = ficha.getStatus();
         boolean statusChanged = false;
 
@@ -242,14 +243,19 @@ public class FichaServiceImpl implements FichaService {
 
         Ficha updatedFicha = fichaRepository.save(ficha);
 
+        // Publicar evento se o status foi alterado
         if (statusChanged) {
             try {
-                statusHistoryService.registrarMudancaStatusFicha(
-                        id, statusAnterior, ficha.getStatus(),
-                        "Atualização via formulário", null);
-                logger.info("Histórico de status registrado para ficha ID: {}", id);
+                statusEventPublisher.publishFichaStatusChange(
+                        id,
+                        statusAnterior,
+                        ficha.getStatus(),
+                        "Atualização via formulário",
+                        null,
+                        currentUser.getId()
+                );
             } catch (Exception e) {
-                logger.error("Erro ao registrar histórico de status: {}", e.getMessage(), e);
+                logger.error("Erro ao publicar evento de mudança de status: {}", e.getMessage(), e);
             }
         }
 
@@ -257,6 +263,7 @@ public class FichaServiceImpl implements FichaService {
         return mapToFichaDto(updatedFicha);
     }
 
+    @Override
     @Transactional
     public FichaDto updateFichaStatus(UUID id, String novoStatus, String motivo, String observacoes) {
         logger.info("Atualizando status da ficha com ID: {} para '{}'", id, novoStatus);
@@ -264,6 +271,7 @@ public class FichaServiceImpl implements FichaService {
         Ficha ficha = fichaRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Ficha não encontrada com ID: " + id));
 
+        User currentUser = getCurrentUser();
         String statusAnterior = ficha.getStatus();
 
         if (!StatusEnum.isValid(novoStatus)) {
@@ -273,17 +281,22 @@ public class FichaServiceImpl implements FichaService {
         ficha.setStatus(novoStatus);
         Ficha updatedFicha = fichaRepository.save(ficha);
 
+        // Publicar evento de mudança de status
         try {
-            statusHistoryService.registrarMudancaStatusFicha(
-                    id, statusAnterior, novoStatus, motivo, observacoes);
-            logger.info("Histórico de status registrado para ficha ID: {}", id);
+            statusEventPublisher.publishFichaStatusChange(
+                    id,
+                    statusAnterior,
+                    novoStatus,
+                    motivo,
+                    observacoes,
+                    currentUser.getId()
+            );
         } catch (Exception e) {
-            logger.error("Erro ao registrar histórico de status para ficha ID: {}: {}", id, e.getMessage(), e);
+            logger.error("Erro ao publicar evento de mudança de status: {}", e.getMessage(), e);
         }
 
         return mapToFichaDto(updatedFicha);
     }
-
 
     @Override
     @Transactional
@@ -388,15 +401,33 @@ public class FichaServiceImpl implements FichaService {
         return fichas.map(this::mapToFichaSummaryDto);
     }
 
+    @Override
+    public List<StatusHistoryDto> getHistoricoStatusFicha(UUID fichaId) {
+        logger.info("Buscando histórico de status para ficha ID: {}", fichaId);
+        return statusHistoryService.getHistoricoEntidade(StatusHistory.EntityType.FICHA, fichaId);
+    }
+
+    // Métodos auxiliares privados
+
+    private String generateUniqueCode() {
+        String codigoFicha;
+        int tentativas = 0;
+        do {
+            codigoFicha = codigoGenerator.gerarCodigo();
+            tentativas++;
+
+            if (tentativas > 10) {
+                throw new IllegalStateException("Não foi possível gerar um código único para a ficha após várias tentativas");
+            }
+        } while (fichaRepository.existsByCodigoFicha(codigoFicha));
+
+        return codigoFicha;
+    }
+
     private User getCurrentUser() {
         UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         return userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("Usuário atual não encontrado"));
-    }
-
-    public List<StatusHistoryDto> getHistoricoStatusFicha(UUID fichaId) {
-        logger.info("Buscando histórico de status para ficha ID: {}", fichaId);
-        return statusHistoryService.getHistoricoEntidade(StatusHistory.EntityType.FICHA, fichaId);
     }
 
     private FichaDto mapToFichaDto(Ficha ficha) {

@@ -1,15 +1,15 @@
 package com.intranet.backend.service.impl;
 
 import com.intranet.backend.dto.*;
+import com.intranet.backend.events.StatusChangeEvent;
 import com.intranet.backend.exception.ResourceNotFoundException;
 import com.intranet.backend.model.*;
 import com.intranet.backend.repository.*;
 import com.intranet.backend.service.StatusHistoryService;
-import com.intranet.backend.service.GuiaService;
-import com.intranet.backend.service.FichaService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.event.EventListener;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -17,11 +17,14 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Implementação refatorada do StatusHistoryService
+ * Remove dependências circulares usando Event-Driven Architecture
+ */
 @Service
 @RequiredArgsConstructor
 public class StatusHistoryServiceImpl implements StatusHistoryService {
@@ -32,8 +35,38 @@ public class StatusHistoryServiceImpl implements StatusHistoryService {
     private final UserRepository userRepository;
     private final GuiaRepository guiaRepository;
     private final FichaRepository fichaRepository;
-    private final GuiaService guiaService;
-    private final FichaService fichaService;
+
+    /**
+     * Event Listener que processa mudanças de status
+     * Substitui as chamadas diretas dos outros serviços
+     */
+    @EventListener
+    @Transactional
+    public void handleStatusChangeEvent(StatusChangeEvent event) {
+        logger.info("Processando evento de mudança de status: {}", event);
+
+        try {
+            User alteradoPor = userRepository.findById(event.getAlteradoPorId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado: " + event.getAlteradoPorId()));
+
+            StatusHistory history = new StatusHistory();
+            history.setEntityType(event.getEntityType());
+            history.setEntityId(event.getEntityId());
+            history.setStatusAnterior(event.getStatusAnterior());
+            history.setStatusNovo(event.getStatusNovo());
+            history.setMotivo(event.getMotivo());
+            history.setObservacoes(event.getObservacoes());
+            history.setAlteradoPor(alteradoPor);
+            history.setDataAlteracao(event.getTimestamp());
+
+            StatusHistory savedHistory = statusHistoryRepository.save(history);
+            logger.info("Histórico de status registrado automaticamente via evento. ID: {}", savedHistory.getId());
+
+        } catch (Exception e) {
+            logger.error("Erro ao processar evento de mudança de status: {}", e.getMessage(), e);
+            // Não propagar a exceção para não quebrar o processo principal
+        }
+    }
 
     @Override
     @Transactional
@@ -301,7 +334,7 @@ public class StatusHistoryServiceImpl implements StatusHistoryService {
             totals.put("guiasChanges", totalGuiasChanges);
             totals.put("fichasChanges", totalFichasChanges);
             totals.put("guiasChangesPeriod", totalGuiasChangesPeriodo);
-            totals.put("fichasChangesPeriod", totalFichasChangesPeriodo);
+            totals.put("fichasChangesPeriodo", totalFichasChangesPeriodo);
 
             // Montar resposta final
             stats.put("guias", guiasData);
@@ -325,98 +358,24 @@ public class StatusHistoryServiceImpl implements StatusHistoryService {
         }
     }
 
+    /**
+     * Métodos de mudança de status foram removidos deste serviço
+     * Agora são responsabilidade dos respectivos serviços de domínio
+     * que publicam eventos processados automaticamente
+     */
     @Override
-    @Transactional
     public Map<String, Object> changeGuiaStatus(UUID guiaId, StatusChangeRequest request) {
-        logger.info("Alterando status da guia ID: {} para '{}'", guiaId, request.getNovoStatus());
-
-        try {
-            // 1. Buscar guia atual
-            GuiaDto guiaAtual = guiaService.getGuiaById(guiaId);
-            String statusAnterior = guiaAtual.getStatus();
-
-            // 2. Validações
-            validateStatusChange(statusAnterior, request.getNovoStatus());
-
-            // 3. Atualizar status via service específico
-            GuiaDto guiaAtualizada = guiaService.updateGuiaStatus(
-                    guiaId, request.getNovoStatus(), request.getMotivo(), request.getObservacoes());
-
-            // 4. Buscar histórico criado
-            StatusHistoryDto historyRecord = getUltimoStatus(StatusHistory.EntityType.GUIA, guiaId);
-
-            // 5. Preparar resposta
-            Map<String, Object> response = buildStatusChangeResponse(
-                    guiaAtualizada, historyRecord, statusAnterior, request.getNovoStatus());
-
-            // 6. Adicionar dados específicos de guia
-            response.put("entityType", "GUIA");
-
-            // 7. Verificar se é mudança crítica
-            if (isCriticalStatusChange(statusAnterior, request.getNovoStatus())) {
-                response.put("requiresNotification", true);
-                response.put("notificationMessage", "Mudança de status crítica detectada.");
-            }
-
-            return response;
-
-        } catch (Exception e) {
-            logger.error("Erro ao alterar status da guia {}: {}", guiaId, e.getMessage(), e);
-            throw e;
-        }
+        throw new UnsupportedOperationException(
+                "Mudança de status de guia deve ser feita através do GuiaService.updateGuiaStatus()");
     }
 
     @Override
-    @Transactional
     public Map<String, Object> changeFichaStatus(UUID fichaId, StatusChangeRequest request) {
-        logger.info("Alterando status da ficha ID: {} para '{}'", fichaId, request.getNovoStatus());
-
-        try {
-            // 1. Buscar ficha atual
-            FichaDto fichaAtual = fichaService.getFichaById(fichaId);
-            String statusAnterior = fichaAtual.getStatus();
-
-            // 2. Validações
-            validateStatusChange(statusAnterior, request.getNovoStatus());
-            validateFichaStatusTransition(fichaAtual, request.getNovoStatus());
-
-            // 3. Atualizar status via service específico
-            FichaDto fichaAtualizada = fichaService.updateFichaStatus(
-                    fichaId, request.getNovoStatus(), request.getMotivo(), request.getObservacoes());
-
-            // 4. Buscar histórico criado
-            StatusHistoryDto historyRecord = getUltimoStatus(StatusHistory.EntityType.FICHA, fichaId);
-
-            // 5. Preparar resposta base
-            Map<String, Object> response = buildStatusChangeResponse(
-                    fichaAtualizada, historyRecord, statusAnterior, request.getNovoStatus());
-
-            // 6. Adicionar dados específicos de ficha
-            response.put("entityType", "FICHA");
-
-            // 7. Analisar impacto na guia vinculada
-            Map<String, Object> guiaImpact = analyzeGuiaImpact(fichaAtual, request.getNovoStatus());
-            response.put("guiaImpact", guiaImpact);
-
-            // 8. Gerar alertas específicos
-            List<String> alerts = generateFichaStatusAlerts(fichaAtual, request.getNovoStatus());
-            if (!alerts.isEmpty()) {
-                response.put("alerts", alerts);
-            }
-
-            // 9. Verificar se é mudança crítica
-            if (isCriticalStatusChange(statusAnterior, request.getNovoStatus())) {
-                response.put("requiresNotification", true);
-                response.put("notificationMessage", "Mudança de status crítica detectada.");
-            }
-
-            return response;
-
-        } catch (Exception e) {
-            logger.error("Erro ao alterar status da ficha {}: {}", fichaId, e.getMessage(), e);
-            throw e;
-        }
+        throw new UnsupportedOperationException(
+                "Mudança de status de ficha deve ser feita através do FichaService.updateFichaStatus()");
     }
+
+    // Métodos auxiliares privados
 
     private Map<String, Long> getEstatisticasPorPeriodo(StatusHistory.EntityType entityType,
                                                         LocalDateTime startDate, LocalDateTime endDate) {
@@ -506,114 +465,6 @@ public class StatusHistoryServiceImpl implements StatusHistoryService {
             logger.warn("Erro ao buscar usuários mais ativos: {}", e.getMessage());
             return List.of();
         }
-    }
-
-    private void validateStatusChange(String statusAnterior, String statusNovo) {
-        if (statusAnterior.equals(statusNovo)) {
-            throw new IllegalArgumentException("O status informado é igual ao status atual");
-        }
-
-        if (!StatusEnum.isValid(statusNovo)) {
-            throw new IllegalArgumentException("Status inválido: " + statusNovo);
-        }
-    }
-
-    private void validateFichaStatusTransition(FichaDto ficha, String novoStatus) {
-        String statusAtual = ficha.getStatus();
-
-        // Não permitir voltar de FATURADO
-        if ("FATURADO".equals(statusAtual) &&
-                !List.of("ENVIADO A BM", "DEVOLVIDO BM").contains(novoStatus)) {
-            throw new IllegalArgumentException("Não é possível alterar status de uma ficha já faturada para: " + novoStatus);
-        }
-
-        // Validar ASSINADO requer quantidade
-        if ("ASSINADO".equals(novoStatus) && ficha.getQuantidadeAutorizada() == 0) {
-            throw new IllegalArgumentException("Não é possível marcar como assinado uma ficha sem quantidade autorizada");
-        }
-    }
-
-    private Map<String, Object> buildStatusChangeResponse(Object entidadeAtualizada, StatusHistoryDto historyRecord,
-                                                          String statusAnterior, String statusNovo) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("success", true);
-        response.put("message", String.format("Status alterado de '%s' para '%s'", statusAnterior, statusNovo));
-        response.put("entity", entidadeAtualizada);
-        response.put("statusHistory", historyRecord);
-        response.put("statusChange", Map.of(
-                "anterior", statusAnterior,
-                "novo", statusNovo,
-                "timestamp", historyRecord.getDataAlteracao(),
-                "alteradoPor", historyRecord.getAlteradoPorNome()
-        ));
-        return response;
-    }
-
-    private Map<String, Object> analyzeGuiaImpact(FichaDto ficha, String novoStatus) {
-        Map<String, Object> guiaImpact = new HashMap<>();
-
-        if (ficha.getGuiaId() != null) {
-            try {
-                GuiaDto guiaVinculada = guiaService.getGuiaById(ficha.getGuiaId());
-                guiaImpact.put("hasLinkedGuia", true);
-                guiaImpact.put("guiaId", guiaVinculada.getId());
-                guiaImpact.put("guiaStatus", guiaVinculada.getStatus());
-                guiaImpact.put("numeroGuia", guiaVinculada.getNumeroGuia());
-
-                if (shouldUpdateGuiaStatus(novoStatus)) {
-                    guiaImpact.put("suggestGuiaUpdate", true);
-                    guiaImpact.put("suggestedGuiaStatus", getSuggestedGuiaStatus(novoStatus));
-                }
-            } catch (Exception e) {
-                logger.warn("Erro ao analisar impacto na guia: {}", e.getMessage());
-                guiaImpact.put("hasLinkedGuia", false);
-            }
-        } else {
-            guiaImpact.put("hasLinkedGuia", false);
-        }
-
-        return guiaImpact;
-    }
-
-    private boolean shouldUpdateGuiaStatus(String fichaStatus) {
-        return List.of("ASSINADO", "FATURADO", "CANCELADO").contains(fichaStatus);
-    }
-
-    private String getSuggestedGuiaStatus(String fichaStatus) {
-        switch (fichaStatus) {
-            case "ASSINADO": return "SAIU";
-            case "FATURADO": return "FATURADO";
-            case "CANCELADO": return "CANCELADO";
-            default: return "ANALISE";
-        }
-    }
-
-    private List<String> generateFichaStatusAlerts(FichaDto ficha, String novoStatus) {
-        List<String> alerts = new ArrayList<>();
-
-        switch (novoStatus) {
-            case "PERDIDA":
-                alerts.add("ATENÇÃO: Ficha marcada como perdida. Considere gerar nova ficha se necessário.");
-                break;
-            case "CANCELADO":
-                alerts.add("Ficha cancelada. Verifique se é necessário ajustar a guia vinculada.");
-                break;
-            case "FATURADO":
-                alerts.add("Ficha faturada. Processo financeiro pode ser iniciado.");
-                break;
-            case "DEVOLVIDO BM":
-                alerts.add("Ficha devolvida pela BM. Verifique pendências e tome ações necessárias.");
-                break;
-        }
-
-        return alerts;
-    }
-
-    private boolean isCriticalStatusChange(String statusAnterior, String statusNovo) {
-        List<String> criticalStatuses = List.of("CANCELADO", "PERDIDA", "DEVOLVIDO BM");
-        List<String> fromCriticalStatuses = List.of("FATURADO", "ENVIADO A BM");
-
-        return criticalStatuses.contains(statusNovo) || fromCriticalStatuses.contains(statusAnterior);
     }
 
     private User getCurrentUser() {

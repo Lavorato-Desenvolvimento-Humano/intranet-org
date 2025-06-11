@@ -1,6 +1,7 @@
 package com.intranet.backend.service.impl;
 
 import com.intranet.backend.dto.*;
+import com.intranet.backend.events.StatusEventPublisher;
 import com.intranet.backend.exception.ResourceNotFoundException;
 import com.intranet.backend.model.*;
 import com.intranet.backend.repository.*;
@@ -9,7 +10,6 @@ import com.intranet.backend.service.StatusHistoryService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -21,6 +21,10 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Implementação refatorada do GuiaService usando Event-Driven Architecture
+ * Remove dependências circulares publicando eventos em vez de chamar diretamente o StatusHistoryService
+ */
 @Service
 @RequiredArgsConstructor
 public class GuiaServiceImpl implements GuiaService {
@@ -32,9 +36,10 @@ public class GuiaServiceImpl implements GuiaService {
     private final ConvenioRepository convenioRepository;
     private final UserRepository userRepository;
     private final FichaRepository fichaRepository;
+    private final StatusHistoryService statusHistoryService;
 
-    @Autowired
-    private StatusHistoryService statusHistoryService;
+    // Event Publisher para desacoplar mudanças de status
+    private final StatusEventPublisher statusEventPublisher;
 
     @Override
     public Page<GuiaSummaryDto> getAllGuias(Pageable pageable) {
@@ -49,7 +54,7 @@ public class GuiaServiceImpl implements GuiaService {
         logger.info("Buscando guia com ID: {}", id);
 
         Guia guia = guiaRepository.findByIdWithRelations(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Guia com ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Guia não encontrada com ID: " + id));
 
         return mapToGuiaDto(guia);
     }
@@ -60,14 +65,16 @@ public class GuiaServiceImpl implements GuiaService {
         logger.info("Criando nova guia para paciente ID: {}", request.getPacienteId());
 
         Paciente paciente = pacienteRepository.findById(request.getPacienteId())
-                .orElseThrow(() -> new ResourceNotFoundException("Paciente com ID: " + request.getPacienteId()));
+                .orElseThrow(() -> new ResourceNotFoundException("Paciente não encontrado com ID: " + request.getPacienteId()));
 
         Convenio convenio = convenioRepository.findById(request.getConvenioId())
-                .orElseThrow(() -> new ResourceNotFoundException("Convênio com ID: " + request.getConvenioId()));
+                .orElseThrow(() -> new ResourceNotFoundException("Convênio não encontrado com ID: " + request.getConvenioId()));
 
         if (guiaRepository.existsByNumeroGuiaAndMesAndAno(request.getNumeroGuia(), request.getMes(), request.getAno())) {
             throw new IllegalArgumentException("Já existe guia com número " + request.getNumeroGuia() + " para o período " + request.getMes() + "/" + request.getAno());
         }
+
+        User currentUser = getCurrentUser();
 
         Guia guia = new Guia();
         guia.setNumeroGuia(request.getNumeroGuia());
@@ -82,10 +89,24 @@ public class GuiaServiceImpl implements GuiaService {
         guia.setLote(request.getLote());
         guia.setQuantidadeFaturada(request.getQuantidadeFaturada());
         guia.setValorReais(request.getValorReais());
-        guia.setUsuarioResponsavel(getCurrentUser());
+        guia.setUsuarioResponsavel(currentUser);
 
         Guia savedGuia = guiaRepository.save(guia);
         logger.info("Guia criada com sucesso. ID: {}", savedGuia.getId());
+
+        // Publicar evento de mudança de status (criação)
+        try {
+            statusEventPublisher.publishGuiaStatusChange(
+                    savedGuia.getId(),
+                    null, // status anterior
+                    request.getStatus(),
+                    "Criação da guia",
+                    "Status inicial definido na criação",
+                    currentUser.getId()
+            );
+        } catch (Exception e) {
+            logger.error("Erro ao publicar evento de status inicial: {}", e.getMessage(), e);
+        }
 
         return mapToGuiaDto(savedGuia);
     }
@@ -98,24 +119,20 @@ public class GuiaServiceImpl implements GuiaService {
         Guia guia = guiaRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Guia não encontrada com ID: " + id));
 
+        User currentUser = getCurrentUser();
         String statusAnterior = guia.getStatus();
         boolean statusChanged = false;
 
         if (request.getStatus() != null && !request.getStatus().equals(statusAnterior)) {
-            if( !StatusEnum.isValid(request.getStatus())) {
+            if (!StatusEnum.isValid(request.getStatus())) {
                 throw new IllegalArgumentException("Status inválido: " + request.getStatus());
             }
+            guia.setStatus(request.getStatus());
+            statusChanged = true;
         }
-
-        guia.setStatus(request.getStatus());
-        statusChanged = true;
 
         if (request.getNumeroGuia() != null) {
             guia.setNumeroGuia(request.getNumeroGuia());
-        }
-
-        if (request.getStatus() != null) {
-            guia.setStatus(request.getStatus());
         }
 
         if (request.getEspecialidades() != null) {
@@ -158,15 +175,19 @@ public class GuiaServiceImpl implements GuiaService {
 
         Guia updatedGuia = guiaRepository.save(guia);
 
-
+        // Publicar evento se o status foi alterado
         if (statusChanged) {
             try {
-                statusHistoryService.registrarMudancaStatusGuia(
-                        id, statusAnterior, guia.getStatus(),
-                        "Atualização via formulário", null);
-                logger.info("Histórico de status registrado para guia ID: {}", id);
+                statusEventPublisher.publishGuiaStatusChange(
+                        id,
+                        statusAnterior,
+                        guia.getStatus(),
+                        "Atualização via formulário",
+                        null,
+                        currentUser.getId()
+                );
             } catch (Exception e) {
-                logger.error("Erro ao registrar histórico de status: {}", e.getMessage(), e);
+                logger.error("Erro ao publicar evento de mudança de status: {}", e.getMessage(), e);
             }
         }
 
@@ -174,6 +195,7 @@ public class GuiaServiceImpl implements GuiaService {
         return mapToGuiaDto(updatedGuia);
     }
 
+    @Override
     @Transactional
     public GuiaDto updateGuiaStatus(UUID id, String novoStatus, String motivo, String observacoes) {
         logger.info("Atualizando status da guia com ID: {} para {}", id, novoStatus);
@@ -181,6 +203,7 @@ public class GuiaServiceImpl implements GuiaService {
         Guia guia = guiaRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Guia não encontrada com ID: " + id));
 
+        User currentUser = getCurrentUser();
         String statusAnterior = guia.getStatus();
 
         if (!StatusEnum.isValid(novoStatus)) {
@@ -190,13 +213,18 @@ public class GuiaServiceImpl implements GuiaService {
         guia.setStatus(novoStatus);
         Guia updatedGuia = guiaRepository.save(guia);
 
+        // Publicar evento de mudança de status
         try {
-            statusHistoryService.registrarMudancaStatusGuia(
-                    id, statusAnterior, novoStatus, motivo, observacoes
+            statusEventPublisher.publishGuiaStatusChange(
+                    id,
+                    statusAnterior,
+                    novoStatus,
+                    motivo,
+                    observacoes,
+                    currentUser.getId()
             );
-            logger.info("Histórico de status registrado para guia ID: {}", id);
         } catch (Exception e) {
-            logger.error("Erro ao registrar histórico de status para guia ID: {}: {}", id, e.getMessage(), e);
+            logger.error("Erro ao publicar evento de mudança de status: {}", e.getMessage(), e);
         }
 
         return mapToGuiaDto(updatedGuia);
@@ -293,8 +321,20 @@ public class GuiaServiceImpl implements GuiaService {
             throw new ResourceNotFoundException("Guia não encontrada com ID: " + guiaId);
         }
 
-        return fichaRepository.findAllWithRelations(pageable)
-                .map(this::mapToFichaSummaryDto);
+        List<Ficha> fichas = fichaRepository.findByGuiaId(guiaId);
+
+        // Converter lista para página manualmente
+        int start = (int) pageable.getOffset();
+        int end = Math.min((start + pageable.getPageSize()), fichas.size());
+
+        return new org.springframework.data.domain.PageImpl<>(
+                fichas.subList(start, end)
+                        .stream()
+                        .map(this::mapToFichaSummaryDto)
+                        .collect(java.util.stream.Collectors.toList()),
+                pageable,
+                fichas.size()
+        );
     }
 
     @Override
@@ -337,15 +377,16 @@ public class GuiaServiceImpl implements GuiaService {
         return guias.map(this::mapToGuiaSummaryDto);
     }
 
+    @Override
+    public List<StatusHistoryDto> getHistoricoStatusGuia(UUID guiaId) {
+        logger.info("Buscando histórico de status para guia ID: {}", guiaId);
+        return statusHistoryService.getHistoricoEntidade(StatusHistory.EntityType.GUIA, guiaId);
+    }
+
     private User getCurrentUser() {
         UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         return userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("Não foi possível encontrar o usuário atual"));
-    }
-
-    public List<StatusHistoryDto> getHistoricoStatusGuia(UUID guiaId) {
-        logger.info("Buscando histórico de status para guia ID: {}", guiaId);
-        return statusHistoryService.getHistoricoEntidade(StatusHistory.EntityType.GUIA, guiaId);
     }
 
     private GuiaDto mapToGuiaDto(Guia guia) {
