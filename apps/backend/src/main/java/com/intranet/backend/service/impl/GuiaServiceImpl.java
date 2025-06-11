@@ -37,10 +37,10 @@ public class GuiaServiceImpl implements GuiaService {
     private final UserRepository userRepository;
     private final FichaRepository fichaRepository;
     private final StatusHistoryService statusHistoryService;
-
+    
     // Event Publisher para desacoplar mudanças de status
     private final StatusEventPublisher statusEventPublisher;
-
+    
     @Override
     public Page<GuiaSummaryDto> getAllGuias(Pageable pageable) {
         logger.info("Buscando todas as guias - página: {}, tamanho: {}", pageable.getPageNumber(), pageable.getPageSize());
@@ -118,7 +118,7 @@ public class GuiaServiceImpl implements GuiaService {
 
         Guia guia = guiaRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Guia não encontrada com ID: " + id));
-
+        
         User currentUser = getCurrentUser();
         String statusAnterior = guia.getStatus();
         boolean statusChanged = false;
@@ -130,7 +130,7 @@ public class GuiaServiceImpl implements GuiaService {
             guia.setStatus(request.getStatus());
             statusChanged = true;
         }
-
+        
         if (request.getNumeroGuia() != null) {
             guia.setNumeroGuia(request.getNumeroGuia());
         }
@@ -174,7 +174,7 @@ public class GuiaServiceImpl implements GuiaService {
         }
 
         Guia updatedGuia = guiaRepository.save(guia);
-
+        
         // Publicar evento se o status foi alterado
         if (statusChanged) {
             try {
@@ -226,7 +226,8 @@ public class GuiaServiceImpl implements GuiaService {
         } catch (Exception e) {
             logger.error("Erro ao publicar evento de mudança de status: {}", e.getMessage(), e);
         }
-
+        
+        logger.info("Guia atualizada com sucesso. ID: {}", updatedGuia.getId());
         return mapToGuiaDto(updatedGuia);
     }
 

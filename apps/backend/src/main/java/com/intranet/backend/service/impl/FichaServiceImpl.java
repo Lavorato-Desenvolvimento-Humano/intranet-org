@@ -201,12 +201,15 @@ public class FichaServiceImpl implements FichaService {
         String statusAnterior = ficha.getStatus();
         boolean statusChanged = false;
 
+        // Atualizar campos se fornecidos
         if (request.getEspecialidade() != null) {
-            if (ficha.getGuia() != null && !ficha.getGuia().getEspecialidades().contains(request.getEspecialidade())) {
+            // Verificar se a nova especialidade está disponível na guia
+            if (!ficha.getGuia().getEspecialidades().contains(request.getEspecialidade())) {
                 throw new IllegalArgumentException("A especialidade informada não está presente nas especialidades da guia");
             }
 
-            if (ficha.getGuia() != null && !ficha.getEspecialidade().equals(request.getEspecialidade()) &&
+            // Verificar se não existe outra ficha com a mesma especialidade na mesma guia
+            if (!ficha.getEspecialidade().equals(request.getEspecialidade()) &&
                     fichaRepository.existsByGuiaIdAndEspecialidade(ficha.getGuia().getId(), request.getEspecialidade())) {
                 throw new IllegalArgumentException("Já existe uma ficha para esta guia com a especialidade: " + request.getEspecialidade());
             }
@@ -230,15 +233,6 @@ public class FichaServiceImpl implements FichaService {
 
         if (request.getAno() != null) {
             ficha.setAno(request.getAno());
-        }
-
-        if (request.getStatus() != null && !request.getStatus().equals(statusAnterior)) {
-            if (!StatusEnum.isValid(request.getStatus())) {
-                throw new IllegalArgumentException("Status inválido: " + request.getStatus());
-            }
-
-            ficha.setStatus(request.getStatus());
-            statusChanged = true;
         }
 
         Ficha updatedFicha = fichaRepository.save(ficha);
@@ -295,6 +289,7 @@ public class FichaServiceImpl implements FichaService {
             logger.error("Erro ao publicar evento de mudança de status: {}", e.getMessage(), e);
         }
 
+        logger.info("Ficha atualizada com sucesso. ID: {}", updatedFicha.getId());
         return mapToFichaDto(updatedFicha);
     }
 
