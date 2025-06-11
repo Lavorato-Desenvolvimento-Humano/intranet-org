@@ -5,6 +5,7 @@ import com.intranet.backend.exception.ResourceNotFoundException;
 import com.intranet.backend.model.*;
 import com.intranet.backend.repository.*;
 import com.intranet.backend.service.FichaService;
+import com.intranet.backend.service.StatusHistoryService;
 import com.intranet.backend.util.CodigoGenerator;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -35,6 +36,9 @@ public class FichaServiceImpl implements FichaService {
 
     @Autowired
     private CodigoGenerator codigoGenerator;
+
+    @Autowired
+    private StatusHistoryService statusHistoryService;
 
     @Override
     public Page<FichaSummaryDto> getAllFichas(Pageable pageable) {
@@ -96,9 +100,19 @@ public class FichaServiceImpl implements FichaService {
         ficha.setMes(request.getMes());
         ficha.setAno(request.getAno());
         ficha.setUsuarioResponsavel(currentUser);
+        ficha.setStatus(request.getStatus()); // Definir status inicial
 
         Ficha savedFicha = fichaRepository.save(ficha);
         logger.info("Ficha criada com sucesso. ID: {}", savedFicha.getId());
+
+        try {
+            statusHistoryService.registrarMudancaStatusFicha(
+                    savedFicha.getId(), null, request.getStatus(),
+                    "Criação da ficha", "Status inicial definido na criação");
+            logger.info("Histórico de status inicial registrado para ficha ID: {}", savedFicha.getId());
+        } catch (Exception e) {
+            logger.error("Erro ao registrar histórico de status inicial: {}", e.getMessage(), e);
+        }
 
         return mapToFichaDto(savedFicha);
     }
@@ -135,8 +149,19 @@ public class FichaServiceImpl implements FichaService {
         ficha.setMes(request.getMes());
         ficha.setAno(request.getAno());
         ficha.setUsuarioResponsavel(getCurrentUser());
+        ficha.setStatus(request.getStatus()); // Definir status inicial
 
         Ficha saved = fichaRepository.save(ficha);
+
+        try {
+            statusHistoryService.registrarMudancaStatusFicha(
+                    saved.getId(), null, request.getStatus(),
+                    "Criação da ficha de assinatura", "Status inicial definido na criação");
+            logger.info("Histórico de status inicial registrado para ficha ID: {}", saved.getId());
+        } catch (Exception e) {
+            logger.error("Erro ao registrar histórico de status inicial: {}", e.getMessage(), e);
+        }
+
         return mapToFichaDto(saved);
     }
 
@@ -172,15 +197,15 @@ public class FichaServiceImpl implements FichaService {
         Ficha ficha = fichaRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Ficha não encontrada com ID: " + id));
 
-        // Atualizar campos se fornecidos
+        String statusAnterior = ficha.getStatus();
+        boolean statusChanged = false;
+
         if (request.getEspecialidade() != null) {
-            // Verificar se a nova especialidade está disponível na guia
-            if (!ficha.getGuia().getEspecialidades().contains(request.getEspecialidade())) {
+            if (ficha.getGuia() != null && !ficha.getGuia().getEspecialidades().contains(request.getEspecialidade())) {
                 throw new IllegalArgumentException("A especialidade informada não está presente nas especialidades da guia");
             }
 
-            // Verificar se não existe outra ficha com a mesma especialidade na mesma guia
-            if (!ficha.getEspecialidade().equals(request.getEspecialidade()) &&
+            if (ficha.getGuia() != null && !ficha.getEspecialidade().equals(request.getEspecialidade()) &&
                     fichaRepository.existsByGuiaIdAndEspecialidade(ficha.getGuia().getId(), request.getEspecialidade())) {
                 throw new IllegalArgumentException("Já existe uma ficha para esta guia com a especialidade: " + request.getEspecialidade());
             }
@@ -206,11 +231,59 @@ public class FichaServiceImpl implements FichaService {
             ficha.setAno(request.getAno());
         }
 
+        if (request.getStatus() != null && !request.getStatus().equals(statusAnterior)) {
+            if (!StatusEnum.isValid(request.getStatus())) {
+                throw new IllegalArgumentException("Status inválido: " + request.getStatus());
+            }
+
+            ficha.setStatus(request.getStatus());
+            statusChanged = true;
+        }
+
         Ficha updatedFicha = fichaRepository.save(ficha);
+
+        if (statusChanged) {
+            try {
+                statusHistoryService.registrarMudancaStatusFicha(
+                        id, statusAnterior, ficha.getStatus(),
+                        "Atualização via formulário", null);
+                logger.info("Histórico de status registrado para ficha ID: {}", id);
+            } catch (Exception e) {
+                logger.error("Erro ao registrar histórico de status: {}", e.getMessage(), e);
+            }
+        }
+
         logger.info("Ficha atualizada com sucesso. ID: {}", updatedFicha.getId());
+        return mapToFichaDto(updatedFicha);
+    }
+
+    @Transactional
+    public FichaDto updateFichaStatus(UUID id, String novoStatus, String motivo, String observacoes) {
+        logger.info("Atualizando status da ficha com ID: {} para '{}'", id, novoStatus);
+
+        Ficha ficha = fichaRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Ficha não encontrada com ID: " + id));
+
+        String statusAnterior = ficha.getStatus();
+
+        if (!StatusEnum.isValid(novoStatus)) {
+            throw new IllegalArgumentException("Status inválido: " + novoStatus);
+        }
+
+        ficha.setStatus(novoStatus);
+        Ficha updatedFicha = fichaRepository.save(ficha);
+
+        try {
+            statusHistoryService.registrarMudancaStatusFicha(
+                    id, statusAnterior, novoStatus, motivo, observacoes);
+            logger.info("Histórico de status registrado para ficha ID: {}", id);
+        } catch (Exception e) {
+            logger.error("Erro ao registrar histórico de status para ficha ID: {}: {}", id, e.getMessage(), e);
+        }
 
         return mapToFichaDto(updatedFicha);
     }
+
 
     @Override
     @Transactional
@@ -319,6 +392,11 @@ public class FichaServiceImpl implements FichaService {
         UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         return userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("Usuário atual não encontrado"));
+    }
+
+    public List<StatusHistoryDto> getHistoricoStatusFicha(UUID fichaId) {
+        logger.info("Buscando histórico de status para ficha ID: {}", fichaId);
+        return statusHistoryService.getHistoricoEntidade(StatusHistory.EntityType.FICHA, fichaId);
     }
 
     private FichaDto mapToFichaDto(Ficha ficha) {

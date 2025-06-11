@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 public interface GuiaService {
@@ -48,4 +49,8 @@ public interface GuiaService {
     Page<GuiaSummaryDto> searchByNumeroGuia(String termo, Pageable pageable);
 
     Page<GuiaSummaryDto> getGuiasByStatus(String status, Pageable pageable);
+
+    GuiaDto updateGuiaStatus(UUID id, String novoStatus, String motivo, String observacoes);
+
+    List<StatusHistoryDto> getHistoricoStatusGuia(UUID guiaId);
 }
