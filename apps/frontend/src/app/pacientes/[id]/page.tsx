@@ -292,7 +292,7 @@ export default function PacienteDetailsPage() {
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center">
               <CustomButton
-                variant="secondary"
+                variant="primary"
                 onClick={() => router.back()}
                 className="mr-4">
                 <ArrowLeft className="h-4 w-4 mr-2" />
@@ -309,7 +309,7 @@ export default function PacienteDetailsPage() {
 
             <div className="flex space-x-3">
               <CustomButton
-                variant="secondary"
+                variant="primary"
                 onClick={() =>
                   router.push(`/pacientes/${pacienteId}/editar/novo`)
                 }>
