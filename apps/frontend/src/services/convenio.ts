@@ -1,6 +1,5 @@
 // src/services/convenio.ts
 import api from "./api";
-import axios from "axios";
 
 export interface ConvenioDto {
   id: string;
