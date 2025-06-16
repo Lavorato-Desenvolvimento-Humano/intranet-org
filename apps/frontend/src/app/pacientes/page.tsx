@@ -10,6 +10,7 @@ import {
   Trash2,
   Users,
   Baby,
+  Copy,
   Calendar,
   Building,
   FileText,
@@ -33,6 +34,7 @@ import {
   UnidadeEnum,
 } from "@/types/clinical";
 import toastUtil from "@/utils/toast";
+import { title } from "process";
 
 export default function PacientesPage() {
   const router = useRouter();
@@ -259,14 +261,23 @@ export default function PacientesPage() {
           <CustomButton
             variant="primary"
             size="small"
-            onClick={() => router.push(`/pacientes/${paciente.id}`)}>
+            onClick={() => router.push(`/pacientes/${paciente.id}`)}
+            title="Visualizar paciente">
             <Eye className="h-4 w-4" />
           </CustomButton>
           <CustomButton
             variant="primary"
             size="small"
-            onClick={() => openEditModal(paciente)}>
+            onClick={() => router.push(`/pacientes/${paciente.id}/editar`)}
+            title="Editar paciente">
             <Edit className="h-4 w-4" />
+          </CustomButton>
+          <CustomButton
+            variant="secondary"
+            size="small"
+            onClick={() => router.push(`/pacientes/${paciente.id}/editar/novo`)}
+            title="Criar novo paciente baseado neste">
+            <Copy className="h-4 w-4" />
           </CustomButton>
           <CustomButton
             variant="primary"
