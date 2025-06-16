@@ -182,6 +182,16 @@ export const guiaService = {
     return response.data;
   },
 
+  async getGuiasVencidas(
+    page: number = 0,
+    size: number = 20
+  ): Promise<PageResponse<GuiaSummaryDto>> {
+    const response = await api.get(
+      `/api/guias/vencidas?page=${page}&size=${size}`
+    );
+    return response.data;
+  },
+
   async updateGuiaStatus(
     id: string,
     data: StatusChangeRequest
