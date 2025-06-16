@@ -34,7 +34,7 @@ import {
   UnidadeEnum,
 } from "@/types/clinical";
 import toastUtil from "@/utils/toast";
-import { title } from "process";
+import { formatDate } from "@/utils/dateUtils";
 
 export default function PacientesPage() {
   const router = useRouter();
@@ -222,10 +222,6 @@ export default function PacientesPage() {
     setSelectedConvenio("");
     setSelectedUnidade("");
     setCurrentPage(0);
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("pt-BR");
   };
 
   const tableColumns = [

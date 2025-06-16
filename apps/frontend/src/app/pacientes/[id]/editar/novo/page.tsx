@@ -197,7 +197,7 @@ export default function NovoPacienteBasePage() {
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center">
               <CustomButton
-                variant="secondary"
+                variant="primary"
                 onClick={() => router.back()}
                 className="mr-4">
                 <ArrowLeft className="h-4 w-4 mr-2" />
@@ -321,7 +321,7 @@ export default function NovoPacienteBasePage() {
                       </label>
                       <CustomButton
                         type="button"
-                        variant="secondary"
+                        variant="primary"
                         size="small"
                         onClick={() => copyFromBase("responsavel")}
                         className="text-xs">
@@ -355,7 +355,7 @@ export default function NovoPacienteBasePage() {
                       </label>
                       <CustomButton
                         type="button"
-                        variant="secondary"
+                        variant="primary"
                         size="small"
                         onClick={() => copyFromBase("convenioId")}
                         className="text-xs">
@@ -396,7 +396,7 @@ export default function NovoPacienteBasePage() {
                       </label>
                       <CustomButton
                         type="button"
-                        variant="secondary"
+                        variant="primary"
                         size="small"
                         onClick={() => copyFromBase("unidade")}
                         className="text-xs">
@@ -438,7 +438,7 @@ export default function NovoPacienteBasePage() {
                     <div className="space-y-2">
                       <CustomButton
                         type="button"
-                        variant="secondary"
+                        variant="primary"
                         size="small"
                         onClick={() => {
                           copyFromBase("responsavel");
@@ -463,7 +463,7 @@ export default function NovoPacienteBasePage() {
               <div className="flex justify-end space-x-4 mt-8 pt-6 border-t border-gray-200">
                 <CustomButton
                   type="button"
-                  variant="secondary"
+                  variant="primary"
                   onClick={() => router.back()}
                   disabled={saving}>
                   Cancelar
