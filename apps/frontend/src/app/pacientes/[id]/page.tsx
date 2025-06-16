@@ -34,6 +34,7 @@ import {
   FichaSummaryDto,
   PageResponse,
 } from "@/types/clinical";
+import { formatDate, formatDateTime, calculateAge } from "@/utils/dateUtils";
 import toastUtil from "@/utils/toast";
 
 export default function PacienteDetailsPage() {
@@ -146,29 +147,8 @@ export default function PacienteDetailsPage() {
     setFichasPage(page);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("pt-BR");
-  };
-
-  const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString("pt-BR");
-  };
-
-  const calculateAge = (birthDate: string) => {
-    const today = new Date();
-    const birth = new Date(birthDate);
-    let age = today.getFullYear() - birth.getFullYear();
-    const monthDiff = today.getMonth() - birth.getMonth();
-
-    if (
-      monthDiff < 0 ||
-      (monthDiff === 0 && today.getDate() < birth.getDate())
-    ) {
-      age--;
-    }
-
-    return age;
-  };
+  // Removidas as funções formatDate, formatDateTime e calculateAge
+  // pois agora estão importadas do utilitário dateUtils
 
   // Colunas para tabela de guias
   const guiasColumns = [
@@ -292,7 +272,7 @@ export default function PacienteDetailsPage() {
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center">
               <CustomButton
-                variant="primary"
+                variant="secondary"
                 onClick={() => router.back()}
                 className="mr-4">
                 <ArrowLeft className="h-4 w-4 mr-2" />
@@ -309,7 +289,7 @@ export default function PacienteDetailsPage() {
 
             <div className="flex space-x-3">
               <CustomButton
-                variant="primary"
+                variant="secondary"
                 onClick={() =>
                   router.push(`/pacientes/${pacienteId}/editar/novo`)
                 }>
