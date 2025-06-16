@@ -273,7 +273,7 @@ export default function PacientesPage() {
             <Edit className="h-4 w-4" />
           </CustomButton>
           <CustomButton
-            variant="secondary"
+            variant="primary"
             size="small"
             onClick={() => router.push(`/pacientes/${paciente.id}/editar/novo`)}
             title="Criar novo paciente baseado neste">
