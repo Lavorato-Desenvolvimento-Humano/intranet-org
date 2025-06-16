@@ -1,66 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
 
-    <!-- Propriedades -->
+    <!-- Propriedades comuns -->
     <property name="LOGS" value="./logs" />
     <property name="APP_NAME" value="intranet-backend" />
 
-    <!-- Console Appender com JSON -->
-    <appender name="CONSOLE_JSON" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
-            <providers>
-                <timestamp/>
-                <version/>
-                <logLevel/>
-                <loggerName/>
-                <mdc/>
-                <arguments/>
-                <message/>
-                <stackTrace/>
-            </providers>
-        </encoder>
-    </appender>
-
-    <!-- File Appender com JSON -->
-    <appender name="FILE_JSON" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOGS}/${APP_NAME}.json</file>
-        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
-            <providers>
-                <timestamp/>
-                <version/>
-                <logLevel/>
-                <loggerName/>
-                <mdc/>
-                <arguments/>
-                <message/>
-                <stackTrace/>
-            </providers>
+    <!-- Arquivo appender para produção -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOGS}/${APP_NAME}.log</file>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n</pattern>
         </encoder>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${LOGS}/archived/${APP_NAME}-%d{yyyy-MM-dd}.json</fileNamePattern>
+            <fileNamePattern>${LOGS}/archived/${APP_NAME}-%d{yyyy-MM-dd}.log</fileNamePattern>
             <maxHistory>30</maxHistory>
             <totalSizeCap>3GB</totalSizeCap>
         </rollingPolicy>
     </appender>
 
-    <!-- Perfil de desenvolvimento -->
+    <!-- Configuração para ambiente de desenvolvimento -->
     <springProfile name="dev">
         <logger name="com.intranet.backend" level="DEBUG"/>
         <logger name="org.springframework.security" level="DEBUG"/>
+        <logger name="org.springframework.web" level="INFO"/>
         <root level="INFO">
-            <appender-ref ref="CONSOLE_JSON"/>
+            <appender-ref ref="CONSOLE"/>
         </root>
     </springProfile>
 
-    <!-- Perfil de produção -->
+    <!-- Configuração para ambiente de produção -->
     <springProfile name="production">
         <logger name="com.intranet.backend" level="INFO"/>
         <logger name="org.springframework.security" level="INFO"/>
         <logger name="org.hibernate" level="WARN"/>
-        <root level="INFO">
-            <appender-ref ref="CONSOLE_JSON"/>
-            <appender-ref ref="FILE_JSON"/>
+        <logger name="org.springframework" level="WARN"/>
+        <root level="WARN">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="FILE"/>
         </root>
     </springProfile>
 </configuration>
