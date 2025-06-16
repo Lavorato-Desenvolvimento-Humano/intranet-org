@@ -1,4 +1,3 @@
-// apps/frontend/src/app/pacientes/[id]/editar/page.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -23,6 +22,7 @@ import {
   PacienteUpdateRequest,
   UnidadeEnum,
 } from "@/types/clinical";
+import { formatDate, isFutureDate } from "@/utils/dateUtils";
 import toastUtil from "@/utils/toast";
 
 export default function EditPacientePage() {
@@ -94,12 +94,8 @@ export default function EditPacientePage() {
 
     if (!formData.dataNascimento) {
       errors.dataNascimento = "Data de nascimento é obrigatória";
-    } else {
-      const birthDate = new Date(formData.dataNascimento);
-      const today = new Date();
-      if (birthDate > today) {
-        errors.dataNascimento = "Data de nascimento não pode ser futura";
-      }
+    } else if (isFutureDate(formData.dataNascimento)) {
+      errors.dataNascimento = "Data de nascimento não pode ser futura";
     }
 
     if (!formData.convenioId) {
@@ -149,9 +145,7 @@ export default function EditPacientePage() {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("pt-BR");
-  };
+  // Removida a função formatDate pois agora está importada do utilitário dateUtils
 
   if (loading) {
     return (
@@ -187,7 +181,7 @@ export default function EditPacientePage() {
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center">
               <CustomButton
-                variant="primary"
+                variant="secondary"
                 onClick={() => router.back()}
                 className="mr-4">
                 <ArrowLeft className="h-4 w-4 mr-2" />
@@ -381,7 +375,7 @@ export default function EditPacientePage() {
               <div className="flex justify-end space-x-4 mt-8 pt-6 border-t border-gray-200">
                 <CustomButton
                   type="button"
-                  variant="primary"
+                  variant="secondary"
                   onClick={() => router.back()}
                   disabled={saving}>
                   Cancelar
