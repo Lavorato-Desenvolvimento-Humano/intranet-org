@@ -1,0 +1,177 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: discord-observability-bot
+
+  # Configuração do banco de dados
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:postgres}:${DB_PORT:5432}/${DB_NAME:tiratec}
+    username: ${DB_USER:lavorato}
+    password: ${DB_PASS:password}
+    driver-class-name: org.postgresql.Driver
+
+    # Configuração do HikariCP
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      leak-detection-threshold: 60000
+
+  # JPA/Hibernate
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+
+# Configurações do Discord Bot
+discord:
+  bot:
+    token: ${DISCORD_BOT_TOKEN}
+  guild:
+    id: ${DISCORD_GUILD_ID}
+  channels:
+    alerts: ${DISCORD_ALERTS_CHANNEL_ID}
+    metrics: ${DISCORD_METRICS_CHANNEL_ID}
+    logs: ${DISCORD_LOGS_CHANNEL_ID}
+
+# Configurações de monitoramento
+backend:
+  url: ${BACKEND_URL:https://lavorato.app.br/api}
+  health:
+    endpoint: ${BACKEND_HEALTH_ENDPOINT:/diagnostic/status}
+  log:
+    path: ${BACKEND_LOG_PATH:/backend-logs}
+
+frontend:
+  url: ${FRONTEND_URL:https://lavorato.app.br}
+
+# Configurações de intervalos de monitoramento (em milissegundos)
+monitoring:
+  health:
+    check:
+      interval: ${HEALTH_CHECK_INTERVAL:300000} # 5 minutos
+    alert:
+      enabled: true
+
+  metrics:
+    report:
+      interval: ${METRICS_REPORT_INTERVAL:1800000} # 30 minutos
+      enabled: true
+
+  logs:
+    scan:
+      interval: ${LOG_SCAN_INTERVAL:60000} # 1 minuto
+    analysis:
+      enabled: true
+
+# Thresholds para alertas
+thresholds:
+  cpu: ${CPU_THRESHOLD:80}
+  memory: ${MEMORY_THRESHOLD:85}
+  disk: ${DISK_THRESHOLD:90}
+  response-time: ${RESPONSE_TIME_THRESHOLD:5000}
+  error-rate: ${ERROR_RATE_THRESHOLD:5}
+
+# Configurações do Spring Boot Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus,info,env
+      base-path: /actuator
+
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+
+    metrics:
+      enabled: true
+
+    prometheus:
+      enabled: true
+
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+        step: 1m
+    distribution:
+      percentiles-histogram:
+        "[http.server.requests]": true
+      percentiles:
+        "[http.server.requests]": 0.5, 0.95, 0.99
+    tags:
+      application: ${spring.application.name}
+      environment: ${SPRING_PROFILES_ACTIVE:production}
+
+# Configurações de logging
+logging:
+  level:
+    com.lavorato.observability: ${LOG_LEVEL:INFO}
+    net.dv8tion.jda: WARN
+    org.springframework.web: WARN
+    org.hibernate: WARN
+    org.postgresql: WARN
+
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+  file:
+    name: ${LOG_FILE_PATH:/app/logs/bot.log}
+
+  logback:
+    rollingpolicy:
+      max-file-size: 10MB
+      max-history: 30
+      total-size-cap: 1GB
+
+# Configurações específicas por ambiente
+---
+spring:
+  config:
+    activate:
+      on-profile: development
+
+logging:
+  level:
+    com.lavorato.observability: DEBUG
+    root: INFO
+
+backend:
+  url: http://localhost:8443/api
+
+frontend:
+  url: http://localhost:3000
+
+---
+spring:
+  config:
+    activate:
+      on-profile: production
+
+logging:
+  level:
+    root: WARN
+    com.lavorato.observability: INFO
+
+# Configurações de timeout para produção
+monitoring:
+  health:
+    check:
+      timeout: 10000 # 10 segundos
+
+  http:
+    connection:
+      timeout: 10000
+    read:
+      timeout: 15000
