@@ -1,7 +1,5 @@
 package com.lavorato.observability.config;
 
-import com.lavorato.observability.discord.DiscordCommandHandler;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
@@ -23,7 +21,6 @@ import java.util.concurrent.ScheduledExecutorService;
  */
 @Slf4j
 @Configuration
-@RequiredArgsConstructor
 public class BotConfiguration {
 
     @Value("${discord.bot.token}")
@@ -31,8 +28,6 @@ public class BotConfiguration {
 
     @Value("${discord.guild.id}")
     private String guildId;
-
-    private final DiscordCommandHandler commandHandler;
 
     /**
      * Configura e inicializa o JDA (Java Discord API)
@@ -54,8 +49,6 @@ public class BotConfiguration {
                 .disableCache(CacheFlag.ACTIVITY, CacheFlag.CLIENT_STATUS)
                 // Configurar atividade do bot
                 .setActivity(Activity.watching("Sistema Lavorato 🔍"))
-                // Adicionar event listeners
-                .addEventListeners(commandHandler)
                 // Build e aguarda estar pronto
                 .build()
                 .awaitReady();
@@ -63,40 +56,7 @@ public class BotConfiguration {
         log.info("Bot conectado com sucesso! ID: {}", jda.getSelfUser().getId());
         log.info("Bot está em {} servidores", jda.getGuilds().size());
 
-        // Registrar comandos slash
-        registerSlashCommands(jda);
-
         return jda;
-    }
-
-    /**
-     * Registra comandos slash no Discord
-     */
-    private void registerSlashCommands(JDA jda) {
-        try {
-            log.info("Registrando comandos slash...");
-
-            // Registrar comandos globalmente (pode demorar até 1 hora para aparecer)
-            // Para desenvolvimento, usar updateCommands() no guild específico
-            if (guildId != null && !guildId.isEmpty()) {
-                jda.getGuildById(guildId)
-                        .updateCommands()
-                        .addCommands(commandHandler.getSlashCommands())
-                        .queue(
-                                success -> log.info("Comandos slash registrados com sucesso no guild!"),
-                                error -> log.error("Erro ao registrar comandos slash: ", error)
-                        );
-            } else {
-                jda.updateCommands()
-                        .addCommands(commandHandler.getSlashCommands())
-                        .queue(
-                                success -> log.info("Comandos slash registrados globalmente!"),
-                                error -> log.error("Erro ao registrar comandos slash globalmente: ", error)
-                        );
-            }
-        } catch (Exception e) {
-            log.error("Erro ao registrar comandos slash: ", e);
-        }
     }
 
     /**
