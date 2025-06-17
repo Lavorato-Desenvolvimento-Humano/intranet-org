@@ -32,6 +32,7 @@ import {
   PacienteUpdateRequest,
   PageResponse,
   UnidadeEnum,
+  PacienteDto,
 } from "@/types/clinical";
 import toastUtil from "@/utils/toast";
 import { formatDate } from "@/utils/dateUtils";
@@ -234,6 +235,10 @@ export default function PacientesPage() {
       header: "Data Nascimento",
       accessor: ((paciente: PacienteSummaryDto) =>
         formatDate(paciente.dataNascimento)) as any,
+    },
+    {
+      header: "Responsável",
+      accessor: ((paciente: PacienteDto) => paciente.responsavel) as any
     },
     {
       header: "Convênio",

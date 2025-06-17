@@ -1,0 +1,73 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'lavorato-observability'
+
+# Configuração de alertas (opcional - pode ser expandido futuramente)
+rule_files:
+# - "alert_rules.yml"
+
+# Configuração dos scrape targets
+scrape_configs:
+  # Prometheus se monitorando
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+  # Node Exporter para métricas do sistema
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 15s
+    metrics_path: /metrics
+
+  # Bot Discord - métricas do próprio bot
+  - job_name: 'discord-bot'
+    static_configs:
+      - targets: ['discord-bot:8081']
+    scrape_interval: 30s
+    metrics_path: /actuator/prometheus
+    scrape_timeout: 10s
+
+  # Backend do sistema (se tiver endpoint de métricas)
+  - job_name: 'backend'
+    static_configs:
+      - targets: ['backend:8443']
+    scrape_interval: 30s
+    metrics_path: /api/actuator/prometheus
+    scrape_timeout: 10s
+    scheme: https
+    tls_config:
+      insecure_skip_verify: true
+
+  # Verificação de saúde do backend
+  - job_name: 'backend-health'
+    static_configs:
+      - targets: ['backend:8443']
+    scrape_interval: 60s
+    metrics_path: /api/diagnostic/status
+    scrape_timeout: 15s
+    scheme: https
+    tls_config:
+      insecure_skip_verify: true
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        target_label: __name__
+        replacement: backend_health_${1}
+
+  # PostgreSQL Exporter (se instalado)
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+    scrape_interval: 30s
+    metrics_path: /metrics
+    scrape_timeout: 10s
+
+# Configuração de storage
+storage:
+  tsdb:
+    retention.time: 15d
+    retention.size: 10GB
