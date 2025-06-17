@@ -1,10 +1,13 @@
-# observability-bot/src/main/resources/application.yml
 server:
   port: 8081
 
 spring:
   application:
     name: discord-observability-bot
+
+  # Permitir referências circulares temporariamente
+  main:
+    allow-circular-references: true
 
   # Configuração do banco de dados
   datasource:

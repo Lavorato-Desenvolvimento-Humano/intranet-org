@@ -34,14 +34,6 @@ public class DiscordCommandHandler extends ListenerAdapter {
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
 
     /**
-     * Registra os comandos slash no Discord
-     */
-    @PostConstruct
-    public void registerCommands() {
-        // Este método será chamado pelo BotConfiguration após inicialização do JDA
-    }
-
-    /**
      * Lista dos comandos slash disponíveis
      */
     public List<SlashCommandData> getSlashCommands() {
