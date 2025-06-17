@@ -13,7 +13,7 @@ import javax.sql.DataSource;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
-import java.lang.management.OperatingSystemMXBean;
+import com.sun.management.OperatingSystemMXBean;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -141,6 +141,16 @@ public class MonitoringService {
         try {
             long startTime = System.currentTimeMillis();
 
+            // Verificar se DataSource está disponível
+            if (dataSource == null) {
+                return HealthStatus.builder()
+                        .service("Database")
+                        .status("ERROR")
+                        .timestamp(LocalDateTime.now())
+                        .error("DataSource não configurado")
+                        .build();
+            }
+
             try (Connection connection = dataSource.getConnection()) {
                 PreparedStatement statement = connection.prepareStatement("SELECT 1");
                 ResultSet resultSet = statement.executeQuery();
@@ -149,9 +159,14 @@ public class MonitoringService {
 
                 if (resultSet.next() && resultSet.getInt(1) == 1) {
                     Map<String, Object> details = new HashMap<>();
-                    details.put("database", connection.getMetaData().getDatabaseProductName());
-                    details.put("version", connection.getMetaData().getDatabaseProductVersion());
-                    details.put("url", connection.getMetaData().getURL());
+                    try {
+                        details.put("database", connection.getMetaData().getDatabaseProductName());
+                        details.put("version", connection.getMetaData().getDatabaseProductVersion());
+                        details.put("url", connection.getMetaData().getURL());
+                    } catch (Exception e) {
+                        log.debug("Erro ao obter metadados do banco: ", e);
+                        details.put("metadata_error", e.getMessage());
+                    }
 
                     return HealthStatus.builder()
                             .service("Database")
@@ -176,6 +191,7 @@ public class MonitoringService {
                 .service("Database")
                 .status("DOWN")
                 .timestamp(LocalDateTime.now())
+                .error("Conexão falhou sem exceção específica")
                 .build();
     }
 
@@ -184,10 +200,10 @@ public class MonitoringService {
      */
     public SystemMetrics collectSystemMetrics() {
         try {
-            OperatingSystemMXBean osBean = ManagementFactory.getOperatingSystemMXBean();
+            OperatingSystemMXBean osBean = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
             MemoryMXBean memoryBean = ManagementFactory.getMemoryMXBean();
 
-            // CPU
+            // CPU - usar cast para acessar getProcessCpuLoad
             double cpuUsage = osBean.getProcessCpuLoad() * 100;
             if (cpuUsage < 0) {
                 cpuUsage = 0; // Algumas JVMs retornam valor negativo inicialmente
@@ -201,6 +217,9 @@ public class MonitoringService {
             // Disco
             double diskUsage = calculateDiskUsage();
 
+            // Processar informações básicas do OS
+            java.lang.management.OperatingSystemMXBean basicOsBean = ManagementFactory.getOperatingSystemMXBean();
+
             return SystemMetrics.builder()
                     .timestamp(LocalDateTime.now())
                     .cpuUsage(cpuUsage)
@@ -208,8 +227,8 @@ public class MonitoringService {
                     .memoryTotal(totalMemory)
                     .memoryUsed(usedMemory)
                     .diskUsage(diskUsage)
-                    .availableProcessors(osBean.getAvailableProcessors())
-                    .systemLoadAverage(osBean.getSystemLoadAverage())
+                    .availableProcessors(basicOsBean.getAvailableProcessors())
+                    .systemLoadAverage(basicOsBean.getSystemLoadAverage())
                     .build();
         } catch (Exception e) {
             log.error("Erro ao coletar métricas do sistema: ", e);

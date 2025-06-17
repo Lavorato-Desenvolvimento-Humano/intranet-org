@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.nio.file.*;
+import java.nio.file.attribute.FileTime;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -86,13 +87,15 @@ public class LogAnalysisService {
             // Processar todos os arquivos de log (.log)
             try (Stream<Path> logFiles = Files.list(logPath)
                     .filter(path -> path.toString().endsWith(".log"))
-                    .sorted(Comparator.comparing(path -> {
+                    .sorted((path1, path2) -> {
                         try {
-                            return Files.getLastModifiedTime(path);
+                            FileTime time1 = Files.getLastModifiedTime(path1);
+                            FileTime time2 = Files.getLastModifiedTime(path2);
+                            return time2.compareTo(time1); // Ordem decrescente (mais recentes primeiro)
                         } catch (IOException e) {
-                            return FileTime.fromMillis(0);
+                            return 0;
                         }
-                    }).reversed())) {
+                    })) {
 
                 logFiles.limit(5).forEach(this::analyzeLogFile);
             }
