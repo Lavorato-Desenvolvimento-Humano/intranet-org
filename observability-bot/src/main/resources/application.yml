@@ -1,3 +1,4 @@
+# observability-bot/src/main/resources/application.yml
 server:
   port: 8081
 
@@ -12,24 +13,11 @@ spring:
     password: ${DB_PASS:password}
     driver-class-name: org.postgresql.Driver
 
-    # Configuração do HikariCP
-    hikari:
-      maximum-pool-size: 10
-      minimum-idle: 5
-      connection-timeout: 30000
-      idle-timeout: 600000
-      max-lifetime: 1800000
-      leak-detection-threshold: 60000
-
-  # JPA/Hibernate
-  jpa:
-    hibernate:
-      ddl-auto: none
-    show-sql: false
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: false
+  # Desabilitar JPA/Hibernate já que só fazemos queries simples
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
 
 # Configurações do Discord Bot
 discord:

@@ -237,10 +237,6 @@ export default function PacientesPage() {
         formatDate(paciente.dataNascimento)) as any,
     },
     {
-      header: "Responsável",
-      accessor: ((paciente: PacienteDto) => paciente.responsavel) as any
-    },
-    {
       header: "Convênio",
       accessor: "convenioNome" as keyof PacienteSummaryDto,
     },
