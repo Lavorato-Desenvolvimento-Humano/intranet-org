@@ -17,6 +17,7 @@ public class PacienteSummaryDto {
     private String nome;
     private String responsavel;
     private LocalDate dataNascimento;
+    private UUID convenioId;
     private String convenioNome;
     private Paciente.UnidadeEnum unidade;
     private long totalGuias;
