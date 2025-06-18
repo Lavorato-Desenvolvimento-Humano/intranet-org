@@ -10,6 +10,7 @@ import {
   Trash2,
   Users,
   Baby,
+  Copy,
   Calendar,
   Building,
   FileText,
@@ -31,8 +32,10 @@ import {
   PacienteUpdateRequest,
   PageResponse,
   UnidadeEnum,
+  PacienteDto,
 } from "@/types/clinical";
 import toastUtil from "@/utils/toast";
+import { formatDate } from "@/utils/dateUtils";
 
 export default function PacientesPage() {
   const router = useRouter();
@@ -222,10 +225,6 @@ export default function PacientesPage() {
     setCurrentPage(0);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("pt-BR");
-  };
-
   const tableColumns = [
     {
       header: "Nome",
@@ -248,6 +247,11 @@ export default function PacientesPage() {
       )) as any,
     },
     {
+      header: "Responsável",
+      accessor: ((paciente: PacienteSummaryDto) =>
+        paciente.responsavel || "Não informado") as any,
+    },
+    {
       header: "Cadastrado em",
       accessor: ((paciente: PacienteSummaryDto) =>
         formatDate(paciente.createdAt)) as any,
@@ -259,14 +263,23 @@ export default function PacientesPage() {
           <CustomButton
             variant="primary"
             size="small"
-            onClick={() => router.push(`/pacientes/${paciente.id}`)}>
+            onClick={() => router.push(`/pacientes/${paciente.id}`)}
+            title="Visualizar paciente">
             <Eye className="h-4 w-4" />
           </CustomButton>
           <CustomButton
             variant="primary"
             size="small"
-            onClick={() => openEditModal(paciente)}>
+            onClick={() => router.push(`/pacientes/${paciente.id}/editar`)}
+            title="Editar paciente">
             <Edit className="h-4 w-4" />
+          </CustomButton>
+          <CustomButton
+            variant="primary"
+            size="small"
+            onClick={() => router.push(`/pacientes/${paciente.id}/editar/novo`)}
+            title="Criar novo paciente baseado neste">
+            <Copy className="h-4 w-4" />
           </CustomButton>
           <CustomButton
             variant="primary"

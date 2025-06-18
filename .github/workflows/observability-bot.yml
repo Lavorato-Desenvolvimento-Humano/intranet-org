@@ -1,0 +1,306 @@
+name: Observability Bot CI/CD
+
+on:
+  push:
+    branches:
+      - develop
+      - staging
+      - main
+    paths:
+      - "observability-bot/**"
+      - ".github/workflows/observability-bot.yml"
+  pull_request:
+    branches:
+      - develop
+      - staging
+      - main
+    paths:
+      - "observability-bot/**"
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v3
+
+      - name: Configurar JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: "17"
+          distribution: "temurin"
+          cache: "maven"
+
+      - name: Verificar e Corrigir Codificação de Arquivos
+        run: |
+          cd observability-bot
+          echo "Verificando arquivos de propriedades..."
+          find src/main/resources -name "*.properties" -o -name "*.yml" -o -name "*.yaml" | head -10
+
+          echo "Convertendo arquivos para UTF-8 se necessário..."
+          for f in $(find src/main/resources -name "*.properties" -o -name "*.yml" -o -name "*.yaml"); do
+            if [ -f "$f" ]; then
+              echo "Verificando $f"
+              CHARSET=$(file -bi "$f" | awk -F "=" '{print $2}')
+              if [[ "$CHARSET" != "utf-8" ]]; then
+                iconv -f ISO-8859-1 -t UTF-8 "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+                echo "$f convertido para UTF-8"
+              fi
+            fi
+          done
+
+      - name: Construir e Testar Bot
+        run: |
+          cd observability-bot
+          echo "Construindo Discord Observability Bot..."
+          mvn clean package -Dfile.encoding=UTF-8 -DskipTests
+          
+          echo "Verificando artefato gerado..."
+          ls -la target/
+
+      - name: Autenticar no GitHub Container Registry (GHCR)
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Criar e publicar Docker Image do Bot
+        if: github.event_name != 'pull_request'
+        run: |
+          cd observability-bot
+          IMAGE_TAG=${{ github.ref_name }}
+          REPO_LOWERCASE=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          
+          echo "Construindo imagem: ghcr.io/$REPO_LOWERCASE/observability-bot:$IMAGE_TAG"
+          
+          # Build da imagem do bot
+          DOCKER_BUILDKIT=1 docker build \
+            --cache-from ghcr.io/$REPO_LOWERCASE/observability-bot:$IMAGE_TAG \
+            -t ghcr.io/$REPO_LOWERCASE/observability-bot:$IMAGE_TAG \
+            -f Dockerfile .
+          
+          # Tag adicional com timestamp
+          BUILD_DATE=$(date +%Y%m%d-%H%M%S)
+          docker tag ghcr.io/$REPO_LOWERCASE/observability-bot:$IMAGE_TAG \
+                     ghcr.io/$REPO_LOWERCASE/observability-bot:$IMAGE_TAG-$BUILD_DATE
+          
+          # Push das imagens
+          docker push ghcr.io/$REPO_LOWERCASE/observability-bot:$IMAGE_TAG
+          docker push ghcr.io/$REPO_LOWERCASE/observability-bot:$IMAGE_TAG-$BUILD_DATE
+          
+          echo "✅ Imagem publicada com sucesso!"
+
+  deploy:
+    name: Deploy Observability Bot
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/main')
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v3
+
+      - name: Configurar chave SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy no Servidor
+        run: |
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
+            echo "🚀 Iniciando deploy do Observability Bot..."
+            
+            # Navegar para diretório do ambiente
+            cd /opt/deploy/${{ github.ref_name }}
+            
+            # Criar pasta de observabilidade se não existir
+            mkdir -p observability
+            cd observability
+            
+            echo "📥 Preparando configurações..."
+            REPO_LOWERCASE=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+            
+            # Criar docker-compose específico para observabilidade
+            cat > docker-compose-observability.yml << 'COMPOSE_EOF'
+          version: "3.8"
+          
+          services:
+            discord-bot:
+              image: ghcr.io/${GITHUB_REPOSITORY}/observability-bot:${DEPLOY_ENV}
+              restart: always
+              environment:
+                - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
+                - DISCORD_GUILD_ID=${DISCORD_GUILD_ID}
+                - DISCORD_ALERTS_CHANNEL_ID=${DISCORD_ALERTS_CHANNEL_ID}
+                - DISCORD_METRICS_CHANNEL_ID=${DISCORD_METRICS_CHANNEL_ID}
+                - DISCORD_LOGS_CHANNEL_ID=${DISCORD_LOGS_CHANNEL_ID}
+                - BACKEND_URL=https://${DOMAIN_NAME}/api
+                - FRONTEND_URL=https://${DOMAIN_NAME}
+                - DB_HOST=postgres
+                - DB_PORT=5432
+                - DB_NAME=tiratec
+                - DB_USER=${DB_USER}
+                - DB_PASS=${DB_PASS}
+                - SPRING_PROFILES_ACTIVE=production
+                - TZ=America/Sao_Paulo
+              volumes:
+                - ../logs:/backend-logs:ro
+                - /etc/localtime:/etc/localtime:ro
+              networks:
+                - app-network
+                - monitoring-network
+              depends_on:
+                - prometheus
+                
+            prometheus:
+              image: prom/prometheus:latest
+              restart: always
+              ports:
+                - "9090:9090"
+              volumes:
+                - ./prometheus.yml:/etc/prometheus/prometheus.yml
+                - prometheus_data:/prometheus
+              command:
+                - '--config.file=/etc/prometheus/prometheus.yml'
+                - '--storage.tsdb.path=/prometheus'
+                - '--storage.tsdb.retention.time=30d'
+              networks:
+                - monitoring-network
+                - app-network
+                
+            node-exporter:
+              image: prom/node-exporter:latest
+              restart: always
+              ports:
+                - "9100:9100"
+              volumes:
+                - /proc:/host/proc:ro
+                - /sys:/host/sys:ro
+                - /:/rootfs:ro
+              command:
+                - '--path.procfs=/host/proc'
+                - '--path.rootfs=/rootfs'
+                - '--path.sysfs=/host/sys'
+              networks:
+                - monitoring-network
+                
+            grafana:
+              image: grafana/grafana:latest
+              restart: always
+              ports:
+                - "3001:3000"
+              environment:
+                - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+              volumes:
+                - grafana_data:/var/lib/grafana
+              networks:
+                - monitoring-network
+          
+          networks:
+            monitoring-network:
+              driver: bridge
+            app-network:
+              external: true
+          
+          volumes:
+            prometheus_data:
+            grafana_data:
+          COMPOSE_EOF
+            
+            # Criar configuração do Prometheus
+            cat > prometheus.yml << 'PROM_EOF'
+          global:
+            scrape_interval: 30s
+          
+          scrape_configs:
+            - job_name: 'prometheus'
+              static_configs:
+                - targets: ['localhost:9090']
+          
+            - job_name: 'node-exporter'
+              static_configs:
+                - targets: ['node-exporter:9100']
+          
+            - job_name: 'discord-bot'
+              static_configs:
+                - targets: ['discord-bot:8081']
+              metrics_path: /actuator/prometheus
+          PROM_EOF
+            
+            # Voltar para diretório principal e carregar variáveis
+            cd /opt/deploy/${{ github.ref_name }}
+            
+            # Verificar se .env existe
+            if [[ ! -f ".env" ]]; then
+              echo "❌ Arquivo .env não encontrado!"
+              exit 1
+            fi
+            
+            # Verificar variáveis essenciais do Discord
+            if ! grep -q "DISCORD_BOT_TOKEN" .env; then
+              echo "❌ DISCORD_BOT_TOKEN não encontrado no .env"
+              echo "Configure as variáveis do Discord antes do deploy!"
+              exit 1
+            fi
+            
+            echo "🐳 Fazendo pull da nova imagem..."
+            docker pull ghcr.io/$REPO_LOWERCASE/observability-bot:${{ github.ref_name }}
+            
+            echo "🔄 Parando observabilidade existente..."
+            cd observability
+            docker-compose -f docker-compose-observability.yml down || true
+            
+            echo "🚀 Iniciando observabilidade..."
+            # Carregar variáveis do .env pai
+            set -a
+            source ../.env
+            set +a
+            
+            # Definir variáveis específicas
+            export GITHUB_REPOSITORY=$REPO_LOWERCASE
+            export DEPLOY_ENV=${{ github.ref_name }}
+            
+            docker-compose -f docker-compose-observability.yml up -d
+            
+            echo "⏳ Aguardando inicialização..."
+            sleep 30
+            
+            echo "🔍 Verificando status..."
+            docker-compose -f docker-compose-observability.yml ps
+            
+            echo "✅ Deploy concluído!"
+            echo "📊 Grafana: http://$(hostname -I | awk '{print $1}'):3001"
+            echo "📈 Prometheus: http://$(hostname -I | awk '{print $1}'):9090"
+            
+            # Verificar se bot está funcionando
+            if docker-compose -f docker-compose-observability.yml logs discord-bot | grep -q "Bot conectado com sucesso"; then
+              echo "🤖 Bot Discord: ONLINE ✅"
+            else
+              echo "🤖 Bot Discord: Verificar logs"
+              docker-compose -f docker-compose-observability.yml logs discord-bot | tail -10
+            fi
+          ENDSSH
+
+  notify:
+    name: Notificar Deploy
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: always() && github.event_name != 'pull_request'
+    
+    steps:
+      - name: Notificar resultado
+        run: |
+          if [ "${{ needs.deploy.result }}" == "success" ]; then
+            echo "✅ Deploy do Observability Bot realizado com sucesso!"
+            echo "Ambiente: ${{ github.ref_name }}"
+            echo "Commit: ${{ github.sha }}"
+          else
+            echo "❌ Deploy do Observability Bot falhou!"
+            echo "Verifique os logs da action para mais detalhes."
+          fi

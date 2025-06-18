@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Data
@@ -14,9 +15,11 @@ import java.util.UUID;
 public class PacienteSummaryDto {
     private UUID id;
     private String nome;
+    private String responsavel;
     private LocalDate dataNascimento;
     private String convenioNome;
     private Paciente.UnidadeEnum unidade;
     private long totalGuias;
     private boolean hasGuiasVencidas;
+    private LocalDateTime createdAt;
 }
