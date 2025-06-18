@@ -14,6 +14,7 @@ import java.util.UUID;
 public class PacienteSummaryDto {
     private UUID id;
     private String nome;
+    private String responsavel;
     private LocalDate dataNascimento;
     private String convenioNome;
     private Paciente.UnidadeEnum unidade;

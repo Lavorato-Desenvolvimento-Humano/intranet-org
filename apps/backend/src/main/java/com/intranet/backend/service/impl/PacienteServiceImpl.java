@@ -222,6 +222,7 @@ public class PacienteServiceImpl implements PacienteService {
         return new PacienteSummaryDto(
                 paciente.getId(),
                 paciente.getNome(),
+                paciente.getResponsavel(),
                 paciente.getDataNascimento(),
                 paciente.getConvenio().getName(),
                 paciente.getUnidade(),
