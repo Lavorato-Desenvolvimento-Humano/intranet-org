@@ -247,6 +247,11 @@ export default function PacientesPage() {
       )) as any,
     },
     {
+      header: "Responsável",
+      accessor: ((paciente: PacienteSummaryDto) =>
+        paciente.responsavel || "Não informado") as any,
+    },
+    {
       header: "Cadastrado em",
       accessor: ((paciente: PacienteSummaryDto) =>
         formatDate(paciente.createdAt)) as any,

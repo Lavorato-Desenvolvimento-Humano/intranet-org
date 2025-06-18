@@ -32,6 +32,7 @@ export interface PacienteDto {
 export interface PacienteSummaryDto {
   id: string;
   nome: string;
+  responsavel?: string;
   dataNascimento: string;
   convenioNome: string;
   unidade: UnidadeEnum;
