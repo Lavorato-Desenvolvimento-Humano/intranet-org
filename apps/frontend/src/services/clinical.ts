@@ -255,8 +255,14 @@ export const fichaService = {
     await api.delete(`/api/fichas/${id}`);
   },
 
-  async getFichasByGuia(guiaId: string): Promise<FichaDto[]> {
-    const response = await api.get(`/api/fichas/guia/${guiaId}`);
+  async getFichasByGuia(
+    guiaId: string,
+    page: number = 0,
+    size: number = 20
+  ): Promise<PageResponse<FichaSummaryDto>> {
+    const response = await api.get(
+      `/api/fichas/guia/${guiaId}?page=${page}&size=${size}`
+    );
     return response.data;
   },
 

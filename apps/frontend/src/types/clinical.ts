@@ -34,6 +34,7 @@ export interface PacienteSummaryDto {
   nome: string;
   responsavel?: string;
   dataNascimento: string;
+  convenioId: string;
   convenioNome: string;
   unidade: UnidadeEnum;
   createdAt: string;
