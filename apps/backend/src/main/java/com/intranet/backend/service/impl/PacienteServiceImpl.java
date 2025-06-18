@@ -227,7 +227,8 @@ public class PacienteServiceImpl implements PacienteService {
                 paciente.getConvenio().getName(),
                 paciente.getUnidade(),
                 totalGuias,
-                hasGuiasVencidas
+                hasGuiasVencidas,
+                paciente.getCreatedAt()
         );
     }
 
