@@ -88,11 +88,7 @@ export default function GuiaDetalhePage() {
 
       console.log("Carregando fichas para a guia:", guiaId);
 
-      const fichasData = await fichaService.getFichasByGuia(
-        guiaId,
-        fichasPage,
-        10
-      );
+      const fichasData = await guiaService.getFichasByGuiaId(guiaId);
 
       console.log("Fichas carregadas:", fichasData);
       setFichas(fichasData);
