@@ -70,9 +70,6 @@ export default function GuiaDetalhePage() {
 
       const guiaData = await guiaService.getGuiaById(guiaId);
       setGuia(guiaData);
-
-      // Carregar fichas iniciais
-      await loadFichas();
     } catch (err) {
       console.error("Erro ao carregar dados da guia:", err);
       setError("Erro ao carregar informações da guia");
@@ -83,11 +80,21 @@ export default function GuiaDetalhePage() {
 
   const loadFichas = async () => {
     try {
+      if (!guiaId) {
+        console.error("Guia ID não fornecido");
+        toastUtil.error("Guia não encontrada");
+        return;
+      }
+
+      console.log("Carregando fichas para a guia:", guiaId);
+
       const fichasData = await fichaService.getFichasByGuia(
         guiaId,
         fichasPage,
         10
       );
+
+      console.log("Fichas carregadas:", fichasData);
       setFichas(fichasData);
     } catch (err) {
       console.error("Erro ao carregar fichas:", err);
