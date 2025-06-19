@@ -115,6 +115,7 @@ export interface GuiaUpdateRequest {
   lote?: string;
   valorReais?: number;
   quantidadeFaturada?: number;
+  status?: string;
 }
 
 export interface FichaDto {
