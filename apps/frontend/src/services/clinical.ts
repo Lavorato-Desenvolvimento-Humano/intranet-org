@@ -137,6 +137,17 @@ export const guiaService = {
     await api.delete(`/api/guias/${id}`);
   },
 
+  async getFichasByGuiaId(
+    guiaId: string,
+    page: number = 0,
+    size: number = 20
+  ): Promise<PageResponse<FichaSummaryDto>> {
+    const response = await api.get(
+      `/api/guias/${guiaId}/fichas?page=${page}&size=${size}`
+    );
+    return response.data;
+  },
+
   async getGuiasByPaciente(
     pacienteId: string,
     page: number = 0,
