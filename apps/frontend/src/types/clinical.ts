@@ -114,6 +114,7 @@ export interface GuiaUpdateRequest {
   validade?: string;
   lote?: string;
   valorReais?: number;
+  quantidadeFaturada?: number;
 }
 
 export interface FichaDto {

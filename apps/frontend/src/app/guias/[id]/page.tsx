@@ -396,6 +396,16 @@ export default function GuiaDetalhePage() {
                           R$ {guia.valorReais.toFixed(2)}
                         </p>
                       </div>
+                      {guia.quantidadeFaturada && (
+                        <div>
+                          <p className="text-sm text-gray-600">
+                            Quantidade Faturada
+                          </p>
+                          <p className="font-medium">
+                            {guia.quantidadeFaturada}
+                          </p>
+                        </div>
+                      )}
                       {guia.lote && (
                         <div>
                           <p className="text-sm text-gray-600">Lote</p>
