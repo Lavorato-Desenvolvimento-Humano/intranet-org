@@ -89,12 +89,12 @@ export default function GuiasPage() {
     try {
       if (!loading) setLoading(true);
 
-      // const filters = {
-      //   search: searchTerm,
-      //   convenioId: selectedConvenio,
-      //   status: selectedStatus,
-      //   periodo: selectedPeriodo,
-      // };
+      const filters = {
+        search: searchTerm,
+        convenioId: selectedConvenio,
+        status: selectedStatus,
+        periodo: selectedPeriodo,
+      };
 
       const guiasData = await guiaService.getAllGuias(currentPage, 20);
       setGuias(guiasData);
