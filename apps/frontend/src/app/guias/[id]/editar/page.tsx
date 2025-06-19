@@ -463,6 +463,25 @@ export default function EditarGuiaPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
+
+                {/* Quantidade Faturada */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Quantidade Faturada
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.quantidadeAutorizada}
+                    onChange={(e) =>
+                      handleInputChange(
+                        "quantidadeAutorizada",
+                        parseInt(e.target.value)
+                      )
+                    }
+                    placeholder="Quantidade faturada (opcional)"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
               </div>
 
               {/* Botões */}
