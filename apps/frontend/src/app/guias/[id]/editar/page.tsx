@@ -17,6 +17,7 @@ import {
 import { formatDate } from "@/utils/dateUtils";
 import toastUtil from "@/utils/toast";
 import { StatusSelect } from "@/components/clinical/ui/StatusSelect";
+import { StatusBadge } from "@/components/clinical/ui/StatusBadge";
 
 export default function EditarGuiaPage() {
   const router = useRouter();
@@ -490,6 +491,15 @@ export default function EditarGuiaPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Status *
+                    <div className="flex items-center justify-between">
+                      {formData.status && (
+                        <StatusBadge
+                          status={formData.status}
+                          size="xs"
+                          className="ml-2"
+                        />
+                      )}
+                    </div>
                   </label>
 
                   <StatusSelect
