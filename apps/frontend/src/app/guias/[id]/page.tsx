@@ -80,15 +80,20 @@ export default function GuiaDetalhePage() {
 
   const loadFichas = async () => {
     try {
-      if (!guiaId) {
-        console.error("Guia ID não fornecido");
-        toastUtil.error("Guia não encontrada");
-        return;
-      }
+      console.log("===DEBUG PAGINAÇÃO===");
+      console.log("fichasPage (state):", fichasPage);
+      console.log(
+        "URL que será chamada:",
+        `/guias/${guiaId}/fichas?page=${fichasPage}&size=10`
+      );
 
       console.log("Carregando fichas para a guia:", guiaId);
 
-      const fichasData = await guiaService.getFichasByGuiaId(guiaId);
+      const fichasData = await guiaService.getFichasByGuiaId(
+        guiaId,
+        fichasPage,
+        10
+      );
 
       console.log("Fichas carregadas:", fichasData);
       setFichas(fichasData);
