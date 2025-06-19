@@ -16,6 +16,7 @@ import {
 } from "@/types/clinical";
 import { formatDate } from "@/utils/dateUtils";
 import toastUtil from "@/utils/toast";
+import { StatusSelect } from "@/components/clinical/ui/StatusSelect";
 
 export default function EditarGuiaPage() {
   const router = useRouter();
@@ -39,6 +40,7 @@ export default function EditarGuiaPage() {
     validade: "",
     lote: "",
     valorReais: 0,
+    status: "",
   });
 
   // Estados para especialidades
@@ -78,6 +80,7 @@ export default function EditarGuiaPage() {
         validade: guiaData.validade,
         lote: guiaData.lote || "",
         valorReais: guiaData.valorReais,
+        status: guiaData.status,
       });
     } catch (err) {
       console.error("Erro ao carregar dados:", err);
@@ -481,6 +484,27 @@ export default function EditarGuiaPage() {
                     placeholder="Quantidade faturada (opcional)"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
+                </div>
+
+                {/* Status */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Status *
+                  </label>
+
+                  <StatusSelect
+                    value={formData.status || ""}
+                    onChange={(value) => handleInputChange("status", value)}
+                    required
+                    showPreview={true}
+                    className={formErrors.status ? "border-red-500" : ""}
+                  />
+
+                  {formErrors.status && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {formErrors.status}
+                    </p>
+                  )}
                 </div>
               </div>
 
