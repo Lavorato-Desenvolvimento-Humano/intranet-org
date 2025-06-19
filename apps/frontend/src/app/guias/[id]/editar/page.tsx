@@ -430,7 +430,7 @@ export default function EditarGuiaPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Validade */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -470,11 +470,12 @@ export default function EditarGuiaPage() {
 
                 {/* Quantidade Faturada */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Quantidade Faturada
                   </label>
                   <input
-                    type="text"
+                    type="number"
+                    min="0"
                     value={formData.quantidadeAutorizada}
                     onChange={(e) =>
                       handleInputChange(
@@ -486,32 +487,32 @@ export default function EditarGuiaPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
+              </div>
 
-                {/* Status */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Status *
-                    </label>
-                    {formData.status && (
-                      <StatusBadge status={formData.status} size="xs" />
-                    )}
-                  </div>
-
-                  <StatusSelect
-                    value={formData.status || ""}
-                    onChange={(value) => handleInputChange("status", value)}
-                    required
-                    showPreview={false}
-                    className={formErrors.status ? "border-red-500" : ""}
-                  />
-
-                  {formErrors.status && (
-                    <p className="text-red-500 text-xs mt-1">
-                      {formErrors.status}
-                    </p>
+              {/* Status em linha separada */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Status *
+                  </label>
+                  {formData.status && (
+                    <StatusBadge status={formData.status} size="xs" />
                   )}
                 </div>
+
+                <StatusSelect
+                  value={formData.status || ""}
+                  onChange={(value) => handleInputChange("status", value)}
+                  required
+                  showPreview={false}
+                  className={formErrors.status ? "border-red-500" : ""}
+                />
+
+                {formErrors.status && (
+                  <p className="text-red-500 text-xs mt-1">
+                    {formErrors.status}
+                  </p>
+                )}
               </div>
 
               {/* Botões */}
