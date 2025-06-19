@@ -70,6 +70,8 @@ export default function GuiaDetalhePage() {
 
       const guiaData = await guiaService.getGuiaById(guiaId);
       setGuia(guiaData);
+
+      loadFichas(); // Carregar fichas após carregar a guia
     } catch (err) {
       console.error("Erro ao carregar dados da guia:", err);
       setError("Erro ao carregar informações da guia");
@@ -80,22 +82,12 @@ export default function GuiaDetalhePage() {
 
   const loadFichas = async () => {
     try {
-      console.log("===DEBUG PAGINAÇÃO===");
-      console.log("fichasPage (state):", fichasPage);
-      console.log(
-        "URL que será chamada:",
-        `/guias/${guiaId}/fichas?page=${fichasPage}&size=10`
-      );
-
-      console.log("Carregando fichas para a guia:", guiaId);
-
       const fichasData = await guiaService.getFichasByGuiaId(
         guiaId,
         fichasPage,
         10
       );
 
-      console.log("Fichas carregadas:", fichasData);
       setFichas(fichasData);
     } catch (err) {
       console.error("Erro ao carregar fichas:", err);
