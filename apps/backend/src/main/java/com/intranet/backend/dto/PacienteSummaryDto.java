@@ -1,5 +1,6 @@
 package com.intranet.backend.dto;
 
+import com.intranet.backend.model.Convenio;
 import com.intranet.backend.model.Paciente;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -17,8 +18,8 @@ public class PacienteSummaryDto {
     private String nome;
     private String responsavel;
     private LocalDate dataNascimento;
-    private UUID convenioId;
     private String convenioNome;
+    private UUID convenioId;
     private Paciente.UnidadeEnum unidade;
     private long totalGuias;
     private boolean hasGuiasVencidas;

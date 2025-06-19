@@ -85,6 +85,7 @@ export interface GuiaSummaryDto {
   especialidades: string[];
   quantidadeAutorizada: number;
   convenioNome: string;
+  valorReais: number;
   mes: number;
   ano: number;
   validade: string;
