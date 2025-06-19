@@ -489,24 +489,20 @@ export default function EditarGuiaPage() {
 
                 {/* Status */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Status *
-                    <div className="flex items-center justify-between">
-                      {formData.status && (
-                        <StatusBadge
-                          status={formData.status}
-                          size="xs"
-                          className="ml-2"
-                        />
-                      )}
-                    </div>
-                  </label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Status *
+                    </label>
+                    {formData.status && (
+                      <StatusBadge status={formData.status} size="xs" />
+                    )}
+                  </div>
 
                   <StatusSelect
                     value={formData.status || ""}
                     onChange={(value) => handleInputChange("status", value)}
                     required
-                    showPreview={true}
+                    showPreview={false}
                     className={formErrors.status ? "border-red-500" : ""}
                   />
 
