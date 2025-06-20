@@ -403,7 +403,7 @@ export default function FichasPage() {
                   value={selectedStatus}
                   onChange={(value) => handleFilterChange("status", value)}
                   options={statuses.map((s) => ({
-                    label: s.descricao || s.status,
+                    label: s.status || s.descricao,
                     value: s.status,
                   }))}
                 />
@@ -439,82 +439,6 @@ export default function FichasPage() {
                 </CustomButton>
               </div>
             )}
-          </div>
-
-          {/* Estatísticas Rápidas */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <div className="bg-white rounded-lg shadow-md p-4">
-              <div className="flex items-center">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <FileSignature className="h-6 w-6 text-blue-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">
-                    Total de Fichas
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {fichas.totalElements}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-md p-4">
-              <div className="flex items-center">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <FileSignature className="h-6 w-6 text-green-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">
-                    Em Andamento
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {
-                      fichas.content.filter((f) => f.status === "EM_ANDAMENTO")
-                        .length
-                    }
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-md p-4">
-              <div className="flex items-center">
-                <div className="p-2 bg-yellow-100 rounded-lg">
-                  <FileSignature className="h-6 w-6 text-yellow-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">
-                    Aguardando
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {
-                      fichas.content.filter((f) => f.status === "AGUARDANDO")
-                        .length
-                    }
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-md p-4">
-              <div className="flex items-center">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <FileSignature className="h-6 w-6 text-purple-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">
-                    Concluídas
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {
-                      fichas.content.filter((f) => f.status === "CONCLUIDA")
-                        .length
-                    }
-                  </p>
-                </div>
-              </div>
-            </div>
           </div>
 
           {/* Tabela de Fichas */}
