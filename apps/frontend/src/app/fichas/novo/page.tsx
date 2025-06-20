@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import React, { useState, useEffect, Suspense } from "react";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, FileSignature, Save, X } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
@@ -38,10 +38,21 @@ interface FormErrors {
   [key: string]: string;
 }
 
-export default function NovaFichaPage() {
+// Componente separado para lidar com useSearchParams
+function NovaFichaContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const duplicateId = searchParams.get("duplicate");
+
+  // Verificar parâmetros de duplicação de forma segura
+  const [duplicateId, setDuplicateId] = useState<string | null>(null);
+
+  // Verificar parâmetros na montagem do componente
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const duplicate = urlParams.get("duplicate");
+      setDuplicateId(duplicate);
+    }
+  }, []);
 
   // Estados principais
   const [formData, setFormData] = useState<FormData>({
@@ -585,5 +596,24 @@ export default function NovaFichaPage() {
         </main>
       </div>
     </ProtectedRoute>
+  );
+}
+
+// Componente principal que envolve o conteúdo em Suspense
+export default function NovaFichaPage() {
+  return (
+    <Suspense
+      fallback={
+        <ProtectedRoute>
+          <div className="min-h-screen bg-gray-50 flex flex-col">
+            <Navbar />
+            <main className="flex-grow container mx-auto p-6">
+              <Loading message="Carregando página..." />
+            </main>
+          </div>
+        </ProtectedRoute>
+      }>
+      <NovaFichaContent />
+    </Suspense>
   );
 }
