@@ -14,9 +14,14 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import com.intranet.backend.dto.StatusChangeRequest;
+import com.intranet.backend.dto.StatusHistoryDto;
+import com.intranet.backend.service.StatusHistoryService;
+import com.intranet.backend.model.StatusHistory;
 
 import java.time.LocalDate;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -26,6 +31,7 @@ import java.util.UUID;
 public class GuiaController {
 
     private static final Logger logger = LoggerFactory.getLogger(GuiaController.class);
+    private final StatusHistoryService statusHistoryService;
     private final GuiaService guiaService;
 
     @GetMapping
@@ -202,5 +208,35 @@ public class GuiaController {
 
         Page<GuiaSummaryDto> guias = guiaService.getGuiasByStatus(status, pageable);
         return ResponseEntity.ok(guias);
+    }
+
+    @GetMapping("/{id}/historico-status")
+    public ResponseEntity<List<StatusHistoryDto>> getHistoricoStatusGuia(@PathVariable UUID id) {
+        logger.info("Requisição para obter histórico de status da guia: {}", id);
+
+        List<StatusHistoryDto> historico = statusHistoryService.getHistoricoEntidade(
+                StatusHistory.EntityType.GUIA, id);
+
+        return ResponseEntity.ok(historico);
+    }
+
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAnyAuthority('guia:update') or hasAnyRole('ADMIN')")
+    public ResponseEntity<Map<String, Object>> updateGuiaStatus(
+            @PathVariable UUID id,
+            @Valid @RequestBody StatusChangeRequest request) {
+        logger.info("Requisição para alterar status da guia {} para {}", id, request.getNovoStatus());
+
+        GuiaDto guiaAtualizada = guiaService.updateGuiaStatus(id, request.getNovoStatus(),
+                request.getMotivo(), request.getObservacoes());
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", true);
+        result.put("message", "Status alterado com sucesso");
+        result.put("guia", guiaAtualizada);
+        result.put("novoStatus", request.getNovoStatus());
+
+        logger.info("Status da guia {} alterado com sucesso para {}", id, request.getNovoStatus());
+        return ResponseEntity.ok(result);
     }
 }
