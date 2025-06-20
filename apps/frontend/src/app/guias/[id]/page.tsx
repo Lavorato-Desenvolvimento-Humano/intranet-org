@@ -111,6 +111,12 @@ export default function GuiaDetalhePage() {
       accessor: "especialidade" as keyof FichaSummaryDto,
     },
     {
+      header: "Status",
+      accessor: ((ficha: FichaSummaryDto) => (
+        <StatusBadge status={ficha.status} />
+      )) as any,
+    },
+    {
       header: "Quantidade",
       accessor: "quantidadeAutorizada" as keyof FichaSummaryDto,
       className: "text-center",
@@ -120,12 +126,6 @@ export default function GuiaDetalhePage() {
       accessor: ((ficha: FichaSummaryDto) =>
         `${ficha.mes.toString().padStart(2, "0")}/${ficha.ano}`) as any,
       className: "text-center",
-    },
-    {
-      header: "Status",
-      accessor: ((ficha: FichaSummaryDto) => (
-        <StatusBadge status={ficha.status} />
-      )) as any,
     },
     {
       header: "Criado em",
