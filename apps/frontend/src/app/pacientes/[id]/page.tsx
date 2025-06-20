@@ -160,6 +160,12 @@ export default function PacienteDetailsPage() {
         guia.especialidades.join(", ")) as any,
     },
     {
+      header: "Status",
+      accessor: ((guia: GuiaSummaryDto) => (
+        <StatusBadge status={guia.status} />
+      )) as any,
+    },
+    {
       header: "Quantidade",
       accessor: "quantidadeAutorizada" as keyof GuiaSummaryDto,
       className: "text-center",
@@ -171,12 +177,6 @@ export default function PacienteDetailsPage() {
     {
       header: "Validade",
       accessor: ((guia: GuiaSummaryDto) => formatDate(guia.validade)) as any,
-    },
-    {
-      header: "Status",
-      accessor: ((guia: GuiaSummaryDto) => (
-        <StatusBadge status={guia.status} />
-      )) as any,
     },
     {
       header: "Ações",
