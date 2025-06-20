@@ -154,7 +154,7 @@ export const guiaService = {
     size: number = 20
   ): Promise<PageResponse<GuiaSummaryDto>> {
     const response = await api.get(
-      `/api/guias/pacientes/${pacienteId}?page=${page}&size=${size}`
+      `/api/guias/paciente/${pacienteId}?page=${page}&size=${size}`
     );
     return response.data;
   },
