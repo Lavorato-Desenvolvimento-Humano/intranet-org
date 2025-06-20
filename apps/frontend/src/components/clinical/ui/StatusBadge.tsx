@@ -1,45 +1,92 @@
 "use client";
 
 import React from "react";
+import { useStatus } from "@/hooks/useStatus";
 
 interface StatusBadgeProps {
   status: string;
-  color?: string;
+  showDescription?: boolean;
   className?: string;
+  size?: "xs" | "sm" | "md" | "lg";
+  variant?: "default" | "outline" | "solid";
 }
 
 export const StatusBadge: React.FC<StatusBadgeProps> = ({
   status,
-  color = "#6b7280",
+  showDescription = false,
   className = "",
+  size = "sm",
+  variant = "default",
 }) => {
-  const getStatusColor = (status: string) => {
-    const statusColors: Record<string, string> = {
-      ATIVO: "#10b981",
-      INATIVO: "#ef4444",
-      PENDENTE: "#f59e0b",
-      APROVADO: "#10b981",
-      REJEITADO: "#ef4444",
-      EM_ANALISE: "#3b82f6",
-      CONCLUIDO: "#10b981",
-      CANCELADO: "#ef4444",
-      VENCIDO: "#dc2626",
-      VIGENTE: "#059669",
-    };
-    return statusColors[status.toUpperCase()] || color;
-  };
+  const { getStatusColor, getStatusDescription, getStatusIcon, loading } =
+    useStatus();
+
+  // Loading state
+  if (loading) {
+    return (
+      <span
+        className={`inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-500 animate-pulse ${className}`}>
+        <div className="w-12 h-3 bg-gray-200 rounded"></div>
+      </span>
+    );
+  }
 
   const statusColor = getStatusColor(status);
+  const description = getStatusDescription(status);
+  const icon = getStatusIcon(status);
+
+  // Size classes
+  const sizeClasses = {
+    xs: "px-1.5 py-0.5 text-xs",
+    sm: "px-2 py-0.5 text-xs",
+    md: "px-2.5 py-1 text-sm",
+    lg: "px-3 py-1.5 text-base",
+  };
+
+  // Variant styles
+  const getVariantStyles = () => {
+    switch (variant) {
+      case "outline":
+        return {
+          backgroundColor: "transparent",
+          color: statusColor,
+          border: `1px solid ${statusColor}`,
+        };
+      case "solid":
+        return {
+          backgroundColor: statusColor,
+          color: "white",
+          border: "none",
+        };
+      default: // 'default'
+        return {
+          backgroundColor: `${statusColor}20`,
+          color: statusColor,
+          border: `1px solid ${statusColor}40`,
+        };
+    }
+  };
 
   return (
-    <span
-      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${className}`}
-      style={{
-        backgroundColor: `${statusColor}20`,
-        color: statusColor,
-        border: `1px solid ${statusColor}40`,
-      }}>
-      {status}
-    </span>
+    <div className="flex flex-col items-start gap-1">
+      <span
+        className={`inline-flex items-center rounded-full font-medium transition-colors ${sizeClasses[size]} ${className}`}
+        style={getVariantStyles()}
+        title={description}>
+        {/* Ícone opcional */}
+        {icon && (
+          <span className="mr-1">{/*talvez não tenha necessidade*/}</span>
+        )}
+
+        {status}
+      </span>
+
+      {/* Descrição opcional */}
+      {showDescription && description !== status && (
+        <span className="text-xs text-gray-500 max-w-32 truncate">
+          {description}
+        </span>
+      )}
+    </div>
   );
 };

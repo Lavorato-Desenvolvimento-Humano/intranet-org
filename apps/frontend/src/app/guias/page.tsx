@@ -10,10 +10,7 @@ import {
   FileText,
   Calendar,
   AlertTriangle,
-  Check,
-  Clock,
   DollarSign,
-  Users,
 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
@@ -23,21 +20,15 @@ import { DataTable } from "@/components/clinical/ui/DataTable";
 import { SearchInput } from "@/components/clinical/ui/SearchInput";
 import { FilterDropdown } from "@/components/clinical/ui/FilterDropdown";
 import { StatusBadge } from "@/components/clinical/ui/StatusBadge";
-import { FormModal } from "@/components/clinical/ui/FormModal";
-import { guiaService, pacienteService } from "@/services/clinical";
+import { guiaService } from "@/services/clinical";
 import convenioService, { ConvenioDto } from "@/services/convenio";
-import {
-  GuiaSummaryDto,
-  GuiaCreateRequest,
-  GuiaUpdateRequest,
-  PageResponse,
-  PacienteSummaryDto,
-} from "@/types/clinical";
+import { GuiaSummaryDto, PageResponse } from "@/types/clinical";
 import toastUtil from "@/utils/toast";
 
 export default function GuiasPage() {
   const router = useRouter();
 
+  // Estados principais
   const [guias, setGuias] = useState<PageResponse<GuiaSummaryDto>>({
     content: [],
     totalElements: 0,
@@ -48,65 +39,47 @@ export default function GuiasPage() {
     last: true,
     numberOfElements: 0,
   });
-  const [pacientes, setPacientes] = useState<PacienteSummaryDto[]>([]);
   const [convenios, setConvenios] = useState<ConvenioDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Estados de filtros
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedConvenio, setSelectedConvenio] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
   const [selectedPeriodo, setSelectedPeriodo] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
 
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedGuia, setSelectedGuia] = useState<GuiaSummaryDto | null>(null);
-
-  const [formData, setFormData] = useState<GuiaCreateRequest>({
-    pacienteId: "",
-    especialidades: [],
-    quantidadeAutorizada: 1,
-    convenioId: "",
-    mes: new Date().getMonth() + 1,
-    ano: new Date().getFullYear(),
-    validade: "",
-    lote: "",
-    valorReais: 0,
-  });
-  const [submitting, setSubmitting] = useState(false);
-  const [especialidadeInput, setEspecialidadeInput] = useState("");
-
+  // Carregar dados iniciais
   useEffect(() => {
     loadInitialData();
   }, []);
 
+  // Recarregar quando filtros mudarem
   useEffect(() => {
     loadGuias();
   }, [
-    currentPage,
     searchTerm,
     selectedConvenio,
     selectedStatus,
     selectedPeriodo,
+    currentPage,
   ]);
 
   const loadInitialData = async () => {
     try {
       setLoading(true);
-      const [guiasData, pacientesData, conveniosData] = await Promise.all([
-        guiaService.getAllGuias(0, 20),
-        pacienteService.getAllPacientes(0, 100),
+      setError(null);
+
+      const [conveniosData] = await Promise.all([
         convenioService.getAllConvenios(),
       ]);
 
-      setGuias(guiasData);
-      setPacientes(pacientesData.content);
       setConvenios(conveniosData);
+      await loadGuias();
     } catch (err) {
       console.error("Erro ao carregar dados:", err);
-      setError("Erro ao carregar dados das guias");
-      toastUtil.error("Erro ao carregar dados das guias");
+      setError("Erro ao carregar informações");
     } finally {
       setLoading(false);
     }
@@ -114,93 +87,22 @@ export default function GuiasPage() {
 
   const loadGuias = async () => {
     try {
-      setLoading(true);
-      let result;
+      if (!loading) setLoading(true);
 
-      if (searchTerm) {
-        result = await guiaService.searchByNumeroGuia(
-          searchTerm,
-          currentPage,
-          20
-        );
-      } else if (selectedConvenio) {
-        result = await guiaService.getGuiasByConvenio(
-          selectedConvenio,
-          currentPage,
-          20
-        );
-      } else if (selectedStatus) {
-        result = await guiaService.getGuiasByStatus(
-          selectedStatus,
-          currentPage,
-          20
-        );
-      } else if (selectedPeriodo) {
-        const [mes, ano] = selectedPeriodo.split("/");
-        result = await guiaService.getGuiasByPeriodo(
-          parseInt(mes),
-          parseInt(ano),
-          currentPage,
-          20
-        );
-      } else {
-        result = await guiaService.getAllGuias(currentPage, 20);
-      }
+      const filters = {
+        search: searchTerm,
+        convenioId: selectedConvenio,
+        status: selectedStatus,
+        periodo: selectedPeriodo,
+      };
 
-      setGuias(result);
+      const guiasData = await guiaService.getAllGuias(currentPage, 20);
+      setGuias(guiasData);
     } catch (err) {
       console.error("Erro ao carregar guias:", err);
-      setError("Erro ao carregar guias");
       toastUtil.error("Erro ao carregar guias");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleCreateGuia = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      setSubmitting(true);
-      await guiaService.createGuia(formData);
-      toastUtil.success("Guia criada com sucesso");
-      setShowCreateModal(false);
-      resetForm();
-      loadGuias();
-    } catch (err) {
-      console.error("Erro ao criar guia: ", err);
-      toastUtil.error("Erro ao criar guia");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleEditGuia = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedGuia) return;
-
-    try {
-      setSubmitting(true);
-      const updateData: GuiaUpdateRequest = {
-        especialidades: formData.especialidades,
-        quantidadeAutorizada: formData.quantidadeAutorizada,
-        mes: formData.mes,
-        ano: formData.ano,
-        validade: formData.validade,
-        lote: formData.lote,
-        valorReais: formData.valorReais,
-      };
-
-      await guiaService.updateGuia(selectedGuia.id, updateData);
-      toastUtil.success("Guia atualizada com sucesso");
-      setShowEditModal(false);
-      setSelectedGuia(null);
-      resetForm();
-      loadGuias();
-    } catch (err) {
-      console.error("Erro ao atualizar guia: ", err);
-      toastUtil.error("Erro ao atualizar guia");
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -219,59 +121,6 @@ export default function GuiasPage() {
     }
   };
 
-  const openEditModal = (guia: GuiaSummaryDto) => {
-    setSelectedGuia(guia);
-    setFormData({
-      pacienteId: "", // Não editável
-      especialidades: guia.especialidades,
-      quantidadeAutorizada: guia.quantidadeAutorizada,
-      convenioId: "", // Não editável
-      mes: guia.mes,
-      ano: guia.ano,
-      validade: guia.validade,
-      lote: "",
-      valorReais: 0,
-    });
-    setShowEditModal(true);
-  };
-
-  const resetForm = () => {
-    setFormData({
-      pacienteId: "",
-      especialidades: [],
-      quantidadeAutorizada: 1,
-      convenioId: "",
-      mes: new Date().getMonth() + 1,
-      ano: new Date().getFullYear(),
-      validade: "",
-      lote: "",
-      valorReais: 0,
-    });
-    setEspecialidadeInput("");
-  };
-
-  const addEspecialidade = () => {
-    if (
-      especialidadeInput.trim() &&
-      !formData.especialidades.includes(especialidadeInput.trim())
-    ) {
-      setFormData({
-        ...formData,
-        especialidades: [...formData.especialidades, especialidadeInput.trim()],
-      });
-      setEspecialidadeInput("");
-    }
-  };
-
-  const removeEspecialidade = (especialidade: string) => {
-    setFormData({
-      ...formData,
-      especialidades: formData.especialidades.filter(
-        (e) => e !== especialidade
-      ),
-    });
-  };
-
   const clearFilters = () => {
     setSearchTerm("");
     setSelectedConvenio("");
@@ -284,21 +133,8 @@ export default function GuiasPage() {
     return new Date(dateString).toLocaleDateString("pt-BR");
   };
 
-  const isGuiaVencida = (validade: string) => {
-    return new Date(validade) < new Date();
-  };
-
-  const getStatusIcon = (guia: GuiaSummaryDto) => {
-    if (isGuiaVencida(guia.validade)) {
-      return <AlertTriangle className="h-4 w-4 text-red-500" />;
-    }
-    if (guia.status === "ATIVO") {
-      return <Check className="h-4 w-4 text-green-500" />;
-    }
-    return <Clock className="h-4 w-4 text-yellow-500" />;
-  };
-
-  const tableColumns = [
+  // Configuração das colunas da tabela
+  const columns = [
     {
       header: "Número",
       accessor: "numeroGuia" as keyof GuiaSummaryDto,
@@ -309,22 +145,19 @@ export default function GuiasPage() {
       accessor: "pacienteNome" as keyof GuiaSummaryDto,
     },
     {
+      header: "Convênio",
+      accessor: "convenioNome" as keyof GuiaSummaryDto,
+    },
+    {
       header: "Especialidades",
+      accessor: ((guia: GuiaSummaryDto) =>
+        guia.especialidades.slice(0, 2).join(", ") +
+        (guia.especialidades.length > 2 ? "..." : "")) as any,
+    },
+    {
+      header: "Status",
       accessor: ((guia: GuiaSummaryDto) => (
-        <div className="flex flex-wrap gap-1">
-          {guia.especialidades.slice(0, 2).map((esp, index) => (
-            <span
-              key={index}
-              className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-              {esp}
-            </span>
-          ))}
-          {guia.especialidades.length > 2 && (
-            <span className="text-xs text-gray-500">
-              +{guia.especialidades.length - 2}
-            </span>
-          )}
-        </div>
+        <StatusBadge status={guia.status} />
       )) as any,
     },
     {
@@ -333,29 +166,28 @@ export default function GuiasPage() {
       className: "text-center",
     },
     {
-      header: "Convênio",
-      accessor: "convenioNome" as keyof GuiaSummaryDto,
+      header: "Período",
+      accessor: ((guia: GuiaSummaryDto) =>
+        `${guia.mes.toString().padStart(2, "0")}/${guia.ano}`) as any,
+      className: "text-center",
     },
     {
-      header: "Período",
-      accessor: ((guia: GuiaSummaryDto) => `${guia.mes}/${guia.ano}`) as any,
+      header: "Valor",
+      accessor: ((guia: GuiaSummaryDto) =>
+        `R$ ${guia.valorReais.toFixed(2)}`) as any,
+      className: "text-right",
     },
     {
       header: "Validade",
       accessor: ((guia: GuiaSummaryDto) => (
-        <div className="flex items-center">
-          {getStatusIcon(guia)}
+        <div>
           <span
-            className={`ml-1 ${isGuiaVencida(guia.validade) ? "text-red-600" : ""}`}>
+            className={`${
+              new Date(guia.validade) < new Date() ? "text-red-600" : ""
+            }`}>
             {formatDate(guia.validade)}
           </span>
         </div>
-      )) as any,
-    },
-    {
-      header: "Status",
-      accessor: ((guia: GuiaSummaryDto) => (
-        <StatusBadge status={guia.status} />
       )) as any,
     },
     {
@@ -365,19 +197,22 @@ export default function GuiasPage() {
           <CustomButton
             variant="primary"
             size="small"
-            onClick={() => router.push(`/guias/${guia.id}`)}>
+            onClick={() => router.push(`/guias/${guia.id}`)}
+            title="Visualizar guia">
             <Eye className="h-4 w-4" />
           </CustomButton>
           <CustomButton
             variant="primary"
             size="small"
-            onClick={() => openEditModal(guia)}>
+            onClick={() => router.push(`/guias/${guia.id}/editar`)}
+            title="Editar guia">
             <Edit className="h-4 w-4" />
           </CustomButton>
           <CustomButton
             variant="primary"
             size="small"
-            onClick={() => handleDeleteGuia(guia)}>
+            onClick={() => handleDeleteGuia(guia)}
+            title="Excluir guia">
             <Trash2 className="h-4 w-4" />
           </CustomButton>
         </div>
@@ -385,6 +220,7 @@ export default function GuiasPage() {
     },
   ];
 
+  // Opções para o filtro de período
   const periodoOptions = [
     ...Array.from({ length: 12 }, (_, i) => {
       const mes = i + 1;
@@ -402,6 +238,22 @@ export default function GuiasPage() {
         value: `${mes}/${ano}`,
       };
     }),
+  ];
+
+  // Opções para o filtro de status
+  const statusOptions = [
+    { label: "Emitido", value: "EMITIDO" },
+    { label: "Subiu", value: "SUBIU" },
+    { label: "Em Análise", value: "ANALISE" },
+    { label: "Cancelado", value: "CANCELADO" },
+    { label: "Saiu", value: "SAIU" },
+    { label: "Retornou", value: "RETORNOU" },
+    { label: "Não Usou", value: "NAO USOU" },
+    { label: "Assinado", value: "ASSINADO" },
+    { label: "Faturado", value: "FATURADO" },
+    { label: "Enviado a BM", value: "ENVIADO A BM" },
+    { label: "Devolvido BM", value: "DEVOLVIDO BM" },
+    { label: "Perdida", value: "PERDIDA" },
   ];
 
   if (loading && !guias.content.length) {
@@ -428,480 +280,149 @@ export default function GuiasPage() {
                 <FileText className="mr-2 h-6 w-6" />
                 Guias
               </h1>
-              <p className="text-gray-600 mt-1">
-                Gerencie as guias de autorização
-              </p>
+              <p className="text-gray-600 mt-1">Gerencie as guias do sistema</p>
             </div>
             <CustomButton
               variant="primary"
-              onClick={() => setShowCreateModal(true)}>
-              <Plus className="mr-2 h-4 w-4" />
+              onClick={() => router.push("/guias/novo")}>
+              <Plus className="h-4 w-4 mr-2" />
               Nova Guia
             </CustomButton>
           </div>
 
-          {error && (
-            <div className="bg-red-50 text-red-700 p-4 rounded-md mb-6">
-              {error}
-            </div>
-          )}
-
           {/* Filtros */}
-          <div className="bg-white p-4 rounded-lg shadow mb-6">
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
               <SearchInput
                 value={searchTerm}
                 onChange={setSearchTerm}
-                placeholder="Buscar por número..."
-                onClear={() => setSearchTerm("")}
+                placeholder="Buscar por paciente, número..."
               />
 
               <FilterDropdown
-                options={convenios.map((c) => ({ label: c.name, value: c.id }))}
                 value={selectedConvenio}
                 onChange={setSelectedConvenio}
+                options={convenios.map((c) => ({
+                  label: c.name,
+                  value: c.id,
+                }))}
                 placeholder="Filtrar por convênio"
               />
 
               <FilterDropdown
-                options={[
-                  { label: "ATIVO", value: "ATIVO" },
-                  { label: "INATIVO", value: "INATIVO" },
-                  { label: "PENDENTE", value: "PENDENTE" },
-                  { label: "VENCIDO", value: "VENCIDO" },
-                ]}
                 value={selectedStatus}
                 onChange={setSelectedStatus}
+                options={statusOptions}
                 placeholder="Filtrar por status"
               />
 
               <FilterDropdown
-                options={periodoOptions}
                 value={selectedPeriodo}
                 onChange={setSelectedPeriodo}
+                options={periodoOptions}
                 placeholder="Filtrar por período"
               />
 
-              <CustomButton
-                variant="primary"
-                onClick={clearFilters}
-                className="w-full">
-                Limpar Filtros
-              </CustomButton>
+              <div className="flex space-x-2">
+                <CustomButton
+                  variant="primary"
+                  onClick={clearFilters}
+                  className="flex-1">
+                  Limpar Filtros
+                </CustomButton>
+              </div>
+            </div>
+
+            {/* Resumo dos resultados */}
+            <div className="flex items-center justify-between text-sm text-gray-600">
+              <span>{guias.totalElements} guia(s) encontrada(s)</span>
+              {(searchTerm ||
+                selectedConvenio ||
+                selectedStatus ||
+                selectedPeriodo) && (
+                <span className="flex items-center">
+                  <AlertTriangle className="h-4 w-4 mr-1" />
+                  Filtros aplicados
+                </span>
+              )}
             </div>
           </div>
 
-          {/* Tabela de guias */}
-          <DataTable
-            data={guias}
-            columns={tableColumns}
-            onPageChange={setCurrentPage}
-            loading={loading}
-          />
-
-          {/* Modal de criação */}
-          <FormModal
-            isOpen={showCreateModal}
-            onClose={() => setShowCreateModal(false)}
-            title="Nova Guia"
-            className="sm:max-w-lg">
-            <form onSubmit={handleCreateGuia} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Paciente *
-                </label>
-                <select
-                  required
-                  value={formData.pacienteId}
-                  onChange={(e) =>
-                    setFormData({ ...formData, pacienteId: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
-                  <option value="">Selecione o paciente</option>
-                  {pacientes.map((paciente) => (
-                    <option key={paciente.id} value={paciente.id}>
-                      {paciente.nome} - {paciente.convenioNome}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Especialidades *
-                </label>
-                <div className="flex gap-2 mb-2">
-                  <input
-                    type="text"
-                    value={especialidadeInput}
-                    onChange={(e) => setEspecialidadeInput(e.target.value)}
-                    onKeyPress={(e) =>
-                      e.key === "Enter" &&
-                      (e.preventDefault(), addEspecialidade())
-                    }
-                    placeholder="Digite uma especialidade"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                  <CustomButton
-                    type="button"
-                    variant="primary"
-                    onClick={addEspecialidade}>
-                    <Plus className="h-4 w-4" />
-                  </CustomButton>
-                </div>
-                {formData.especialidades.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {formData.especialidades.map((esp, index) => (
-                      <span
-                        key={index}
-                        className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded">
-                        {esp}
-                        <button
-                          type="button"
-                          onClick={() => removeEspecialidade(esp)}
-                          className="ml-1 text-blue-600 hover:text-blue-800">
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Quantidade *
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    min="1"
-                    value={formData.quantidadeAutorizada}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        quantidadeAutorizada: parseInt(e.target.value),
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Convênio *
-                  </label>
-                  <select
-                    required
-                    value={formData.convenioId}
-                    onChange={(e) =>
-                      setFormData({ ...formData, convenioId: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
-                    <option value="">Selecione</option>
-                    {convenios.map((convenio) => (
-                      <option key={convenio.id} value={convenio.id}>
-                        {convenio.name}
-                      </option>
-                    ))}
-                  </select>
+          {/* Estatísticas rápidas */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+            <div className="bg-white rounded-lg shadow-md p-4">
+              <div className="flex items-center">
+                <FileText className="h-8 w-8 text-blue-500" />
+                <div className="ml-3">
+                  <p className="text-sm font-medium text-gray-600">
+                    Total de Guias
+                  </p>
+                  <p className="text-lg font-semibold text-gray-900">
+                    {guias.totalElements}
+                  </p>
                 </div>
               </div>
+            </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Mês *
-                  </label>
-                  <select
-                    required
-                    value={formData.mes}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        mes: parseInt(e.target.value),
-                      })
+            <div className="bg-white rounded-lg shadow-md p-4">
+              <div className="flex items-center">
+                <Calendar className="h-8 w-8 text-green-500" />
+                <div className="ml-3">
+                  <p className="text-sm font-medium text-gray-600">Válidas</p>
+                  <p className="text-lg font-semibold text-gray-900">
+                    {
+                      guias.content.filter(
+                        (g) => new Date(g.validade) >= new Date()
+                      ).length
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
-                    {Array.from({ length: 12 }, (_, i) => i + 1).map((mes) => (
-                      <option key={mes} value={mes}>
-                        {mes.toString().padStart(2, "0")}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Ano *
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    min="2020"
-                    max="2030"
-                    value={formData.ano}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        ano: parseInt(e.target.value),
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
+                  </p>
                 </div>
               </div>
+            </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Validade *
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={formData.validade}
-                    onChange={(e) =>
-                      setFormData({ ...formData, validade: e.target.value })
+            <div className="bg-white rounded-lg shadow-md p-4">
+              <div className="flex items-center">
+                <AlertTriangle className="h-8 w-8 text-red-500" />
+                <div className="ml-3">
+                  <p className="text-sm font-medium text-gray-600">Vencidas</p>
+                  <p className="text-lg font-semibold text-gray-900">
+                    {
+                      guias.content.filter(
+                        (g) => new Date(g.validade) < new Date()
+                      ).length
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Valor (R$)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.valorReais}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        valorReais: parseFloat(e.target.value) || 0,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
+                  </p>
                 </div>
               </div>
+            </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Lote
-                </label>
-                <input
-                  type="text"
-                  value={formData.lote}
-                  onChange={(e) =>
-                    setFormData({ ...formData, lote: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-
-              <div className="flex justify-end space-x-3 pt-4">
-                <CustomButton
-                  type="button"
-                  variant="primary"
-                  onClick={() => setShowCreateModal(false)}
-                  disabled={submitting}>
-                  Cancelar
-                </CustomButton>
-                <CustomButton
-                  type="submit"
-                  variant="primary"
-                  disabled={submitting || formData.especialidades.length === 0}>
-                  {submitting ? "Criando..." : "Criar Guia"}
-                </CustomButton>
-              </div>
-            </form>
-          </FormModal>
-
-          {/* Modal de edição */}
-          <FormModal
-            isOpen={showEditModal}
-            onClose={() => setShowEditModal(false)}
-            title="Editar Guia"
-            className="sm:max-w-lg">
-            <form onSubmit={handleEditGuia} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Especialidades *
-                </label>
-                <div className="flex gap-2 mb-2">
-                  <input
-                    type="text"
-                    value={especialidadeInput}
-                    onChange={(e) => setEspecialidadeInput(e.target.value)}
-                    onKeyPress={(e) =>
-                      e.key === "Enter" &&
-                      (e.preventDefault(), addEspecialidade())
-                    }
-                    placeholder="Digite uma especialidade"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                  <CustomButton
-                    type="button"
-                    variant="primary"
-                    onClick={addEspecialidade}>
-                    <Plus className="h-4 w-4" />
-                  </CustomButton>
-                </div>
-                {formData.especialidades.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {formData.especialidades.map((esp, index) => (
-                      <span
-                        key={index}
-                        className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded">
-                        {esp}
-                        <button
-                          type="button"
-                          onClick={() => removeEspecialidade(esp)}
-                          className="ml-1 text-blue-600 hover:text-blue-800">
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Quantidade *
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    min="1"
-                    value={formData.quantidadeAutorizada}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        quantidadeAutorizada: parseInt(e.target.value),
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Valor (R$)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.valorReais}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        valorReais: parseFloat(e.target.value) || 0,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
+            <div className="bg-white rounded-lg shadow-md p-4">
+              <div className="flex items-center">
+                <DollarSign className="h-8 w-8 text-yellow-500" />
+                <div className="ml-3">
+                  <p className="text-sm font-medium text-gray-600">
+                    Valor Total
+                  </p>
+                  <p className="text-lg font-semibold text-gray-900">
+                    R${" "}
+                    {guias.content
+                      .reduce((sum, g) => sum + g.valorReais, 0)
+                      .toFixed(2)}
+                  </p>
                 </div>
               </div>
+            </div>
+          </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Mês *
-                  </label>
-                  <select
-                    required
-                    value={formData.mes}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        mes: parseInt(e.target.value),
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
-                    {Array.from({ length: 12 }, (_, i) => i + 1).map((mes) => (
-                      <option key={mes} value={mes}>
-                        {mes.toString().padStart(2, "0")}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Ano *
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    min="2020"
-                    max="2030"
-                    value={formData.ano}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        ano: parseInt(e.target.value),
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Validade *
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={formData.validade}
-                    onChange={(e) =>
-                      setFormData({ ...formData, validade: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Lote
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.lote}
-                    onChange={(e) =>
-                      setFormData({ ...formData, lote: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end space-x-3 pt-4">
-                <CustomButton
-                  type="button"
-                  variant="primary"
-                  onClick={() => setShowEditModal(false)}
-                  disabled={submitting}>
-                  Cancelar
-                </CustomButton>
-                <CustomButton
-                  type="submit"
-                  variant="primary"
-                  disabled={submitting || formData.especialidades.length === 0}>
-                  {submitting ? "Salvando..." : "Salvar Alterações"}
-                </CustomButton>
-              </div>
-            </form>
-          </FormModal>
+          {/* Tabela */}
+          <div className="bg-white rounded-lg shadow-md">
+            <DataTable
+              data={guias}
+              columns={columns}
+              onPageChange={setCurrentPage}
+              loading={loading}
+            />
+          </div>
         </main>
       </div>
     </ProtectedRoute>

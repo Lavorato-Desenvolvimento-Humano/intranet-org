@@ -147,9 +147,6 @@ export default function PacienteDetailsPage() {
     setFichasPage(page);
   };
 
-  // Removidas as funções formatDate, formatDateTime e calculateAge
-  // pois agora estão importadas do utilitário dateUtils
-
   // Colunas para tabela de guias
   const guiasColumns = [
     {
@@ -163,6 +160,12 @@ export default function PacienteDetailsPage() {
         guia.especialidades.join(", ")) as any,
     },
     {
+      header: "Status",
+      accessor: ((guia: GuiaSummaryDto) => (
+        <StatusBadge status={guia.status} />
+      )) as any,
+    },
+    {
       header: "Quantidade",
       accessor: "quantidadeAutorizada" as keyof GuiaSummaryDto,
       className: "text-center",
@@ -174,12 +177,6 @@ export default function PacienteDetailsPage() {
     {
       header: "Validade",
       accessor: ((guia: GuiaSummaryDto) => formatDate(guia.validade)) as any,
-    },
-    {
-      header: "Status",
-      accessor: ((guia: GuiaSummaryDto) => (
-        <StatusBadge status={guia.status} />
-      )) as any,
     },
     {
       header: "Ações",
@@ -208,6 +205,12 @@ export default function PacienteDetailsPage() {
       accessor: "especialidade" as keyof FichaSummaryDto,
     },
     {
+      header: "Status",
+      accessor: ((ficha: FichaSummaryDto) => (
+        <StatusBadge status={ficha.status} />
+      )) as any,
+    },
+    {
       header: "Quantidade",
       accessor: "quantidadeAutorizada" as keyof FichaSummaryDto,
       className: "text-center",
@@ -216,12 +219,6 @@ export default function PacienteDetailsPage() {
       header: "Período",
       accessor: ((ficha: FichaSummaryDto) =>
         `${ficha.mes}/${ficha.ano}`) as any,
-    },
-    {
-      header: "Status",
-      accessor: ((ficha: FichaSummaryDto) => (
-        <StatusBadge status={ficha.status} />
-      )) as any,
     },
     {
       header: "Ações",

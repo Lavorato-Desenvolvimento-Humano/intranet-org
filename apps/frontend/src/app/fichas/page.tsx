@@ -338,6 +338,12 @@ export default function FichasPage() {
       )) as any,
     },
     {
+      header: "Status",
+      accessor: ((ficha: FichaSummaryDto) => (
+        <StatusBadge status={ficha.status} />
+      )) as any,
+    },
+    {
       header: "Quantidade",
       accessor: "quantidadeAutorizada" as keyof FichaSummaryDto,
       className: "text-center",
@@ -350,12 +356,6 @@ export default function FichasPage() {
       header: "Período",
       accessor: ((ficha: FichaSummaryDto) =>
         `${ficha.mes}/${ficha.ano}`) as any,
-    },
-    {
-      header: "Status",
-      accessor: ((ficha: FichaSummaryDto) => (
-        <StatusBadge status={ficha.status} />
-      )) as any,
     },
     {
       header: "Responsável",
