@@ -155,6 +155,12 @@ export default function GuiasPage() {
         (guia.especialidades.length > 2 ? "..." : "")) as any,
     },
     {
+      header: "Status",
+      accessor: ((guia: GuiaSummaryDto) => (
+        <StatusBadge status={guia.status} />
+      )) as any,
+    },
+    {
       header: "Quantidade",
       accessor: "quantidadeAutorizada" as keyof GuiaSummaryDto,
       className: "text-center",
@@ -182,12 +188,6 @@ export default function GuiasPage() {
             {formatDate(guia.validade)}
           </span>
         </div>
-      )) as any,
-    },
-    {
-      header: "Status",
-      accessor: ((guia: GuiaSummaryDto) => (
-        <StatusBadge status={guia.status} />
       )) as any,
     },
     {
