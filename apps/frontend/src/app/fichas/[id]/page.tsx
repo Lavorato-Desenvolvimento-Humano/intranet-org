@@ -56,9 +56,9 @@ export default function FichaDetalhePage() {
       const fichaData = await fichaService.getFichaById(fichaId);
       setFicha(fichaData);
 
-      // Carregar histórico de status
-      //   const historico = await fichaService.getHistoricoStatusFicha(fichaId);
-      //   setHistoricoStatus(historico);
+      Carregar histórico de status
+        const historico = await fichaService.getHistoricoStatusFicha(fichaId);
+        setHistoricoStatus(historico);
     } catch (err) {
       console.error("Erro ao carregar dados da ficha:", err);
       setError("Erro ao carregar informações da ficha");
