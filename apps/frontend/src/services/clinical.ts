@@ -137,13 +137,24 @@ export const guiaService = {
     await api.delete(`/api/guias/${id}`);
   },
 
+  async getFichasByGuiaId(
+    guiaId: string,
+    page: number = 0,
+    size: number = 20
+  ): Promise<PageResponse<FichaSummaryDto>> {
+    const response = await api.get(
+      `/api/guias/${guiaId}/fichas?page=${page}&size=${size}`
+    );
+    return response.data;
+  },
+
   async getGuiasByPaciente(
     pacienteId: string,
     page: number = 0,
     size: number = 20
   ): Promise<PageResponse<GuiaSummaryDto>> {
     const response = await api.get(
-      `/api/guias/pacientes/${pacienteId}?page=${page}&size=${size}`
+      `/api/guias/paciente/${pacienteId}?page=${page}&size=${size}`
     );
     return response.data;
   },
@@ -255,8 +266,14 @@ export const fichaService = {
     await api.delete(`/api/fichas/${id}`);
   },
 
-  async getFichasByGuia(guiaId: string): Promise<FichaDto[]> {
-    const response = await api.get(`/api/fichas/guia/${guiaId}`);
+  async getFichasByGuia(
+    guiaId: string,
+    page: number = 0,
+    size: number = 20
+  ): Promise<PageResponse<FichaSummaryDto>> {
+    const response = await api.get(
+      `/api/fichas/guia/${guiaId}?page=${page}&size=${size}`
+    );
     return response.data;
   },
 

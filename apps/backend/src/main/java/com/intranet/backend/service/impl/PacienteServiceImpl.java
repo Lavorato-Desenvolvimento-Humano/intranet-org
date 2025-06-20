@@ -225,6 +225,7 @@ public class PacienteServiceImpl implements PacienteService {
                 paciente.getResponsavel(),
                 paciente.getDataNascimento(),
                 paciente.getConvenio().getName(),
+                paciente.getConvenio().getId(),
                 paciente.getUnidade(),
                 totalGuias,
                 hasGuiasVencidas,

@@ -34,6 +34,7 @@ export interface PacienteSummaryDto {
   nome: string;
   responsavel?: string;
   dataNascimento: string;
+  convenioId: string;
   convenioNome: string;
   unidade: UnidadeEnum;
   createdAt: string;
@@ -84,6 +85,7 @@ export interface GuiaSummaryDto {
   especialidades: string[];
   quantidadeAutorizada: number;
   convenioNome: string;
+  valorReais: number;
   mes: number;
   ano: number;
   validade: string;
@@ -112,6 +114,8 @@ export interface GuiaUpdateRequest {
   validade?: string;
   lote?: string;
   valorReais?: number;
+  quantidadeFaturada?: number;
+  status?: string;
 }
 
 export interface FichaDto {
