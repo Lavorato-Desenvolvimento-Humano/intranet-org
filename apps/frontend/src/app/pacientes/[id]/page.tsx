@@ -147,9 +147,6 @@ export default function PacienteDetailsPage() {
     setFichasPage(page);
   };
 
-  // Removidas as funções formatDate, formatDateTime e calculateAge
-  // pois agora estão importadas do utilitário dateUtils
-
   // Colunas para tabela de guias
   const guiasColumns = [
     {
