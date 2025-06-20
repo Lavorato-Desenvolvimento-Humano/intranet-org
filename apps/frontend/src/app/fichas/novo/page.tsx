@@ -38,7 +38,6 @@ interface FormErrors {
   [key: string]: string;
 }
 
-// Componente separado para lidar com useSearchParams
 function NovaFichaContent() {
   const router = useRouter();
 
