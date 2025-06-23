@@ -436,9 +436,13 @@ public class FichaServiceImpl implements FichaService {
     private FichaDto mapToFichaDto(Ficha ficha) {
         UUID guiaId = ficha.getGuia() != null ? ficha.getGuia().getId() : null;
 
+        UUID pacienteId = ficha.getPaciente() != null ? ficha.getPaciente().getId() :
+                (ficha.getGuia() != null ? ficha.getGuia().getPaciente().getId() : null);
+
         return new FichaDto(
                 ficha.getId(),
                 guiaId,
+                pacienteId,
                 ficha.getCodigoFicha(),
                 ficha.getStatus(),
                 ficha.getPacienteNome(),
@@ -451,11 +455,13 @@ public class FichaServiceImpl implements FichaService {
                 ficha.getUsuarioResponsavel().getId(),
                 ficha.getUsuarioResponsavel().getFullName(),
                 ficha.getCreatedAt(),
-                ficha.getUpdatedAt()
+                ficha.getUpdatedAt(),
+                ficha.getTipoFicha()
         );
     }
 
     private FichaSummaryDto mapToFichaSummaryDto(Ficha ficha) {
+        UUID guiaId = ficha.getGuia() != null ? ficha.getGuia().getId() : null;
         return new FichaSummaryDto(
                 ficha.getId(),
                 ficha.getCodigoFicha(),
@@ -467,7 +473,9 @@ public class FichaServiceImpl implements FichaService {
                 ficha.getMes(),
                 ficha.getAno(),
                 ficha.getUsuarioResponsavel().getFullName(),
-                ficha.getCreatedAt()
+                ficha.getCreatedAt(),
+                ficha.getTipoFicha(),
+                guiaId
         );
     }
 }
