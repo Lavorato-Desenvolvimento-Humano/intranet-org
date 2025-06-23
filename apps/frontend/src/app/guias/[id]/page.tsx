@@ -246,10 +246,7 @@ export default function GuiaDetalhePage() {
               </div>
 
               <div className="flex items-center space-x-3">
-                <CustomButton
-                  variant="primary"
-                  onClick={handleDuplicateGuia}
-                  className="bg-yellow-50 border-yellow-200 text-yellow-800 hover:bg-yellow-100">
+                <CustomButton variant="primary" onClick={handleDuplicateGuia}>
                   <Copy className="h-4 w-4 mr-2" />
                   Duplicar
                 </CustomButton>
@@ -261,10 +258,7 @@ export default function GuiaDetalhePage() {
                   Editar
                 </CustomButton>
 
-                <CustomButton
-                  variant="primary"
-                  onClick={handleDeleteGuia}
-                  className="bg-red-50 border-red-200 text-red-800 hover:bg-red-100">
+                <CustomButton variant="primary" onClick={handleDeleteGuia}>
                   <Trash2 className="h-4 w-4 mr-2" />
                   Excluir
                 </CustomButton>
