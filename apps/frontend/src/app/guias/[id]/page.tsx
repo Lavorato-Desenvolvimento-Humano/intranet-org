@@ -15,6 +15,7 @@ import {
   Hash,
   Eye,
   Trash2,
+  History,
 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
@@ -22,8 +23,13 @@ import { Loading } from "@/components/ui/loading";
 import { CustomButton } from "@/components/ui/custom-button";
 import { DataTable } from "@/components/clinical/ui/DataTable";
 import { StatusBadge } from "@/components/clinical/ui/StatusBadge";
-import { guiaService, fichaService } from "@/services/clinical";
-import { GuiaDto, FichaSummaryDto, PageResponse } from "@/types/clinical";
+import { guiaService } from "@/services/clinical";
+import {
+  GuiaDto,
+  FichaSummaryDto,
+  StatusHistoryDto,
+  PageResponse,
+} from "@/types/clinical";
 import { formatDate, formatDateTime, calculateAge } from "@/utils/dateUtils";
 import toastUtil from "@/utils/toast";
 
@@ -44,9 +50,16 @@ export default function GuiaDetalhePage() {
     last: true,
     numberOfElements: 0,
   });
+
+  const [historicoStatus, setHistoricoStatus] = useState<StatusHistoryDto[]>(
+    []
+  );
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"info" | "fichas">("info");
+  const [activeTab, setActiveTab] = useState<"info" | "fichas" | "historico">(
+    "info"
+  );
   const [fichasPage, setFichasPage] = useState(0);
 
   // Carregar dados da guia
@@ -70,6 +83,9 @@ export default function GuiaDetalhePage() {
 
       const guiaData = await guiaService.getGuiaById(guiaId);
       setGuia(guiaData);
+
+      const historico = await guiaService.getHistoricoStatusGuia(guiaId);
+      setHistoricoStatus(historico);
 
       loadFichas(); // Carregar fichas após carregar a guia
     } catch (err) {
@@ -99,6 +115,30 @@ export default function GuiaDetalhePage() {
     setFichasPage(page);
   };
 
+  const handleDuplicateGuia = () => {
+    if (guia) {
+      router.push(`/guias/novo?duplicate=${guiaId}`);
+    }
+  };
+
+  const handleDeleteGuia = async () => {
+    if (!guia) return;
+
+    const confirmacao = window.confirm(
+      `Tem certeza que deseja excluir a guia ${guia.numeroGuia}?`
+    );
+
+    if (confirmacao) {
+      try {
+        await guiaService.deleteGuia(guiaId);
+        toastUtil.success("Guia excluída com sucesso!");
+        router.push("/guias");
+      } catch (err: any) {
+        toastUtil.error(err.response?.data?.message || "Erro ao excluir guia");
+      }
+    }
+  };
+
   // Colunas para tabela de fichas
   const fichasColumns = [
     {
@@ -122,16 +162,8 @@ export default function GuiaDetalhePage() {
       className: "text-center",
     },
     {
-      header: "Período",
-      accessor: ((ficha: FichaSummaryDto) =>
-        `${ficha.mes.toString().padStart(2, "0")}/${ficha.ano}`) as any,
-      className: "text-center",
-    },
-    {
-      header: "Criado em",
-      accessor: ((ficha: FichaSummaryDto) =>
-        formatDate(ficha.createdAt)) as any,
-      className: "text-sm text-gray-600",
+      header: "Responsável",
+      accessor: "usuarioResponsavelNome" as keyof FichaSummaryDto,
     },
     {
       header: "Ações",
@@ -140,15 +172,13 @@ export default function GuiaDetalhePage() {
           <CustomButton
             variant="primary"
             size="small"
-            onClick={() => router.push(`/fichas/${ficha.id}`)}
-            title="Visualizar ficha">
+            onClick={() => router.push(`/fichas/${ficha.id}`)}>
             <Eye className="h-4 w-4" />
           </CustomButton>
           <CustomButton
             variant="primary"
             size="small"
-            onClick={() => router.push(`/fichas/${ficha.id}/editar`)}
-            title="Editar ficha">
+            onClick={() => router.push(`/fichas/${ficha.id}/editar`)}>
             <Edit className="h-4 w-4" />
           </CustomButton>
         </div>
@@ -158,67 +188,94 @@ export default function GuiaDetalhePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-        <Navbar />
-        <main className="flex-grow container mx-auto p-6">
-          <Loading message="Carregando guia..." />
-        </main>
-      </div>
+      <ProtectedRoute>
+        <div className="min-h-screen bg-gray-50">
+          <Navbar />
+          <Loading message="Carregando dados da guia..." />
+        </div>
+      </ProtectedRoute>
     );
   }
 
   if (error || !guia) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-        <Navbar />
-        <main className="flex-grow container mx-auto p-6">
-          <div className="bg-red-50 text-red-700 p-4 rounded-md">
-            {error || "Guia não encontrada"}
+      <ProtectedRoute>
+        <div className="min-h-screen bg-gray-50">
+          <Navbar />
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                {error || "Guia não encontrada"}
+              </h2>
+              <CustomButton onClick={() => router.push("/guias")}>
+                Voltar para Guias
+              </CustomButton>
+            </div>
           </div>
-        </main>
-      </div>
+        </div>
+      </ProtectedRoute>
     );
   }
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-gray-50 flex flex-col">
+      <div className="min-h-screen bg-gray-50">
         <Navbar />
 
-        <main className="flex-grow container mx-auto p-6">
-          {/* Header com navegação */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center">
-              <CustomButton
-                variant="primary"
-                onClick={() => router.back()}
-                className="mr-4">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Voltar
-              </CustomButton>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-800 flex items-center">
-                  <FileText className="mr-2 h-6 w-6" />
-                  Guia #{guia.numeroGuia}
-                </h1>
-                <p className="text-gray-600 mt-1">Detalhes da guia</p>
-              </div>
-            </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Header */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <CustomButton
+                  variant="primary"
+                  onClick={() => router.push("/guias")}>
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Voltar
+                </CustomButton>
 
-            <div className="flex space-x-3">
-              <CustomButton
-                variant="primary"
-                onClick={() => router.push(`/guias/${guiaId}/editar`)}>
-                <Edit className="h-4 w-4 mr-2" />
-                Editar
-              </CustomButton>
+                <div>
+                  <h1 className="text-3xl font-bold text-gray-900 flex items-center">
+                    <FileText className="h-8 w-8 mr-3 text-blue-600" />
+                    Guia #{guia.numeroGuia}
+                  </h1>
+                  <p className="text-gray-600 mt-1">
+                    {guia.pacienteNome} - {guia.convenioNome}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <CustomButton
+                  variant="primary"
+                  onClick={handleDuplicateGuia}
+                  className="bg-yellow-50 border-yellow-200 text-yellow-800 hover:bg-yellow-100">
+                  <Copy className="h-4 w-4 mr-2" />
+                  Duplicar
+                </CustomButton>
+
+                <CustomButton
+                  variant="primary"
+                  onClick={() => router.push(`/guias/${guiaId}/editar`)}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Editar
+                </CustomButton>
+
+                <CustomButton
+                  variant="primary"
+                  onClick={handleDeleteGuia}
+                  className="bg-red-50 border-red-200 text-red-800 hover:bg-red-100">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Excluir
+                </CustomButton>
+              </div>
             </div>
           </div>
 
-          {/* Navegação por tabs */}
+          {/* Tabs */}
           <div className="bg-white rounded-lg shadow-md mb-6">
             <div className="border-b border-gray-200">
-              <nav className="flex">
+              <nav className="flex space-x-8">
                 <button
                   onClick={() => setActiveTab("info")}
                   className={`px-6 py-3 text-sm font-medium border-b-2 ${
@@ -236,6 +293,17 @@ export default function GuiaDetalhePage() {
                       : "border-transparent text-gray-500 hover:text-gray-700"
                   }`}>
                   Fichas ({fichas?.totalElements || 0})
+                </button>
+                {/* ✅ Nova aba de Histórico */}
+                <button
+                  onClick={() => setActiveTab("historico")}
+                  className={`px-6 py-3 text-sm font-medium border-b-2 ${
+                    activeTab === "historico"
+                      ? "border-blue-500 text-blue-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}>
+                  <History className="h-4 w-4 mr-2 inline" />
+                  Histórico ({historicoStatus.length})
                 </button>
               </nav>
             </div>
@@ -267,37 +335,54 @@ export default function GuiaDetalhePage() {
                               className={`font-medium ${
                                 new Date(guia.validade) < new Date()
                                   ? "text-red-600"
-                                  : ""
+                                  : "text-green-600"
                               }`}>
                               {formatDate(guia.validade)}
                             </p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600">Período</p>
+                            <p className="font-medium">
+                              {String(guia.mes).padStart(2, "0")}/{guia.ano}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600">Lote</p>
+                            <p className="font-medium">{guia.lote || "N/A"}</p>
                           </div>
                         </div>
                       </div>
                     </div>
 
-                    <div className="bg-blue-50 rounded-lg p-4">
-                      <h3 className="text-lg font-semibold text-gray-800 mb-3">
-                        Resumo
-                      </h3>
-                      <div className="space-y-2">
-                        <div className="flex items-center">
-                          <Hash className="h-4 w-4 text-gray-500 mr-2" />
-                          <span className="text-sm">
-                            {guia.especialidades.length} especialidade(s)
-                          </span>
-                        </div>
-                        <div className="flex items-center">
-                          <DollarSign className="h-4 w-4 text-gray-500 mr-2" />
-                          <span className="text-sm">
-                            R$ {guia.valorReais.toFixed(2)}
-                          </span>
-                        </div>
-                        <div className="flex items-center">
-                          <Calendar className="h-4 w-4 text-gray-500 mr-2" />
-                          <span className="text-sm">
-                            {guia.mes.toString().padStart(2, "0")}/{guia.ano}
-                          </span>
+                    <div>
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                          <DollarSign className="mr-2 h-5 w-5" />
+                          Valores
+                        </h3>
+                        <div className="space-y-3">
+                          <div>
+                            <p className="text-sm text-gray-600">Valor</p>
+                            <p className="font-medium text-xl text-green-600">
+                              R$ {guia.valorReais.toFixed(2)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600">
+                              Quantidade Autorizada
+                            </p>
+                            <p className="font-medium">
+                              {guia.quantidadeAutorizada}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600">
+                              Quantidade Faturada
+                            </p>
+                            <p className="font-medium">
+                              {guia.quantidadeFaturada}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -309,107 +394,50 @@ export default function GuiaDetalhePage() {
                       <User className="mr-2 h-5 w-5" />
                       Informações do Paciente
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
                         <p className="text-sm text-gray-600">Nome</p>
                         <p className="font-medium">{guia.pacienteNome}</p>
                       </div>
-                      {/* <div>
-                        <p className="text-sm text-gray-600">
-                          Data de Nascimento
-                        </p>
-                        <p className="font-medium">
-                          {formatDate(guia.pacienteDataNascimento)}
-                        </p>
-                      </div> */}
-                      {/* <div>
-                        <p className="text-sm text-gray-600">Idade</p>
-                        <p className="font-medium">
-                          {calculateAge(guia.pacienteDataNascimento)} anos
-                        </p>
-                      </div> */}
-                      {/* <div>
-                        <p className="text-sm text-gray-600">Unidade</p>
-                        <p className="font-medium">{guia.pacienteUnidade}</p>
-                      </div> */}
-                      {guia.usuarioResponsavelId && (
-                        <div>
-                          <p className="text-sm text-gray-600">
-                            Usuário responsável
-                          </p>
-                          <p className="font-medium">
-                            {guia.usuarioResponsavelNome}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Informações do Convênio */}
-                  <div className="bg-gray-50 rounded-lg p-6">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                      <Building className="mr-2 h-5 w-5" />
-                      Informações do Convênio
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <p className="text-sm text-gray-600">Nome</p>
+                        <p className="text-sm text-gray-600">Convênio</p>
                         <p className="font-medium">{guia.convenioNome}</p>
                       </div>
                       <div>
-                        <p className="text-sm text-gray-600">Código</p>
+                        <p className="text-sm text-gray-600">
+                          Responsável pela Guia
+                        </p>
                         <p className="font-medium">
-                          {guia.convenioId || "Não informado"}
+                          {guia.usuarioResponsavelNome}
                         </p>
                       </div>
                     </div>
                   </div>
 
-                  {/* Detalhes da Guia */}
+                  {/* Especialidades */}
                   <div className="bg-gray-50 rounded-lg p-6">
                     <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                      <FileText className="mr-2 h-5 w-5" />
-                      Detalhes da Guia
+                      <Building className="mr-2 h-5 w-5" />
+                      Especialidades
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      <div>
-                        <p className="text-sm text-gray-600">Especialidades</p>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {guia.especialidades.map((esp, index) => (
-                            <span
-                              key={index}
-                              className="inline-block px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
-                              {esp}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">
-                          Quantidade Autorizada
-                        </p>
-                        <p className="font-medium">
-                          {guia.quantidadeAutorizada}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Valor</p>
-                        <p className="font-medium">
-                          R$ {guia.valorReais.toFixed(2)}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">
-                          Quantidade Faturada
-                        </p>
-                        <p className="font-medium">{guia.quantidadeFaturada}</p>
-                      </div>
-                      {guia.lote && (
-                        <div>
-                          <p className="text-sm text-gray-600">Lote</p>
-                          <p className="font-medium">{guia.lote}</p>
-                        </div>
-                      )}
+                    <div className="flex flex-wrap gap-2">
+                      {guia.especialidades.map((especialidade, index) => (
+                        <span
+                          key={index}
+                          className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                          {especialidade}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Datas */}
+                  <div className="bg-gray-50 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                      <Calendar className="mr-2 h-5 w-5" />
+                      Informações de Data
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <p className="text-sm text-gray-600">Criado em</p>
                         <p className="font-medium">
@@ -431,14 +459,15 @@ export default function GuiaDetalhePage() {
 
               {activeTab === "fichas" && (
                 <div>
-                  <div className="flex justify-between items-center mb-4">
+                  <div className="flex justify-between items-center mb-6">
                     <h3 className="text-lg font-semibold text-gray-800">
-                      Fichas Associadas
+                      Fichas da Guia
                     </h3>
                     <CustomButton
-                      variant="primary"
-                      onClick={() => router.push("/fichas/novo")}>
-                      <Copy className="h-4 w-4 mr-2" />
+                      onClick={() =>
+                        router.push(`/fichas/novo?guiaId=${guiaId}`)
+                      }>
+                      <FileText className="h-4 w-4 mr-2" />
                       Nova Ficha
                     </CustomButton>
                   </div>
@@ -451,9 +480,86 @@ export default function GuiaDetalhePage() {
                   />
                 </div>
               )}
+
+              {/* ✅ Nova aba de Histórico */}
+              {activeTab === "historico" && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-6 flex items-center">
+                    <History className="mr-2 h-5 w-5" />
+                    Histórico de Status
+                  </h3>
+
+                  {historicoStatus.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500">
+                        Nenhum histórico de status encontrado
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {historicoStatus.map((item, index) => (
+                        <div
+                          key={item.id}
+                          className="bg-gray-50 rounded-lg p-4 border-l-4 border-blue-500">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center space-x-3">
+                              {item.statusAnterior && (
+                                <>
+                                  <StatusBadge
+                                    status={item.statusAnterior}
+                                    size="xs"
+                                  />
+                                  <span className="text-gray-400">→</span>
+                                </>
+                              )}
+                              <StatusBadge status={item.statusNovo} size="xs" />
+                            </div>
+                            <span className="text-sm text-gray-500">
+                              {formatDateTime(item.dataAlteracao)}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <p className="text-gray-600">Alterado por:</p>
+                              <p className="font-medium">
+                                {item.alteradoPorNome}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-gray-600">Email:</p>
+                              <p className="font-medium">
+                                {item.alteradoPorEmail}
+                              </p>
+                            </div>
+                          </div>
+
+                          {item.motivo && (
+                            <div className="mt-3">
+                              <p className="text-gray-600 text-sm">Motivo:</p>
+                              <p className="font-medium">{item.motivo}</p>
+                            </div>
+                          )}
+
+                          {item.observacoes && (
+                            <div className="mt-2">
+                              <p className="text-gray-600 text-sm">
+                                Observações:
+                              </p>
+                              <p className="text-gray-800">
+                                {item.observacoes}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
-        </main>
+        </div>
       </div>
     </ProtectedRoute>
   );
