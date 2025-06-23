@@ -150,6 +150,8 @@ export interface FichaSummaryDto {
   ano: number;
   usuarioResponsavelNome: string;
   createdAt: string;
+  tipoFicha?: TipoFichaEnum;
+  guiaId?: string;
 }
 
 export interface FichaCreateRequest {
