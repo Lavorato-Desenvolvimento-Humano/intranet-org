@@ -170,19 +170,13 @@ export default function FichaDetalhePage() {
 
               <div className="flex items-center space-x-3">
                 {canVincularGuia() && (
-                  <CustomButton
-                    variant="primary"
-                    onClick={handleVincularGuia}
-                    className="bg-green-50 border-green-200 text-green-800 hover:bg-green-100">
+                  <CustomButton variant="primary" onClick={handleVincularGuia}>
                     <Link className="h-4 w-4 mr-2" />
                     Vincular à Guia
                   </CustomButton>
                 )}
 
-                <CustomButton
-                  variant="primary"
-                  onClick={handleDuplicateFicha}
-                  className="bg-yellow-50 border-yellow-200 text-yellow-800 hover:bg-yellow-100">
+                <CustomButton variant="primary" onClick={handleDuplicateFicha}>
                   <Copy className="h-4 w-4 mr-2" />
                   Duplicar
                 </CustomButton>
@@ -194,10 +188,7 @@ export default function FichaDetalhePage() {
                   Editar
                 </CustomButton>
 
-                <CustomButton
-                  variant="primary"
-                  onClick={handleDeleteFicha}
-                  className="bg-red-50 border-red-200 text-red-800 hover:bg-red-100">
+                <CustomButton variant="primary" onClick={handleDeleteFicha}>
                   <Trash2 className="h-4 w-4 mr-2" />
                   Excluir
                 </CustomButton>
@@ -322,8 +313,7 @@ export default function FichaDetalhePage() {
                           </div>
                           <CustomButton
                             variant="primary"
-                            onClick={handleVincularGuia}
-                            className="border-yellow-300 text-yellow-700 hover:bg-yellow-100">
+                            onClick={handleVincularGuia}>
                             <Link className="h-4 w-4 mr-2" />
                             Vincular à Guia
                           </CustomButton>
