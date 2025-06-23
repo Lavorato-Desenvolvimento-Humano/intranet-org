@@ -159,6 +159,7 @@ export interface FichaCreateRequest {
   convenioId: string;
   mes: number;
   ano: number;
+  status: string;
 }
 
 export interface FichaAssinaturaCreateRequest {
@@ -168,6 +169,7 @@ export interface FichaAssinaturaCreateRequest {
   convenioId: string;
   mes: number;
   ano: number;
+  status: string;
 }
 
 export interface FichaUpdateRequest {
