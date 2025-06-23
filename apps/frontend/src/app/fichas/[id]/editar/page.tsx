@@ -2,14 +2,20 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, FileSignature, Save, X } from "lucide-react";
+import { ArrowLeft, FileSignature, Save, X, AlertCircle } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
 import { Loading } from "@/components/ui/loading";
 import { CustomButton } from "@/components/ui/custom-button";
+import { StatusSelect } from "@/components/clinical/ui/StatusSelect";
+import { StatusBadge } from "@/components/clinical/ui/StatusBadge";
 import { fichaService } from "@/services/clinical";
 import convenioService, { ConvenioDto } from "@/services/convenio";
-import { FichaDto, FichaUpdateRequest } from "@/types/clinical";
+import {
+  FichaDto,
+  FichaUpdateRequest,
+  StatusChangeRequest,
+} from "@/types/clinical";
 import toastUtil from "@/utils/toast";
 
 interface FormData {
@@ -17,6 +23,7 @@ interface FormData {
   quantidadeAutorizada: number;
   mes: number;
   ano: number;
+  status: string;
 }
 
 interface FormErrors {
@@ -35,6 +42,7 @@ export default function EditarFichaPage() {
     quantidadeAutorizada: 1,
     mes: new Date().getMonth() + 1,
     ano: new Date().getFullYear(),
+    status: "",
   });
 
   const [formErrors, setFormErrors] = useState<FormErrors>({});
@@ -78,6 +86,7 @@ export default function EditarFichaPage() {
         quantidadeAutorizada: fichaData.quantidadeAutorizada,
         mes: fichaData.mes,
         ano: fichaData.ano,
+        status: fichaData.status,
       });
     } catch (err) {
       console.error("Erro ao carregar ficha:", err);
@@ -107,6 +116,15 @@ export default function EditarFichaPage() {
     }
   };
 
+  const handleStatusChange = (newStatus: string) => {
+    setFormData((prev) => ({ ...prev, status: newStatus }));
+
+    // Limpar erro do campo quando o usuário começar a digitar
+    if (formErrors.status) {
+      setFormErrors((prev) => ({ ...prev, status: "" }));
+    }
+  };
+
   const validateForm = (): boolean => {
     const errors: FormErrors = {};
 
@@ -126,6 +144,10 @@ export default function EditarFichaPage() {
       errors.ano = "Ano deve ser válido";
     }
 
+    if (!formData.status) {
+      errors.status = "Status é obrigatório";
+    }
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -141,40 +163,37 @@ export default function EditarFichaPage() {
     try {
       setLoading(true);
 
+      // Preparar dados para atualização
       const updateRequest: FichaUpdateRequest = {
         especialidade: formData.especialidade,
         quantidadeAutorizada: formData.quantidadeAutorizada,
         mes: formData.mes,
         ano: formData.ano,
+        status: formData.status, // ✅ Incluir status na atualização
       };
 
+      // ✅ Usar apenas um endpoint - updateFicha com status incluído
       const fichaAtualizada = await fichaService.updateFicha(
         fichaId,
         updateRequest
       );
 
       toastUtil.success("Ficha atualizada com sucesso!");
-      router.push(`/fichas/${fichaAtualizada.id}`);
-    } catch (err) {
+      router.push(`/fichas/${fichaId}`);
+    } catch (err: any) {
       console.error("Erro ao atualizar ficha:", err);
-      toastUtil.error("Erro ao atualizar ficha");
+      toastUtil.error(err.response?.data?.message || "Erro ao atualizar ficha");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCancel = () => {
-    router.push(`/fichas/${fichaId}`);
-  };
-
   if (loadingData) {
     return (
       <ProtectedRoute>
-        <div className="min-h-screen bg-gray-50 flex flex-col">
+        <div className="min-h-screen bg-gray-50">
           <Navbar />
-          <main className="flex-grow container mx-auto p-6">
-            <Loading message="Carregando dados da ficha..." />
-          </main>
+          <Loading message="Carregando dados da ficha..." />
         </div>
       </ProtectedRoute>
     );
@@ -183,13 +202,18 @@ export default function EditarFichaPage() {
   if (!ficha) {
     return (
       <ProtectedRoute>
-        <div className="min-h-screen bg-gray-50 flex flex-col">
+        <div className="min-h-screen bg-gray-50">
           <Navbar />
-          <main className="flex-grow container mx-auto p-6">
-            <div className="bg-red-50 text-red-700 p-4 rounded-md">
-              Ficha não encontrada
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                Ficha não encontrada
+              </h2>
+              <CustomButton onClick={() => router.push("/fichas")}>
+                Voltar para Fichas
+              </CustomButton>
             </div>
-          </main>
+          </div>
         </div>
       </ProtectedRoute>
     );
@@ -197,65 +221,35 @@ export default function EditarFichaPage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-gray-50 flex flex-col">
+      <div className="min-h-screen bg-gray-50">
         <Navbar />
 
-        <main className="flex-grow container mx-auto p-6">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center">
-              <CustomButton
-                variant="primary"
-                onClick={handleCancel}
-                className="mr-4">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Voltar
-              </CustomButton>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-800 flex items-center">
-                  <FileSignature className="mr-2 h-6 w-6" />
-                  Editar Ficha #{ficha.codigoFicha}
-                </h1>
-                <p className="text-gray-600 mt-1">
-                  Atualize as informações da ficha
-                </p>
-              </div>
-            </div>
-          </div>
+          <div className="mb-8">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <CustomButton
+                  variant="primary"
+                  onClick={() => router.push(`/fichas/${fichaId}`)}>
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Voltar
+                </CustomButton>
 
-          {/* Informações não editáveis */}
-          <div className="bg-blue-50 rounded-lg p-4 mb-6">
-            <h3 className="text-sm font-medium text-blue-800 mb-2">
-              Informações não editáveis
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-              <div>
-                <span className="text-blue-600">Código:</span>{" "}
-                <span className="font-medium">{ficha.codigoFicha}</span>
+                <div>
+                  <h1 className="text-3xl font-bold text-gray-900 flex items-center">
+                    <FileSignature className="h-8 w-8 mr-3 text-blue-600" />
+                    Editar Ficha
+                  </h1>
+                  <p className="text-gray-600 mt-1">
+                    {ficha.codigoFicha} - {ficha.pacienteNome}
+                  </p>
+                </div>
               </div>
-              <div>
-                <span className="text-blue-600">Tipo:</span>{" "}
-                <span className="font-medium">
-                  {ficha.tipoFicha === "COM_GUIA" ? "Com Guia" : "Assinatura"}
-                </span>
-              </div>
-              <div>
-                <span className="text-blue-600">Paciente:</span>{" "}
-                <span className="font-medium">{ficha.pacienteNome}</span>
-              </div>
-              <div>
-                <span className="text-blue-600">Convênio:</span>{" "}
-                <span className="font-medium">{ficha.convenioNome}</span>
-              </div>
-              <div>
-                <span className="text-blue-600">Status:</span>{" "}
-                <span className="font-medium">{ficha.status}</span>
-              </div>
-              <div>
-                <span className="text-blue-600">Responsável:</span>{" "}
-                <span className="font-medium">
-                  {ficha.usuarioResponsavelNome}
-                </span>
+
+              <div className="flex items-center space-x-3">
+                <span className="text-sm text-gray-500">Status atual:</span>
+                <StatusBadge status={ficha.status} />
               </div>
             </div>
           </div>
@@ -301,13 +295,13 @@ export default function EditarFichaPage() {
                   </label>
                   <input
                     type="number"
-                    required
                     min="1"
+                    required
                     value={formData.quantidadeAutorizada}
                     onChange={(e) =>
                       handleInputChange(
                         "quantidadeAutorizada",
-                        parseInt(e.target.value) || 0
+                        parseInt(e.target.value)
                       )
                     }
                     className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 ${
@@ -373,12 +367,12 @@ export default function EditarFichaPage() {
                   </label>
                   <input
                     type="number"
-                    required
                     min="2020"
                     max="2030"
+                    required
                     value={formData.ano}
                     onChange={(e) =>
-                      handleInputChange("ano", parseInt(e.target.value) || 0)
+                      handleInputChange("ano", parseInt(e.target.value))
                     }
                     className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 ${
                       formErrors.ano ? "border-red-500" : "border-gray-300"
@@ -392,25 +386,58 @@ export default function EditarFichaPage() {
                 </div>
               </div>
 
-              {/* Botões de Ação */}
-              <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
+              {/* Status - Campo completo */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Status *
+                </label>
+                <StatusSelect
+                  value={formData.status}
+                  onChange={handleStatusChange}
+                  required
+                  showPreview={true}
+                  className={formErrors.status ? "border-red-500" : ""}
+                  placeholder="Selecione um status"
+                />
+                {formErrors.status && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {formErrors.status}
+                  </p>
+                )}
+                {formData.status !== ficha.status && (
+                  <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                    <div className="flex items-center">
+                      <AlertCircle className="h-4 w-4 text-yellow-600 mr-2" />
+                      <span className="text-sm text-yellow-800">
+                        O status será alterado de{" "}
+                        <strong>{ficha.status}</strong> para{" "}
+                        <strong>{formData.status}</strong>
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Botões */}
+              <div className="flex justify-end space-x-4 pt-6 border-t">
                 <CustomButton
                   type="button"
-                  variant="secondary"
-                  onClick={handleCancel}
+                  variant="primary"
+                  onClick={() => router.push(`/fichas/${fichaId}`)}
                   disabled={loading}>
                   <X className="h-4 w-4 mr-2" />
                   Cancelar
                 </CustomButton>
+
                 <CustomButton
                   type="submit"
                   variant="primary"
                   disabled={loading}>
                   {loading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    <div className="flex items-center">
+                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
                       Salvando...
-                    </>
+                    </div>
                   ) : (
                     <>
                       <Save className="h-4 w-4 mr-2" />
@@ -421,7 +448,7 @@ export default function EditarFichaPage() {
               </div>
             </form>
           </div>
-        </main>
+        </div>
       </div>
     </ProtectedRoute>
   );

@@ -150,6 +150,8 @@ export interface FichaSummaryDto {
   ano: number;
   usuarioResponsavelNome: string;
   createdAt: string;
+  tipoFicha?: TipoFichaEnum;
+  guiaId?: string;
 }
 
 export interface FichaCreateRequest {
@@ -159,6 +161,7 @@ export interface FichaCreateRequest {
   convenioId: string;
   mes: number;
   ano: number;
+  status: string;
 }
 
 export interface FichaAssinaturaCreateRequest {
@@ -168,6 +171,7 @@ export interface FichaAssinaturaCreateRequest {
   convenioId: string;
   mes: number;
   ano: number;
+  status: string;
 }
 
 export interface FichaUpdateRequest {
@@ -175,6 +179,7 @@ export interface FichaUpdateRequest {
   quantidadeAutorizada?: number;
   mes?: number;
   ano?: number;
+  status?: string;
 }
 
 export interface StatusDto {

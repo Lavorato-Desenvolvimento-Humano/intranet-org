@@ -28,6 +28,8 @@ import { useStatus } from "@/hooks/useStatus";
 import { FichaSummaryDto, PageResponse } from "@/types/clinical";
 import { formatDate } from "@/utils/dateUtils";
 import toastUtil from "@/utils/toast";
+import { VincularGuiaModal } from "@/components/clinical/modals/VincularGuiasModal";
+import { TipoFichaBadge } from "@/components/clinical/ui/TipoFichaBadge";
 
 export default function FichasPage() {
   const router = useRouter();
@@ -56,6 +58,8 @@ export default function FichasPage() {
   const [selectedStatus, setSelectedStatus] = useState("");
   const [selectedEspecialidade, setSelectedEspecialidade] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
+  const [fichaParaVincular, setFichaParaVincular] =
+    useState<FichaSummaryDto | null>(null);
 
   // Lista de especialidades disponíveis
   const especialidades = [
@@ -162,6 +166,19 @@ export default function FichasPage() {
     setCurrentPage(0);
   };
 
+  const handleVincularGuia = (ficha: FichaSummaryDto) => {
+    setFichaParaVincular(ficha);
+  };
+
+  const handleCloseVincularModal = () => {
+    setFichaParaVincular(null);
+  };
+
+  const handleVincularSuccess = () => {
+    setFichaParaVincular(null);
+    loadFichas(); // Recarregar a lista de fichas
+  };
+
   const handleFilterChange = (filterType: string, value: string) => {
     setCurrentPage(0);
 
@@ -266,6 +283,16 @@ export default function FichasPage() {
       className: "text-center",
     },
     {
+      header: "Tipo",
+      accessor: ((ficha: FichaSummaryDto) =>
+        ficha.tipoFicha ? (
+          <TipoFichaBadge
+            tipoFicha={ficha.tipoFicha}
+            temGuia={!!ficha.guiaId}
+          />
+        ) : null) as any,
+    },
+    {
       header: "Responsável",
       accessor: "usuarioResponsavelNome" as keyof FichaSummaryDto,
       className: "text-sm text-gray-600",
@@ -287,6 +314,17 @@ export default function FichasPage() {
             title="Visualizar detalhes">
             <Eye className="h-4 w-4" />
           </CustomButton>
+          {/* ✅ Vincular à Guia - apenas para fichas de assinatura sem guia */}
+          {ficha.tipoFicha === "ASSINATURA" && !ficha.guiaId && (
+            <CustomButton
+              variant="primary"
+              size="small"
+              onClick={() => handleVincularGuia(ficha)}
+              title="Vincular à guia"
+              className="text-green-600 hover:text-green-800 hover:bg-green-50">
+              <Link className="h-4 w-4" />
+            </CustomButton>
+          )}
           <CustomButton
             variant="primary"
             size="small"
@@ -476,6 +514,16 @@ export default function FichasPage() {
           )}
         </main>
       </div>
+      {fichaParaVincular && (
+        <VincularGuiaModal
+          fichaId={fichaParaVincular.id}
+          pacienteNome={fichaParaVincular.pacienteNome}
+          especialidade={fichaParaVincular.especialidade}
+          onClose={handleCloseVincularModal}
+          onSuccess={handleVincularSuccess}
+          isOpen={true}
+        />
+      )}
     </ProtectedRoute>
   );
 }
