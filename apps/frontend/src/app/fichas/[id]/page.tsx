@@ -16,7 +16,7 @@ import {
   Eye,
   Trash2,
   FileSignature,
-  Link, // ✅ Ícone para vincular
+  Link,
   History,
 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
@@ -44,7 +44,6 @@ export default function FichaDetalhePage() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"info" | "historico">("info");
 
-  // ✅ Estados para vincular guia
   const [showVincularModal, setShowVincularModal] = useState(false);
 
   // Carregar dados da ficha
@@ -73,10 +72,19 @@ export default function FichaDetalhePage() {
     }
   };
 
+  const handleVincularSuccess = () => {
+    setShowVincularModal(false);
+    loadFichaData();
+  };
+
   const handleDuplicateFicha = () => {
     if (ficha) {
       router.push(`/fichas/novo?duplicate=${fichaId}`);
     }
+  };
+
+  const handleVincularGuia = () => {
+    setShowVincularModal(true);
   };
 
   const handleDeleteFicha = async () => {
@@ -97,7 +105,6 @@ export default function FichaDetalhePage() {
     }
   };
 
-  // ✅ Função para verificar se a ficha pode ser vinculada a uma guia
   const canVincularGuia = (): boolean => {
     return ficha?.tipoFicha === "ASSINATURA" && !ficha?.guiaId;
   };
@@ -162,11 +169,10 @@ export default function FichaDetalhePage() {
               </div>
 
               <div className="flex items-center space-x-3">
-                {/* ✅ Botão para vincular guia - apenas para fichas de assinatura sem guia */}
                 {canVincularGuia() && (
                   <CustomButton
                     variant="primary"
-                    onClick={() => setShowVincularModal(true)}
+                    onClick={handleVincularGuia}
                     className="bg-green-50 border-green-200 text-green-800 hover:bg-green-100">
                     <Link className="h-4 w-4 mr-2" />
                     Vincular à Guia
@@ -316,7 +322,7 @@ export default function FichaDetalhePage() {
                           </div>
                           <CustomButton
                             variant="primary"
-                            onClick={() => setShowVincularModal(true)}
+                            onClick={handleVincularGuia}
                             className="border-yellow-300 text-yellow-700 hover:bg-yellow-100">
                             <Link className="h-4 w-4 mr-2" />
                             Vincular à Guia
@@ -466,13 +472,16 @@ export default function FichaDetalhePage() {
         </div>
 
         {/* ✅ Modal de Vincular Guia */}
-        <VincularGuiaModal
-          fichaId={fichaId}
-          pacienteNome={ficha.pacienteNome}
-          onClose={() => setShowVincularModal(false)}
-          onSuccess={loadFichaData}
-          isOpen={showVincularModal}
-        />
+        {showVincularModal && (
+          <VincularGuiaModal
+            fichaId={fichaId}
+            pacienteNome={ficha.pacienteNome}
+            especialidade={ficha.especialidade}
+            onClose={() => setShowVincularModal(false)}
+            onSuccess={handleVincularSuccess}
+            isOpen={showVincularModal}
+          />
+        )}
       </div>
     </ProtectedRoute>
   );

@@ -254,7 +254,7 @@ function NovaFichaContent() {
           convenioId: formData.convenioId,
           mes: formData.mes,
           ano: formData.ano,
-          status: formData.status, // ✅ Incluir status
+          status: formData.status,
         };
 
         novaFicha = await fichaService.createFicha(request);
@@ -266,7 +266,7 @@ function NovaFichaContent() {
           convenioId: formData.convenioId,
           mes: formData.mes,
           ano: formData.ano,
-          status: formData.status, // ✅ Incluir status
+          status: formData.status,
         };
 
         novaFicha = await fichaService.createFichaAssinatura(request);

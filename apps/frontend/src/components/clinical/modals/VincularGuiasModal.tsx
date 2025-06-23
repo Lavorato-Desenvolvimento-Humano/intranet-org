@@ -1,8 +1,7 @@
-// apps/frontend/src/components/clinical/modals/VincularGuiaModal.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Link, X, Search, Eye } from "lucide-react";
+import { Link, X, Eye, AlertTriangle, Check } from "lucide-react";
 import { CustomButton } from "@/components/ui/custom-button";
 import { StatusBadge } from "@/components/clinical/ui/StatusBadge";
 import { SearchInput } from "@/components/clinical/ui/SearchInput";
@@ -14,6 +13,7 @@ import toastUtil from "@/utils/toast";
 interface VincularGuiaModalProps {
   fichaId: string;
   pacienteNome: string;
+  especialidade: string;
   onClose: () => void;
   onSuccess: () => void;
   isOpen: boolean;
@@ -22,6 +22,7 @@ interface VincularGuiaModalProps {
 export const VincularGuiaModal: React.FC<VincularGuiaModalProps> = ({
   fichaId,
   pacienteNome,
+  especialidade,
   onClose,
   onSuccess,
   isOpen,
@@ -40,45 +41,40 @@ export const VincularGuiaModal: React.FC<VincularGuiaModalProps> = ({
 
   const [selectedGuiaId, setSelectedGuiaId] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [vinculando, setVinculando] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
 
   // Carregar guias quando modal abrir
   useEffect(() => {
     if (isOpen) {
-      loadGuiasDisponiveis();
-      setSelectedGuiaId("");
-      setSearchTerm("");
-      setCurrentPage(0);
+      resetModal();
+      loadGuias();
     }
   }, [isOpen, searchTerm, currentPage]);
 
-  const loadGuiasDisponiveis = async () => {
+  const resetModal = () => {
+    setSelectedGuiaId("");
+    setSearchTerm("");
+    setCurrentPage(0);
+  };
+
+  const loadGuias = async () => {
     try {
       setLoading(true);
 
       let guiasData: PageResponse<GuiaSummaryDto>;
 
       if (searchTerm.trim()) {
-        // Buscar por número da guia se houver termo de busca
+        // Buscar por número da guia
         guiasData = await guiaService.searchByNumeroGuia(
           searchTerm,
           currentPage,
           10
         );
       } else {
-        // ✅ Buscar guias do mesmo paciente prioritariamente
-        try {
-          guiasData = await guiaService.getGuiasByPaciente(
-            pacienteNome,
-            currentPage,
-            10
-          );
-        } catch (err) {
-          // Se não conseguir buscar por nome do paciente, buscar todas
-          guiasData = await guiaService.getAllGuias(currentPage, 10);
-        }
+        // Buscar todas as guias
+        guiasData = await guiaService.getAllGuias(currentPage, 10);
       }
 
       setGuias(guiasData);
@@ -99,6 +95,13 @@ export const VincularGuiaModal: React.FC<VincularGuiaModalProps> = ({
     setCurrentPage(page);
   };
 
+  // Verificar se guia é compatível
+  const isGuiaCompativel = (guia: GuiaSummaryDto): boolean => {
+    const mesmoPaciente = guia.pacienteNome === pacienteNome;
+    const temEspecialidade = guia.especialidades.includes(especialidade);
+    return mesmoPaciente && temEspecialidade;
+  };
+
   const handleVincular = async () => {
     if (!selectedGuiaId) {
       toastUtil.error("Selecione uma guia");
@@ -108,7 +111,13 @@ export const VincularGuiaModal: React.FC<VincularGuiaModalProps> = ({
     try {
       setVinculando(true);
       await fichaService.vincularFichaAGuia(fichaId, selectedGuiaId);
-      toastUtil.success("Ficha vinculada à guia com sucesso!");
+
+      const guiaSelecionada = guias.content.find(
+        (g) => g.id === selectedGuiaId
+      );
+      toastUtil.success(
+        `Ficha vinculada à guia #${guiaSelecionada?.numeroGuia} com sucesso!`
+      );
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -134,12 +143,14 @@ export const VincularGuiaModal: React.FC<VincularGuiaModalProps> = ({
               Vincular Ficha à Guia
             </h3>
             <p className="text-sm text-gray-600 mt-1">
-              Paciente: <strong>{pacienteNome}</strong>
+              <strong>Paciente:</strong> {pacienteNome} •{" "}
+              <strong>Especialidade:</strong> {especialidade}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors">
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+            disabled={vinculando}>
             <X className="h-6 w-6" />
           </button>
         </div>
@@ -152,7 +163,25 @@ export const VincularGuiaModal: React.FC<VincularGuiaModalProps> = ({
               placeholder="Buscar por número da guia..."
               value={searchTerm}
               onChange={handleSearch}
+              //   disabled={loading || vinculando}
             />
+          </div>
+
+          {/* Aviso */}
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+            <div className="flex items-start">
+              <AlertTriangle className="h-4 w-4 text-blue-600 mr-2 mt-0.5" />
+              <div className="text-sm text-blue-800">
+                <p className="font-medium">Critérios para vinculação:</p>
+                <ul className="mt-1 space-y-1">
+                  <li>• Mesmo paciente: {pacienteNome}</li>
+                  <li>• Especialidade: {especialidade}</li>
+                  <li>
+                    • Guia não pode ter outra ficha da mesma especialidade
+                  </li>
+                </ul>
+              </div>
+            </div>
           </div>
 
           {/* Lista de Guias */}
@@ -171,88 +200,130 @@ export const VincularGuiaModal: React.FC<VincularGuiaModalProps> = ({
             </div>
           ) : (
             <div className="space-y-3">
-              {guias.content.map((guia) => (
-                <div
-                  key={guia.id}
-                  className={`border rounded-lg p-4 cursor-pointer transition-all ${
-                    selectedGuiaId === guia.id
-                      ? "border-blue-500 bg-blue-50"
-                      : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-                  }`}
-                  onClick={() => setSelectedGuiaId(guia.id)}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <input
-                          type="radio"
-                          name="guia"
-                          value={guia.id}
-                          checked={selectedGuiaId === guia.id}
-                          onChange={() => setSelectedGuiaId(guia.id)}
-                          className="text-blue-600 focus:ring-blue-500"
-                        />
-                        <h4 className="font-medium text-gray-900">
-                          Guia #{guia.numeroGuia}
-                        </h4>
-                        <StatusBadge status={guia.status} size="xs" />
+              {guias.content.map((guia) => {
+                const compativel = isGuiaCompativel(guia);
+
+                return (
+                  <div
+                    key={guia.id}
+                    className={`border rounded-lg p-4 transition-all ${
+                      selectedGuiaId === guia.id
+                        ? "border-blue-500 bg-blue-50"
+                        : compativel
+                          ? "border-gray-200 hover:border-gray-300 hover:bg-gray-50 cursor-pointer"
+                          : "border-gray-200 bg-gray-50 opacity-60"
+                    }`}
+                    onClick={() => compativel && setSelectedGuiaId(guia.id)}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-3">
+                          <input
+                            type="radio"
+                            name="guia"
+                            value={guia.id}
+                            checked={selectedGuiaId === guia.id}
+                            onChange={() =>
+                              compativel && setSelectedGuiaId(guia.id)
+                            }
+                            disabled={!compativel || vinculando}
+                            className="text-blue-600 focus:ring-blue-500"
+                          />
+
+                          <h4 className="font-semibold text-gray-900">
+                            Guia #{guia.numeroGuia}
+                          </h4>
+
+                          <StatusBadge status={guia.status} size="xs" />
+
+                          {compativel ? (
+                            <span className="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                              <Check className="h-3 w-3 mr-1" />
+                              Compatível
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">
+                              ✕ Incompatível
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="ml-6 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                          <div>
+                            <p className="text-gray-600">Paciente:</p>
+                            <p
+                              className={`font-medium ${
+                                guia.pacienteNome === pacienteNome
+                                  ? "text-green-700"
+                                  : "text-red-700"
+                              }`}>
+                              {guia.pacienteNome}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-gray-600">Especialidades:</p>
+                            <p className="font-medium">
+                              {guia.especialidades.map((esp, index) => (
+                                <React.Fragment key={esp}>
+                                  {index > 0 && ", "}
+                                  <span
+                                    className={
+                                      esp === especialidade
+                                        ? "text-green-700 font-semibold"
+                                        : ""
+                                    }>
+                                    {esp}
+                                  </span>
+                                </React.Fragment>
+                              ))}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-gray-600">Validade:</p>
+                            <p
+                              className={`font-medium ${
+                                new Date(guia.validade) < new Date()
+                                  ? "text-red-600"
+                                  : "text-green-600"
+                              }`}>
+                              {formatDate(guia.validade)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-gray-600">Convênio:</p>
+                            <p className="font-medium">{guia.convenioNome}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-600">Quantidade:</p>
+                            <p className="font-medium">
+                              {guia.quantidadeAutorizada}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-gray-600">Período:</p>
+                            <p className="font-medium">
+                              {String(guia.mes).padStart(2, "0")}/{guia.ano}
+                            </p>
+                          </div>
+                        </div>
                       </div>
 
-                      <div className="ml-6 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                        <div>
-                          <p className="text-gray-600">Paciente:</p>
-                          <p className="font-medium">{guia.pacienteNome}</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-600">Especialidades:</p>
-                          <p className="font-medium">
-                            {guia.especialidades.join(", ")}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-gray-600">Validade:</p>
-                          <p
-                            className={`font-medium ${
-                              new Date(guia.validade) < new Date()
-                                ? "text-red-600"
-                                : "text-green-600"
-                            }`}>
-                            {formatDate(guia.validade)}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-gray-600">Convênio:</p>
-                          <p className="font-medium">{guia.convenioNome}</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-600">Quantidade:</p>
-                          <p className="font-medium">
-                            {guia.quantidadeAutorizada}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-gray-600">Período:</p>
-                          <p className="font-medium">
-                            {String(guia.mes).padStart(2, "0")}/{guia.ano}
-                          </p>
-                        </div>
+                      <div className="ml-4">
+                        <CustomButton
+                          variant="primary"
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.open(`/guias/${guia.id}`, "_blank");
+                          }}
+                          className="text-blue-600 hover:text-blue-800"
+                          disabled={vinculando}>
+                          <Eye className="h-4 w-4" />
+                        </CustomButton>
                       </div>
-                    </div>
-
-                    <div className="ml-4">
-                      <CustomButton
-                        variant="primary"
-                        size="small"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          window.open(`/guias/${guia.id}`, "_blank");
-                        }}
-                        className="text-blue-600 hover:text-blue-800">
-                        <Eye className="h-4 w-4" />
-                      </CustomButton>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -269,7 +340,7 @@ export const VincularGuiaModal: React.FC<VincularGuiaModalProps> = ({
                   variant="primary"
                   size="small"
                   onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={guias.first}>
+                  disabled={guias.first || loading || vinculando}>
                   Anterior
                 </CustomButton>
 
@@ -281,7 +352,7 @@ export const VincularGuiaModal: React.FC<VincularGuiaModalProps> = ({
                   variant="primary"
                   size="small"
                   onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={guias.last}>
+                  disabled={guias.last || loading || vinculando}>
                   Próxima
                 </CustomButton>
               </div>
@@ -298,11 +369,12 @@ export const VincularGuiaModal: React.FC<VincularGuiaModalProps> = ({
             disabled={vinculando}>
             Cancelar
           </CustomButton>
+
           <CustomButton
             type="button"
             variant="primary"
             onClick={handleVincular}
-            disabled={!selectedGuiaId || vinculando}>
+            disabled={!selectedGuiaId || vinculando || loading}>
             {vinculando ? (
               <div className="flex items-center">
                 <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
