@@ -13,6 +13,10 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import com.intranet.backend.dto.StatusChangeRequest;
+import com.intranet.backend.dto.StatusHistoryDto;
+import com.intranet.backend.service.StatusHistoryService;
+import com.intranet.backend.model.StatusHistory;
 
 import java.util.HashMap;
 import java.util.List;
@@ -25,6 +29,7 @@ import java.util.UUID;
 public class FichaController {
 
     private static final Logger logger = LoggerFactory.getLogger(FichaController.class);
+    private final StatusHistoryService statusHistoryService;
     private final FichaService fichaService;
 
     @GetMapping
@@ -204,5 +209,35 @@ public class FichaController {
         logger.info("Buscando fichas pelo status: {}", status);
         Page<FichaSummaryDto> fichas = fichaService.getFichasByStatus(status, pageable);
         return ResponseEntity.ok(fichas);
+    }
+
+    @GetMapping("/{id}/historico-status")
+    public ResponseEntity<List<StatusHistoryDto>> getHistoricoStatusFicha(@PathVariable UUID id) {
+        logger.info("Requisição para obter histórico de status da ficha: {}", id);
+
+        List<StatusHistoryDto> historico = statusHistoryService.getHistoricoEntidade(
+                StatusHistory.EntityType.FICHA, id);
+
+        return ResponseEntity.ok(historico);
+    }
+
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAnyAuthority('ficha:update') or hasAnyRole('ADMIN')")
+    public ResponseEntity<Map<String, Object>> updateFichaStatus(
+            @PathVariable UUID id,
+            @Valid @RequestBody StatusChangeRequest request) {
+        logger.info("Requisição para alterar status da ficha {} para {}", id, request.getNovoStatus());
+
+        FichaDto fichaAtualizada = fichaService.updateFichaStatus(id, request.getNovoStatus(),
+                request.getMotivo(), request.getObservacoes());
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", true);
+        result.put("message", "Status alterado com sucesso");
+        result.put("ficha", fichaAtualizada);
+        result.put("novoStatus", request.getNovoStatus());
+
+        logger.info("Status da ficha {} alterado com sucesso para {}", id, request.getNovoStatus());
+        return ResponseEntity.ok(result);
     }
 }
