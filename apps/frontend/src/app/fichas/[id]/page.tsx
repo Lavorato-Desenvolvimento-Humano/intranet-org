@@ -2,64 +2,44 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, FileSignature, Save, X, AlertCircle } from "lucide-react";
+import {
+  ArrowLeft,
+  Edit,
+  Copy,
+  FileText,
+  User,
+  Calendar,
+  Clock,
+  DollarSign,
+  Building,
+  Hash,
+  Eye,
+  Trash2,
+  FileSignature,
+} from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
 import { Loading } from "@/components/ui/loading";
 import { CustomButton } from "@/components/ui/custom-button";
-import { StatusSelect } from "@/components/clinical/ui/StatusSelect";
 import { StatusBadge } from "@/components/clinical/ui/StatusBadge";
 import { fichaService } from "@/services/clinical";
-import convenioService, { ConvenioDto } from "@/services/convenio";
-import {
-  FichaDto,
-  FichaUpdateRequest,
-  StatusChangeRequest,
-} from "@/types/clinical";
+import { FichaDto, StatusHistoryDto } from "@/types/clinical";
+import { formatDate, formatDateTime } from "@/utils/dateUtils";
 import toastUtil from "@/utils/toast";
 
-interface FormData {
-  especialidade: string;
-  quantidadeAutorizada: number;
-  mes: number;
-  ano: number;
-  status: string;
-}
-
-interface FormErrors {
-  [key: string]: string;
-}
-
-export default function EditarFichaPage() {
+export default function FichaDetalhePage() {
   const router = useRouter();
   const params = useParams();
   const fichaId = params.id as string;
 
   // Estados principais
   const [ficha, setFicha] = useState<FichaDto | null>(null);
-  const [formData, setFormData] = useState<FormData>({
-    especialidade: "",
-    quantidadeAutorizada: 1,
-    mes: new Date().getMonth() + 1,
-    ano: new Date().getFullYear(),
-    status: "",
-  });
-
-  const [formErrors, setFormErrors] = useState<FormErrors>({});
-  const [loading, setLoading] = useState(false);
-  const [loadingData, setLoadingData] = useState(true);
-  const [convenios, setConvenios] = useState<ConvenioDto[]>([]);
-
-  // Lista de especialidades disponíveis
-  const especialidades = [
-    "Fisioterapia",
-    "Fonoaudiologia",
-    "Terapia Ocupacional",
-    "Psicologia",
-    "Nutrição",
-    "Psicopedagogia",
-    "Psicomotricidade",
-  ];
+  const [historicoStatus, setHistoricoStatus] = useState<StatusHistoryDto[]>(
+    []
+  );
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"info" | "historico">("info");
 
   // Carregar dados da ficha
   useEffect(() => {
@@ -68,152 +48,73 @@ export default function EditarFichaPage() {
     }
   }, [fichaId]);
 
-  // Carregar convênios
-  useEffect(() => {
-    loadConvenios();
-  }, []);
-
   const loadFichaData = async () => {
     try {
-      setLoadingData(true);
+      setLoading(true);
+      setError(null);
 
       const fichaData = await fichaService.getFichaById(fichaId);
       setFicha(fichaData);
 
-      // Preencher formulário com dados da ficha
-      setFormData({
-        especialidade: fichaData.especialidade,
-        quantidadeAutorizada: fichaData.quantidadeAutorizada,
-        mes: fichaData.mes,
-        ano: fichaData.ano,
-        status: fichaData.status,
-      });
+      // Carregar histórico de status
+      const historico = await fichaService.getHistoricoStatusFicha(fichaId);
+      setHistoricoStatus(historico);
     } catch (err) {
-      console.error("Erro ao carregar ficha:", err);
-      toastUtil.error("Erro ao carregar dados da ficha");
-      router.push("/fichas");
-    } finally {
-      setLoadingData(false);
-    }
-  };
-
-  const loadConvenios = async () => {
-    try {
-      const conveniosData = await convenioService.getAllConvenios();
-      setConvenios(conveniosData);
-    } catch (err) {
-      console.error("Erro ao carregar convênios:", err);
-      toastUtil.error("Erro ao carregar convênios");
-    }
-  };
-
-  const handleInputChange = (field: keyof FormData, value: string | number) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-
-    // Limpar erro do campo quando o usuário começar a digitar
-    if (formErrors[field]) {
-      setFormErrors((prev) => ({ ...prev, [field]: "" }));
-    }
-  };
-
-  const handleStatusChange = (newStatus: string) => {
-    setFormData((prev) => ({ ...prev, status: newStatus }));
-
-    // Limpar erro do campo quando o usuário começar a digitar
-    if (formErrors.status) {
-      setFormErrors((prev) => ({ ...prev, status: "" }));
-    }
-  };
-
-  const validateForm = (): boolean => {
-    const errors: FormErrors = {};
-
-    if (!formData.especialidade) {
-      errors.especialidade = "Especialidade é obrigatória";
-    }
-
-    if (!formData.quantidadeAutorizada || formData.quantidadeAutorizada <= 0) {
-      errors.quantidadeAutorizada = "Quantidade deve ser maior que zero";
-    }
-
-    if (!formData.mes || formData.mes < 1 || formData.mes > 12) {
-      errors.mes = "Mês deve estar entre 1 e 12";
-    }
-
-    if (!formData.ano || formData.ano < 2020) {
-      errors.ano = "Ano deve ser válido";
-    }
-
-    if (!formData.status) {
-      errors.status = "Status é obrigatório";
-    }
-
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!validateForm()) {
-      toastUtil.error("Por favor, corrija os erros no formulário");
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      // Preparar dados para atualização
-      const updateRequest: FichaUpdateRequest = {
-        especialidade: formData.especialidade,
-        quantidadeAutorizada: formData.quantidadeAutorizada,
-        mes: formData.mes,
-        ano: formData.ano,
-        status: formData.status, // ✅ Incluir status na atualização
-      };
-
-      // ✅ Usar apenas um endpoint - updateFicha com status incluído
-      const fichaAtualizada = await fichaService.updateFicha(
-        fichaId,
-        updateRequest
-      );
-
-      toastUtil.success("Ficha atualizada com sucesso!");
-      router.push(`/fichas/${fichaId}`);
-    } catch (err: any) {
-      console.error("Erro ao atualizar ficha:", err);
-      toastUtil.error(err.response?.data?.message || "Erro ao atualizar ficha");
+      console.error("Erro ao carregar dados da ficha:", err);
+      setError("Erro ao carregar informações da ficha");
     } finally {
       setLoading(false);
     }
   };
 
-  if (loadingData) {
+  const handleDuplicateFicha = () => {
+    if (ficha) {
+      router.push(`/fichas/novo?duplicate=${fichaId}`);
+    }
+  };
+
+  const handleDeleteFicha = async () => {
+    if (!ficha) return;
+
+    const confirmacao = window.confirm(
+      `Tem certeza que deseja excluir a ficha ${ficha.codigoFicha}?`
+    );
+
+    if (confirmacao) {
+      try {
+        await fichaService.deleteFicha(fichaId);
+        toastUtil.success("Ficha excluída com sucesso!");
+        router.push("/fichas");
+      } catch (err) {
+        console.error("Erro ao excluir ficha:", err);
+        toastUtil.error("Erro ao excluir ficha");
+      }
+    }
+  };
+
+  if (loading) {
     return (
       <ProtectedRoute>
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gray-50 flex flex-col">
           <Navbar />
-          <Loading message="Carregando dados da ficha..." />
+          <main className="flex-grow container mx-auto p-6">
+            <Loading message="Carregando dados da ficha..." />
+          </main>
         </div>
       </ProtectedRoute>
     );
   }
 
-  if (!ficha) {
+  if (error || !ficha) {
     return (
       <ProtectedRoute>
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gray-50 flex flex-col">
           <Navbar />
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="text-center">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                Ficha não encontrada
-              </h2>
-              <CustomButton onClick={() => router.push("/fichas")}>
-                Voltar para Fichas
-              </CustomButton>
+          <main className="flex-grow container mx-auto p-6">
+            <div className="bg-red-50 text-red-700 p-4 rounded-md">
+              {error || "Ficha não encontrada"}
             </div>
-          </div>
+          </main>
         </div>
       </ProtectedRoute>
     );
@@ -221,234 +122,273 @@ export default function EditarFichaPage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 flex flex-col">
         <Navbar />
 
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Header */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <CustomButton
-                  variant="primary"
-                  onClick={() => router.push(`/fichas/${fichaId}`)}>
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Voltar
-                </CustomButton>
-
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-                    <FileSignature className="h-8 w-8 mr-3 text-blue-600" />
-                    Editar Ficha
-                  </h1>
-                  <p className="text-gray-600 mt-1">
-                    {ficha.codigoFicha} - {ficha.pacienteNome}
-                  </p>
-                </div>
+        <main className="flex-grow container mx-auto p-6">
+          {/* Header com navegação */}
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center">
+              <CustomButton
+                variant="primary"
+                onClick={() => router.back()}
+                className="mr-4">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Voltar
+              </CustomButton>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-800 flex items-center">
+                  <FileSignature className="mr-2 h-6 w-6" />
+                  Ficha #{ficha.codigoFicha}
+                </h1>
+                <p className="text-gray-600 mt-1">Detalhes da ficha</p>
               </div>
+            </div>
 
-              <div className="flex items-center space-x-3">
-                <span className="text-sm text-gray-500">Status atual:</span>
-                <StatusBadge status={ficha.status} />
-              </div>
+            <div className="flex space-x-3">
+              <CustomButton variant="secondary" onClick={handleDuplicateFicha}>
+                <Copy className="h-4 w-4 mr-2" />
+                Duplicar
+              </CustomButton>
+              <CustomButton
+                variant="primary"
+                onClick={() => router.push(`/fichas/${fichaId}/editar`)}>
+                <Edit className="h-4 w-4 mr-2" />
+                Editar
+              </CustomButton>
+              <CustomButton variant="primary" onClick={handleDeleteFicha}>
+                <Trash2 className="h-4 w-4 mr-2" />
+                Excluir
+              </CustomButton>
             </div>
           </div>
 
-          {/* Formulário */}
-          <div className="bg-white rounded-lg shadow-md">
-            <form onSubmit={handleSubmit} className="p-6 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Especialidade */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Especialidade *
-                  </label>
-                  <select
-                    required
-                    value={formData.especialidade}
-                    onChange={(e) =>
-                      handleInputChange("especialidade", e.target.value)
-                    }
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 ${
-                      formErrors.especialidade
-                        ? "border-red-500"
-                        : "border-gray-300"
-                    }`}>
-                    <option value="">Selecione uma especialidade</option>
-                    {especialidades.map((esp) => (
-                      <option key={esp} value={esp}>
-                        {esp}
-                      </option>
-                    ))}
-                  </select>
-                  {formErrors.especialidade && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {formErrors.especialidade}
-                    </p>
-                  )}
-                </div>
+          {/* Navegação por tabs */}
+          <div className="bg-white rounded-lg shadow-md mb-6">
+            <div className="border-b border-gray-200">
+              <nav className="flex">
+                <button
+                  onClick={() => setActiveTab("info")}
+                  className={`px-6 py-3 text-sm font-medium border-b-2 ${
+                    activeTab === "info"
+                      ? "border-blue-500 text-blue-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}>
+                  Informações
+                </button>
+                <button
+                  onClick={() => setActiveTab("historico")}
+                  className={`px-6 py-3 text-sm font-medium border-b-2 ${
+                    activeTab === "historico"
+                      ? "border-blue-500 text-blue-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}>
+                  Histórico ({historicoStatus.length})
+                </button>
+              </nav>
+            </div>
 
-                {/* Quantidade Autorizada */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Quantidade Autorizada *
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    required
-                    value={formData.quantidadeAutorizada}
-                    onChange={(e) =>
-                      handleInputChange(
-                        "quantidadeAutorizada",
-                        parseInt(e.target.value)
-                      )
-                    }
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 ${
-                      formErrors.quantidadeAutorizada
-                        ? "border-red-500"
-                        : "border-gray-300"
-                    }`}
-                  />
-                  {formErrors.quantidadeAutorizada && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {formErrors.quantidadeAutorizada}
-                    </p>
-                  )}
-                </div>
-
-                {/* Mês */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Mês *
-                  </label>
-                  <select
-                    required
-                    value={formData.mes}
-                    onChange={(e) =>
-                      handleInputChange("mes", parseInt(e.target.value))
-                    }
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 ${
-                      formErrors.mes ? "border-red-500" : "border-gray-300"
-                    }`}>
-                    {Array.from({ length: 12 }, (_, i) => i + 1).map((mes) => (
-                      <option key={mes} value={mes}>
-                        {mes.toString().padStart(2, "0")} -{" "}
-                        {
-                          [
-                            "Janeiro",
-                            "Fevereiro",
-                            "Março",
-                            "Abril",
-                            "Maio",
-                            "Junho",
-                            "Julho",
-                            "Agosto",
-                            "Setembro",
-                            "Outubro",
-                            "Novembro",
-                            "Dezembro",
-                          ][mes - 1]
-                        }
-                      </option>
-                    ))}
-                  </select>
-                  {formErrors.mes && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {formErrors.mes}
-                    </p>
-                  )}
-                </div>
-
-                {/* Ano */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Ano *
-                  </label>
-                  <input
-                    type="number"
-                    min="2020"
-                    max="2030"
-                    required
-                    value={formData.ano}
-                    onChange={(e) =>
-                      handleInputChange("ano", parseInt(e.target.value))
-                    }
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 ${
-                      formErrors.ano ? "border-red-500" : "border-gray-300"
-                    }`}
-                  />
-                  {formErrors.ano && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {formErrors.ano}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Status - Campo completo */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Status *
-                </label>
-                <StatusSelect
-                  value={formData.status}
-                  onChange={handleStatusChange}
-                  required
-                  showPreview={true}
-                  className={formErrors.status ? "border-red-500" : ""}
-                  placeholder="Selecione um status"
-                />
-                {formErrors.status && (
-                  <p className="mt-1 text-sm text-red-600">
-                    {formErrors.status}
-                  </p>
-                )}
-                {formData.status !== ficha.status && (
-                  <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-                    <div className="flex items-center">
-                      <AlertCircle className="h-4 w-4 text-yellow-600 mr-2" />
-                      <span className="text-sm text-yellow-800">
-                        O status será alterado de{" "}
-                        <strong>{ficha.status}</strong> para{" "}
-                        <strong>{formData.status}</strong>
-                      </span>
+            <div className="p-6">
+              {activeTab === "info" && (
+                <div className="space-y-6">
+                  {/* Informações Básicas */}
+                  <div className="bg-gray-50 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                      <FileSignature className="mr-2 h-5 w-5" />
+                      Informações da Ficha
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-600">Código da Ficha</p>
+                        <p className="font-medium">{ficha.codigoFicha}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Status</p>
+                        <StatusBadge status={ficha.status} />
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Especialidade</p>
+                        <p className="font-medium">{ficha.especialidade}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">
+                          Quantidade Autorizada
+                        </p>
+                        <p className="font-medium">
+                          {ficha.quantidadeAutorizada}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Tipo de Ficha</p>
+                        <p className="font-medium">
+                          {ficha.tipoFicha === "COM_GUIA"
+                            ? "Com Guia"
+                            : "Assinatura"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Mês/Ano</p>
+                        <p className="font-medium">
+                          {String(ficha.mes).padStart(2, "0")}/{ficha.ano}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                )}
-              </div>
 
-              {/* Botões */}
-              <div className="flex justify-end space-x-4 pt-6 border-t">
-                <CustomButton
-                  type="button"
-                  variant="primary"
-                  onClick={() => router.push(`/fichas/${fichaId}`)}
-                  disabled={loading}>
-                  <X className="h-4 w-4 mr-2" />
-                  Cancelar
-                </CustomButton>
+                  {/* Informações do Paciente */}
+                  <div className="bg-gray-50 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                      <User className="mr-2 h-5 w-5" />
+                      Paciente
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-600">
+                          Nome do Paciente
+                        </p>
+                        <p className="font-medium">{ficha.pacienteNome}</p>
+                      </div>
+                      {ficha.pacienteId && (
+                        <div>
+                          <p className="text-sm text-gray-600">Ações</p>
+                          <CustomButton
+                            variant="primary"
+                            size="small"
+                            onClick={() =>
+                              router.push(`/pacientes/${ficha.pacienteId}`)
+                            }>
+                            <Eye className="h-4 w-4 mr-2" />
+                            Ver Paciente
+                          </CustomButton>
+                        </div>
+                      )}
+                    </div>
+                  </div>
 
-                <CustomButton
-                  type="submit"
-                  variant="primary"
-                  disabled={loading}>
-                  {loading ? (
-                    <div className="flex items-center">
-                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                      Salvando...
+                  {/* Informações do Convênio */}
+                  <div className="bg-gray-50 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                      <Building className="mr-2 h-5 w-5" />
+                      Convênio
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-600">
+                          Nome do Convênio
+                        </p>
+                        <p className="font-medium">{ficha.convenioNome}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Informações da Guia (se aplicável) */}
+                  {ficha.guiaId && (
+                    <div className="bg-gray-50 rounded-lg p-6">
+                      <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                        <FileText className="mr-2 h-5 w-5" />
+                        Guia Associada
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-sm text-gray-600">ID da Guia</p>
+                          <p className="font-medium">{ficha.guiaId}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">Ações</p>
+                          <CustomButton
+                            variant="primary"
+                            size="small"
+                            onClick={() =>
+                              router.push(`/guias/${ficha.guiaId}`)
+                            }>
+                            <Eye className="h-4 w-4 mr-2" />
+                            Ver Guia
+                          </CustomButton>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Informações de Auditoria */}
+                  <div className="bg-gray-50 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                      <Clock className="mr-2 h-5 w-5" />
+                      Auditoria
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-600">Responsável</p>
+                        <p className="font-medium">
+                          {ficha.usuarioResponsavelNome}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Criado em</p>
+                        <p className="font-medium">
+                          {formatDateTime(ficha.createdAt)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">
+                          Última atualização
+                        </p>
+                        <p className="font-medium">
+                          {formatDateTime(ficha.updatedAt)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === "historico" && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                    Histórico de Status
+                  </h3>
+                  {historicoStatus.length > 0 ? (
+                    <div className="space-y-4">
+                      {historicoStatus.map((item) => (
+                        <div
+                          key={item.id}
+                          className="border border-gray-200 rounded-lg p-4">
+                          <div className="flex justify-between items-start mb-2">
+                            <div className="flex space-x-2">
+                              <StatusBadge status={item.statusAnterior} />
+                              <span className="text-gray-500">→</span>
+                              <StatusBadge status={item.statusNovo} />
+                            </div>
+                            <span className="text-sm text-gray-500">
+                              {formatDateTime(item.dataAlteracao)}
+                            </span>
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            <p>
+                              <strong>Alterado por:</strong>{" "}
+                              {item.alteradoPorNome}
+                            </p>
+                            <p>
+                              <strong>Motivo:</strong> {item.motivo}
+                            </p>
+                            {item.observacoes && (
+                              <p>
+                                <strong>Observações:</strong> {item.observacoes}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   ) : (
-                    <>
-                      <Save className="h-4 w-4 mr-2" />
-                      Salvar Alterações
-                    </>
+                    <p className="text-gray-500">
+                      Nenhum histórico de alteração encontrado.
+                    </p>
                   )}
-                </CustomButton>
-              </div>
-            </form>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        </main>
       </div>
     </ProtectedRoute>
   );
