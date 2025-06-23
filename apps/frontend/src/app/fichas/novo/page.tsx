@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, FileSignature, Save, X } from "lucide-react";
+import { AlertCircle, ArrowLeft, FileSignature, Save, X } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
 import { Loading } from "@/components/ui/loading";
@@ -22,6 +22,8 @@ import {
   FichaDto,
 } from "@/types/clinical";
 import toastUtil from "@/utils/toast";
+import { StatusSelect } from "@/components/clinical/ui/StatusSelect";
+import { useStatus } from "@/hooks/useStatus";
 
 interface FormData {
   tipoFicha: TipoFichaEnum;
@@ -32,6 +34,7 @@ interface FormData {
   convenioId: string;
   mes: number;
   ano: number;
+  status: string;
 }
 
 interface FormErrors {
@@ -40,6 +43,7 @@ interface FormErrors {
 
 function NovaFichaContent() {
   const router = useRouter();
+  const { statuses } = useStatus();
 
   // Verificar parâmetros de duplicação de forma segura
   const [duplicateId, setDuplicateId] = useState<string | null>(null);
@@ -63,6 +67,7 @@ function NovaFichaContent() {
     convenioId: "",
     mes: new Date().getMonth() + 1,
     ano: new Date().getFullYear(),
+    status: "",
   });
 
   const [formErrors, setFormErrors] = useState<FormErrors>({});
@@ -71,6 +76,7 @@ function NovaFichaContent() {
   const [guias, setGuias] = useState<GuiaSummaryDto[]>([]);
   const [pacientes, setPacientes] = useState<PacienteSummaryDto[]>([]);
   const [convenios, setConvenios] = useState<ConvenioDto[]>([]);
+  const [ficha, setFicha] = useState<FichaDto | null>(null);
 
   // Lista de especialidades disponíveis
   const especialidades = [
@@ -94,6 +100,14 @@ function NovaFichaContent() {
       loadFichaForDuplication(duplicateId);
     }
   }, [duplicateId]);
+
+  useEffect(() => {
+    if (statuses.length > 0 && !formData.status) {
+      const statusPadrao =
+        statuses.find((s) => s.status === "EMITIDO") || statuses[0];
+      setFormData((prev) => ({ ...prev, status: statusPadrao.status }));
+    }
+  }, [statuses]);
 
   const loadInitialData = async () => {
     try {
@@ -136,6 +150,15 @@ function NovaFichaContent() {
     } catch (err) {
       console.error("Erro ao carregar ficha para duplicação:", err);
       toastUtil.error("Erro ao carregar dados da ficha");
+    }
+  };
+
+  const handleStatusChange = (newStatus: string) => {
+    setFormData((prev) => ({ ...prev, status: newStatus }));
+
+    // Limpar erro do campo quando o usuário começar a digitar
+    if (formErrors.status) {
+      setFormErrors((prev) => ({ ...prev, status: "" }));
     }
   };
 
@@ -201,6 +224,11 @@ function NovaFichaContent() {
       errors.ano = "Ano deve ser válido";
     }
 
+    // ✅ Adicionar validação de status
+    if (!formData.status) {
+      errors.status = "Status é obrigatório";
+    }
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -226,6 +254,7 @@ function NovaFichaContent() {
           convenioId: formData.convenioId,
           mes: formData.mes,
           ano: formData.ano,
+          status: formData.status,
         };
 
         novaFicha = await fichaService.createFicha(request);
@@ -237,6 +266,7 @@ function NovaFichaContent() {
           convenioId: formData.convenioId,
           mes: formData.mes,
           ano: formData.ano,
+          status: formData.status,
         };
 
         novaFicha = await fichaService.createFichaAssinatura(request);
@@ -244,9 +274,9 @@ function NovaFichaContent() {
 
       toastUtil.success("Ficha criada com sucesso!");
       router.push(`/fichas/${novaFicha.id}`);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Erro ao criar ficha:", err);
-      toastUtil.error("Erro ao criar ficha");
+      toastUtil.error(err.response?.data?.message || "Erro ao criar ficha");
     } finally {
       setLoading(false);
     }
@@ -560,6 +590,27 @@ function NovaFichaContent() {
                       {formErrors.ano}
                     </p>
                   )}
+                </div>
+
+                {/* Status - Campo completo */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Status *
+                  </label>
+                  <StatusSelect
+                    value={formData.status}
+                    onChange={handleStatusChange}
+                    required
+                    showPreview={true}
+                    className={formErrors.status ? "border-red-500" : ""}
+                    placeholder="Selecione um status"
+                  />
+                  {formErrors.status && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {formErrors.status}
+                    </p>
+                  )}
+                  {/* ✅ Remover comparação com ficha - na criação não existe ficha anterior */}
                 </div>
               </div>
 

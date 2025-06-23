@@ -1,3 +1,4 @@
+// apps/frontend/src/app/guias/[id]/editar/page.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -12,6 +13,7 @@ import convenioService, { ConvenioDto } from "@/services/convenio";
 import {
   GuiaDto,
   GuiaUpdateRequest,
+  StatusChangeRequest,
   PacienteSummaryDto,
 } from "@/types/clinical";
 import { formatDate } from "@/utils/dateUtils";
@@ -42,6 +44,7 @@ export default function EditarGuiaPage() {
     lote: "",
     valorReais: 0,
     status: "",
+    quantidadeFaturada: 0,
   });
 
   // Estados para especialidades
@@ -49,6 +52,25 @@ export default function EditarGuiaPage() {
 
   // Estados de validação
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  // ✅ Estados para mudança de status
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [statusChangeData, setStatusChangeData] = useState({
+    motivo: "",
+    observacoes: "",
+  });
+  const [statusAnterior, setStatusAnterior] = useState("");
+
+  // Lista de especialidades disponíveis
+  const especialidades = [
+    "Fisioterapia",
+    "Fonoaudiologia",
+    "Terapia Ocupacional",
+    "Psicologia",
+    "Nutrição",
+    "Psicopedagogia",
+    "Psicomotricidade",
+  ];
 
   // Carregar dados iniciais
   useEffect(() => {
@@ -71,6 +93,7 @@ export default function EditarGuiaPage() {
       setGuia(guiaData);
       setPacientes(pacientesData.content);
       setConvenios(conveniosData);
+      setStatusAnterior(guiaData.status); // ✅ Armazenar status anterior
 
       // Preencher formulário com dados da guia
       setFormData({
@@ -82,6 +105,7 @@ export default function EditarGuiaPage() {
         lote: guiaData.lote || "",
         valorReais: guiaData.valorReais,
         status: guiaData.status,
+        quantidadeFaturada: guiaData.quantidadeFaturada,
       });
     } catch (err) {
       console.error("Erro ao carregar dados:", err);
@@ -91,37 +115,74 @@ export default function EditarGuiaPage() {
     }
   };
 
+  const handleInputChange = (field: keyof GuiaUpdateRequest, value: any) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+
+    // Limpar erro do campo
+    if (formErrors[field]) {
+      setFormErrors((prev) => ({ ...prev, [field]: "" }));
+    }
+  };
+
+  // ✅ Handler específico para mudança de status
+  const handleStatusChange = (newStatus: string) => {
+    // Se o status mudou, mostrar modal para motivo
+    if (newStatus !== statusAnterior && newStatus !== "") {
+      setFormData((prev) => ({ ...prev, status: newStatus }));
+      setShowStatusModal(true);
+    } else {
+      setFormData((prev) => ({ ...prev, status: newStatus }));
+    }
+  };
+
+  const addEspecialidade = () => {
+    if (
+      especialidadeInput.trim() &&
+      !formData.especialidades?.includes(especialidadeInput.trim())
+    ) {
+      setFormData((prev) => ({
+        ...prev,
+        especialidades: [
+          ...(prev.especialidades || []),
+          especialidadeInput.trim(),
+        ],
+      }));
+      setEspecialidadeInput("");
+    }
+  };
+
+  const removeEspecialidade = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      especialidades: prev.especialidades?.filter((_, i) => i !== index) || [],
+    }));
+  };
+
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
 
-    if (!formData.especialidades || formData.especialidades.length === 0) {
+    if (!formData.especialidades?.length) {
       errors.especialidades = "Pelo menos uma especialidade é obrigatória";
     }
 
-    if (!formData.quantidadeAutorizada || formData.quantidadeAutorizada < 1) {
+    if (!formData.quantidadeAutorizada || formData.quantidadeAutorizada <= 0) {
       errors.quantidadeAutorizada = "Quantidade deve ser maior que zero";
     }
 
     if (!formData.mes || formData.mes < 1 || formData.mes > 12) {
-      errors.mes = "Mês inválido";
+      errors.mes = "Mês deve estar entre 1 e 12";
     }
 
     if (!formData.ano || formData.ano < 2020) {
-      errors.ano = "Ano inválido";
+      errors.ano = "Ano deve ser válido";
     }
 
     if (!formData.validade) {
       errors.validade = "Data de validade é obrigatória";
-    } else {
-      const validadeDate = new Date(formData.validade);
-      const today = new Date();
-      if (validadeDate <= today) {
-        errors.validade = "Data de validade deve ser futura";
-      }
     }
 
-    if ((formData.valorReais || 0) < 0) {
-      errors.valorReais = "Valor não pode ser negativo";
+    if (!formData.status) {
+      errors.status = "Status é obrigatório";
     }
 
     setFormErrors(errors);
@@ -132,135 +193,114 @@ export default function EditarGuiaPage() {
     e.preventDefault();
 
     if (!validateForm()) {
-      toastUtil.error("Corrija os erros no formulário");
+      toastUtil.error("Por favor, corrija os erros no formulário");
       return;
     }
 
     try {
       setSaving(true);
 
-      await guiaService.updateGuia(guiaId, formData);
+      // ✅ Verificar se o status mudou
+      const statusChanged = formData.status !== statusAnterior;
+
+      if (statusChanged) {
+        // ✅ Se o status mudou, usar endpoint específico para mudança de status
+        const statusRequest: StatusChangeRequest = {
+          novoStatus: formData.status!,
+          motivo:
+            statusChangeData.motivo || "Alteração via formulário de edição",
+          observacoes: statusChangeData.observacoes,
+        };
+
+        await guiaService.updateGuiaStatus(guiaId, statusRequest);
+      }
+
+      const updateRequest: GuiaUpdateRequest = {
+        especialidades: formData.especialidades,
+        quantidadeAutorizada: formData.quantidadeAutorizada,
+        mes: formData.mes,
+        ano: formData.ano,
+        validade: formData.validade,
+        lote: formData.lote,
+        valorReais: formData.valorReais,
+        quantidadeFaturada: formData.quantidadeFaturada,
+      };
+
+      await guiaService.updateGuia(guiaId, updateRequest);
 
       toastUtil.success("Guia atualizada com sucesso!");
       router.push(`/guias/${guiaId}`);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Erro ao atualizar guia:", err);
-      toastUtil.error("Erro ao atualizar guia");
+      toastUtil.error(err.response?.data?.message || "Erro ao atualizar guia");
     } finally {
       setSaving(false);
+      setShowStatusModal(false);
     }
-  };
-
-  const handleInputChange = (field: keyof GuiaUpdateRequest, value: any) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-
-    // Limpar erro do campo quando o usuário começar a digitar
-    if (formErrors[field]) {
-      setFormErrors((prev) => ({ ...prev, [field]: "" }));
-    }
-  };
-
-  const addEspecialidade = () => {
-    if (
-      especialidadeInput.trim() &&
-      !(formData.especialidades || []).includes(especialidadeInput.trim())
-    ) {
-      setFormData((prev) => ({
-        ...prev,
-        especialidades: [
-          ...(prev.especialidades || []),
-          especialidadeInput.trim(),
-        ],
-      }));
-      setEspecialidadeInput("");
-
-      // Limpar erro de especialidades
-      if (formErrors.especialidades) {
-        setFormErrors((prev) => ({ ...prev, especialidades: "" }));
-      }
-    }
-  };
-
-  const removeEspecialidade = (especialidade: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      especialidades: (prev.especialidades || []).filter(
-        (e) => e !== especialidade
-      ),
-    }));
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-        <Navbar />
-        <main className="flex-grow container mx-auto p-6">
+      <ProtectedRoute>
+        <div className="min-h-screen bg-gray-50">
+          <Navbar />
           <Loading message="Carregando dados da guia..." />
-        </main>
-      </div>
+        </div>
+      </ProtectedRoute>
     );
   }
 
   if (error || !guia) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-        <Navbar />
-        <main className="flex-grow container mx-auto p-6">
-          <div className="bg-red-50 text-red-700 p-4 rounded-md">
-            {error || "Guia não encontrada"}
+      <ProtectedRoute>
+        <div className="min-h-screen bg-gray-50">
+          <Navbar />
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                {error || "Guia não encontrada"}
+              </h2>
+              <CustomButton onClick={() => router.push("/guias")}>
+                Voltar para Guias
+              </CustomButton>
+            </div>
           </div>
-        </main>
-      </div>
+        </div>
+      </ProtectedRoute>
     );
   }
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-gray-50 flex flex-col">
+      <div className="min-h-screen bg-gray-50">
         <Navbar />
 
-        <main className="flex-grow container mx-auto p-6">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center">
-              <CustomButton
-                variant="primary"
-                onClick={() => router.back()}
-                className="mr-4">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Voltar
-              </CustomButton>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-800 flex items-center">
-                  <FileText className="mr-2 h-6 w-6" />
-                  Editar Guia #{guia.numeroGuia}
-                </h1>
-                <p className="text-gray-600 mt-1">
-                  Edite as informações da guia
-                </p>
-              </div>
-            </div>
-          </div>
+          <div className="mb-8">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <CustomButton
+                  variant="primary"
+                  onClick={() => router.push(`/guias/${guiaId}`)}>
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Voltar
+                </CustomButton>
 
-          {/* Informações não editáveis */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-            <div className="flex items-start">
-              <AlertCircle className="h-5 w-5 text-blue-500 mr-2 mt-0.5" />
-              <div>
-                <h3 className="text-sm font-medium text-blue-800 mb-2">
-                  Informações não editáveis
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-blue-700">
-                  <div>
-                    <strong>Paciente:</strong> {guia.pacienteNome}
-                  </div>
-                  <div>
-                    <strong>Convênio:</strong> {guia.convenioNome}
-                  </div>
-                  <div>
-                    <strong>Número da Guia:</strong> {guia.numeroGuia}
-                  </div>
+                <div>
+                  <h1 className="text-3xl font-bold text-gray-900 flex items-center">
+                    <FileText className="h-8 w-8 mr-3 text-blue-600" />
+                    Editar Guia
+                  </h1>
+                  <p className="text-gray-600 mt-1">
+                    #{guia.numeroGuia} - {guia.pacienteNome}
+                  </p>
                 </div>
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <span className="text-sm text-gray-500">Status atual:</span>
+                <StatusBadge status={statusAnterior} />
               </div>
             </div>
           </div>
@@ -273,43 +313,45 @@ export default function EditarGuiaPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Especialidades *
                 </label>
-                <div className="flex gap-2 mb-2">
-                  <input
-                    type="text"
+
+                <div className="flex space-x-2 mb-3">
+                  <select
                     value={especialidadeInput}
                     onChange={(e) => setEspecialidadeInput(e.target.value)}
-                    onKeyPress={(e) =>
-                      e.key === "Enter" &&
-                      (e.preventDefault(), addEspecialidade())
-                    }
-                    placeholder="Digite uma especialidade"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    <option value="">Selecione uma especialidade</option>
+                    {especialidades
+                      .filter((esp) => !formData.especialidades?.includes(esp))
+                      .map((esp) => (
+                        <option key={esp} value={esp}>
+                          {esp}
+                        </option>
+                      ))}
+                  </select>
                   <CustomButton
                     type="button"
                     variant="primary"
-                    onClick={addEspecialidade}>
+                    onClick={addEspecialidade}
+                    disabled={!especialidadeInput.trim()}>
                     <Plus className="h-4 w-4" />
                   </CustomButton>
                 </div>
 
-                {(formData.especialidades || []).length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {(formData.especialidades || []).map((esp, index) => (
-                      <span
-                        key={index}
-                        className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
-                        {esp}
-                        <button
-                          type="button"
-                          onClick={() => removeEspecialidade(esp)}
-                          className="ml-2 text-blue-600 hover:text-blue-800">
-                          <X className="h-3 w-3" />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
+                <div className="flex flex-wrap gap-2">
+                  {formData.especialidades?.map((especialidade, index) => (
+                    <span
+                      key={index}
+                      className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                      {especialidade}
+                      <button
+                        type="button"
+                        onClick={() => removeEspecialidade(index)}
+                        className="ml-2 text-blue-600 hover:text-blue-800">
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
 
                 {formErrors.especialidades && (
                   <p className="text-red-500 text-xs mt-1">
@@ -318,11 +360,11 @@ export default function EditarGuiaPage() {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                {/* Quantidade */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Quantidade Autorizada */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Quantidade *
+                    Quantidade Autorizada *
                   </label>
                   <input
                     type="number"
@@ -348,6 +390,26 @@ export default function EditarGuiaPage() {
                   )}
                 </div>
 
+                {/* Valor em Reais */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Valor (R$)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.valorReais}
+                    onChange={(e) =>
+                      handleInputChange(
+                        "valorReais",
+                        parseFloat(e.target.value)
+                      )
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+
                 {/* Mês */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -362,9 +424,25 @@ export default function EditarGuiaPage() {
                     className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 ${
                       formErrors.mes ? "border-red-500" : "border-gray-300"
                     }`}>
-                    {Array.from({ length: 12 }, (_, i) => (
-                      <option key={i + 1} value={i + 1}>
-                        {(i + 1).toString().padStart(2, "0")}
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map((mes) => (
+                      <option key={mes} value={mes}>
+                        {mes.toString().padStart(2, "0")} -{" "}
+                        {
+                          [
+                            "Janeiro",
+                            "Fevereiro",
+                            "Março",
+                            "Abril",
+                            "Maio",
+                            "Junho",
+                            "Julho",
+                            "Agosto",
+                            "Setembro",
+                            "Outubro",
+                            "Novembro",
+                            "Dezembro",
+                          ][mes - 1]
+                        }
                       </option>
                     ))}
                   </select>
@@ -400,41 +478,10 @@ export default function EditarGuiaPage() {
                   )}
                 </div>
 
-                {/* Valor */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Valor (R$)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.valorReais}
-                    onChange={(e) =>
-                      handleInputChange(
-                        "valorReais",
-                        parseFloat(e.target.value) || 0
-                      )
-                    }
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 ${
-                      formErrors.valorReais
-                        ? "border-red-500"
-                        : "border-gray-300"
-                    }`}
-                  />
-                  {formErrors.valorReais && (
-                    <p className="text-red-500 text-xs mt-1">
-                      {formErrors.valorReais}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Validade */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Data de Validade *
+                    Validade *
                   </label>
                   <input
                     type="date"
@@ -476,10 +523,10 @@ export default function EditarGuiaPage() {
                   <input
                     type="number"
                     min="0"
-                    value={formData.quantidadeAutorizada}
+                    value={formData.quantidadeFaturada}
                     onChange={(e) =>
                       handleInputChange(
-                        "quantidadeAutorizada",
+                        "quantidadeFaturada",
                         parseInt(e.target.value)
                       )
                     }
@@ -489,7 +536,7 @@ export default function EditarGuiaPage() {
                 </div>
               </div>
 
-              {/* Status em linha separada */}
+              {/* ✅ Status em linha separada */}
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-sm font-medium text-gray-700">
@@ -502,16 +549,27 @@ export default function EditarGuiaPage() {
 
                 <StatusSelect
                   value={formData.status || ""}
-                  onChange={(value) => handleInputChange("status", value)}
+                  onChange={handleStatusChange}
                   required
                   showPreview={false}
                   className={formErrors.status ? "border-red-500" : ""}
                 />
-
                 {formErrors.status && (
-                  <p className="text-red-500 text-xs mt-1">
+                  <p className="mt-1 text-sm text-red-600">
                     {formErrors.status}
                   </p>
+                )}
+                {formData.status !== statusAnterior && (
+                  <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                    <div className="flex items-center">
+                      <AlertCircle className="h-4 w-4 text-yellow-600 mr-2" />
+                      <span className="text-sm text-yellow-800">
+                        O status será alterado de{" "}
+                        <strong>{statusAnterior}</strong> para{" "}
+                        <strong>{formData.status}</strong>
+                      </span>
+                    </div>
+                  </div>
                 )}
               </div>
 
@@ -520,17 +578,108 @@ export default function EditarGuiaPage() {
                 <CustomButton
                   type="button"
                   variant="primary"
-                  onClick={() => router.back()}>
+                  onClick={() => router.push(`/guias/${guiaId}`)}
+                  disabled={saving}>
+                  <X className="h-4 w-4 mr-2" />
                   Cancelar
                 </CustomButton>
+
                 <CustomButton type="submit" variant="primary" disabled={saving}>
-                  <Save className="h-4 w-4 mr-2" />
-                  {saving ? "Salvando..." : "Salvar Alterações"}
+                  {saving ? (
+                    <div className="flex items-center">
+                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                      Salvando...
+                    </div>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      Salvar Alterações
+                    </>
+                  )}
                 </CustomButton>
               </div>
             </form>
           </div>
-        </main>
+        </div>
+
+        {/* ✅ Modal para mudança de status */}
+        {showStatusModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Alteração de Status
+              </h3>
+
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-gray-600 mb-2">
+                    Status será alterado de <strong>{statusAnterior}</strong>{" "}
+                    para <strong>{formData.status}</strong>
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Motivo *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={statusChangeData.motivo}
+                    onChange={(e) =>
+                      setStatusChangeData((prev) => ({
+                        ...prev,
+                        motivo: e.target.value,
+                      }))
+                    }
+                    placeholder="Informe o motivo da alteração"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Observações
+                  </label>
+                  <textarea
+                    value={statusChangeData.observacoes}
+                    onChange={(e) =>
+                      setStatusChangeData((prev) => ({
+                        ...prev,
+                        observacoes: e.target.value,
+                      }))
+                    }
+                    placeholder="Observações adicionais (opcional)"
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 mt-6">
+                <CustomButton
+                  type="button"
+                  variant="primary"
+                  onClick={() => {
+                    setShowStatusModal(false);
+                    setFormData((prev) => ({
+                      ...prev,
+                      status: statusAnterior,
+                    })); // Reverter status
+                  }}>
+                  Cancelar
+                </CustomButton>
+                <CustomButton
+                  type="button"
+                  variant="primary"
+                  onClick={() => setShowStatusModal(false)}
+                  disabled={!statusChangeData.motivo.trim()}>
+                  Confirmar
+                </CustomButton>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </ProtectedRoute>
   );
