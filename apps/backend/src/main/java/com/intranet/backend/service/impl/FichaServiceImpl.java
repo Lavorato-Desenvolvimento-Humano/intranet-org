@@ -442,8 +442,8 @@ public class FichaServiceImpl implements FichaService {
         return new FichaDto(
                 ficha.getId(),
                 guiaId,
-                pacienteId,
                 ficha.getCodigoFicha(),
+                pacienteId,
                 ficha.getStatus(),
                 ficha.getPacienteNome(),
                 ficha.getEspecialidade(),
