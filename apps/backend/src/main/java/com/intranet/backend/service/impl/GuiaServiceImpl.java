@@ -118,19 +118,9 @@ public class GuiaServiceImpl implements GuiaService {
 
         Guia guia = guiaRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Guia não encontrada com ID: " + id));
-        
-        User currentUser = getCurrentUser();
-        String statusAnterior = guia.getStatus();
-        boolean statusChanged = false;
 
-        if (request.getStatus() != null && !request.getStatus().equals(statusAnterior)) {
-            if (!StatusEnum.isValid(request.getStatus())) {
-                throw new IllegalArgumentException("Status inválido: " + request.getStatus());
-            }
-            guia.setStatus(request.getStatus());
-            statusChanged = true;
-        }
-        
+        User currentUser = getCurrentUser();
+
         if (request.getNumeroGuia() != null) {
             guia.setNumeroGuia(request.getNumeroGuia());
         }
@@ -174,22 +164,6 @@ public class GuiaServiceImpl implements GuiaService {
         }
 
         Guia updatedGuia = guiaRepository.save(guia);
-        
-        // Publicar evento se o status foi alterado
-        if (statusChanged) {
-            try {
-                statusEventPublisher.publishGuiaStatusChange(
-                        id,
-                        statusAnterior,
-                        guia.getStatus(),
-                        "Atualização via formulário",
-                        null,
-                        currentUser.getId()
-                );
-            } catch (Exception e) {
-                logger.error("Erro ao publicar evento de mudança de status: {}", e.getMessage(), e);
-            }
-        }
 
         logger.info("Guia atualizada com sucesso. ID: {}", updatedGuia.getId());
         return mapToGuiaDto(updatedGuia);
