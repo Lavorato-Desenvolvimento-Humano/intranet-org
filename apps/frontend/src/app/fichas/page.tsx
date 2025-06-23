@@ -1,4 +1,3 @@
-// src/app/fichas/page.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -8,11 +7,12 @@ import {
   Eye,
   Edit,
   Trash2,
-  Clipboard,
-  Link,
-  Unlink,
   FileSignature,
-  Hash,
+  Link,
+  Search,
+  Filter,
+  Download,
+  RefreshCw,
 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
@@ -22,28 +22,18 @@ import { DataTable } from "@/components/clinical/ui/DataTable";
 import { SearchInput } from "@/components/clinical/ui/SearchInput";
 import { FilterDropdown } from "@/components/clinical/ui/FilterDropdown";
 import { StatusBadge } from "@/components/clinical/ui/StatusBadge";
-import { FormModal } from "@/components/clinical/ui/FormModal";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  fichaService,
-  guiaService,
-  pacienteService,
-} from "@/services/clinical";
+import { fichaService } from "@/services/clinical";
 import convenioService, { ConvenioDto } from "@/services/convenio";
-import {
-  FichaSummaryDto,
-  FichaCreateRequest,
-  FichaAssinaturaCreateRequest,
-  FichaUpdateRequest,
-  PageResponse,
-  GuiaSummaryDto,
-  PacienteSummaryDto,
-  TipoFichaEnum,
-} from "@/types/clinical";
+import { useStatus } from "@/hooks/useStatus";
+import { FichaSummaryDto, PageResponse } from "@/types/clinical";
+import { formatDate } from "@/utils/dateUtils";
 import toastUtil from "@/utils/toast";
 
 export default function FichasPage() {
   const router = useRouter();
+
+  // Hook para status
+  const { statuses, loading: statusLoading } = useStatus();
 
   // Estados principais
   const [fichas, setFichas] = useState<PageResponse<FichaSummaryDto>>({
@@ -56,11 +46,9 @@ export default function FichasPage() {
     last: true,
     numberOfElements: 0,
   });
-  const [guias, setGuias] = useState<GuiaSummaryDto[]>([]);
-  const [pacientes, setPacientes] = useState<PacienteSummaryDto[]>([]);
-  const [convenios, setConvenios] = useState<ConvenioDto[]>([]);
+
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [convenios, setConvenios] = useState<ConvenioDto[]>([]);
 
   // Estados de filtros e busca
   const [searchTerm, setSearchTerm] = useState("");
@@ -69,112 +57,66 @@ export default function FichasPage() {
   const [selectedEspecialidade, setSelectedEspecialidade] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
 
-  // Estados de modal
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedFicha, setSelectedFicha] = useState<FichaSummaryDto | null>(
-    null
-  );
-  const [createType, setCreateType] = useState<"com_guia" | "assinatura">(
-    "com_guia"
-  );
-
-  // Estados de formulário
-  const [formDataComGuia, setFormDataComGuia] = useState<FichaCreateRequest>({
-    guiaId: "",
-    especialidade: "",
-    quantidadeAutorizada: 1,
-    convenioId: "",
-    mes: new Date().getMonth() + 1,
-    ano: new Date().getFullYear(),
-  });
-
-  const [formDataAssinatura, setFormDataAssinatura] =
-    useState<FichaAssinaturaCreateRequest>({
-      pacienteId: "",
-      especialidade: "",
-      quantidadeAutorizada: 1,
-      convenioId: "",
-      mes: new Date().getMonth() + 1,
-      ano: new Date().getFullYear(),
-    });
-
-  const [submitting, setSubmitting] = useState(false);
+  // Lista de especialidades disponíveis
+  const especialidades = [
+    "Fisioterapia",
+    "Fonoaudiologia",
+    "Terapia Ocupacional",
+    "Psicologia",
+    "Nutrição",
+    "Psicopedagogia",
+    "Psicomotricidade",
+  ];
 
   // Carregar dados iniciais
   useEffect(() => {
-    loadInitialData();
-  }, []);
-
-  // Carregar fichas quando filtros mudarem
-  useEffect(() => {
     loadFichas();
-  }, [
-    currentPage,
-    searchTerm,
-    selectedConvenio,
-    selectedStatus,
-    selectedEspecialidade,
-  ]);
+    loadConvenios();
+  }, [currentPage, selectedConvenio, selectedStatus, selectedEspecialidade]);
 
-  const loadInitialData = async () => {
-    try {
-      setLoading(true);
-      const [fichasData, guiasData, pacientesData, conveniosData] =
-        await Promise.all([
-          fichaService.getAllFichas(0, 20),
-          guiaService.getAllGuias(0, 100), // Carregar mais para o select
-          pacienteService.getAllPacientes(0, 100), // Carregar mais para o select
-          convenioService.getAllConvenios(),
-        ]);
+  // Busca com debounce
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (searchTerm !== "") {
+        searchFichas();
+      } else {
+        loadFichas();
+      }
+    }, 500);
 
-      setFichas(fichasData);
-      setGuias(guiasData.content);
-      setPacientes(pacientesData.content);
-      setConvenios(conveniosData);
-    } catch (err) {
-      console.error("Erro ao carregar dados:", err);
-      setError("Erro ao carregar dados das fichas");
-      toastUtil.error("Erro ao carregar dados das fichas");
-    } finally {
-      setLoading(false);
-    }
-  };
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
 
   const loadFichas = async () => {
     try {
       setLoading(true);
-      let result;
 
-      if (searchTerm) {
-        result = await fichaService.searchByCodigoFicha(
-          searchTerm,
-          currentPage,
-          20
-        );
-      } else if (selectedConvenio) {
-        result = await fichaService.getFichasByConvenio(
+      let fichasData: PageResponse<FichaSummaryDto>;
+
+      // Aplicar filtros se necessário
+      if (selectedConvenio) {
+        fichasData = await fichaService.getFichasByConvenio(
           selectedConvenio,
           currentPage,
           20
         );
       } else if (selectedStatus) {
-        result = await fichaService.getFichasByStatus(
+        fichasData = await fichaService.getFichasByStatus(
           selectedStatus,
           currentPage,
           20
         );
       } else if (selectedEspecialidade) {
-        result = await fichaService.searchFichasByEspecialidade(
+        fichasData = await fichaService.searchFichasByEspecialidade(
           selectedEspecialidade,
           currentPage,
           20
         );
       } else {
-        result = await fichaService.getAllFichas(currentPage, 20);
+        fichasData = await fichaService.getAllFichas(currentPage, 20);
       }
 
-      setFichas(result);
+      setFichas(fichasData);
     } catch (err) {
       console.error("Erro ao carregar fichas:", err);
       toastUtil.error("Erro ao carregar fichas");
@@ -183,114 +125,63 @@ export default function FichasPage() {
     }
   };
 
-  const handleCreateFichaComGuia = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const searchFichas = async () => {
     try {
-      setSubmitting(true);
-      await fichaService.createFicha(formDataComGuia);
-      toastUtil.success("Ficha criada com sucesso!");
-      setShowCreateModal(false);
-      resetForm();
-      loadFichas();
+      setLoading(true);
+
+      // Buscar por código da ficha
+      const fichasData = await fichaService.searchByCodigoFicha(
+        searchTerm,
+        currentPage,
+        20
+      );
+      setFichas(fichasData);
     } catch (err) {
-      console.error("Erro ao criar ficha:", err);
-      toastUtil.error("Erro ao criar ficha");
+      console.error("Erro ao buscar fichas:", err);
+      toastUtil.error("Erro ao buscar fichas");
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
   };
 
-  const handleCreateFichaAssinatura = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const loadConvenios = async () => {
     try {
-      setSubmitting(true);
-      await fichaService.createFichaAssinatura(formDataAssinatura);
-      toastUtil.success("Ficha de assinatura criada com sucesso!");
-      setShowCreateModal(false);
-      resetForm();
-      loadFichas();
+      const conveniosData = await convenioService.getAllConvenios();
+      setConvenios(conveniosData);
     } catch (err) {
-      console.error("Erro ao criar ficha de assinatura:", err);
-      toastUtil.error("Erro ao criar ficha de assinatura");
-    } finally {
-      setSubmitting(false);
+      console.error("Erro ao carregar convênios:", err);
     }
   };
 
-  const handleEditFicha = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedFicha) return;
-
-    try {
-      setSubmitting(true);
-      const updateData: FichaUpdateRequest = {
-        especialidade: formDataComGuia.especialidade,
-        quantidadeAutorizada: formDataComGuia.quantidadeAutorizada,
-        mes: formDataComGuia.mes,
-        ano: formDataComGuia.ano,
-      };
-
-      await fichaService.updateFicha(selectedFicha.id, updateData);
-      toastUtil.success("Ficha atualizada com sucesso!");
-      setShowEditModal(false);
-      setSelectedFicha(null);
-      resetForm();
-      loadFichas();
-    } catch (err) {
-      console.error("Erro ao atualizar ficha:", err);
-      toastUtil.error("Erro ao atualizar ficha");
-    } finally {
-      setSubmitting(false);
-    }
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
   };
 
-  const handleDeleteFicha = async (ficha: FichaSummaryDto) => {
-    if (
-      !confirm(`Tem certeza que deseja excluir a ficha ${ficha.codigoFicha}?`)
-    ) {
-      return;
-    }
-
-    try {
-      await fichaService.deleteFicha(ficha.id);
-      toastUtil.success("Ficha excluída com sucesso!");
-      loadFichas();
-    } catch (err) {
-      console.error("Erro ao excluir ficha:", err);
-      toastUtil.error("Erro ao excluir ficha");
-    }
+  const handleSearch = (term: string) => {
+    setSearchTerm(term);
+    setCurrentPage(0);
   };
 
-  const openEditModal = (ficha: FichaSummaryDto) => {
-    setSelectedFicha(ficha);
-    setFormDataComGuia({
-      guiaId: "", // Não editável
-      especialidade: ficha.especialidade,
-      quantidadeAutorizada: ficha.quantidadeAutorizada,
-      convenioId: "", // Não editável
-      mes: ficha.mes,
-      ano: ficha.ano,
-    });
-    setShowEditModal(true);
-  };
+  const handleFilterChange = (filterType: string, value: string) => {
+    setCurrentPage(0);
 
-  const resetForm = () => {
-    setFormDataComGuia({
-      guiaId: "",
-      especialidade: "",
-      quantidadeAutorizada: 1,
-      convenioId: "",
-      mes: new Date().getMonth() + 1,
-      ano: new Date().getFullYear(),
-    });
-    setFormDataAssinatura({
-      pacienteId: "",
-      especialidade: "",
-      quantidadeAutorizada: 1,
-      convenioId: "",
-      mes: new Date().getMonth() + 1,
-      ano: new Date().getFullYear(),
-    });
+    switch (filterType) {
+      case "convenio":
+        setSelectedConvenio(value);
+        setSelectedStatus("");
+        setSelectedEspecialidade("");
+        break;
+      case "status":
+        setSelectedStatus(value);
+        setSelectedConvenio("");
+        setSelectedEspecialidade("");
+        break;
+      case "especialidade":
+        setSelectedEspecialidade(value);
+        setSelectedConvenio("");
+        setSelectedStatus("");
+        break;
+    }
   };
 
   const clearFilters = () => {
@@ -301,20 +192,36 @@ export default function FichasPage() {
     setCurrentPage(0);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("pt-BR");
+  const handleDeleteFicha = async (fichaId: string) => {
+    const ficha = fichas.content.find((f) => f.id === fichaId);
+    if (!ficha) return;
+
+    const confirmacao = window.confirm(
+      `Tem certeza que deseja excluir a ficha ${ficha.codigoFicha}?`
+    );
+
+    if (confirmacao) {
+      try {
+        await fichaService.deleteFicha(fichaId);
+        toastUtil.success("Ficha excluída com sucesso!");
+        loadFichas(); // Recarregar a lista
+      } catch (err) {
+        console.error("Erro ao excluir ficha:", err);
+        toastUtil.error("Erro ao excluir ficha");
+      }
+    }
+  };
+
+  const handleRefresh = () => {
+    loadFichas();
+    toastUtil.info("Lista atualizada!");
   };
 
   const getFichaTypeIcon = (ficha: FichaSummaryDto) => {
-    // Assumindo que fichas com guiaId são COM_GUIA e sem são ASSINATURA
-    const hasGuia = true; // Esta informação deveria vir do backend
-    return hasGuia ? (
-      <Link className="h-4 w-4 text-blue-500" />
-    ) : (
-      <FileSignature className="h-4 w-4 text-green-500" />
-    );
+    return <FileSignature className="h-4 w-4 text-blue-500" />;
   };
 
+  // Definir colunas da tabela
   const tableColumns = [
     {
       header: "Código",
@@ -355,7 +262,8 @@ export default function FichasPage() {
     {
       header: "Período",
       accessor: ((ficha: FichaSummaryDto) =>
-        `${ficha.mes}/${ficha.ano}`) as any,
+        `${String(ficha.mes).padStart(2, "0")}/${ficha.ano}`) as any,
+      className: "text-center",
     },
     {
       header: "Responsável",
@@ -371,42 +279,58 @@ export default function FichasPage() {
     {
       header: "Ações",
       accessor: ((ficha: FichaSummaryDto) => (
-        <div className="flex space-x-2">
+        <div className="flex space-x-1">
           <CustomButton
             variant="primary"
             size="small"
-            onClick={() => router.push(`/fichas/${ficha.id}`)}>
+            onClick={() => router.push(`/fichas/${ficha.id}`)}
+            title="Visualizar detalhes">
             <Eye className="h-4 w-4" />
           </CustomButton>
           <CustomButton
             variant="primary"
             size="small"
-            onClick={() => openEditModal(ficha)}>
+            onClick={() => router.push(`/fichas/${ficha.id}/editar`)}
+            title="Editar ficha">
             <Edit className="h-4 w-4" />
           </CustomButton>
           <CustomButton
             variant="primary"
             size="small"
-            onClick={() => handleDeleteFicha(ficha)}>
+            onClick={() => handleDeleteFicha(ficha.id)}
+            title="Excluir ficha">
             <Trash2 className="h-4 w-4" />
           </CustomButton>
         </div>
       )) as any,
+      className: "text-center",
     },
   ];
 
-  const especialidadesUnicas = Array.from(
-    new Set(fichas.content.map((f) => f.especialidade))
-  ).map((esp) => ({ label: esp, value: esp }));
-
-  if (loading && !fichas.content.length) {
+  if (loading && fichas.content.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-        <Navbar />
-        <main className="flex-grow container mx-auto p-6">
-          <Loading message="Carregando fichas..." />
-        </main>
-      </div>
+      <ProtectedRoute>
+        <div className="min-h-screen bg-gray-50 flex flex-col">
+          <Navbar />
+          <main className="flex-grow container mx-auto p-6">
+            <Loading message="Carregando fichas..." />
+          </main>
+        </div>
+      </ProtectedRoute>
+    );
+  }
+
+  // Mostrar loading se ainda estiver carregando status
+  if (statusLoading) {
+    return (
+      <ProtectedRoute>
+        <div className="min-h-screen bg-gray-50 flex flex-col">
+          <Navbar />
+          <main className="flex-grow container mx-auto p-6">
+            <Loading message="Carregando dados do sistema..." />
+          </main>
+        </div>
+      </ProtectedRoute>
     );
   }
 
@@ -417,451 +341,139 @@ export default function FichasPage() {
 
         <main className="flex-grow container mx-auto p-6">
           {/* Header */}
-          <div className="flex justify-between items-center mb-8">
+          <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-2xl font-bold text-gray-800 flex items-center">
-                <Clipboard className="mr-2 h-6 w-6" />
-                Fichas
+                <FileSignature className="mr-2 h-6 w-6" />
+                Fichas Clínicas
               </h1>
               <p className="text-gray-600 mt-1">
-                Gerencie as fichas de atendimento
+                Gerencie as fichas de atendimento dos pacientes
               </p>
             </div>
-            <CustomButton
-              variant="primary"
-              onClick={() => setShowCreateModal(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Nova Ficha
-            </CustomButton>
-          </div>
 
-          {error && (
-            <div className="bg-red-50 text-red-700 p-4 rounded-md mb-6">
-              {error}
-            </div>
-          )}
-
-          {/* Filtros */}
-          <div className="bg-white p-4 rounded-lg shadow mb-6">
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              <SearchInput
-                value={searchTerm}
-                onChange={setSearchTerm}
-                placeholder="Buscar por código..."
-                onClear={() => setSearchTerm("")}
-              />
-
-              <FilterDropdown
-                options={convenios.map((c) => ({ label: c.name, value: c.id }))}
-                value={selectedConvenio}
-                onChange={setSelectedConvenio}
-                placeholder="Filtrar por convênio"
-              />
-
-              <FilterDropdown
-                options={[
-                  { label: "ATIVO", value: "ATIVO" },
-                  { label: "INATIVO", value: "INATIVO" },
-                  { label: "PENDENTE", value: "PENDENTE" },
-                  { label: "CONCLUIDO", value: "CONCLUIDO" },
-                  { label: "CANCELADO", value: "CANCELADO" },
-                ]}
-                value={selectedStatus}
-                onChange={setSelectedStatus}
-                placeholder="Filtrar por status"
-              />
-
-              <FilterDropdown
-                options={especialidadesUnicas}
-                value={selectedEspecialidade}
-                onChange={setSelectedEspecialidade}
-                placeholder="Filtrar por especialidade"
-              />
-
+            <div className="flex space-x-3">
+              <CustomButton
+                variant="secondary"
+                onClick={handleRefresh}
+                disabled={loading}>
+                <RefreshCw
+                  className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
+                />
+                Atualizar
+              </CustomButton>
               <CustomButton
                 variant="primary"
-                onClick={clearFilters}
-                className="w-full">
-                Limpar Filtros
+                onClick={() => router.push("/fichas/novo")}>
+                <Plus className="h-4 w-4 mr-2" />
+                Nova Ficha
               </CustomButton>
             </div>
           </div>
 
-          {/* Tabela de fichas */}
-          <DataTable
-            data={fichas}
-            columns={tableColumns}
-            onPageChange={setCurrentPage}
-            loading={loading}
-          />
-
-          {/* Modal de criação */}
-          <FormModal
-            isOpen={showCreateModal}
-            onClose={() => setShowCreateModal(false)}
-            title="Nova Ficha"
-            className="sm:max-w-lg">
-            <Tabs defaultValue="com_guia" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-4">
-                <TabsTrigger
-                  value="com_guia"
-                  className="flex items-center"
-                  onClick={() => setCreateType("com_guia")}>
-                  <Link className="mr-2 h-4 w-4" />
-                  Com Guia
-                </TabsTrigger>
-                <TabsTrigger
-                  value="assinatura"
-                  className="flex items-center"
-                  onClick={() => setCreateType("assinatura")}>
-                  <FileSignature className="mr-2 h-4 w-4" />
-                  Assinatura
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="com_guia">
-                <form onSubmit={handleCreateFichaComGuia} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Guia *
-                    </label>
-                    <select
-                      required
-                      value={formDataComGuia.guiaId}
-                      onChange={(e) =>
-                        setFormDataComGuia({
-                          ...formDataComGuia,
-                          guiaId: e.target.value,
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
-                      <option value="">Selecione a guia</option>
-                      {guias.map((guia) => (
-                        <option key={guia.id} value={guia.id}>
-                          {guia.numeroGuia} - {guia.pacienteNome} (
-                          {guia.convenioNome})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Especialidade *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formDataComGuia.especialidade}
-                      onChange={(e) =>
-                        setFormDataComGuia({
-                          ...formDataComGuia,
-                          especialidade: e.target.value,
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Quantidade *
-                      </label>
-                      <input
-                        type="number"
-                        required
-                        min="1"
-                        value={formDataComGuia.quantidadeAutorizada}
-                        onChange={(e) =>
-                          setFormDataComGuia({
-                            ...formDataComGuia,
-                            quantidadeAutorizada: parseInt(e.target.value),
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end space-x-3 pt-4">
-                    <CustomButton
-                      type="button"
-                      variant="primary"
-                      onClick={() => setShowCreateModal(false)}
-                      disabled={submitting}>
-                      Cancelar
-                    </CustomButton>
-                    <CustomButton
-                      type="submit"
-                      variant="primary"
-                      disabled={submitting}>
-                      {submitting ? "Criando..." : "Criar Ficha"}
-                    </CustomButton>
-                  </div>
-                </form>
-              </TabsContent>
-
-              <TabsContent value="assinatura">
-                <form
-                  onSubmit={handleCreateFichaAssinatura}
-                  className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Paciente *
-                    </label>
-                    <select
-                      required
-                      value={formDataAssinatura.pacienteId}
-                      onChange={(e) =>
-                        setFormDataAssinatura({
-                          ...formDataAssinatura,
-                          pacienteId: e.target.value,
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
-                      <option value="">Selecione o paciente</option>
-                      {pacientes.map((paciente) => (
-                        <option key={paciente.id} value={paciente.id}>
-                          {paciente.nome} - {paciente.convenioNome}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Especialidade *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formDataAssinatura.especialidade}
-                      onChange={(e) =>
-                        setFormDataAssinatura({
-                          ...formDataAssinatura,
-                          especialidade: e.target.value,
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Quantidade *
-                      </label>
-                      <input
-                        type="number"
-                        required
-                        min="1"
-                        value={formDataAssinatura.quantidadeAutorizada}
-                        onChange={(e) =>
-                          setFormDataAssinatura({
-                            ...formDataAssinatura,
-                            quantidadeAutorizada: parseInt(e.target.value),
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Convênio *
-                      </label>
-                      <select
-                        required
-                        value={formDataAssinatura.convenioId}
-                        onChange={(e) =>
-                          setFormDataAssinatura({
-                            ...formDataAssinatura,
-                            convenioId: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
-                        <option value="">Selecione</option>
-                        {convenios.map((convenio) => (
-                          <option key={convenio.id} value={convenio.id}>
-                            {convenio.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Mês *
-                      </label>
-                      <select
-                        required
-                        value={formDataAssinatura.mes}
-                        onChange={(e) =>
-                          setFormDataAssinatura({
-                            ...formDataAssinatura,
-                            mes: parseInt(e.target.value),
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
-                        {Array.from({ length: 12 }, (_, i) => i + 1).map(
-                          (mes) => (
-                            <option key={mes} value={mes}>
-                              {mes.toString().padStart(2, "0")}
-                            </option>
-                          )
-                        )}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Ano *
-                      </label>
-                      <input
-                        type="number"
-                        required
-                        min="2020"
-                        max="2030"
-                        value={formDataAssinatura.ano}
-                        onChange={(e) =>
-                          setFormDataAssinatura({
-                            ...formDataAssinatura,
-                            ano: parseInt(e.target.value),
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end space-x-3 pt-4">
-                    <CustomButton
-                      type="button"
-                      variant="primary"
-                      onClick={() => setShowCreateModal(false)}
-                      disabled={submitting}>
-                      Cancelar
-                    </CustomButton>
-                    <CustomButton
-                      type="submit"
-                      variant="primary"
-                      disabled={submitting}>
-                      {submitting ? "Criando..." : "Criar Ficha de Assinatura"}
-                    </CustomButton>
-                  </div>
-                </form>
-              </TabsContent>
-            </Tabs>
-          </FormModal>
-
-          {/* Modal de edição */}
-          <FormModal
-            isOpen={showEditModal}
-            onClose={() => setShowEditModal(false)}
-            title="Editar Ficha"
-            className="sm:max-w-md">
-            <form onSubmit={handleEditFicha} className="space-y-4">
+          {/* Filtros e Busca */}
+          <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {/* Busca */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Especialidade *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formDataComGuia.especialidade}
-                  onChange={(e) =>
-                    setFormDataComGuia({
-                      ...formDataComGuia,
-                      especialidade: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                <SearchInput
+                  placeholder="Buscar por código da ficha..."
+                  value={searchTerm}
+                  onChange={handleSearch}
                 />
               </div>
 
+              {/* Filtro por Convênio */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Quantidade *
-                </label>
-                <input
-                  type="number"
-                  required
-                  min="1"
-                  value={formDataComGuia.quantidadeAutorizada}
-                  onChange={(e) =>
-                    setFormDataComGuia({
-                      ...formDataComGuia,
-                      quantidadeAutorizada: parseInt(e.target.value),
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                <FilterDropdown
+                  placeholder="Convênio"
+                  value={selectedConvenio}
+                  onChange={(value) => handleFilterChange("convenio", value)}
+                  options={convenios.map((c) => ({
+                    label: c.name,
+                    value: c.id,
+                  }))}
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Mês *
-                  </label>
-                  <select
-                    required
-                    value={formDataComGuia.mes}
-                    onChange={(e) =>
-                      setFormDataComGuia({
-                        ...formDataComGuia,
-                        mes: parseInt(e.target.value),
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
-                    {Array.from({ length: 12 }, (_, i) => i + 1).map((mes) => (
-                      <option key={mes} value={mes}>
-                        {mes.toString().padStart(2, "0")}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Ano *
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    min="2020"
-                    max="2030"
-                    value={formDataComGuia.ano}
-                    onChange={(e) =>
-                      setFormDataComGuia({
-                        ...formDataComGuia,
-                        ano: parseInt(e.target.value),
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                </div>
+              {/* Filtro por Status */}
+              <div>
+                <FilterDropdown
+                  placeholder="Status"
+                  value={selectedStatus}
+                  onChange={(value) => handleFilterChange("status", value)}
+                  options={statuses.map((s) => ({
+                    label: s.status || s.descricao,
+                    value: s.status,
+                  }))}
+                />
               </div>
 
-              <div className="flex justify-end space-x-3 pt-4">
+              {/* Filtro por Especialidade */}
+              <div>
+                <FilterDropdown
+                  placeholder="Especialidade"
+                  value={selectedEspecialidade}
+                  onChange={(value) =>
+                    handleFilterChange("especialidade", value)
+                  }
+                  options={especialidades.map((e) => ({ label: e, value: e }))}
+                />
+              </div>
+            </div>
+
+            {/* Botão para limpar filtros */}
+            {(searchTerm ||
+              selectedConvenio ||
+              selectedStatus ||
+              selectedEspecialidade) && (
+              <div className="mt-4 flex justify-between items-center">
+                <span className="text-sm text-gray-600">
+                  {fichas.totalElements} fichas encontradas
+                </span>
                 <CustomButton
-                  type="button"
                   variant="primary"
-                  onClick={() => setShowEditModal(false)}
-                  disabled={submitting}>
-                  Cancelar
-                </CustomButton>
-                <CustomButton
-                  type="submit"
-                  variant="primary"
-                  disabled={submitting}>
-                  {submitting ? "Salvando..." : "Salvar Alterações"}
+                  size="small"
+                  onClick={clearFilters}>
+                  Limpar Filtros
                 </CustomButton>
               </div>
-            </form>
-          </FormModal>
+            )}
+          </div>
+
+          {/* Tabela de Fichas */}
+          <div className="bg-white rounded-lg shadow-md">
+            <DataTable
+              data={fichas}
+              columns={tableColumns}
+              onPageChange={handlePageChange}
+              loading={loading}
+            />
+          </div>
+
+          {/* Estado vazio */}
+          {!loading && fichas.content.length === 0 && (
+            <div className="bg-white rounded-lg shadow-md p-8 text-center">
+              <FileSignature className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Nenhuma ficha encontrada
+              </h3>
+              <p className="text-gray-600 mb-4">
+                {searchTerm ||
+                selectedConvenio ||
+                selectedStatus ||
+                selectedEspecialidade
+                  ? "Nenhuma ficha corresponde aos critérios de busca."
+                  : "Comece criando sua primeira ficha clínica."}
+              </p>
+              <CustomButton
+                variant="primary"
+                onClick={() => router.push("/fichas/novo")}>
+                <Plus className="h-4 w-4 mr-2" />
+                Nova Ficha
+              </CustomButton>
+            </div>
+          )}
         </main>
       </div>
     </ProtectedRoute>
