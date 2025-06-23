@@ -201,15 +201,24 @@ public class FichaServiceImpl implements FichaService {
         String statusAnterior = ficha.getStatus();
         boolean statusChanged = false;
 
+        if (request.getStatus() != null && !request.getStatus().equals(statusAnterior)) {
+            if (!StatusEnum.isValid(request.getStatus())) {
+                throw new IllegalArgumentException("Status inválido: " + request.getStatus());
+            }
+            ficha.setStatus(request.getStatus());
+            statusChanged = true;
+            logger.info("Status da ficha alterado de '{}' para '{}'", statusAnterior, request.getStatus());
+        }
+
         // Atualizar campos se fornecidos
         if (request.getEspecialidade() != null) {
-            // Verificar se a nova especialidade está disponível na guia
-            if (!ficha.getGuia().getEspecialidades().contains(request.getEspecialidade())) {
+            // Verificar se a nova especialidade está disponível na guia (apenas se ficha tiver guia)
+            if (ficha.getGuia() != null && !ficha.getGuia().getEspecialidades().contains(request.getEspecialidade())) {
                 throw new IllegalArgumentException("A especialidade informada não está presente nas especialidades da guia");
             }
 
             // Verificar se não existe outra ficha com a mesma especialidade na mesma guia
-            if (!ficha.getEspecialidade().equals(request.getEspecialidade()) &&
+            if (ficha.getGuia() != null && !ficha.getEspecialidade().equals(request.getEspecialidade()) &&
                     fichaRepository.existsByGuiaIdAndEspecialidade(ficha.getGuia().getId(), request.getEspecialidade())) {
                 throw new IllegalArgumentException("Já existe uma ficha para esta guia com a especialidade: " + request.getEspecialidade());
             }
@@ -237,15 +246,14 @@ public class FichaServiceImpl implements FichaService {
 
         Ficha updatedFicha = fichaRepository.save(ficha);
 
-        // Publicar evento se o status foi alterado
         if (statusChanged) {
             try {
                 statusEventPublisher.publishFichaStatusChange(
                         id,
                         statusAnterior,
                         ficha.getStatus(),
-                        "Atualização via formulário",
-                        null,
+                        "Atualização via formulário de edição",
+                        "Status alterado durante edição da ficha",
                         currentUser.getId()
                 );
             } catch (Exception e) {

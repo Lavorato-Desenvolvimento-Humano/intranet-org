@@ -175,6 +175,7 @@ export interface FichaUpdateRequest {
   quantidadeAutorizada?: number;
   mes?: number;
   ano?: number;
+  status?: string;
 }
 
 export interface StatusDto {
