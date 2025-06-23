@@ -418,6 +418,7 @@ public class GuiaServiceImpl implements GuiaService {
     }
 
     private FichaSummaryDto mapToFichaSummaryDto(Ficha ficha) {
+        UUID guiaId = ficha.getGuia() != null ? ficha.getGuia().getId() : null;
         return new FichaSummaryDto(
                 ficha.getId(),
                 ficha.getCodigoFicha(),
@@ -429,7 +430,9 @@ public class GuiaServiceImpl implements GuiaService {
                 ficha.getMes(),
                 ficha.getAno(),
                 ficha.getUsuarioResponsavel().getFullName(),
-                ficha.getCreatedAt()
+                ficha.getCreatedAt(),
+                ficha.getTipoFicha(),
+                guiaId
         );
     }
 }
