@@ -556,52 +556,46 @@ export default function NovaGuiaPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Data de Validade */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Data de Validade *
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={formData.validade}
-                    onChange={(e) =>
-                      handleInputChange("validade", e.target.value)
-                    }
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 ${
-                      formErrors.validade ? "border-red-500" : "border-gray-300"
-                    }`}
-                  />
-                  {formErrors.validade && (
-                    <p className="text-red-500 text-xs mt-1">
-                      {formErrors.validade}
-                    </p>
-                  )}
-                </div>
-
-                {/* Espaço vazio para manter layout */}
-                <div></div>
+              {/* DATA DE VALIDADE */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Data de Validade *
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={formData.validade}
+                  onChange={(e) =>
+                    handleInputChange("validade", e.target.value)
+                  }
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+                    formErrors.validade ? "border-red-500" : "border-gray-300"
+                  }`}
+                />
+                {formErrors.validade && (
+                  <p className="text-red-500 text-xs mt-1">
+                    {formErrors.validade}
+                  </p>
+                )}
               </div>
 
+              {/* STATUS */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Status *
                 </label>
-                <div className="max-w-md">
-                  <StatusSelect
-                    value={formData.status}
-                    onChange={handleStatusChange}
-                    required
-                    showPreview={true}
-                    className={formErrors.status ? "border-red-500" : ""}
-                  />
-                  {formErrors.status && (
-                    <p className="text-red-500 text-xs mt-1">
-                      {formErrors.status}
-                    </p>
-                  )}
-                </div>
+                <StatusSelect
+                  value={formData.status}
+                  onChange={handleStatusChange}
+                  required
+                  showPreview={true}
+                  className={formErrors.status ? "border-red-500" : ""}
+                />
+                {formErrors.status && (
+                  <p className="text-red-500 text-xs mt-1">
+                    {formErrors.status}
+                  </p>
+                )}
               </div>
 
               {/* ===== BOTÕES DE AÇÃO ===== */}
