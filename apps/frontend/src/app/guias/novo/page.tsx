@@ -2,19 +2,25 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Save, FileText, Plus, X } from "lucide-react";
+import { ArrowLeft, Save, FileText, Plus, X, AlertCircle } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
 import { Loading } from "@/components/ui/loading";
 import { CustomButton } from "@/components/ui/custom-button";
 import { guiaService, pacienteService } from "@/services/clinical";
 import convenioService, { ConvenioDto } from "@/services/convenio";
-import { GuiaCreateRequest, PacienteSummaryDto } from "@/types/clinical";
+import {
+  GuiaCreateRequest,
+  PacienteSummaryDto,
+  GuiaDto,
+} from "@/types/clinical";
 import toastUtil from "@/utils/toast";
 import { StatusSelect } from "@/components/clinical/ui/StatusSelect";
+import { useStatus } from "@/hooks/useStatus";
 
 export default function NovaGuiaPage() {
   const router = useRouter();
+  const { statuses } = useStatus();
 
   // Estados principais
   const [pacientes, setPacientes] = useState<PacienteSummaryDto[]>([]);
@@ -27,6 +33,7 @@ export default function NovaGuiaPage() {
   const [formData, setFormData] = useState<GuiaCreateRequest>({
     pacienteId: "",
     numeroGuia: "",
+    status: "",
     especialidades: [],
     quantidadeAutorizada: 1,
     convenioId: "",
@@ -34,25 +41,27 @@ export default function NovaGuiaPage() {
     ano: new Date().getFullYear(),
     validade: "",
     lote: "",
-    valorReais: 0,
-    status: "",
     quantidadeFaturada: 0,
+    valorReais: 0,
   });
 
-  const handleStatusChange = (newStatus: string) => {
-    setFormData((prev) => ({ ...prev, status: newStatus }));
-
-    //Limpar erro do campo de status quando o usuário começar a digitar
-    if (formErrors.status) {
-      setFormErrors((prev) => ({ ...prev, status: "" }));
-    }
-  };
-
-  // Estados para especialidades
-  const [especialidadeInput, setEspecialidadeInput] = useState("");
-
-  // Estados de validação
+  // Estados de validação e UI
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [especialidadeSelecionada, setEspecialidadeSelecionada] = useState("");
+
+  // Lista de especialidades padronizadas
+  const especialidades = [
+    "Fisioterapia",
+    "Fonoaudiologia",
+    "Terapia Ocupacional",
+    "Psicologia",
+    "Nutrição",
+    "Psicopedagogia",
+    "Psicomotricidade",
+    "Musicoterapia",
+    "Avaliação Neuropsicológica",
+    "Arteterapia",
+  ];
 
   // Carregar dados iniciais
   useEffect(() => {
@@ -65,101 +74,24 @@ export default function NovaGuiaPage() {
       setError(null);
 
       const [pacientesData, conveniosData] = await Promise.all([
-        pacienteService.getAllPacientes(0, 1000), // Buscar todos para o select
+        pacienteService.getAllPacientes(),
         convenioService.getAllConvenios(),
       ]);
 
       setPacientes(pacientesData.content);
       setConvenios(conveniosData);
-
-      // Definir data de validade padrão (3 meses a partir de hoje)
-      const today = new Date();
-      const validadeDefault = new Date(today.setMonth(today.getMonth() + 3));
-      setFormData((prev) => ({
-        ...prev,
-        validade: validadeDefault.toISOString().split("T")[0],
-      }));
     } catch (err) {
       console.error("Erro ao carregar dados:", err);
-      setError("Erro ao carregar informações necessárias");
+      setError("Erro ao carregar dados necessários");
     } finally {
       setLoading(false);
     }
   };
 
-  const validateForm = (): boolean => {
-    const errors: Record<string, string> = {};
-
-    if (!formData.pacienteId) {
-      errors.pacienteId = "Paciente é obrigatório";
-    }
-
-    if (formData.especialidades.length === 0) {
-      errors.especialidades = "Pelo menos uma especialidade é obrigatória";
-    }
-
-    if (!formData.quantidadeAutorizada || formData.quantidadeAutorizada < 1) {
-      errors.quantidadeAutorizada = "Quantidade deve ser maior que zero";
-    }
-
-    if (!formData.convenioId) {
-      errors.convenioId = "Convênio é obrigatório";
-    }
-
-    if (!formData.mes || formData.mes < 1 || formData.mes > 12) {
-      errors.mes = "Mês inválido";
-    }
-
-    if (!formData.ano || formData.ano < 2020) {
-      errors.ano = "Ano inválido";
-    }
-
-    if (!formData.validade) {
-      errors.validade = "Data de validade é obrigatória";
-    } else {
-      const validadeDate = new Date(formData.validade);
-      const today = new Date();
-      if (validadeDate <= today) {
-        errors.validade = "Data de validade deve ser futura";
-      }
-    }
-
-    if ((formData.valorReais ?? 0) < 0) {
-      errors.valorReais = "Valor não pode ser negativo";
-    }
-
-    if (!formData.status) {
-      errors.status = "Status é obrigatório";
-    }
-
-    if (!formData.numeroGuia) {
-      errors.numeroGuia = "Número da guia é obrigatório";
-    }
-
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!validateForm()) {
-      toastUtil.error("Corrija os erros no formulário");
-      return;
-    }
-
-    try {
-      setSaving(true);
-
-      const novaGuia = await guiaService.createGuia(formData);
-
-      toastUtil.success("Guia criada com sucesso!");
-      router.push(`/guias/${novaGuia.id}`);
-    } catch (err) {
-      console.error("Erro ao criar guia:", err);
-      toastUtil.error("Erro ao criar guia");
-    } finally {
-      setSaving(false);
+  const handleStatusChange = (newStatus: string) => {
+    setFormData((prev) => ({ ...prev, status: newStatus }));
+    if (formErrors.status) {
+      setFormErrors((prev) => ({ ...prev, status: "" }));
     }
   };
 
@@ -185,14 +117,14 @@ export default function NovaGuiaPage() {
 
   const addEspecialidade = () => {
     if (
-      especialidadeInput.trim() &&
-      !formData.especialidades.includes(especialidadeInput.trim())
+      especialidadeSelecionada &&
+      !formData.especialidades.includes(especialidadeSelecionada)
     ) {
       setFormData((prev) => ({
         ...prev,
-        especialidades: [...prev.especialidades, especialidadeInput.trim()],
+        especialidades: [...prev.especialidades, especialidadeSelecionada],
       }));
-      setEspecialidadeInput("");
+      setEspecialidadeSelecionada("");
 
       // Limpar erro de especialidades
       if (formErrors.especialidades) {
@@ -206,6 +138,69 @@ export default function NovaGuiaPage() {
       ...prev,
       especialidades: prev.especialidades.filter((e) => e !== especialidade),
     }));
+  };
+
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+
+    if (!formData.pacienteId) {
+      errors.pacienteId = "Paciente é obrigatório";
+    }
+
+    if (!formData.numeroGuia.trim()) {
+      errors.numeroGuia = "Número da guia é obrigatório";
+    }
+
+    if (!formData.status) {
+      errors.status = "Status é obrigatório";
+    }
+
+    if (formData.especialidades.length === 0) {
+      errors.especialidades = "Pelo menos uma especialidade é obrigatória";
+    }
+
+    if (!formData.quantidadeAutorizada || formData.quantidadeAutorizada <= 0) {
+      errors.quantidadeAutorizada =
+        "Quantidade autorizada deve ser maior que zero";
+    }
+
+    if (!formData.convenioId) {
+      errors.convenioId = "Convênio é obrigatório";
+    }
+
+    if (!formData.validade) {
+      errors.validade = "Data de validade é obrigatória";
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!validateForm()) {
+      toastUtil.error("Por favor, corrija os erros no formulário");
+      return;
+    }
+
+    try {
+      setSaving(true);
+
+      const guiaData: GuiaCreateRequest = {
+        ...formData,
+        valorReais: Number(formData.valorReais),
+      };
+
+      const novaGuia = await guiaService.createGuia(guiaData);
+      toastUtil.success("Guia criada com sucesso!");
+      router.push(`/guias/${novaGuia.id}`);
+    } catch (err) {
+      console.error("Erro ao criar guia:", err);
+      toastUtil.error("Erro ao criar guia");
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (loading) {
@@ -292,23 +287,7 @@ export default function NovaGuiaPage() {
                   )}
                 </div>
 
-                {/* Número da Guia */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Número da Guia
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.numeroGuia}
-                    onChange={(e) =>
-                      handleInputChange("numeroGuia", e.target.value)
-                    }
-                    placeholder="Número da guia"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                </div>
-
-                {/* Convênio (read-only quando paciente selecionado) */}
+                {/* Convênio */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Convênio *
@@ -319,12 +298,11 @@ export default function NovaGuiaPage() {
                     onChange={(e) =>
                       handleInputChange("convenioId", e.target.value)
                     }
-                    disabled={!!formData.pacienteId}
                     className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 ${
                       formErrors.convenioId
                         ? "border-red-500"
                         : "border-gray-300"
-                    } ${!!formData.pacienteId ? "bg-gray-100" : ""}`}>
+                    }`}>
                     <option value="">Selecione o convênio</option>
                     {convenios.map((convenio) => (
                       <option key={convenio.id} value={convenio.id}>
@@ -340,42 +318,97 @@ export default function NovaGuiaPage() {
                 </div>
               </div>
 
-              {/* Especialidades */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Número da Guia */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Número da Guia *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.numeroGuia}
+                    onChange={(e) =>
+                      handleInputChange(
+                        "numeroGuia",
+                        e.target.value.toUpperCase()
+                      )
+                    }
+                    placeholder="Ex: G123-456"
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+                      formErrors.numeroGuia
+                        ? "border-red-500"
+                        : "border-gray-300"
+                    }`}
+                  />
+                  {formErrors.numeroGuia && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {formErrors.numeroGuia}
+                    </p>
+                  )}
+                </div>
+
+                {/* Status */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Status *
+                  </label>
+                  <StatusSelect
+                    value={formData.status}
+                    onChange={handleStatusChange}
+                    required
+                    showPreview={true}
+                    className={formErrors.status ? "border-red-500" : ""}
+                  />
+                  {formErrors.status && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {formErrors.status}
+                    </p>
+                  )}
+                </div>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Especialidades *
                 </label>
-                <div className="flex gap-2 mb-2">
-                  <input
-                    type="text"
-                    value={especialidadeInput}
-                    onChange={(e) => setEspecialidadeInput(e.target.value)}
-                    onKeyPress={(e) =>
-                      e.key === "Enter" &&
-                      (e.preventDefault(), addEspecialidade())
+                <div className="flex space-x-2 mb-3">
+                  <select
+                    value={especialidadeSelecionada}
+                    onChange={(e) =>
+                      setEspecialidadeSelecionada(e.target.value)
                     }
-                    placeholder="Digite uma especialidade"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    <option value="">Selecione uma especialidade</option>
+                    {especialidades
+                      .filter((esp) => !formData.especialidades.includes(esp))
+                      .map((especialidade) => (
+                        <option key={especialidade} value={especialidade}>
+                          {especialidade}
+                        </option>
+                      ))}
+                  </select>
                   <CustomButton
                     type="button"
                     variant="primary"
-                    onClick={addEspecialidade}>
+                    onClick={addEspecialidade}
+                    disabled={!especialidadeSelecionada}>
                     <Plus className="h-4 w-4" />
                   </CustomButton>
                 </div>
 
+                {/* Lista de especialidades */}
                 {formData.especialidades.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {formData.especialidades.map((esp, index) => (
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {formData.especialidades.map((especialidade, index) => (
                       <span
                         key={index}
-                        className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
-                        {esp}
+                        className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                        {especialidade}
                         <button
                           type="button"
-                          onClick={() => removeEspecialidade(esp)}
-                          className="ml-2 text-blue-600 hover:text-blue-800">
+                          onClick={() => removeEspecialidade(especialidade)}
+                          className="ml-2 inline-flex items-center justify-center w-4 h-4 rounded-full text-blue-400 hover:bg-blue-200 hover:text-blue-600">
                           <X className="h-3 w-3" />
                         </button>
                       </span>
@@ -390,21 +423,22 @@ export default function NovaGuiaPage() {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                {/* Quantidade */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Quantidade Autorizada */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Quantidade *
+                    Quantidade Autorizada *
                   </label>
                   <input
                     type="number"
-                    min="1"
                     required
+                    min="1"
+                    max="999"
                     value={formData.quantidadeAutorizada}
                     onChange={(e) =>
                       handleInputChange(
                         "quantidadeAutorizada",
-                        parseInt(e.target.value)
+                        parseInt(e.target.value) || 1
                       )
                     }
                     className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 ${
@@ -420,6 +454,39 @@ export default function NovaGuiaPage() {
                   )}
                 </div>
 
+                {/* Valor em Reais */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Valor (R$)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="999999.99"
+                    value={formData.valorReais}
+                    onChange={(e) =>
+                      handleInputChange(
+                        "valorReais",
+                        parseFloat(e.target.value) || 0
+                      )
+                    }
+                    placeholder="0,00"
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+                      formErrors.valorReais
+                        ? "border-red-500"
+                        : "border-gray-300"
+                    }`}
+                  />
+                  {formErrors.valorReais && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {formErrors.valorReais}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Mês */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -436,7 +503,10 @@ export default function NovaGuiaPage() {
                     }`}>
                     {Array.from({ length: 12 }, (_, i) => (
                       <option key={i + 1} value={i + 1}>
-                        {(i + 1).toString().padStart(2, "0")}
+                        {String(i + 1).padStart(2, "0")} -{" "}
+                        {new Date(0, i).toLocaleString("pt-BR", {
+                          month: "long",
+                        })}
                       </option>
                     ))}
                   </select>
@@ -452,10 +522,7 @@ export default function NovaGuiaPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Ano *
                   </label>
-                  <input
-                    type="number"
-                    min="2020"
-                    max="2030"
+                  <select
                     required
                     value={formData.ano}
                     onChange={(e) =>
@@ -463,47 +530,26 @@ export default function NovaGuiaPage() {
                     }
                     className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 ${
                       formErrors.ano ? "border-red-500" : "border-gray-300"
-                    }`}
-                  />
+                    }`}>
+                    {Array.from({ length: 10 }, (_, i) => {
+                      const year = new Date().getFullYear() + i - 1;
+                      return (
+                        <option key={year} value={year}>
+                          {year}
+                        </option>
+                      );
+                    })}
+                  </select>
                   {formErrors.ano && (
                     <p className="text-red-500 text-xs mt-1">
                       {formErrors.ano}
                     </p>
                   )}
                 </div>
-
-                {/* Valor */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Valor (R$)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.valorReais}
-                    onChange={(e) =>
-                      handleInputChange(
-                        "valorReais",
-                        parseFloat(e.target.value) || 0
-                      )
-                    }
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 ${
-                      formErrors.valorReais
-                        ? "border-red-500"
-                        : "border-gray-300"
-                    }`}
-                  />
-                  {formErrors.valorReais && (
-                    <p className="text-red-500 text-xs mt-1">
-                      {formErrors.valorReais}
-                    </p>
-                  )}
-                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Validade */}
+                {/* Data de Validade */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Data de Validade *
@@ -539,39 +585,29 @@ export default function NovaGuiaPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
-
-                {/* Status*/}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Status
-                  </label>
-                  <StatusSelect
-                    value={formData.status}
-                    onChange={handleStatusChange}
-                    required
-                    showPreview={true}
-                    className={formErrors.status ? "border-red-500" : ""}
-                    placeholder="Selecione um status"
-                  />
-                  {formErrors.status && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {formErrors.status}
-                    </p>
-                  )}
-                </div>
               </div>
 
-              {/* Botões */}
-              <div className="flex justify-end space-x-4 pt-6 border-t">
+              {/* ===== BOTÕES DE AÇÃO ===== */}
+              <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
                 <CustomButton
                   type="button"
                   variant="primary"
-                  onClick={() => router.back()}>
+                  onClick={() => router.back()}
+                  disabled={saving}>
                   Cancelar
                 </CustomButton>
                 <CustomButton type="submit" variant="primary" disabled={saving}>
-                  <Save className="h-4 w-4 mr-2" />
-                  {saving ? "Salvando..." : "Criar Guia"}
+                  {saving ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                      Salvando...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      Criar Guia
+                    </>
+                  )}
                 </CustomButton>
               </div>
             </form>
