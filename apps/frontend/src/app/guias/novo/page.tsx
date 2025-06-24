@@ -291,6 +291,11 @@ export default function NovaGuiaPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Convênio *
+                    {formData.pacienteId && (
+                      <span className="text-xs text-gray-500 ml-1">
+                        (definido pelo paciente)
+                      </span>
+                    )}
                   </label>
                   <select
                     required
@@ -298,12 +303,21 @@ export default function NovaGuiaPage() {
                     onChange={(e) =>
                       handleInputChange("convenioId", e.target.value)
                     }
+                    disabled={!!formData.pacienteId}
                     className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 ${
                       formErrors.convenioId
                         ? "border-red-500"
                         : "border-gray-300"
+                    } ${
+                      formData.pacienteId
+                        ? "bg-gray-100 cursor-not-allowed"
+                        : ""
                     }`}>
-                    <option value="">Selecione o convênio</option>
+                    <option value="">
+                      {formData.pacienteId
+                        ? "Convênio será definido pelo paciente"
+                        : "Selecione o convênio"}
+                    </option>
                     {convenios.map((convenio) => (
                       <option key={convenio.id} value={convenio.id}>
                         {convenio.name}
@@ -348,21 +362,32 @@ export default function NovaGuiaPage() {
                   )}
                 </div>
 
-                {/* Status */}
+                {/* Quantidade Autorizada */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Status *
+                    Quantidade Autorizada *
                   </label>
-                  <StatusSelect
-                    value={formData.status}
-                    onChange={handleStatusChange}
+                  <input
+                    type="number"
                     required
-                    showPreview={true}
-                    className={formErrors.status ? "border-red-500" : ""}
+                    min="1"
+                    max="999"
+                    value={formData.quantidadeAutorizada}
+                    onChange={(e) =>
+                      handleInputChange(
+                        "quantidadeAutorizada",
+                        parseInt(e.target.value) || 1
+                      )
+                    }
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+                      formErrors.quantidadeAutorizada
+                        ? "border-red-500"
+                        : "border-gray-300"
+                    }`}
                   />
-                  {formErrors.status && (
+                  {formErrors.quantidadeAutorizada && (
                     <p className="text-red-500 text-xs mt-1">
-                      {formErrors.status}
+                      {formErrors.quantidadeAutorizada}
                     </p>
                   )}
                 </div>
@@ -424,36 +449,6 @@ export default function NovaGuiaPage() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Quantidade Autorizada */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Quantidade Autorizada *
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    min="1"
-                    max="999"
-                    value={formData.quantidadeAutorizada}
-                    onChange={(e) =>
-                      handleInputChange(
-                        "quantidadeAutorizada",
-                        parseInt(e.target.value) || 1
-                      )
-                    }
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 ${
-                      formErrors.quantidadeAutorizada
-                        ? "border-red-500"
-                        : "border-gray-300"
-                    }`}
-                  />
-                  {formErrors.quantidadeAutorizada && (
-                    <p className="text-red-500 text-xs mt-1">
-                      {formErrors.quantidadeAutorizada}
-                    </p>
-                  )}
-                </div>
-
                 {/* Valor em Reais */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -483,6 +478,20 @@ export default function NovaGuiaPage() {
                       {formErrors.valorReais}
                     </p>
                   )}
+                </div>
+
+                {/* Lote */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Lote
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.lote}
+                    onChange={(e) => handleInputChange("lote", e.target.value)}
+                    placeholder="Número do lote (opcional)"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
                 </div>
               </div>
 
@@ -572,18 +581,23 @@ export default function NovaGuiaPage() {
                   )}
                 </div>
 
-                {/* Lote */}
+                {/* Status */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Lote
+                    Status *
                   </label>
-                  <input
-                    type="text"
-                    value={formData.lote}
-                    onChange={(e) => handleInputChange("lote", e.target.value)}
-                    placeholder="Número do lote (opcional)"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  <StatusSelect
+                    value={formData.status}
+                    onChange={handleStatusChange}
+                    required
+                    showPreview={true}
+                    className={formErrors.status ? "border-red-500" : ""}
                   />
+                  {formErrors.status && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {formErrors.status}
+                    </p>
+                  )}
                 </div>
               </div>
 
