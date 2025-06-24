@@ -20,6 +20,7 @@ import {
   StatusChangeRequest,
   PageResponse,
   ClinicalStats,
+  StatusHistorySummaryDto,
 } from "@/types/clinical";
 
 export const pacienteService = {
@@ -333,6 +334,11 @@ export const fichaService = {
     return response.data;
   },
 
+  async getFichasStatsDetalhadas(): Promise<any> {
+    const response = await api.get("/api/fichas/stats");
+    return response.data;
+  },
+
   async updateFichaStatus(
     id: string,
     data: StatusChangeRequest
@@ -341,8 +347,8 @@ export const fichaService = {
     return response.data;
   },
 
-  async getHistoricoStatusFicha(id: string): Promise<StatusHistoryDto[]> {
-    const response = await api.get(`/api/fichas/${id}/historico-status`);
+  async getHistoricoStatusFicha(fichaId: string): Promise<StatusHistoryDto[]> {
+    const response = await api.get(`/api/fichas/${fichaId}/historico-status`);
     return response.data;
   },
 
@@ -414,24 +420,24 @@ export const statusService = {
 };
 
 export const statusHistoryService = {
+  async getAllHistorico(
+    page: number = 0,
+    size: number = 20
+  ): Promise<PageResponse<StatusHistorySummaryDto>> {
+    const response = await api.get(
+      `/api/status/history?page=${page}&size=${size}`
+    );
+    return response.data;
+  },
+
   async getHistoricoByEntity(
     entityType: string,
     entityId: string,
     page: number = 0,
     size: number = 20
-  ): Promise<PageResponse<StatusHistoryDto>> {
+  ): Promise<PageResponse<StatusHistorySummaryDto>> {
     const response = await api.get(
-      `/api/status-history/entity/${entityType}/${entityId}?page=${page}&size=${size}`
-    );
-    return response.data;
-  },
-
-  async getAllHistorico(
-    page: number = 0,
-    size: number = 20
-  ): Promise<PageResponse<StatusHistoryDto>> {
-    const response = await api.get(
-      `/api/status-history?page=${page}&size=${size}`
+      `/api/status/history/entity/${entityType}/${entityId}?page=${page}&size=${size}`
     );
     return response.data;
   },
@@ -440,9 +446,9 @@ export const statusHistoryService = {
     userId: string,
     page: number = 0,
     size: number = 20
-  ): Promise<PageResponse<StatusHistoryDto>> {
+  ): Promise<PageResponse<StatusHistorySummaryDto>> {
     const response = await api.get(
-      `/api/status-history/user/${userId}?page=${page}&size=${size}`
+      `/api/status/history/user/${userId}?page=${page}&size=${size}`
     );
     return response.data;
   },
@@ -452,10 +458,20 @@ export const statusHistoryService = {
     endDate: string,
     page: number = 0,
     size: number = 20
-  ): Promise<PageResponse<StatusHistoryDto>> {
+  ): Promise<PageResponse<StatusHistorySummaryDto>> {
     const response = await api.get(
-      `/api/status-history/periodo?startDate=${startDate}&endDate=${endDate}&page=${page}&size=${size}`
+      `/api/status/history/periodo?startDate=${startDate}&endDate=${endDate}&page=${page}&size=${size}`
     );
+    return response.data;
+  },
+
+  async getHistoricoFicha(fichaId: string): Promise<StatusHistoryDto[]> {
+    const response = await api.get(`/api/fichas/${fichaId}/historico-status`);
+    return response.data;
+  },
+
+  async getHistoricoGuia(guiaId: string): Promise<StatusHistoryDto[]> {
+    const response = await api.get(`/api/guias/${guiaId}/historico-status`);
     return response.data;
   },
 };
