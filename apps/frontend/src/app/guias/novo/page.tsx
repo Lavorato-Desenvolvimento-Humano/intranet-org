@@ -47,7 +47,7 @@ export default function NovaGuiaPage() {
 
   // Estados de validação e UI
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [especialidadeSelecionada, setEspecialidadeSelecionada] = useState("");
+  const [especialidadeInput, setEspecialidadeInput] = useState("");
 
   // Lista de especialidades padronizadas
   const especialidades = [
@@ -58,9 +58,6 @@ export default function NovaGuiaPage() {
     "Nutrição",
     "Psicopedagogia",
     "Psicomotricidade",
-    "Musicoterapia",
-    "Avaliação Neuropsicológica",
-    "Arteterapia",
   ];
 
   // Carregar dados iniciais
@@ -117,14 +114,14 @@ export default function NovaGuiaPage() {
 
   const addEspecialidade = () => {
     if (
-      especialidadeSelecionada &&
-      !formData.especialidades.includes(especialidadeSelecionada)
+      especialidadeInput.trim() &&
+      !formData.especialidades.includes(especialidadeInput.trim())
     ) {
       setFormData((prev) => ({
         ...prev,
-        especialidades: [...prev.especialidades, especialidadeSelecionada],
+        especialidades: [...prev.especialidades, especialidadeInput.trim()],
       }));
-      setEspecialidadeSelecionada("");
+      setEspecialidadeInput("");
 
       // Limpar erro de especialidades
       if (formErrors.especialidades) {
@@ -133,10 +130,10 @@ export default function NovaGuiaPage() {
     }
   };
 
-  const removeEspecialidade = (especialidade: string) => {
+  const removeEspecialidade = (index: number) => {
     setFormData((prev) => ({
       ...prev,
-      especialidades: prev.especialidades.filter((e) => e !== especialidade),
+      especialidades: prev.especialidades.filter((_, i) => i !== index),
     }));
   };
 
@@ -256,6 +253,7 @@ export default function NovaGuiaPage() {
           {/* Formulário */}
           <div className="bg-white rounded-lg shadow-md">
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
+              {/* ===== PRIMEIRA LINHA - 2 COLUNAS ===== */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Paciente */}
                 <div>
@@ -397,19 +395,18 @@ export default function NovaGuiaPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Especialidades *
                 </label>
+
                 <div className="flex space-x-2 mb-3">
                   <select
-                    value={especialidadeSelecionada}
-                    onChange={(e) =>
-                      setEspecialidadeSelecionada(e.target.value)
-                    }
+                    value={especialidadeInput}
+                    onChange={(e) => setEspecialidadeInput(e.target.value)}
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
                     <option value="">Selecione uma especialidade</option>
                     {especialidades
                       .filter((esp) => !formData.especialidades.includes(esp))
-                      .map((especialidade) => (
-                        <option key={especialidade} value={especialidade}>
-                          {especialidade}
+                      .map((esp) => (
+                        <option key={esp} value={esp}>
+                          {esp}
                         </option>
                       ))}
                   </select>
@@ -417,7 +414,7 @@ export default function NovaGuiaPage() {
                     type="button"
                     variant="primary"
                     onClick={addEspecialidade}
-                    disabled={!especialidadeSelecionada}>
+                    disabled={!especialidadeInput.trim()}>
                     <Plus className="h-4 w-4" />
                   </CustomButton>
                 </div>
@@ -432,7 +429,7 @@ export default function NovaGuiaPage() {
                         {especialidade}
                         <button
                           type="button"
-                          onClick={() => removeEspecialidade(especialidade)}
+                          onClick={() => removeEspecialidade(index)}
                           className="ml-2 inline-flex items-center justify-center w-4 h-4 rounded-full text-blue-400 hover:bg-blue-200 hover:text-blue-600">
                           <X className="h-3 w-3" />
                         </button>
