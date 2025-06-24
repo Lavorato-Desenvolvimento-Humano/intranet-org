@@ -53,11 +53,14 @@ export default function NovaGuiaPage() {
   const especialidades = [
     "Fisioterapia",
     "Fonoaudiologia",
-    "Terapia Ocupacional",
-    "Psicologia",
+    "Terapia ocupacional",
+    "Psicoterapia",
     "Nutrição",
     "Psicopedagogia",
     "Psicomotricidade",
+    "Musicoterapia",
+    "Avaliação neuropsicológica",
+    "Arteterapia",
   ];
 
   // Carregar dados iniciais
@@ -253,7 +256,6 @@ export default function NovaGuiaPage() {
           {/* Formulário */}
           <div className="bg-white rounded-lg shadow-md">
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
-              {/* ===== PRIMEIRA LINHA - 2 COLUNAS ===== */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Paciente */}
                 <div>
@@ -578,11 +580,15 @@ export default function NovaGuiaPage() {
                   )}
                 </div>
 
-                {/* Status */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Status *
-                  </label>
+                {/* Espaço vazio para manter layout */}
+                <div></div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Status *
+                </label>
+                <div className="max-w-md">
                   <StatusSelect
                     value={formData.status}
                     onChange={handleStatusChange}
