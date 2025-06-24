@@ -1,5 +1,6 @@
 package com.intranet.backend.dto;
 
+import com.intranet.backend.model.Ficha;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -14,6 +15,7 @@ public class FichaDto {
     private UUID id;
     private UUID guiaId;
     private String codigoFicha;
+    private UUID pacienteId;
     private String status;
     private String pacienteNome;
     private String especialidade;
@@ -26,5 +28,5 @@ public class FichaDto {
     private String usuarioResponsavelNome;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-
+    private Ficha.TipoFicha tipoFicha;
 }

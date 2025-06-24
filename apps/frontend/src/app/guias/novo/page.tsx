@@ -11,6 +11,7 @@ import { guiaService, pacienteService } from "@/services/clinical";
 import convenioService, { ConvenioDto } from "@/services/convenio";
 import { GuiaCreateRequest, PacienteSummaryDto } from "@/types/clinical";
 import toastUtil from "@/utils/toast";
+import { StatusSelect } from "@/components/clinical/ui/StatusSelect";
 
 export default function NovaGuiaPage() {
   const router = useRouter();
@@ -25,6 +26,7 @@ export default function NovaGuiaPage() {
   // Estados do formulário
   const [formData, setFormData] = useState<GuiaCreateRequest>({
     pacienteId: "",
+    numeroGuia: "",
     especialidades: [],
     quantidadeAutorizada: 1,
     convenioId: "",
@@ -33,7 +35,18 @@ export default function NovaGuiaPage() {
     validade: "",
     lote: "",
     valorReais: 0,
+    status: "",
+    quantidadeFaturada: 0,
   });
+
+  const handleStatusChange = (newStatus: string) => {
+    setFormData((prev) => ({ ...prev, status: newStatus }));
+
+    //Limpar erro do campo de status quando o usuário começar a digitar
+    if (formErrors.status) {
+      setFormErrors((prev) => ({ ...prev, status: "" }));
+    }
+  };
 
   // Estados para especialidades
   const [especialidadeInput, setEspecialidadeInput] = useState("");
@@ -113,6 +126,14 @@ export default function NovaGuiaPage() {
 
     if ((formData.valorReais ?? 0) < 0) {
       errors.valorReais = "Valor não pode ser negativo";
+    }
+
+    if (!formData.status) {
+      errors.status = "Status é obrigatório";
+    }
+
+    if (!formData.numeroGuia) {
+      errors.numeroGuia = "Número da guia é obrigatório";
     }
 
     setFormErrors(errors);
@@ -269,6 +290,22 @@ export default function NovaGuiaPage() {
                       {formErrors.pacienteId}
                     </p>
                   )}
+                </div>
+
+                {/* Número da Guia */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Número da Guia
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.numeroGuia}
+                    onChange={(e) =>
+                      handleInputChange("numeroGuia", e.target.value)
+                    }
+                    placeholder="Número da guia"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
                 </div>
 
                 {/* Convênio (read-only quando paciente selecionado) */}
@@ -501,6 +538,26 @@ export default function NovaGuiaPage() {
                     placeholder="Número do lote (opcional)"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
+                </div>
+
+                {/* Status*/}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Status
+                  </label>
+                  <StatusSelect
+                    value={formData.status}
+                    onChange={handleStatusChange}
+                    required
+                    showPreview={true}
+                    className={formErrors.status ? "border-red-500" : ""}
+                    placeholder="Selecione um status"
+                  />
+                  {formErrors.status && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {formErrors.status}
+                    </p>
+                  )}
                 </div>
               </div>
 

@@ -1,5 +1,6 @@
 package com.intranet.backend.dto;
 
+import com.intranet.backend.model.Ficha;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -22,4 +23,6 @@ public class FichaSummaryDto {
     private Integer ano;
     private String usuarioResponsavelNome;
     private LocalDateTime createdAt;
+    private Ficha.TipoFicha tipoFicha;
+    private UUID guiaId;
 }
