@@ -96,6 +96,8 @@ export interface GuiaSummaryDto {
 
 export interface GuiaCreateRequest {
   pacienteId: string;
+  numeroGuia: string;
+  status: string;
   especialidades: string[];
   quantidadeAutorizada: number;
   convenioId: string;
