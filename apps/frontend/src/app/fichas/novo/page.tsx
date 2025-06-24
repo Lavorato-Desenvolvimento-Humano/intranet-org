@@ -82,11 +82,14 @@ function NovaFichaContent() {
   const especialidades = [
     "Fisioterapia",
     "Fonoaudiologia",
-    "Terapia Ocupacional",
-    "Psicologia",
+    "Terapia ocupacional",
+    "Psicoterapia",
     "Nutrição",
     "Psicopedagogia",
     "Psicomotricidade",
+    "Musicoterapia",
+    "Avaliação neuropsicológica",
+    "Arteterapia",
   ];
 
   // Carregar dados iniciais
@@ -610,7 +613,6 @@ function NovaFichaContent() {
                       {formErrors.status}
                     </p>
                   )}
-                  {/* ✅ Remover comparação com ficha - na criação não existe ficha anterior */}
                 </div>
               </div>
 
