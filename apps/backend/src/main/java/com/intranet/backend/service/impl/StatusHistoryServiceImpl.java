@@ -152,6 +152,27 @@ public class StatusHistoryServiceImpl implements StatusHistoryService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public StatusHistoryDto getHistoricoById(UUID id) {
+        logger.info("Buscando histórico por ID: {}", id);
+
+        StatusHistory history = statusHistoryRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Histórico não encontrado com ID: " + id));
+
+        return mapToDto(history);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<StatusHistorySummaryDto> getAllHistoricoGeral(Pageable pageable) {
+        logger.info("Buscando todo o histórico de status - página: {}, tamanho: {}",
+                pageable.getPageNumber(), pageable.getPageSize());
+
+        Page<StatusHistory> historico = statusHistoryRepository.findAll(pageable);
+        return historico.map(this::mapToSummaryDto);
+    }
+
+    @Override
     public Page<StatusHistorySummaryDto> getHistoricoEntidadePaginado(StatusHistory.EntityType entityType,
                                                                       UUID entityId, Pageable pageable) {
         logger.info("Buscando histórico paginado para {} ID: {}", entityType, entityId);

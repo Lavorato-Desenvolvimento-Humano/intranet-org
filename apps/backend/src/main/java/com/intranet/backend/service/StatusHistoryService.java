@@ -52,4 +52,8 @@ public interface StatusHistoryService {
     Map<String, Object> changeGuiaStatus(UUID guiaId, StatusChangeRequest request);
 
     Map<String, Object> changeFichaStatus(UUID fichaId, StatusChangeRequest request);
+
+    StatusHistoryDto getHistoricoById(UUID id);
+
+    Page<StatusHistorySummaryDto> getAllHistoricoGeral(Pageable pageable);
 }
