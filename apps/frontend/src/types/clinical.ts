@@ -106,6 +106,7 @@ export interface GuiaCreateRequest {
   validade: string;
   lote?: string;
   valorReais?: number;
+  quantidadeFaturada?: number;
 }
 
 export interface GuiaUpdateRequest {

@@ -36,6 +36,7 @@ export default function NovaGuiaPage() {
     lote: "",
     valorReais: 0,
     status: "",
+    quantidadeFaturada: 0,
   });
 
   const handleStatusChange = (newStatus: string) => {
