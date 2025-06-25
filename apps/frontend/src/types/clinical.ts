@@ -189,6 +189,7 @@ export interface StatusDto {
   status: string;
   descricao?: string;
   ativo: boolean;
+  cor: string;
   ordemExibicao?: number;
   createdAt?: string;
   updatedAt?: string;
