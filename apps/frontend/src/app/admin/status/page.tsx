@@ -385,7 +385,7 @@ export default function StatusManagementPage() {
                   />
 
                   {/* Paginação */}
-                  {totalPages > 1 && (
+                  {/* {totalPages > 1 && (
                     <div className="mt-6">
                       <Pagination
                         currentPage={currentPage}
@@ -395,7 +395,7 @@ export default function StatusManagementPage() {
                         pageSize={itemsPerPage}
                       />
                     </div>
-                  )}
+                  )} */}
                 </>
               )}
             </div>
