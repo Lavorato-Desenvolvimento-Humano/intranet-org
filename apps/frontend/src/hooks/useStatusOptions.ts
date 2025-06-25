@@ -10,13 +10,12 @@ export const useStatusOptions = (filterActive = true) => {
       : statuses;
 
     return filteredStatuses
-      .sort((a, b) => a.ordem - b.ordem)
+      .sort((a, b) => (a.ordemExibicao ?? 0) - (b.ordemExibicao ?? 0))
       .map((status) => ({
         value: status.status,
         label: status.status,
         description: status.descricao,
         color: status.cor,
-        icon: status.icone,
       }));
   }, [statuses, filterActive]);
 
