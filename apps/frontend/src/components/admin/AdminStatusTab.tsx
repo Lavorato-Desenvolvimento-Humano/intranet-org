@@ -445,7 +445,7 @@ export default function AdminStatusTab() {
               </div>
 
               {/* Paginação */}
-              {totalPages > 1 && (
+              {/* {totalPages > 1 && (
                 <div className="mt-6">
                   <Pagination
                     currentPage={currentPage}
@@ -455,7 +455,7 @@ export default function AdminStatusTab() {
                     pageSize={itemsPerPage}
                   />
                 </div>
-              )}
+              )} */}
             </>
           )}
         </div>
