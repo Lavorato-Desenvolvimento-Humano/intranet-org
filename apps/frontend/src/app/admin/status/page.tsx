@@ -383,6 +383,19 @@ export default function StatusManagementPage() {
                     loading={loading}
                     onPageChange={(page) => setCurrentPage(page + 1)}
                   />
+
+                  {/* Paginação */}
+                  {totalPages > 1 && (
+                    <div className="mt-6">
+                      <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={setCurrentPage}
+                        totalItems={totalItems}
+                        pageSize={itemsPerPage}
+                      />
+                    </div>
+                  )}
                 </>
               )}
             </div>
