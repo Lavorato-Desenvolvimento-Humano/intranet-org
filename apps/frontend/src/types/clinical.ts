@@ -1,5 +1,4 @@
 // src/types/clinical.ts
-
 // Enums
 export enum UnidadeEnum {
   KIDS = "KIDS",
@@ -188,30 +187,25 @@ export interface FichaUpdateRequest {
 export interface StatusDto {
   id: string;
   status: string;
-  descricao: string;
-  cor: string;
-  icone?: string;
-  ordem: number;
+  descricao?: string;
   ativo: boolean;
-  createdAt: string;
-  updatedAt: string;
+  ordemExibicao?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface StatusCreateRequest {
   status: string;
-  descricao: string;
-  cor: string;
-  icone?: string;
-  ordem?: number;
+  descricao?: string;
+  ativo: boolean;
+  ordemExibicao?: number;
 }
 
 export interface StatusUpdateRequest {
-  status?: string;
+  status: string;
   descricao?: string;
-  cor?: string;
-  icone?: string;
-  ordem?: number;
-  ativo?: boolean;
+  ativo: boolean;
+  ordemExibicao?: number;
 }
 
 export interface StatusHistoryDto {
@@ -258,6 +252,13 @@ export interface StatusHistoryFilterRequest {
   endDate?: string;
 }
 
+export interface StatusStatsDto {
+  totalStatuses: number;
+  statusesAtivos: number;
+  statusesInativos: number;
+  ultimaAtualizacao?: string;
+}
+
 export interface StatusBadgeProps {
   status: string;
   size?: "xs" | "sm" | "md" | "lg";
@@ -290,4 +291,11 @@ export interface ClinicalStats {
   guiasComQuantidadeExcedida: number;
   totalFichas: number;
   fichasPorStatus: Record<string, number>;
+}
+
+export interface StatusInitializeResponse {
+  message: string;
+  statusesCriados: number;
+  statusesExistentes: number;
+  detalhes: string[];
 }
