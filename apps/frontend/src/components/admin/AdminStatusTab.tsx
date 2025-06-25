@@ -428,9 +428,19 @@ export default function AdminStatusTab() {
             <>
               <div className="overflow-x-auto">
                 <DataTable
-                  data={currentItems}
+                  data={{
+                    content: currentItems,
+                    totalElements: totalItems,
+                    totalPages: totalPages,
+                    size: itemsPerPage,
+                    number: currentPage - 1,
+                    numberOfElements: currentItems.length,
+                    first: currentPage === 1,
+                    last: currentPage === totalPages,
+                  }}
                   columns={columns}
                   loading={false}
+                  onPageChange={(page) => setCurrentPage(page + 1)}
                 />
               </div>
 
