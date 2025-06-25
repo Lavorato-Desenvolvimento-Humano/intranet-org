@@ -299,20 +299,29 @@ export default function DashboardClinicoPage() {
                 Status das Fichas
               </h3>
               <div className="space-y-3">
-                {Object.entries(stats.fichasPorStatus).map(
-                  ([status, quantidade]) => (
-                    <div
-                      key={status}
-                      className="flex items-center justify-between">
-                      <StatusBadge status={status} />
-                      <span className="text-sm font-medium">{quantidade}</span>
-                    </div>
+                {Object.entries(stats.fichasPorStatus || {}).length > 0 ? (
+                  Object.entries(stats.fichasPorStatus).map(
+                    ([status, quantidade]) => (
+                      <div
+                        key={status}
+                        className="flex items-center justify-between">
+                        <StatusBadge status={status} />
+                        <span className="text-sm font-medium">
+                          {quantidade}
+                        </span>
+                      </div>
+                    )
                   )
-                )}
-                {Object.keys(stats.fichasPorStatus).length === 0 && (
-                  <p className="text-sm text-gray-500 text-center py-4">
-                    Nenhuma ficha encontrada
-                  </p>
+                ) : (
+                  <div className="text-center py-8">
+                    <BarChart3 className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-sm text-gray-500">
+                      Nenhuma ficha encontrada
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Crie fichas para ver o status aqui
+                    </p>
+                  </div>
                 )}
               </div>
             </div>

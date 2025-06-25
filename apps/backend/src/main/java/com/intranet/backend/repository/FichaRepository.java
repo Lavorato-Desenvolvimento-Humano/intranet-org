@@ -52,4 +52,7 @@ public interface FichaRepository extends JpaRepository<Ficha, UUID> {
 
     @Query("SELECT f FROM Ficha f WHERE f.status LIKE %:status% ORDER BY f.createdAt DESC")
     Page<Ficha> findByStatus(String status, Pageable pageable);
+
+    @Query("SELECT f.status, COUNT(f) FROM Ficha f GROUP BY f.status")
+    List<Object[]> countFichasByStatus();
 }

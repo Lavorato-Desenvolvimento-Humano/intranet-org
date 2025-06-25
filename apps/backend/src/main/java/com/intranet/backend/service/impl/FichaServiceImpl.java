@@ -19,7 +19,9 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -313,6 +315,25 @@ public class FichaServiceImpl implements FichaService {
         fichaRepository.deleteById(id);
         logger.info("Ficha excluída com sucesso. ID: {}", id);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Long> getFichasPorStatus() {
+        logger.info("Buscando contagem de fichas por status");
+
+        List<Object[]> results = fichaRepository.countFichasByStatus();
+        Map<String, Long> fichasPorStatus = new HashMap<>();
+
+        for (Object[] result : results) {
+            String status = (String) result[0];
+            Long count = (Long) result[1];
+            fichasPorStatus.put(status, count);
+        }
+
+        logger.info("Contagem de fichas por status: {}", fichasPorStatus);
+        return fichasPorStatus;
+    }
+
 
     @Override
     public List<FichaDto> getFichasByGuiaId(UUID guiaId) {
