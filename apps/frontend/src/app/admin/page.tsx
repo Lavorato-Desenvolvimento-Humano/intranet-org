@@ -1,6 +1,8 @@
+// src/app/admin/page.tsx - Versão corrigida
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
 import Navbar from "@/components/layout/Navbar";
@@ -8,12 +10,14 @@ import AdminUsersTab from "@/components/admin/AdminUsersTab";
 import AdminRolesTab from "@/components/admin/AdminRolesTab";
 import AdminPermissionsTab from "@/components/admin/AdminPermissionsTab";
 import AdminPendingUsersTab from "@/components/admin/AdminPendingUsersTab";
-import { AlertTriangle, RefreshCw } from "lucide-react";
+import { AlertTriangle, RefreshCw, Settings, Plus } from "lucide-react";
 import { CustomButton } from "@/components/ui/custom-button";
 import { useAuth } from "@/context/AuthContext";
 import toastUtil from "@/utils/toast";
+import AdminStatusTab from "@/components/admin/AdminStatusTab";
 
 export default function AdminDashboardPage() {
+  const router = useRouter(); // ✅ Adicionado useRouter
   const [activeTab, setActiveTab] = useState("users");
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
@@ -59,16 +63,14 @@ export default function AdminDashboardPage() {
           <p className="mb-6 text-gray-700">{error}</p>
 
           <div className="flex flex-col gap-3">
-            <CustomButton
-              onClick={handleRetry}
-              icon={RefreshCw}
-              className="w-full">
+            <CustomButton onClick={handleRetry} className="w-full">
+              <RefreshCw className="h-4 w-4 mr-2" />
               Tentar novamente
             </CustomButton>
 
             <CustomButton
               onClick={handleReauth}
-              variant="secondary"
+              variant="primary"
               className="w-full border border-gray-300">
               Fazer login novamente
             </CustomButton>
@@ -101,6 +103,7 @@ export default function AdminDashboardPage() {
                   }`}>
                   Usuários
                 </TabsTrigger>
+
                 <TabsTrigger
                   value="pending"
                   onClick={() => setActiveTab("pending")}
@@ -111,6 +114,7 @@ export default function AdminDashboardPage() {
                   }`}>
                   Pendentes
                 </TabsTrigger>
+
                 <TabsTrigger
                   value="roles"
                   onClick={() => setActiveTab("roles")}
@@ -121,6 +125,7 @@ export default function AdminDashboardPage() {
                   }`}>
                   Cargos
                 </TabsTrigger>
+
                 <TabsTrigger
                   value="permissions"
                   onClick={() => setActiveTab("permissions")}
@@ -130,6 +135,18 @@ export default function AdminDashboardPage() {
                       : "hover:bg-gray-200"
                   }`}>
                   Permissões
+                </TabsTrigger>
+
+                <TabsTrigger
+                  value="status"
+                  onClick={() => setActiveTab("status")}
+                  className={`flex items-center px-4 py-2 rounded-md transition-colors ${
+                    activeTab === "status"
+                      ? "bg-primary text-white"
+                      : "hover:bg-gray-200"
+                  }`}>
+                  <Settings className="mr-2 h-4 w-4" />
+                  Status
                 </TabsTrigger>
               </TabsList>
 
@@ -147,6 +164,10 @@ export default function AdminDashboardPage() {
 
               <TabsContent value="permissions">
                 <AdminPermissionsTab key={`permissions-${retryCount}`} />
+              </TabsContent>
+
+              <TabsContent value="status">
+                <AdminStatusTab key={`status-${retryCount}`} />
               </TabsContent>
             </Tabs>
           </div>
