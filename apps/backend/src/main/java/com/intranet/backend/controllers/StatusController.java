@@ -1,9 +1,6 @@
 package com.intranet.backend.controllers;
 
-import com.intranet.backend.dto.StatusCreateRequest;
-import com.intranet.backend.dto.StatusDto;
-import com.intranet.backend.dto.StatusHistorySummaryDto;
-import com.intranet.backend.dto.StatusUpdateRequest;
+import com.intranet.backend.dto.*;
 import com.intranet.backend.model.StatusHistory;
 import com.intranet.backend.service.StatusHistoryService;
 import com.intranet.backend.service.StatusService;
@@ -150,9 +147,12 @@ public class StatusController {
     @GetMapping("/history")
     public ResponseEntity<Page<StatusHistorySummaryDto>> getAllHistorico(
             @PageableDefault(size = 20) Pageable pageable) {
-        logger.info("Requisição para listar todo o histórico de status");
+        logger.info("Requisição para listar todo o histórico de status - página: {}, tamanho: {}",
+                pageable.getPageNumber(), pageable.getPageSize());
 
-        Page<StatusHistorySummaryDto> historico = statusHistoryService.getHistoricoPorTipo(null, pageable);
+        Page<StatusHistorySummaryDto> historico = statusHistoryService.getAllHistoricoGeral(pageable);
+
+        logger.info("Total de registros de histórico encontrados: {}", historico.getTotalElements());
         return ResponseEntity.ok(historico);
     }
 
@@ -163,10 +163,15 @@ public class StatusController {
             @PageableDefault(size = 20) Pageable pageable) {
         logger.info("Requisição para histórico de {} ID: {}", entityType, entityId);
 
-        StatusHistory.EntityType type = StatusHistory.EntityType.valueOf(entityType.toUpperCase());
-        Page<StatusHistorySummaryDto> historico = statusHistoryService.getHistoricoEntidadePaginado(
-                type, entityId, pageable);
-        return ResponseEntity.ok(historico);
+        try {
+            StatusHistory.EntityType type = StatusHistory.EntityType.valueOf(entityType.toUpperCase());
+            Page<StatusHistorySummaryDto> historico = statusHistoryService.getHistoricoEntidadePaginado(
+                    type, entityId, pageable);
+            return ResponseEntity.ok(historico);
+        } catch (IllegalArgumentException e) {
+            logger.error("Tipo de entidade inválido: {}", entityType);
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     @GetMapping("/history/user/{userId}")
@@ -189,5 +194,49 @@ public class StatusController {
         Page<StatusHistorySummaryDto> historico = statusHistoryService.getHistoricoPorPeriodo(
                 startDate, endDate, pageable);
         return ResponseEntity.ok(historico);
+    }
+
+    @GetMapping("/history/{id}")
+    public ResponseEntity<StatusHistoryDto> getHistoricoById(@PathVariable UUID id) {
+        logger.info("Requisição para buscar histórico com ID: {}", id);
+
+        StatusHistoryDto historico = statusHistoryService.getHistoricoById(id);
+        return ResponseEntity.ok(historico);
+    }
+
+    @GetMapping("/history/tipo/{entityType}")
+    public ResponseEntity<Page<StatusHistorySummaryDto>> getHistoricoByTipo(
+            @PathVariable String entityType,
+            @PageableDefault(size = 20) Pageable pageable) {
+        logger.info("Requisição para histórico do tipo: {}", entityType);
+
+        try {
+            StatusHistory.EntityType type = StatusHistory.EntityType.valueOf(entityType.toUpperCase());
+            Page<StatusHistorySummaryDto> historico = statusHistoryService.getHistoricoPorTipo(type, pageable);
+            return ResponseEntity.ok(historico);
+        } catch (IllegalArgumentException e) {
+            logger.error("Tipo de entidade inválido: {}", entityType);
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @GetMapping("/history/status/{status}")
+    public ResponseEntity<Page<StatusHistorySummaryDto>> getHistoricoByStatus(
+            @PathVariable String status,
+            @PageableDefault(size = 20) Pageable pageable) {
+        logger.info("Requisição para histórico do status: {}", status);
+
+        Page<StatusHistorySummaryDto> historico = statusHistoryService.getHistoricoPorStatus(status, pageable);
+        return ResponseEntity.ok(historico);
+    }
+
+    @GetMapping("/history/dashboard")
+    public ResponseEntity<Map<String, Object>> getDashboardStats(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
+        logger.info("Requisição para estatísticas do dashboard");
+
+        Map<String, Object> stats = statusHistoryService.getDashboardStatistics(startDate, endDate);
+        return ResponseEntity.ok(stats);
     }
 }
