@@ -216,38 +216,57 @@ export interface StatusUpdateRequest {
 
 export interface StatusHistoryDto {
   id: string;
-  entityType: EntityTypeEnum;
+  entityType: string;
   entityId: string;
-  statusAnterior: string;
+  statusAnterior?: string;
   statusNovo: string;
-  motivo: string;
+  motivo?: string;
   observacoes?: string;
+  dataAlteracao: string;
   alteradoPorId: string;
   alteradoPorNome: string;
   alteradoPorEmail: string;
-  dataAlteracao: string;
-  createdAt: string;
-  updatedAt: string;
-  entityDescricao?: string;
-  numeroGuia?: string;
-  codigoFicha?: string;
 }
 
 export interface StatusHistorySummaryDto {
   id: string;
-  entityType: EntityTypeEnum;
+  entityType: string;
   entityId: string;
-  statusAnterior: string;
+  statusAnterior?: string;
   statusNovo: string;
-  motivo: string;
-  alteradoPorNome: string;
+  motivo?: string;
   dataAlteracao: string;
-  entityDescricao: string;
+  alteradoPorNome: string;
+  alteradoPorEmail: string;
+}
+
+export interface StatusHistoryCreateRequest {
+  entityType: string;
+  entityId: string;
+  statusAnterior?: string;
+  statusNovo: string;
+  motivo?: string;
+  observacoes?: string;
+}
+
+export interface StatusHistoryFilterRequest {
+  entityType?: string;
+  entityId?: string;
+  statusNovo?: string;
+  alteradoPorId?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface StatusBadgeProps {
+  status: string;
+  size?: "xs" | "sm" | "md" | "lg";
+  className?: string;
 }
 
 export interface StatusChangeRequest {
   novoStatus: string;
-  motivo: string;
+  motivo?: string;
   observacoes?: string;
 }
 

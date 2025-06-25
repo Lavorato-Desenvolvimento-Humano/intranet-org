@@ -474,6 +474,11 @@ export const statusHistoryService = {
     const response = await api.get(`/api/guias/${guiaId}/historico-status`);
     return response.data;
   },
+
+  async getHistoricoById(id: string): Promise<StatusHistoryDto> {
+    const response = await api.get(`/api/status/history/${id}`);
+    return response.data;
+  },
 };
 
 export const clinicalStatsService = {
