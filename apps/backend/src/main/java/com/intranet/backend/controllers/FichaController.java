@@ -144,6 +144,13 @@ public class FichaController {
         Map<String, Object> stats = new HashMap<>();
         stats.put("totalFichas", fichaService.countTotalFichas());
 
+        // Fichas por status
+        Map<String, Long> fichasPorStatus = fichaService.getFichasPorStatus();
+        stats.put("fichasPorStatus", fichasPorStatus);
+
+        logger.info("Estatísticas de fichas retornadas: totalFichas={}, fichasPorStatus={}",
+                stats.get("totalFichas"), fichasPorStatus);
+
         return ResponseUtil.success(stats);
     }
 

@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public interface FichaService {
@@ -50,4 +51,6 @@ public interface FichaService {
     FichaDto updateFichaStatus(UUID id, String novoStatus, String motivo, String observacoes);
 
     List<StatusHistoryDto> getHistoricoStatusFicha(UUID fichaId);
+
+    Map<String, Long> getFichasPorStatus();
 }
