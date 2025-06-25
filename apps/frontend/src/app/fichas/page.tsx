@@ -441,7 +441,7 @@ export default function FichasPage() {
                   value={selectedStatus}
                   onChange={(value) => handleFilterChange("status", value)}
                   options={statuses.map((s) => ({
-                    label: s.status || s.descricao,
+                    label: s.status || s.descricao || "",
                     value: s.status,
                   }))}
                 />
