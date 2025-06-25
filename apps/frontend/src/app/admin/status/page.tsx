@@ -380,8 +380,8 @@ export default function StatusManagementPage() {
                       last: currentPage === totalPages,
                     }}
                     columns={columns}
-                    loading={loading}
                     onPageChange={(page) => setCurrentPage(page + 1)}
+                    loading={loading}
                   />
 
                   {/* Paginação */}

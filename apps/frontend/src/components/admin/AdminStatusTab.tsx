@@ -443,6 +443,19 @@ export default function AdminStatusTab() {
                   onPageChange={(page) => setCurrentPage(page + 1)}
                 />
               </div>
+
+              {/* Desabilitar a paginação do DataTable */}
+              {/* {totalPages > 1 && (
+                <div className="mt-6">
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                    totalItems={totalItems}
+                    pageSize={itemsPerPage}
+                  />
+                </div>
+              )} */}
             </>
           )}
         </div>
