@@ -8,80 +8,60 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
 @Repository
 public interface RelatorioCompartilhamentoRepository extends JpaRepository<RelatorioCompartilhamento, UUID> {
 
+    /**
+     * Busca compartilhamentos por relatório
+     */
     @Query("SELECT rc FROM RelatorioCompartilhamento rc " +
             "LEFT JOIN FETCH rc.usuarioOrigem " +
             "LEFT JOIN FETCH rc.usuarioDestino " +
+            "WHERE rc.relatorio.id = :relatorioId " +
+            "ORDER BY rc.dataCompartilhamento DESC")
+    List<RelatorioCompartilhamento> findByRelatorioId(@Param("relatorioId") UUID relatorioId);
+
+    /**
+     * Busca compartilhamentos recebidos por usuário
+     */
+    @Query("SELECT rc FROM RelatorioCompartilhamento rc " +
+            "LEFT JOIN FETCH rc.relatorio " +
+            "LEFT JOIN FETCH rc.usuarioOrigem " +
             "WHERE rc.usuarioDestino.id = :usuarioId " +
             "ORDER BY rc.dataCompartilhamento DESC")
-    Page<RelatorioCompartilhamento> findRecebidosByUsuario(@Param("usuarioId") UUID usuarioId, Pageable pageable);
+    Page<RelatorioCompartilhamento> findByUsuarioDestinoId(@Param("usuarioId") UUID usuarioId, Pageable pageable);
 
+    /**
+     * Busca compartilhamentos enviados por usuário
+     */
     @Query("SELECT rc FROM RelatorioCompartilhamento rc " +
-            "LEFT JOIN FETCH rc.usuarioOrigem " +
+            "LEFT JOIN FETCH rc.relatorio " +
             "LEFT JOIN FETCH rc.usuarioDestino " +
             "WHERE rc.usuarioOrigem.id = :usuarioId " +
             "ORDER BY rc.dataCompartilhamento DESC")
-    Page<RelatorioCompartilhamento> findEnviadosByUsuario(@Param("usuarioId") UUID usuarioId, Pageable pageable);
+    Page<RelatorioCompartilhamento> findByUsuarioOrigemId(@Param("usuarioId") UUID usuarioId, Pageable pageable);
 
+    /**
+     * Busca compartilhamentos não visualizados por usuário
+     */
     @Query("SELECT rc FROM RelatorioCompartilhamento rc " +
-            "LEFT JOIN FETCH rc.usuarioOrigem " +
-            "LEFT JOIN FETCH rc.usuarioDestino " +
-            "WHERE rc.status = :status " +
-            "ORDER BY rc.dataCompartilhamento DESC")
-    Page<RelatorioCompartilhamento> findByStatus(@Param("status") RelatorioCompartilhamento.StatusCompartilhamento status, Pageable pageable);
-
-    @Query("SELECT rc FROM RelatorioCompartilhamento rc " +
+            "LEFT JOIN FETCH rc.relatorio " +
             "LEFT JOIN FETCH rc.usuarioOrigem " +
             "WHERE rc.usuarioDestino.id = :usuarioId " +
-            "AND rc.status = 'PENDENTE' " +
+            "AND rc.visualizado = false " +
             "ORDER BY rc.dataCompartilhamento DESC")
-    List<RelatorioCompartilhamento> findPendentesByUsuario(@Param("usuarioId") UUID usuarioId);
+    List<RelatorioCompartilhamento> findNaoVisualizadosByUsuarioDestino(@Param("usuarioId") UUID usuarioId);
 
-    @Query("SELECT COUNT(rc) FROM RelatorioCompartilhamento rc " +
-            "WHERE rc.usuarioDestino.id = :usuarioId " +
-            "AND rc.status = 'PENDENTE'")
-    long countPendentesByUsuario(@Param("usuarioId") UUID usuarioId);
+    /**
+     * Conta compartilhamentos não visualizados por usuário
+     */
+    long countByUsuarioDestinoIdAndVisualizadoFalse(UUID usuarioId);
 
-    @Query("SELECT rc FROM RelatorioCompartilhamento rc " +
-            "LEFT JOIN FETCH rc.usuarioOrigem " +
-            "LEFT JOIN FETCH rc.usuarioDestino " +
-            "WHERE (:usuarioOrigemId IS NULL OR rc.usuarioOrigem.id = :usuarioOrigemId) " +
-            "AND (:usuarioDestinoId IS NULL OR rc.usuarioDestino.id = :usuarioDestinoId) " +
-            "AND (:status IS NULL OR rc.status = :status) " +
-            "AND (:dataInicio IS NULL OR rc.dataCompartilhamento >= :dataInicio) " +
-            "AND (:dataFim IS NULL OR rc.dataCompartilhamento <= :dataFim) " +
-            "ORDER BY rc.dataCompartilhamento DESC")
-    Page<RelatorioCompartilhamento> findWithFilters(
-            @Param("usuarioOrigemId") UUID usuarioOrigemId,
-            @Param("usuarioDestinoId") UUID usuarioDestinoId,
-            @Param("status") RelatorioCompartilhamento.StatusCompartilhamento status,
-            @Param("dataInicio") LocalDateTime dataInicio,
-            @Param("dataFim") LocalDateTime dataFim,
-            Pageable pageable);
-
-    @Query("SELECT rc FROM RelatorioCompartilhamento rc " +
-            "WHERE rc.dataCompartilhamento BETWEEN :dataInicio AND :dataFim " +
-            "ORDER BY rc.dataCompartilhamento DESC")
-    Page<RelatorioCompartilhamento> findByPeriodo(
-            @Param("dataInicio") LocalDateTime dataInicio,
-            @Param("dataFim") LocalDateTime dataFim,
-            Pageable pageable);
-
-    @Query("SELECT rc.status, COUNT(rc) FROM RelatorioCompartilhamento rc " +
-            "WHERE rc.usuarioDestino.id = :usuarioId " +
-            "GROUP BY rc.status")
-    List<Object[]> getEstatisticasByUsuario(@Param("usuarioId") UUID usuarioId);
-
-    @Query("SELECT rc FROM RelatorioCompartilhamento rc " +
-            "LEFT JOIN FETCH rc.usuarioOrigem " +
-            "LEFT JOIN FETCH rc.usuarioDestino " +
-            "WHERE rc.usuarioOrigem.id = :usuarioId OR rc.usuarioDestino.id = :usuarioId " +
-            "ORDER BY rc.dataCompartilhamento DESC")
-    Page<RelatorioCompartilhamento> findAllByUsuario(@Param("usuarioId") UUID usuarioId, Pageable pageable);
+    /**
+     * Verifica se um relatório já foi compartilhado entre dois usuários
+     */
+    boolean existsByRelatorioIdAndUsuarioOrigemIdAndUsuarioDestinoId(UUID relatorioId, UUID origemId, UUID destinoId);
 }

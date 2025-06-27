@@ -1,11 +1,9 @@
 package com.intranet.backend.service;
 
 import com.intranet.backend.dto.*;
-import com.intranet.backend.model.RelatorioCompartilhamento;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -13,94 +11,92 @@ import java.util.UUID;
 public interface RelatorioService {
 
     /**
-     * Gera relatório geral baseado nos filtros fornecidos
+     * Gera um novo relatório baseado nos filtros fornecidos
      */
-    RelatorioGeralDto gerarRelatorioGeral(RelatorioFilterRequest filters);
+    RelatorioDto gerarRelatorio(RelatorioCreateRequest request);
 
     /**
-     * Gera relatório específico de um usuário
+     * Busca relatório por ID
      */
-    RelatorioGeralDto gerarRelatorioUsuario(UUID usuarioId, LocalDateTime dataInicio, LocalDateTime dataFim);
+    RelatorioDto getRelatorioById(UUID id);
 
     /**
-     * Gera relatório de mudanças de status por período
+     * Busca relatório por hash de compartilhamento
      */
-    RelatorioGeralDto gerarRelatorioMudancasStatus(LocalDateTime dataInicio, LocalDateTime dataFim, UUID usuarioId);
+    RelatorioDto getRelatorioByHash(String hash);
 
     /**
-     * Gera relatório de criações (novas guias/fichas) por usuário
+     * Lista relatórios do usuário atual
      */
-    RelatorioGeralDto gerarRelatorioCriacoes(UUID usuarioId, LocalDateTime dataInicio, LocalDateTime dataFim);
+    Page<RelatorioSummaryDto> getMeusRelatorios(Pageable pageable);
 
     /**
-     * Gera relatório de edições por usuário
+     * Lista todos os relatórios (apenas para admins/supervisores)
      */
-    RelatorioGeralDto gerarRelatorioEdicoes(UUID usuarioId, LocalDateTime dataInicio, LocalDateTime dataFim);
+    Page<RelatorioSummaryDto> getAllRelatorios(Pageable pageable);
 
     /**
-     * Gera relatório comparativo entre usuários
+     * Busca relatórios com filtros
      */
-    RelatorioGeralDto gerarRelatorioComparativo(List<UUID> usuarioIds, LocalDateTime dataInicio, LocalDateTime dataFim);
+    Page<RelatorioSummaryDto> getRelatoriosComFiltros(RelatorioFilterRequest filter, Pageable pageable);
+
+    /**
+     * Obtém os dados completos de um relatório para visualização/exportação
+     */
+    RelatorioDataDto getDadosRelatorio(UUID relatorioId);
 
     /**
      * Compartilha um relatório com outro usuário
      */
-    RelatorioCompartilhamentoDto compartilharRelatorio(RelatorioCompartilhamentoCreateRequest request);
+    RelatorioCompartilhamentoDto compartilharRelatorio(UUID relatorioId, RelatorioCompartilhamentoRequest request);
 
     /**
-     * Responde a um compartilhamento de relatório (aceitar/rejeitar)
+     * Lista compartilhamentos recebidos pelo usuário atual
      */
-    RelatorioCompartilhamentoDto responderCompartilhamento(UUID compartilhamentoId, RelatorioCompartilhamentoResponseRequest request);
+    Page<RelatorioCompartilhamentoDto> getCompartilhamentosRecebidos(Pageable pageable);
 
     /**
-     * Lista relatórios recebidos pelo usuário atual
+     * Lista compartilhamentos enviados pelo usuário atual
      */
-    Page<RelatorioCompartilhamentoDto> getRelatoriosRecebidos(Pageable pageable);
+    Page<RelatorioCompartilhamentoDto> getCompartilhamentosEnviados(Pageable pageable);
 
     /**
-     * Lista relatórios enviados pelo usuário atual
+     * Marca um compartilhamento como visualizado
      */
-    Page<RelatorioCompartilhamentoDto> getRelatoriosEnviados(Pageable pageable);
+    void marcarCompartilhamentoComoVisualizado(UUID compartilhamentoId);
 
     /**
-     * Lista relatórios pendentes para o usuário atual (notificações)
+     * Conta compartilhamentos não visualizados do usuário atual
      */
-    List<RelatorioCompartilhamentoDto> getRelatoriosPendentes();
+    long countCompartilhamentosNaoVisualizados();
 
     /**
-     * Obtém um compartilhamento específico
+     * Exclui um relatório (apenas o próprio usuário ou admin)
      */
-    RelatorioCompartilhamentoDto getCompartilhamento(UUID compartilhamentoId);
+    void excluirRelatorio(UUID relatorioId);
 
     /**
-     * Exclui um compartilhamento (apenas o remetente pode excluir)
+     * Gera PDF do relatório
      */
-    void excluirCompartilhamento(UUID compartilhamentoId);
+    byte[] gerarRelatorioPDF(UUID relatorioId);
 
     /**
-     * Gera estatísticas de relatórios
+     * Gera PDF do relatório via hash de compartilhamento
      */
-    Map<String, Object> getEstatisticasRelatorios(LocalDateTime dataInicio, LocalDateTime dataFim);
+    byte[] gerarRelatorioPDFByHash(String hash);
 
     /**
-     * Busca relatórios com filtros avançados (para admins)
+     * Obtém estatísticas de relatórios do usuário
      */
-    Page<RelatorioCompartilhamentoDto> buscarCompartilhamentosComFiltros(
-            UUID usuarioOrigemId, UUID usuarioDestinoId, RelatorioCompartilhamento.StatusCompartilhamento status,
-            LocalDateTime dataInicio, LocalDateTime dataFim, Pageable pageable);
+    Map<String, Object> getEstatisticasRelatorios();
 
     /**
-     * Conta relatórios pendentes para o usuário atual
+     * Reprocessa um relatório (caso tenha falhado)
      */
-    long countRelatoriosPendentes();
+    RelatorioDto reprocessarRelatorio(UUID relatorioId);
 
     /**
-     * Exporta relatório para JSON (para integração com frontend)
+     * Lista logs de um relatório específico
      */
-    String exportarRelatorioJson(UUID relatorioId);
-
-    /**
-     * Valida se o usuário tem permissão para visualizar o relatório
-     */
-    boolean validarPermissaoVisualizacao(UUID compartilhamentoId, UUID usuarioId);
+    List<RelatorioLogDto> getLogsRelatorio(UUID relatorioId);
 }
