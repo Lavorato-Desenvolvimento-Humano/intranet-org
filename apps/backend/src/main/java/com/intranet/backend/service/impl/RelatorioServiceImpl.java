@@ -1,6 +1,9 @@
+// RelatorioServiceImpl.java - Implementação Completa
 package com.intranet.backend.service.impl;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.intranet.backend.dto.*;
 import com.intranet.backend.exception.ResourceNotFoundException;
 import com.intranet.backend.model.*;
@@ -11,13 +14,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -28,702 +31,711 @@ public class RelatorioServiceImpl implements RelatorioService {
 
     private static final Logger logger = LoggerFactory.getLogger(RelatorioServiceImpl.class);
 
+    private final RelatorioRepository relatorioRepository;
+    private final RelatorioCompartilhamentoRepository compartilhamentoRepository;
+    private final RelatorioLogRepository logRepository;
+    private final UserRepository userRepository;
     private final StatusHistoryRepository statusHistoryRepository;
     private final GuiaRepository guiaRepository;
     private final FichaRepository fichaRepository;
-    private final UserRepository userRepository;
-    private final ConvenioRepository convenioRepository;
     private final PacienteRepository pacienteRepository;
-    private final RelatorioCompartilhamentoRepository relatorioCompartilhamentoRepository;
-    private final ObjectMapper objectMapper;
 
     @Override
-    public RelatorioGeralDto gerarRelatorioGeral(RelatorioFilterRequest filters) {
-        logger.info("Gerando relatório geral com filtros: {}", filters);
+    @Transactional
+    public RelatorioDto gerarRelatorio(RelatorioCreateRequest request) {
+        logger.info("Iniciando geração de relatório: {}", request.getTitulo());
 
-        // Validar e ajustar filtros
-        RelatorioFilterRequest filtrosAjustados = ajustarFiltros(filters);
+        User currentUser = getCurrentUser();
 
-        // Buscar dados do histórico de status
-        List<StatusHistory> historico = buscarHistoricoComFiltros(filtrosAjustados);
+        // Verificar se o usuário pode gerar relatório para outro usuário
+        UUID usuarioAlvo = request.getUsuarioResponsavelId() != null ?
+                request.getUsuarioResponsavelId() : currentUser.getId();
 
-        // Buscar dados de criações de guias e fichas
-        List<RelatorioItemDto> itensCriacao = buscarItensCreacao(filtrosAjustados);
+        if (!usuarioAlvo.equals(currentUser.getId()) && !isUserAdminOrSupervisor(currentUser)) {
+            throw new IllegalArgumentException("Usuário não tem permissão para gerar relatórios de outros usuários");
+        }
 
-        // Converter histórico para itens do relatório
-        List<RelatorioItemDto> itensHistorico = historico.stream()
-                .map(this::mapHistoricoToItem)
-                .collect(Collectors.toList());
+        // Criar entidade do relatório
+        Relatorio relatorio = new Relatorio();
+        relatorio.setTitulo(request.getTitulo());
+        relatorio.setDescricao(request.getDescricao());
+        relatorio.setUsuarioGerador(currentUser);
+        relatorio.setPeriodoInicio(request.getPeriodoInicio());
+        relatorio.setPeriodoFim(request.getPeriodoFim());
+        relatorio.setFiltros(buildFiltrosJson(request));
+        relatorio.gerarHashCompartilhamento();
+        relatorio.setStatusRelatorio(Relatorio.StatusRelatorio.PROCESSANDO);
 
-        // Combinar todos os itens
-        List<RelatorioItemDto> todosItens = new ArrayList<>();
-        todosItens.addAll(itensHistorico);
-        todosItens.addAll(itensCriacao);
+        relatorio = relatorioRepository.save(relatorio);
 
-        // Ordenar por data
-        todosItens.sort((a, b) -> b.getDataAcao().compareTo(a.getDataAcao()));
+        // Gerar dados do relatório em background (simulado como síncrono por simplicidade)
+        try {
+            RelatorioDataDto dadosRelatorio = processarDadosRelatorio(request, usuarioAlvo);
+            relatorio.setTotalRegistros(dadosRelatorio.getTotalRegistros());
+            relatorio.setDadosRelatorio(convertToJsonString(dadosRelatorio));
+            relatorio.setStatusRelatorio(Relatorio.StatusRelatorio.CONCLUIDO);
 
-        // Gerar totalizações
-        RelatorioTotalizacaoDto totalizacao = calcularTotalizacao(todosItens, filtrosAjustados);
+            relatorio = relatorioRepository.save(relatorio);
 
-        // Gerar agrupamentos
-        Map<String, Object> agrupamentos = gerarAgrupamentos(todosItens);
+            // Registrar log de geração
+            registrarLog(RelatorioLog.gerado(relatorio, currentUser, getClientIpAddress()));
 
-        // Gerar metadata
-        RelatorioMetadataDto metadata = gerarMetadata(filtrosAjustados, todosItens.size());
+            logger.info("Relatório gerado com sucesso. ID: {}, Total de registros: {}",
+                    relatorio.getId(), relatorio.getTotalRegistros());
 
-        return new RelatorioGeralDto(metadata, todosItens, totalizacao, agrupamentos);
+        } catch (Exception e) {
+            logger.error("Erro ao processar dados do relatório: {}", e.getMessage(), e);
+            relatorio.setStatusRelatorio(Relatorio.StatusRelatorio.ERRO);
+            relatorioRepository.save(relatorio);
+            throw new RuntimeException("Erro ao gerar relatório: " + e.getMessage(), e);
+        }
+
+        return mapToDto(relatorio);
     }
 
     @Override
-    public RelatorioGeralDto gerarRelatorioUsuario(UUID usuarioId, LocalDateTime dataInicio, LocalDateTime dataFim) {
-        logger.info("Gerando relatório para usuário {} no período {} a {}", usuarioId, dataInicio, dataFim);
+    public RelatorioDto getRelatorioById(UUID id) {
+        logger.info("Buscando relatório por ID: {}", id);
 
-        RelatorioFilterRequest filters = new RelatorioFilterRequest();
-        filters.setUsuarioId(usuarioId);
-        filters.setDataInicio(dataInicio);
-        filters.setDataFim(dataFim);
+        Relatorio relatorio = relatorioRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Relatório não encontrado com ID: " + id));
 
-        return gerarRelatorioGeral(filters);
+        // Verificar permissão de acesso
+        User currentUser = getCurrentUser();
+        if (!relatorio.getUsuarioGerador().getId().equals(currentUser.getId()) &&
+                !isUserAdminOrSupervisor(currentUser)) {
+            throw new IllegalArgumentException("Usuário não tem permissão para acessar este relatório");
+        }
+
+        // Registrar log de visualização
+        registrarLog(RelatorioLog.visualizado(relatorio, currentUser, getClientIpAddress()));
+
+        return mapToDto(relatorio);
     }
 
     @Override
-    public RelatorioGeralDto gerarRelatorioMudancasStatus(LocalDateTime dataInicio, LocalDateTime dataFim, UUID usuarioId) {
-        RelatorioFilterRequest filters = new RelatorioFilterRequest();
-        filters.setDataInicio(dataInicio);
-        filters.setDataFim(dataFim);
-        filters.setUsuarioId(usuarioId);
-        filters.setTipoAcao("MUDANCA_STATUS");
+    public RelatorioDto getRelatorioByHash(String hash) {
+        logger.info("Buscando relatório por hash: {}", hash);
 
-        return gerarRelatorioGeral(filters);
+        Relatorio relatorio = relatorioRepository.findByHashCompartilhamento(hash)
+                .orElseThrow(() -> new ResourceNotFoundException("Relatório não encontrado para o hash fornecido"));
+
+        User currentUser = getCurrentUser();
+
+        // Registrar log de visualização via compartilhamento
+        registrarLog(RelatorioLog.visualizado(relatorio, currentUser, getClientIpAddress()));
+
+        return mapToDto(relatorio);
     }
 
     @Override
-    public RelatorioGeralDto gerarRelatorioCriacoes(UUID usuarioId, LocalDateTime dataInicio, LocalDateTime dataFim) {
-        RelatorioFilterRequest filters = new RelatorioFilterRequest();
-        filters.setUsuarioId(usuarioId);
-        filters.setDataInicio(dataInicio);
-        filters.setDataFim(dataFim);
-        filters.setTipoAcao("CRIACAO");
+    public Page<RelatorioSummaryDto> getMeusRelatorios(Pageable pageable) {
+        logger.info("Buscando relatórios do usuário atual");
 
-        return gerarRelatorioGeral(filters);
+        User currentUser = getCurrentUser();
+        Page<Relatorio> relatorios = relatorioRepository.findByUsuarioGeradorId(currentUser.getId(), pageable);
+
+        return relatorios.map(this::mapToSummaryDto);
     }
 
     @Override
-    public RelatorioGeralDto gerarRelatorioEdicoes(UUID usuarioId, LocalDateTime dataInicio, LocalDateTime dataFim) {
-        RelatorioFilterRequest filters = new RelatorioFilterRequest();
-        filters.setUsuarioId(usuarioId);
-        filters.setDataInicio(dataInicio);
-        filters.setDataFim(dataFim);
-        filters.setTipoAcao("EDICAO");
+    @PreAuthorize("hasAnyAuthority('relatorio:view_all') or hasAnyRole('ADMIN', 'SUPERVISOR')")
+    public Page<RelatorioSummaryDto> getAllRelatorios(Pageable pageable) {
+        logger.info("Buscando todos os relatórios");
 
-        return gerarRelatorioGeral(filters);
+        Page<Relatorio> relatorios = relatorioRepository.findAll(pageable);
+        return relatorios.map(this::mapToSummaryDto);
     }
 
     @Override
-    public RelatorioGeralDto gerarRelatorioComparativo(List<UUID> usuarioIds, LocalDateTime dataInicio, LocalDateTime dataFim) {
-        logger.info("Gerando relatório comparativo para usuários: {}", usuarioIds);
+    public Page<RelatorioSummaryDto> getRelatoriosComFiltros(RelatorioFilterRequest filter, Pageable pageable) {
+        logger.info("Buscando relatórios com filtros");
 
-        List<RelatorioGeralDto> relatoriosIndividuais = usuarioIds.stream()
-                .map(usuarioId -> gerarRelatorioUsuario(usuarioId, dataInicio, dataFim))
-                .collect(Collectors.toList());
+        User currentUser = getCurrentUser();
+        UUID usuarioFiltro = isUserAdminOrSupervisor(currentUser) ? filter.getUsuarioId() : currentUser.getId();
 
-        // Combinar todos os itens
-        List<RelatorioItemDto> todosItens = relatoriosIndividuais.stream()
-                .flatMap(rel -> rel.getItens().stream())
-                .sorted((a, b) -> b.getDataAcao().compareTo(a.getDataAcao()))
-                .collect(Collectors.toList());
+        Relatorio.StatusRelatorio statusFilter = null;
+        if (filter.getStatus() != null && !filter.getStatus().isEmpty()) {
+            try {
+                statusFilter = Relatorio.StatusRelatorio.valueOf(filter.getStatus().get(0));
+            } catch (IllegalArgumentException e) {
+                logger.warn("Status inválido fornecido: {}", filter.getStatus().get(0));
+            }
+        }
 
-        // Gerar totalizações consolidadas
-        RelatorioTotalizacaoDto totalizacao = calcularTotalizacao(todosItens, null);
+        Page<Relatorio> relatorios = relatorioRepository.findWithFilters(
+                usuarioFiltro,
+                statusFilter,
+                filter.getStartDate(),
+                filter.getEndDate(),
+                filter.getSearch(),
+                pageable
+        );
 
-        // Gerar agrupamentos comparativos
-        Map<String, Object> agrupamentos = gerarAgrupamentosComparativos(todosItens, usuarioIds);
+        return relatorios.map(this::mapToSummaryDto);
+    }
 
-        // Gerar metadata
-        RelatorioMetadataDto metadata = new RelatorioMetadataDto();
-        metadata.setTitulo("Relatório Comparativo de Usuários");
-        metadata.setDescricao("Comparação de atividades entre " + usuarioIds.size() + " usuários");
-        metadata.setDataGeracao(LocalDateTime.now());
-        metadata.setPeriodoInicio(dataInicio);
-        metadata.setPeriodoFim(dataFim);
-        metadata.setUsuarioGerador(getCurrentUser().getFullName());
+    @Override
+    public RelatorioDataDto getDadosRelatorio(UUID relatorioId) {
+        logger.info("Obtendo dados do relatório: {}", relatorioId);
 
-        return new RelatorioGeralDto(metadata, todosItens, totalizacao, agrupamentos);
+        Relatorio relatorio = relatorioRepository.findById(relatorioId)
+                .orElseThrow(() -> new ResourceNotFoundException("Relatório não encontrado"));
+
+        // Verificar permissão
+        User currentUser = getCurrentUser();
+        if (!relatorio.getUsuarioGerador().getId().equals(currentUser.getId()) &&
+                !isUserAdminOrSupervisor(currentUser) &&
+                !hasSharedAccess(relatorioId, currentUser.getId())) {
+            throw new IllegalArgumentException("Usuário não tem permissão para acessar este relatório");
+        }
+
+        return convertFromJsonString(relatorio.getDadosRelatorio());
     }
 
     @Override
     @Transactional
-    public RelatorioCompartilhamentoDto compartilharRelatorio(RelatorioCompartilhamentoCreateRequest request) {
-        logger.info("Compartilhando relatório: {}", request.getTitulo());
+    public RelatorioCompartilhamentoDto compartilharRelatorio(UUID relatorioId, RelatorioCompartilhamentoRequest request) {
+        logger.info("Compartilhando relatório {} com usuário {}", relatorioId, request.getUsuarioDestinoId());
+
+        Relatorio relatorio = relatorioRepository.findById(relatorioId)
+                .orElseThrow(() -> new ResourceNotFoundException("Relatório não encontrado"));
 
         User currentUser = getCurrentUser();
-        User usuarioDestino = userRepository.findById(request.getUsuarioDestinoId())
+        if (!relatorio.getUsuarioGerador().getId().equals(currentUser.getId())) {
+            throw new IllegalArgumentException("Apenas o criador do relatório pode compartilhá-lo");
+        }
+
+        User usuarioDestino = userRepository.findById(UUID.fromString(request.getUsuarioDestinoId()))
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário destino não encontrado"));
 
-        try {
-            String dadosJson = objectMapper.writeValueAsString(request.getDadosRelatorio());
-
-            RelatorioCompartilhamento compartilhamento = RelatorioCompartilhamento.create(
-                    request.getTitulo(),
-                    dadosJson,
-                    currentUser,
-                    usuarioDestino,
-                    request.getObservacao()
-            );
-
-            RelatorioCompartilhamento saved = relatorioCompartilhamentoRepository.save(compartilhamento);
-            logger.info("Relatório compartilhado com sucesso. ID: {}", saved.getId());
-
-            return mapToCompartilhamentoDto(saved);
-        } catch (Exception e) {
-            logger.error("Erro ao compartilhar relatório: {}", e.getMessage(), e);
-            throw new RuntimeException("Erro ao processar compartilhamento do relatório", e);
-        }
-    }
-
-    @Override
-    @Transactional
-    public RelatorioCompartilhamentoDto responderCompartilhamento(UUID compartilhamentoId, RelatorioCompartilhamentoResponseRequest request) {
-        logger.info("Respondendo compartilhamento ID: {} com status: {}", compartilhamentoId, request.getStatus());
-
-        RelatorioCompartilhamento compartilhamento = relatorioCompartilhamentoRepository.findById(compartilhamentoId)
-                .orElseThrow(() -> new ResourceNotFoundException("Compartilhamento não encontrado"));
-
-        User currentUser = getCurrentUser();
-        if (!compartilhamento.getUsuarioDestino().getId().equals(currentUser.getId())) {
-            throw new AccessDeniedException("Você não tem permissão para responder a este compartilhamento");
+        // Verificar se já foi compartilhado
+        if (compartilhamentoRepository.existsByRelatorioIdAndUsuarioOrigemIdAndUsuarioDestinoId(
+                relatorioId, currentUser.getId(), UUID.fromString(request.getUsuarioDestinoId()))) {
+            throw new IllegalArgumentException("Relatório já foi compartilhado com este usuário");
         }
 
-        if (request.getStatus() == RelatorioCompartilhamento.StatusCompartilhamento.CONFIRMADO) {
-            compartilhamento.confirmar(request.getObservacaoResposta());
-        } else {
-            compartilhamento.rejeitar(request.getObservacaoResposta());
-        }
+        RelatorioCompartilhamento compartilhamento = new RelatorioCompartilhamento();
+        compartilhamento.setRelatorio(relatorio);
+        compartilhamento.setUsuarioOrigem(currentUser);
+        compartilhamento.setUsuarioDestino(usuarioDestino);
+        compartilhamento.setObservacao(request.getObservacao());
 
-        RelatorioCompartilhamento saved = relatorioCompartilhamentoRepository.save(compartilhamento);
-        logger.info("Resposta do compartilhamento salva com sucesso");
+        compartilhamento = compartilhamentoRepository.save(compartilhamento);
 
-        return mapToCompartilhamentoDto(saved);
-    }
+        // Registrar log
+        registrarLog(RelatorioLog.compartilhado(relatorio, currentUser, usuarioDestino, getClientIpAddress()));
 
-    @Override
-    public Page<RelatorioCompartilhamentoDto> getRelatoriosRecebidos(Pageable pageable) {
-        User currentUser = getCurrentUser();
-        Page<RelatorioCompartilhamento> page = relatorioCompartilhamentoRepository
-                .findRecebidosByUsuario(currentUser.getId(), pageable);
-        return page.map(this::mapToCompartilhamentoDto);
-    }
-
-    @Override
-    public Page<RelatorioCompartilhamentoDto> getRelatoriosEnviados(Pageable pageable) {
-        User currentUser = getCurrentUser();
-        Page<RelatorioCompartilhamento> page = relatorioCompartilhamentoRepository
-                .findEnviadosByUsuario(currentUser.getId(), pageable);
-        return page.map(this::mapToCompartilhamentoDto);
-    }
-
-    @Override
-    public List<RelatorioCompartilhamentoDto> getRelatoriosPendentes() {
-        User currentUser = getCurrentUser();
-        List<RelatorioCompartilhamento> pendentes = relatorioCompartilhamentoRepository
-                .findPendentesByUsuario(currentUser.getId());
-        return pendentes.stream()
-                .map(this::mapToCompartilhamentoDto)
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public RelatorioCompartilhamentoDto getCompartilhamento(UUID compartilhamentoId) {
-        RelatorioCompartilhamento compartilhamento = relatorioCompartilhamentoRepository.findById(compartilhamentoId)
-                .orElseThrow(() -> new ResourceNotFoundException("Compartilhamento não encontrado"));
-
-        User currentUser = getCurrentUser();
-        if (!validarPermissaoVisualizacao(compartilhamentoId, currentUser.getId())) {
-            throw new AccessDeniedException("Você não tem permissão para visualizar este compartilhamento");
-        }
+        logger.info("Relatório compartilhado com sucesso. ID: {}", compartilhamento.getId());
 
         return mapToCompartilhamentoDto(compartilhamento);
     }
 
     @Override
+    public Page<RelatorioCompartilhamentoDto> getCompartilhamentosRecebidos(Pageable pageable) {
+        User currentUser = getCurrentUser();
+        Page<RelatorioCompartilhamento> compartilhamentos =
+                compartilhamentoRepository.findByUsuarioDestinoId(currentUser.getId(), pageable);
+
+        return compartilhamentos.map(this::mapToCompartilhamentoDto);
+    }
+
+    @Override
+    public Page<RelatorioCompartilhamentoDto> getCompartilhamentosEnviados(Pageable pageable) {
+        User currentUser = getCurrentUser();
+        Page<RelatorioCompartilhamento> compartilhamentos =
+                compartilhamentoRepository.findByUsuarioOrigemId(currentUser.getId(), pageable);
+
+        return compartilhamentos.map(this::mapToCompartilhamentoDto);
+    }
+
+    @Override
     @Transactional
-    public void excluirCompartilhamento(UUID compartilhamentoId) {
-        RelatorioCompartilhamento compartilhamento = relatorioCompartilhamentoRepository.findById(compartilhamentoId)
+    public void marcarCompartilhamentoComoVisualizado(UUID compartilhamentoId) {
+        RelatorioCompartilhamento compartilhamento = compartilhamentoRepository.findById(compartilhamentoId)
                 .orElseThrow(() -> new ResourceNotFoundException("Compartilhamento não encontrado"));
 
         User currentUser = getCurrentUser();
-        if (!compartilhamento.getUsuarioOrigem().getId().equals(currentUser.getId()) && !isAdmin(currentUser)) {
-            throw new AccessDeniedException("Você não tem permissão para excluir este compartilhamento");
+        if (!compartilhamento.getUsuarioDestino().getId().equals(currentUser.getId())) {
+            throw new IllegalArgumentException("Usuário não tem permissão para marcar este compartilhamento");
         }
 
-        relatorioCompartilhamentoRepository.delete(compartilhamento);
-        logger.info("Compartilhamento excluído com sucesso. ID: {}", compartilhamentoId);
+        compartilhamento.marcarComoVisualizado();
+        compartilhamentoRepository.save(compartilhamento);
     }
 
     @Override
-    public Map<String, Object> getEstatisticasRelatorios(LocalDateTime dataInicio, LocalDateTime dataFim) {
-        logger.info("Gerando estatísticas de relatórios para período: {} a {}", dataInicio, dataFim);
-
-        Map<String, Object> estatisticas = new HashMap<>();
-
-        // Estatísticas gerais
-        long totalCompartilhamentos = relatorioCompartilhamentoRepository.count();
-        estatisticas.put("totalCompartilhamentos", totalCompartilhamentos);
-
-        // Estatísticas por status
-        List<Object[]> statusStats = relatorioCompartilhamentoRepository.getEstatisticasByUsuario(getCurrentUser().getId());
-        Map<String, Long> estatisticasPorStatus = statusStats.stream()
-                .collect(Collectors.toMap(
-                        arr -> arr[0].toString(),
-                        arr -> (Long) arr[1]
-                ));
-        estatisticas.put("porStatus", estatisticasPorStatus);
-
-        // Estatísticas de atividades
-        RelatorioFilterRequest filters = new RelatorioFilterRequest();
-        filters.setDataInicio(dataInicio);
-        filters.setDataFim(dataFim);
-
-        List<StatusHistory> historico = buscarHistoricoComFiltros(filters);
-
-        long totalMudancasStatus = historico.size();
-        long totalGuias = historico.stream()
-                .filter(h -> h.getEntityType() == StatusHistory.EntityType.GUIA)
-                .count();
-        long totalFichas = historico.stream()
-                .filter(h -> h.getEntityType() == StatusHistory.EntityType.FICHA)
-                .count();
-
-        estatisticas.put("totalMudancasStatus", totalMudancasStatus);
-        estatisticas.put("totalGuias", totalGuias);
-        estatisticas.put("totalFichas", totalFichas);
-
-        return estatisticas;
-    }
-
-    @Override
-    public Page<RelatorioCompartilhamentoDto> buscarCompartilhamentosComFiltros(
-            UUID usuarioOrigemId, UUID usuarioDestinoId, RelatorioCompartilhamento.StatusCompartilhamento status,
-            LocalDateTime dataInicio, LocalDateTime dataFim, Pageable pageable) {
-
-        // Verificar se o usuário atual é admin
+    public long countCompartilhamentosNaoVisualizados() {
         User currentUser = getCurrentUser();
-        if (!isAdmin(currentUser)) {
-            throw new AccessDeniedException("Apenas administradores podem usar filtros avançados");
-        }
-
-        Page<RelatorioCompartilhamento> page = relatorioCompartilhamentoRepository.findWithFilters(
-                usuarioOrigemId, usuarioDestinoId, status, dataInicio, dataFim, pageable);
-
-        return page.map(this::mapToCompartilhamentoDto);
+        return compartilhamentoRepository.countByUsuarioDestinoIdAndVisualizadoFalse(currentUser.getId());
     }
 
     @Override
-    public long countRelatoriosPendentes() {
-        User currentUser = getCurrentUser();
-        return relatorioCompartilhamentoRepository.countPendentesByUsuario(currentUser.getId());
-    }
+    @Transactional
+    public void excluirRelatorio(UUID relatorioId) {
+        logger.info("Excluindo relatório: {}", relatorioId);
 
-    @Override
-    public String exportarRelatorioJson(UUID relatorioId) {
-        RelatorioCompartilhamento compartilhamento = relatorioCompartilhamentoRepository.findById(relatorioId)
+        Relatorio relatorio = relatorioRepository.findById(relatorioId)
                 .orElseThrow(() -> new ResourceNotFoundException("Relatório não encontrado"));
 
         User currentUser = getCurrentUser();
-        if (!validarPermissaoVisualizacao(relatorioId, currentUser.getId())) {
-            throw new AccessDeniedException("Você não tem permissão para exportar este relatório");
+        if (!relatorio.getUsuarioGerador().getId().equals(currentUser.getId()) &&
+                !isUserAdminOrSupervisor(currentUser)) {
+            throw new IllegalArgumentException("Usuário não tem permissão para excluir este relatório");
         }
 
-        return compartilhamento.getDadosRelatorio();
+        relatorioRepository.delete(relatorio);
+        logger.info("Relatório excluído com sucesso: {}", relatorioId);
     }
 
     @Override
-    public boolean validarPermissaoVisualizacao(UUID compartilhamentoId, UUID usuarioId) {
-        RelatorioCompartilhamento compartilhamento = relatorioCompartilhamentoRepository.findById(compartilhamentoId)
-                .orElse(null);
+    public byte[] gerarRelatorioPDF(UUID relatorioId) {
+        logger.info("Gerando PDF do relatório: {}", relatorioId);
 
-        if (compartilhamento == null) {
-            return false;
-        }
+        RelatorioDataDto dados = getDadosRelatorio(relatorioId);
+        User currentUser = getCurrentUser();
 
-        // O usuário pode visualizar se for o remetente, destinatário ou admin
-        return compartilhamento.getUsuarioOrigem().getId().equals(usuarioId) ||
-                compartilhamento.getUsuarioDestino().getId().equals(usuarioId) ||
-                isAdmin(userRepository.findById(usuarioId).orElse(null));
+        // Registrar log de download
+        Relatorio relatorio = relatorioRepository.findById(relatorioId)
+                .orElseThrow(() -> new ResourceNotFoundException("Relatório não encontrado"));
+        registrarLog(RelatorioLog.download(relatorio, currentUser, getClientIpAddress()));
+
+        return generatePDF(dados);
     }
 
-    // Métodos auxiliares privados
+    @Override
+    public byte[] gerarRelatorioPDFByHash(String hash) {
+        logger.info("Gerando PDF do relatório por hash: {}", hash);
 
-    private RelatorioFilterRequest ajustarFiltros(RelatorioFilterRequest filters) {
-        if (filters == null) {
-            filters = new RelatorioFilterRequest();
-        }
+        RelatorioDto relatorioDto = getRelatorioByHash(hash);
+        RelatorioDataDto dados = getDadosRelatorio(UUID.fromString(relatorioDto.getId()));
 
-        // Se não especificado, buscar dados dos últimos 30 dias
-        if (filters.getDataInicio() == null) {
-            filters.setDataInicio(LocalDateTime.now().minusDays(30));
-        }
-        if (filters.getDataFim() == null) {
-            filters.setDataFim(LocalDateTime.now());
-        }
-
-        return filters;
+        return generatePDF(dados);
     }
 
-    private List<StatusHistory> buscarHistoricoComFiltros(RelatorioFilterRequest filters) {
-        return statusHistoryRepository.findWithFilters(
-                filters.getTipoEntidade(),
-                null, // entityId - null para buscar todas
-                filters.getStatus(),
-                filters.getUsuarioId(),
-                filters.getDataInicio(),
-                filters.getDataFim(),
-                Pageable.unpaged()
-        ).getContent();
+    @Override
+    public Map<String, Object> getEstatisticasRelatorios() {
+        logger.info("Obtendo estatísticas de relatórios");
+
+        User currentUser = getCurrentUser();
+        Map<String, Object> stats = new HashMap<>();
+
+        if (isUserAdminOrSupervisor(currentUser)) {
+            // Estatísticas globais para admins/supervisores
+            stats.put("totalRelatorios", relatorioRepository.count());
+            stats.put("relatoriosConcluidos", relatorioRepository.countByStatusRelatorio(Relatorio.StatusRelatorio.CONCLUIDO));
+            stats.put("relatoriosProcessando", relatorioRepository.countByStatusRelatorio(Relatorio.StatusRelatorio.PROCESSANDO));
+            stats.put("relatoriosComErro", relatorioRepository.countByStatusRelatorio(Relatorio.StatusRelatorio.ERRO));
+        } else {
+            // Estatísticas do usuário atual
+            stats.put("meusRelatorios", relatorioRepository.countByUsuarioGeradorId(currentUser.getId()));
+        }
+
+        // Estatísticas de compartilhamento
+        stats.put("compartilhamentosRecebidos", compartilhamentoRepository.findByUsuarioDestinoId(currentUser.getId(), Pageable.unpaged()).getTotalElements());
+        stats.put("compartilhamentosEnviados", compartilhamentoRepository.findByUsuarioOrigemId(currentUser.getId(), Pageable.unpaged()).getTotalElements());
+        stats.put("compartilhamentosNaoVisualizados", countCompartilhamentosNaoVisualizados());
+
+        return stats;
     }
 
-    private List<RelatorioItemDto> buscarItensCreacao(RelatorioFilterRequest filters) {
+    @Override
+    @Transactional
+    public RelatorioDto reprocessarRelatorio(UUID relatorioId) {
+        logger.info("Reprocessando relatório: {}", relatorioId);
+
+        Relatorio relatorio = relatorioRepository.findById(relatorioId)
+                .orElseThrow(() -> new ResourceNotFoundException("Relatório não encontrado"));
+
+        User currentUser = getCurrentUser();
+        if (!relatorio.getUsuarioGerador().getId().equals(currentUser.getId()) &&
+                !isUserAdminOrSupervisor(currentUser)) {
+            throw new IllegalArgumentException("Usuário não tem permissão para reprocessar este relatório");
+        }
+
+        // Recriar request baseado nos filtros salvos
+        RelatorioCreateRequest request = recreateRequestFromFilters(relatorio);
+
+        relatorio.setStatusRelatorio(Relatorio.StatusRelatorio.PROCESSANDO);
+        relatorio = relatorioRepository.save(relatorio);
+
+        try {
+            RelatorioDataDto dadosRelatorio = processarDadosRelatorio(request, relatorio.getUsuarioGerador().getId());
+            relatorio.setTotalRegistros(dadosRelatorio.getTotalRegistros());
+            relatorio.setDadosRelatorio(convertToJsonString(dadosRelatorio));
+            relatorio.setStatusRelatorio(Relatorio.StatusRelatorio.CONCLUIDO);
+
+            relatorio = relatorioRepository.save(relatorio);
+
+            logger.info("Relatório reprocessado com sucesso: {}", relatorioId);
+
+        } catch (Exception e) {
+            logger.error("Erro ao reprocessar relatório: {}", e.getMessage(), e);
+            relatorio.setStatusRelatorio(Relatorio.StatusRelatorio.ERRO);
+            relatorioRepository.save(relatorio);
+            throw new RuntimeException("Erro ao reprocessar relatório: " + e.getMessage(), e);
+        }
+
+        return mapToDto(relatorio);
+    }
+
+    @Override
+    public List<RelatorioLogDto> getLogsRelatorio(UUID relatorioId) {
+        logger.info("Buscando logs do relatório: {}", relatorioId);
+
+        Relatorio relatorio = relatorioRepository.findById(relatorioId)
+                .orElseThrow(() -> new ResourceNotFoundException("Relatório não encontrado"));
+
+        User currentUser = getCurrentUser();
+        if (!relatorio.getUsuarioGerador().getId().equals(currentUser.getId()) &&
+                !isUserAdminOrSupervisor(currentUser)) {
+            throw new IllegalArgumentException("Usuário não tem permissão para ver logs deste relatório");
+        }
+
+        List<RelatorioLog> logs = logRepository.findByRelatorioId(relatorioId);
+        return logs.stream().map(this::mapToLogDto).collect(Collectors.toList());
+    }
+
+    // =================================================================================
+    // MÉTODOS AUXILIARES PRIVADOS
+    // =================================================================================
+
+    private RelatorioDataDto processarDadosRelatorio(RelatorioCreateRequest request, UUID usuarioAlvo) {
+        // Implementação do processamento dos dados do relatório
+        logger.info("Processando dados do relatório para usuário: {}", usuarioAlvo);
+
+        RelatorioDataDto dados = new RelatorioDataDto();
+        dados.setTitulo(request.getTitulo());
+        dados.setUsuarioGerador(getCurrentUser().getFullName());
+        dados.setPeriodoInicio(request.getPeriodoInicio().toString());
+        dados.setPeriodoFim(request.getPeriodoFim().toString());
+        dados.setDataGeracao(LocalDateTime.now().toString());
+
+        // Converter request para Map para armazenar filtros aplicados
+        Map<String, Object> filtrosAplicados = new HashMap<>();
+        filtrosAplicados.put("usuarioResponsavelId", request.getUsuarioResponsavelId());
+        filtrosAplicados.put("status", request.getStatus());
+        filtrosAplicados.put("especialidades", request.getEspecialidades());
+        filtrosAplicados.put("convenioIds", request.getConvenioIds());
+        filtrosAplicados.put("unidades", request.getUnidades());
+        filtrosAplicados.put("tipoEntidade", request.getTipoEntidade());
+        dados.setFiltrosAplicados(filtrosAplicados);
+
+        // Buscar dados do histórico de status no período
+        List<StatusHistory> historicoStatus = statusHistoryRepository
+                .findByDataAlteracaoBetween(request.getPeriodoInicio(), request.getPeriodoFim(), Pageable.unpaged())
+                .getContent()
+                .stream()
+                .filter(h -> h.getAlteradoPor().getId().equals(usuarioAlvo))
+                .collect(Collectors.toList());
+
+        // Aplicar filtros adicionais se especificados
+        historicoStatus = aplicarFiltros(historicoStatus, request);
+
+        // Converter para DTOs do relatório
         List<RelatorioItemDto> itens = new ArrayList<>();
 
-        // Buscar criações de guias
-        if (filters.getTipoEntidade() == null || filters.getTipoEntidade() == StatusHistory.EntityType.GUIA) {
-            List<Guia> guias = buscarGuiasCriadas(filters);
-            itens.addAll(guias.stream()
-                    .map(this::mapGuiaToItemCriacao)
-                    .collect(Collectors.toList()));
+        for (StatusHistory history : historicoStatus) {
+            RelatorioItemDto item = new RelatorioItemDto();
+            item.setTipoEntidade(history.getEntityType().name());
+            item.setEntidadeId(history.getEntityId());
+            item.setStatusAnterior(history.getStatusAnterior());
+            item.setStatusNovo(history.getStatusNovo());
+            item.setMotivoMudanca(history.getMotivo());
+            item.setDataMudancaStatus(history.getDataAlteracao());
+            item.setUsuarioResponsavelNome(history.getAlteradoPor().getFullName());
+
+            // Enriquecer com dados específicos da entidade
+            enrichItemWithEntityData(item, history);
+
+            itens.add(item);
         }
 
-        // Buscar criações de fichas
-        if (filters.getTipoEntidade() == null || filters.getTipoEntidade() == StatusHistory.EntityType.FICHA) {
-            List<Ficha> fichas = buscarFichasCriadas(filters);
-            itens.addAll(fichas.stream()
-                    .map(this::mapFichaToItemCriacao)
-                    .collect(Collectors.toList()));
-        }
+        dados.setItens(itens);
+        dados.setTotalRegistros(itens.size());
 
-        return itens;
+        // Gerar estatísticas
+        dados.setDistribuicaoPorStatus(calculateStatusDistribution(itens));
+        dados.setDistribuicaoPorEspecialidade(calculateEspecialidadeDistribution(itens));
+        dados.setDistribuicaoPorConvenio(calculateConvenioDistribution(itens));
+        dados.setDistribuicaoPorUnidade(calculateUnidadeDistribution(itens));
+
+        // Gerar dados do timeline
+        dados.setTimelineData(generateTimelineData(itens, request.getPeriodoInicio(), request.getPeriodoFim()));
+
+        return dados;
     }
 
-    private List<Guia> buscarGuiasCriadas(RelatorioFilterRequest filters) {
-        // Implementar busca personalizada de guias criadas no período
-        // Por simplicidade, usando findAll e filtrando em memória
-        // Em produção, criar query específica no repository
-        return guiaRepository.findAll().stream()
-                .filter(guia -> {
-                    boolean incluir = true;
-
-                    if (filters.getDataInicio() != null && guia.getCreatedAt().isBefore(filters.getDataInicio())) {
-                        incluir = false;
-                    }
-                    if (filters.getDataFim() != null && guia.getCreatedAt().isAfter(filters.getDataFim())) {
-                        incluir = false;
-                    }
-                    if (filters.getConvenioId() != null && !guia.getConvenio().getId().equals(filters.getConvenioId())) {
-                        incluir = false;
-                    }
-                    if (filters.getPacienteId() != null && !guia.getPaciente().getId().equals(filters.getPacienteId())) {
-                        incluir = false;
+    private List<StatusHistory> aplicarFiltros(List<StatusHistory> historicoStatus, RelatorioCreateRequest request) {
+        return historicoStatus.stream()
+                .filter(history -> {
+                    // Filtro por tipo de entidade
+                    if (request.getTipoEntidade() != null && !"TODOS".equals(request.getTipoEntidade())) {
+                        if (!history.getEntityType().name().equals(request.getTipoEntidade())) {
+                            return false;
+                        }
                     }
 
-                    return incluir;
+                    // Filtro por status
+                    if (request.getStatus() != null && !request.getStatus().isEmpty()) {
+                        if (!request.getStatus().contains(history.getStatusNovo())) {
+                            return false;
+                        }
+                    }
+
+                    return true;
                 })
                 .collect(Collectors.toList());
     }
 
-    private List<Ficha> buscarFichasCriadas(RelatorioFilterRequest filters) {
-        // Implementar busca personalizada de fichas criadas no período
-        // Por simplicidade, usando findAll e filtrando em memória
-        // Em produção, criar query específica no repository
-        return fichaRepository.findAll().stream()
-                .filter(ficha -> {
-                    boolean incluir = true;
+    private void enrichItemWithEntityData(RelatorioItemDto item, StatusHistory history) {
+        try {
+            switch (history.getEntityType()) {
+                case GUIA:
+                    guiaRepository.findById(history.getEntityId()).ifPresent(guia -> {
+                        item.setNumeroGuia(guia.getNumeroGuia());
+                        item.setGuiaId(guia.getId().toString());
+                        item.setPacienteNome(guia.getPaciente().getNome());
+                        item.setPacienteId(guia.getPaciente().getId().toString());
+                        item.setConvenioNome(guia.getConvenio().getNome());
+                        item.setMes(guia.getMes());
+                        item.setAno(guia.getAno());
+                        item.setQuantidadeAutorizada(guia.getQuantidadeAutorizada());
+                        item.setUnidade(guia.getPaciente().getUnidade().name());
+                        item.setStatus(guia.getStatus());
+                        if (!guia.getEspecialidades().isEmpty()) {
+                            item.setEspecialidade(String.join(", ", guia.getEspecialidades()));
+                        }
+                        item.setDataAtualizacao(guia.getUpdatedAt().toString());
+                    });
+                    break;
 
-                    if (filters.getDataInicio() != null && ficha.getCreatedAt().isBefore(filters.getDataInicio())) {
-                        incluir = false;
-                    }
-                    if (filters.getDataFim() != null && ficha.getCreatedAt().isAfter(filters.getDataFim())) {
-                        incluir = false;
-                    }
+                case FICHA:
+                    fichaRepository.findById(history.getEntityId()).ifPresent(ficha -> {
+                        item.setCodigoFicha(ficha.getCodigoFicha());
+                        item.setFichaId(ficha.getId().toString());
+                        item.setEspecialidade(ficha.getEspecialidade());
+                        item.setConvenioNome(ficha.getConvenio().getNome());
+                        item.setMes(ficha.getMes());
+                        item.setAno(ficha.getAno());
+                        item.setStatus(ficha.getStatus());
+                        item.setDataAtualizacao(ficha.getUpdatedAt().toString());
 
-                    return incluir;
-                })
-                .collect(Collectors.toList());
-    }
-
-    private RelatorioItemDto mapHistoricoToItem(StatusHistory history) {
-        RelatorioItemDto item = new RelatorioItemDto();
-        item.setId(history.getId());
-        item.setTipoEntidade(history.getEntityType());
-        item.setEntidadeId(history.getEntityId());
-        item.setTipoAcao("MUDANCA_STATUS");
-        item.setStatusAnterior(history.getStatusAnterior());
-        item.setStatusNovo(history.getStatusNovo());
-        item.setMotivo(history.getMotivo());
-        item.setObservacoes(history.getObservacoes());
-        item.setUsuarioResponsavel(history.getAlteradoPor().getFullName());
-        item.setDataAcao(history.getDataAlteracao());
-
-        // Buscar informações da entidade
-        if (history.getEntityType() == StatusHistory.EntityType.GUIA) {
-            guiaRepository.findById(history.getEntityId()).ifPresent(guia -> {
-                item.setEntidadeDescricao("Guia " + guia.getNumeroGuia());
-                item.setNumeroGuia(guia.getNumeroGuia());
-                item.setPacienteNome(guia.getPaciente().getNome());
-                item.setConvenioNome(guia.getConvenio().getName());
-                if (!guia.getEspecialidades().isEmpty()) {
-                    item.setEspecialidade(String.join(", ", guia.getEspecialidades()));
-                }
-            });
-        } else if (history.getEntityType() == StatusHistory.EntityType.FICHA) {
-            fichaRepository.findById(history.getEntityId()).ifPresent(ficha -> {
-                item.setEntidadeDescricao("Ficha " + ficha.getCodigoFicha());
-                item.setCodigoFicha(ficha.getCodigoFicha());
-                item.setPacienteNome(ficha.getPacienteNome());
-
-                // Buscar informações da guia relacionada
-                if (ficha.getGuia() != null) {
-                    item.setNumeroGuia(ficha.getGuia().getNumeroGuia());
-                    item.setConvenioNome(ficha.getGuia().getConvenio().getName());
-                }
-            });
-        }
-
-        return item;
-    }
-
-    private RelatorioItemDto mapGuiaToItemCriacao(Guia guia) {
-        RelatorioItemDto item = new RelatorioItemDto();
-        item.setId(guia.getId());
-        item.setTipoEntidade(StatusHistory.EntityType.GUIA);
-        item.setEntidadeId(guia.getId());
-        item.setEntidadeDescricao("Guia " + guia.getNumeroGuia());
-        item.setNumeroGuia(guia.getNumeroGuia());
-        item.setPacienteNome(guia.getPaciente().getNome());
-        item.setConvenioNome(guia.getConvenio().getName());
-        item.setTipoAcao("CRIACAO");
-        item.setStatusNovo(guia.getStatus());
-        item.setDataAcao(guia.getCreatedAt());
-
-        if (!guia.getEspecialidades().isEmpty()) {
-            item.setEspecialidade(String.join(", ", guia.getEspecialidades()));
-        }
-
-        // Buscar quem criou através do primeiro registro de status
-        statusHistoryRepository.findByEntityTypeAndEntityIdOrderByDataAlteracaoDesc(
-                        StatusHistory.EntityType.GUIA, guia.getId()
-                ).stream()
-                .findFirst()
-                .ifPresent(firstHistory -> item.setUsuarioResponsavel(firstHistory.getAlteradoPor().getFullName()));
-
-        return item;
-    }
-
-    private RelatorioItemDto mapFichaToItemCriacao(Ficha ficha) {
-        RelatorioItemDto item = new RelatorioItemDto();
-        item.setId(ficha.getId());
-        item.setTipoEntidade(StatusHistory.EntityType.FICHA);
-        item.setEntidadeId(ficha.getId());
-        item.setEntidadeDescricao("Ficha " + ficha.getCodigoFicha());
-        item.setCodigoFicha(ficha.getCodigoFicha());
-        item.setPacienteNome(ficha.getPacienteNome());
-        item.setTipoAcao("CRIACAO");
-        item.setStatusNovo(ficha.getStatus());
-        item.setDataAcao(ficha.getCreatedAt());
-
-        // Informações da guia relacionada
-        if (ficha.getGuia() != null) {
-            item.setNumeroGuia(ficha.getGuia().getNumeroGuia());
-            item.setConvenioNome(ficha.getGuia().getConvenio().getName());
-        }
-
-        // Buscar quem criou através do primeiro registro de status
-        statusHistoryRepository.findByEntityTypeAndEntityIdOrderByDataAlteracaoDesc(
-                        StatusHistory.EntityType.FICHA, ficha.getId()
-                ).stream()
-                .findFirst()
-                .ifPresent(firstHistory -> item.setUsuarioResponsavel(firstHistory.getAlteradoPor().getFullName()));
-
-        return item;
-    }
-
-    private RelatorioTotalizacaoDto calcularTotalizacao(List<RelatorioItemDto> itens, RelatorioFilterRequest filters) {
-        RelatorioTotalizacaoDto totalizacao = new RelatorioTotalizacaoDto();
-
-        totalizacao.setTotalItens(itens.size());
-        totalizacao.setTotalGuias(itens.stream()
-                .filter(item -> item.getTipoEntidade() == StatusHistory.EntityType.GUIA)
-                .count());
-        totalizacao.setTotalFichas(itens.stream()
-                .filter(item -> item.getTipoEntidade() == StatusHistory.EntityType.FICHA)
-                .count());
-        totalizacao.setTotalCriacoes(itens.stream()
-                .filter(item -> "CRIACAO".equals(item.getTipoAcao()))
-                .count());
-        totalizacao.setTotalEdicoes(itens.stream()
-                .filter(item -> "EDICAO".equals(item.getTipoAcao()))
-                .count());
-        totalizacao.setTotalMudancasStatus(itens.stream()
-                .filter(item -> "MUDANCA_STATUS".equals(item.getTipoAcao()))
-                .count());
-
-        // Calcular valores financeiros se for filtro específico
-        if (filters != null && filters.getUsuarioId() != null) {
-            BigDecimal valorTotal = calcularValorTotalGuias(itens);
-            totalizacao.setValorTotalGuias(valorTotal);
-
-            long quantidadeTotal = calcularQuantidadeAutorizadaTotal(itens);
-            totalizacao.setQuantidadeAutorizadaTotal(quantidadeTotal);
-        }
-
-        return totalizacao;
-    }
-
-    private BigDecimal calcularValorTotalGuias(List<RelatorioItemDto> itens) {
-        Set<UUID> guiasProcessadas = new HashSet<>();
-        BigDecimal total = BigDecimal.ZERO;
-
-        for (RelatorioItemDto item : itens) {
-            if (item.getTipoEntidade() == StatusHistory.EntityType.GUIA &&
-                    !guiasProcessadas.contains(item.getEntidadeId())) {
-
-                guiaRepository.findById(item.getEntidadeId()).ifPresent(guia -> {
-                    if (guia.getValorReais() != null) {
-                        // total = total.add(guia.getValorReais()); // Descomentar quando campo existir
-                    }
-                });
-                guiasProcessadas.add(item.getEntidadeId());
+                        // Se ficha tem guia, pegar quantidade da guia, senão da ficha
+                        if (ficha.getGuia() != null) {
+                            item.setQuantidadeAutorizada(ficha.getGuia().getQuantidadeAutorizada());
+                            item.setNumeroGuia(ficha.getGuia().getNumeroGuia());
+                            item.setGuiaId(ficha.getGuia().getId().toString());
+                            item.setPacienteNome(ficha.getGuia().getPaciente().getNome());
+                            item.setPacienteId(ficha.getGuia().getPaciente().getId().toString());
+                            item.setUnidade(ficha.getGuia().getPaciente().getUnidade().name());
+                        } else {
+                            item.setQuantidadeAutorizada(ficha.getQuantidadeAutorizada());
+                            if (ficha.getPaciente() != null) {
+                                item.setPacienteNome(ficha.getPaciente().getNome());
+                                item.setPacienteId(ficha.getPaciente().getId().toString());
+                                item.setUnidade(ficha.getPaciente().getUnidade().name());
+                            }
+                        }
+                    });
+                    break;
             }
+        } catch (Exception e) {
+            logger.warn("Erro ao enriquecer item do relatório para entidade {}: {}",
+                    history.getEntityId(), e.getMessage());
         }
-
-        return total;
     }
 
-    private long calcularQuantidadeAutorizadaTotal(List<RelatorioItemDto> itens) {
-        Set<UUID> guiasProcessadas = new HashSet<>();
-        long total = 0;
+    private String buildFiltrosJson(RelatorioCreateRequest request) {
+        Map<String, Object> filtros = new HashMap<>();
+        filtros.put("periodoInicio", request.getPeriodoInicio());
+        filtros.put("periodoFim", request.getPeriodoFim());
+        filtros.put("usuarioResponsavelId", request.getUsuarioResponsavelId());
+        filtros.put("status", request.getStatus());
+        filtros.put("especialidades", request.getEspecialidades());
+        filtros.put("convenioIds", request.getConvenioIds());
+        filtros.put("unidades", request.getUnidades());
+        filtros.put("tipoEntidade", request.getTipoEntidade());
+        filtros.put("incluirGraficos", request.getIncluirGraficos());
+        filtros.put("incluirEstatisticas", request.getIncluirEstatisticas());
 
-        for (RelatorioItemDto item : itens) {
-            if (item.getTipoEntidade() == StatusHistory.EntityType.GUIA &&
-                    !guiasProcessadas.contains(item.getEntidadeId())) {
-
-                Optional<Guia> guiaOpt = guiaRepository.findById(item.getEntidadeId());
-                if (guiaOpt.isPresent()) {
-                    total += guiaOpt.get().getQuantidadeAutorizada();
-                }
-                guiasProcessadas.add(item.getEntidadeId());
-            }
+        // Converter Map para JSON String
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            objectMapper.registerModule(new JavaTimeModule());
+            return objectMapper.writeValueAsString(filtros);
+        } catch (Exception e) {
+            logger.error("Erro ao converter filtros para JSON: {}", e.getMessage(), e);
+            return "{}";
         }
-
-        return total;
     }
 
-    private Map<String, Object> gerarAgrupamentos(List<RelatorioItemDto> itens) {
-        Map<String, Object> agrupamentos = new HashMap<>();
-
-        // Agrupamento por tipo de ação
-        Map<String, Long> porTipoAcao = itens.stream()
-                .collect(Collectors.groupingBy(
-                        RelatorioItemDto::getTipoAcao,
-                        Collectors.counting()
-                ));
-        agrupamentos.put("porTipoAcao", porTipoAcao);
-
-        // Agrupamento por usuário responsável
-        Map<String, Long> porUsuario = itens.stream()
-                .filter(item -> item.getUsuarioResponsavel() != null)
-                .collect(Collectors.groupingBy(
-                        RelatorioItemDto::getUsuarioResponsavel,
-                        Collectors.counting()
-                ));
-        agrupamentos.put("porUsuario", porUsuario);
-
-        // Agrupamento por convênio
-        Map<String, Long> porConvenio = itens.stream()
-                .filter(item -> item.getConvenioNome() != null)
-                .collect(Collectors.groupingBy(
-                        RelatorioItemDto::getConvenioNome,
-                        Collectors.counting()
-                ));
-        agrupamentos.put("porConvenio", porConvenio);
-
-        // Agrupamento por status
-        Map<String, Long> porStatus = itens.stream()
+    private Map<String, Long> calculateStatusDistribution(List<RelatorioItemDto> itens) {
+        return itens.stream()
                 .filter(item -> item.getStatusNovo() != null)
                 .collect(Collectors.groupingBy(
                         RelatorioItemDto::getStatusNovo,
                         Collectors.counting()
                 ));
-        agrupamentos.put("porStatus", porStatus);
+    }
 
-        // Agrupamento por dia
-        Map<String, Long> porDia = itens.stream()
+    private Map<String, Long> calculateEspecialidadeDistribution(List<RelatorioItemDto> itens) {
+        return itens.stream()
+                .filter(item -> item.getEspecialidade() != null)
                 .collect(Collectors.groupingBy(
-                        item -> item.getDataAcao().toLocalDate().toString(),
+                        RelatorioItemDto::getEspecialidade,
                         Collectors.counting()
                 ));
-        agrupamentos.put("porDia", porDia);
-
-        return agrupamentos;
     }
 
-    private Map<String, Object> gerarAgrupamentosComparativos(List<RelatorioItemDto> itens, List<UUID> usuarioIds) {
-        Map<String, Object> agrupamentos = gerarAgrupamentos(itens);
+    private Map<String, Long> calculateConvenioDistribution(List<RelatorioItemDto> itens) {
+        return itens.stream()
+                .filter(item -> item.getConvenioNome() != null)
+                .collect(Collectors.groupingBy(
+                        RelatorioItemDto::getConvenioNome,
+                        Collectors.counting()
+                ));
+    }
 
-        // Adicionar comparação específica por usuário
-        Map<String, Map<String, Long>> comparativoPorUsuario = new HashMap<>();
+    private Map<String, Long> calculateUnidadeDistribution(List<RelatorioItemDto> itens) {
+        return itens.stream()
+                .filter(item -> item.getUnidade() != null)
+                .collect(Collectors.groupingBy(
+                        RelatorioItemDto::getUnidade,
+                        Collectors.counting()
+                ));
+    }
 
-        for (UUID usuarioId : usuarioIds) {
-            userRepository.findById(usuarioId).ifPresent(user -> {
-                List<RelatorioItemDto> itensUsuario = itens.stream()
-                        .filter(item -> user.getFullName().equals(item.getUsuarioResponsavel()))
-                        .collect(Collectors.toList());
+    private List<GraficoTimelineDto> generateTimelineData(List<RelatorioItemDto> itens,
+                                                          LocalDateTime inicio,
+                                                          LocalDateTime fim) {
 
-                Map<String, Long> estatisticasUsuario = new HashMap<>();
-                estatisticasUsuario.put("totalItens", (long) itensUsuario.size());
-                estatisticasUsuario.put("criacoes", itensUsuario.stream()
-                        .filter(item -> "CRIACAO".equals(item.getTipoAcao()))
-                        .count());
-                estatisticasUsuario.put("mudancasStatus", itensUsuario.stream()
-                        .filter(item -> "MUDANCA_STATUS".equals(item.getTipoAcao()))
-                        .count());
+        Map<LocalDate, GraficoTimelineDto> timelineMap = new HashMap<>();
 
-                comparativoPorUsuario.put(user.getFullName(), estatisticasUsuario);
-            });
+        // Inicializar todos os dias do período com zero
+        LocalDate dataAtual = inicio.toLocalDate();
+        LocalDate dataFim = fim.toLocalDate();
+
+        while (!dataAtual.isAfter(dataFim)) {
+            GraficoTimelineDto ponto = new GraficoTimelineDto();
+            ponto.setData(dataAtual.toString());
+            ponto.setTotalOperacoes(0L);
+            ponto.setCriacoes(0L);
+            ponto.setMudancasStatus(0L);
+            ponto.setAtualizacoes(0L);
+            timelineMap.put(dataAtual, ponto);
+            dataAtual = dataAtual.plusDays(1);
         }
 
-        agrupamentos.put("comparativoPorUsuario", comparativoPorUsuario);
-        return agrupamentos;
+        // Agrupar operações por data
+        for (RelatorioItemDto item : itens) {
+            if (item.getDataMudancaStatus() != null) {
+                try {
+                    LocalDate dataOperacao = LocalDateTime.parse(item.getDataMudancaStatus()).toLocalDate();
+                    GraficoTimelineDto ponto = timelineMap.get(dataOperacao);
+
+                    if (ponto != null) {
+                        ponto.setTotalOperacoes(ponto.getTotalOperacoes() + 1);
+
+                        // Classificar tipo de operação
+                        if (item.getStatusAnterior() == null) {
+                            ponto.setCriacoes(ponto.getCriacoes() + 1);
+                        } else if (!item.getStatusAnterior().equals(item.getStatusNovo())) {
+                            ponto.setMudancasStatus(ponto.getMudancasStatus() + 1);
+                        } else {
+                            ponto.setAtualizacoes(ponto.getAtualizacoes() + 1);
+                        }
+                    }
+                } catch (Exception e) {
+                    logger.warn("Erro ao processar data do timeline: {}", item.getDataMudancaStatus());
+                }
+            }
+        }
+
+        return timelineMap.values()
+                .stream()
+                .sorted(Comparator.comparing(dto -> LocalDate.parse(dto.getData())))
+                .collect(Collectors.toList());
     }
 
-    private RelatorioMetadataDto gerarMetadata(RelatorioFilterRequest filters, int totalItens) {
-        RelatorioMetadataDto metadata = new RelatorioMetadataDto();
-        metadata.setTitulo("Relatório de Atividades do Sistema");
-        metadata.setDescricao("Relatório contendo " + totalItens + " registros de atividades");
-        metadata.setDataGeracao(LocalDateTime.now());
-        metadata.setPeriodoInicio(filters.getDataInicio());
-        metadata.setPeriodoFim(filters.getDataFim());
-        metadata.setUsuarioGerador(getCurrentUser().getFullName());
-        metadata.setFiltrosAplicados(filters);
-        return metadata;
+    // =================================================================================
+    // MÉTODOS DE CONVERSÃO JSON
+    // =================================================================================
+
+    private String convertToJsonString(RelatorioDataDto dados) {
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            objectMapper.registerModule(new JavaTimeModule());
+            return objectMapper.writeValueAsString(dados);
+        } catch (Exception e) {
+            logger.error("Erro ao converter dados para JSON: {}", e.getMessage(), e);
+            return "{}";
+        }
     }
 
-    private RelatorioCompartilhamentoDto mapToCompartilhamentoDto(RelatorioCompartilhamento compartilhamento) {
-        return new RelatorioCompartilhamentoDto(
-                compartilhamento.getId(),
-                compartilhamento.getTitulo(),
-                compartilhamento.getDadosRelatorio(),
-                compartilhamento.getUsuarioOrigem().getId(),
-                compartilhamento.getUsuarioOrigem().getFullName(),
-                compartilhamento.getUsuarioDestino().getId(),
-                compartilhamento.getUsuarioDestino().getFullName(),
-                compartilhamento.getStatus(),
-                compartilhamento.getObservacao(),
-                compartilhamento.getObservacaoResposta(),
-                compartilhamento.getDataCompartilhamento(),
-                compartilhamento.getDataResposta()
-        );
+    private RelatorioDataDto convertFromJsonString(String jsonString) {
+        if (jsonString == null || jsonString.trim().isEmpty()) {
+            throw new IllegalStateException("Dados do relatório não encontrados");
+        }
+
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            objectMapper.registerModule(new JavaTimeModule());
+            return objectMapper.readValue(jsonString, RelatorioDataDto.class);
+        } catch (Exception e) {
+            logger.error("Erro ao converter JSON para dados: {}", e.getMessage(), e);
+            throw new IllegalStateException("Erro ao processar dados do relatório", e);
+        }
     }
+
+    private RelatorioCreateRequest recreateRequestFromFilters(Relatorio relatorio) {
+        RelatorioCreateRequest request = new RelatorioCreateRequest();
+
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            objectMapper.registerModule(new JavaTimeModule());
+            Map<String, Object> filtros = objectMapper.readValue(relatorio.getFiltros(), new TypeReference<Map<String, Object>>() {});
+
+            request.setTitulo(relatorio.getTitulo());
+            request.setDescricao(relatorio.getDescricao());
+            request.setPeriodoInicio(relatorio.getPeriodoInicio());
+            request.setPeriodoFim(relatorio.getPeriodoFim());
+
+            if (filtros != null) {
+                // Conversão segura dos filtros
+                Object usuarioId = filtros.get("usuarioResponsavelId");
+                if (usuarioId != null) {
+                    request.setUsuarioResponsavelId(UUID.fromString(usuarioId.toString()));
+                }
+
+                request.setStatus((List<String>) filtros.get("status"));
+                request.setEspecialidades((List<String>) filtros.get("especialidades"));
+
+                // Conversão de UUIDs
+                List<?> convenioIdsList = (List<?>) filtros.get("convenioIds");
+                if (convenioIdsList != null) {
+                    List<UUID> convenioIds = convenioIdsList.stream()
+                            .filter(Objects::nonNull)
+                            .map(id -> UUID.fromString(id.toString()))
+                            .collect(Collectors.toList());
+                    request.setConvenioIds(convenioIds);
+                }
+
+                request.setUnidades((List<String>) filtros.get("unidades"));
+                request.setTipoEntidade((String) filtros.get("tipoEntidade"));
+                request.setIncluirGraficos((Boolean) filtros.getOrDefault("incluirGraficos", true));
+                request.setIncluirEstatisticas((Boolean) filtros.getOrDefault("incluirEstatisticas", true));
+            }
+        } catch (Exception e) {
+            logger.error("Erro ao recriar request dos filtros: {}", e.getMessage(), e);
+        }
+
+        return request;
+    }
+
+    // =================================================================================
+    // MÉTODOS AUXILIARES GERAIS
+    // =================================================================================
 
     private User getCurrentUser() {
         UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -731,9 +743,189 @@ public class RelatorioServiceImpl implements RelatorioService {
                 .orElseThrow(() -> new RuntimeException("Usuário atual não encontrado"));
     }
 
-    private boolean isAdmin(User user) {
-        if (user == null) return false;
-        List<String> roles = userRepository.findRoleNamesByUserId(user.getId());
-        return roles.contains("ADMIN");
+    private boolean isUserAdminOrSupervisor(User user) {
+        return user.getRoles().stream()
+                .anyMatch(role -> "ADMIN".equals(role.getName()) || "SUPERVISOR".equals(role.getName()));
+    }
+
+    private boolean hasSharedAccess(UUID relatorioId, UUID userId) {
+        return !compartilhamentoRepository.findByRelatorioId(relatorioId).stream()
+                .filter(comp -> comp.getUsuarioDestino().getId().equals(userId))
+                .collect(Collectors.toList())
+                .isEmpty();
+    }
+
+    private String getClientIpAddress() {
+        // TODO: Implementação para obter IP do cliente real
+        // Você pode injetar HttpServletRequest e extrair o IP
+        return "127.0.0.1";
+    }
+
+    private void registrarLog(RelatorioLog log) {
+        try {
+            logRepository.save(log);
+        } catch (Exception e) {
+            logger.error("Erro ao registrar log: {}", e.getMessage(), e);
+        }
+    }
+
+    private byte[] generatePDF(RelatorioDataDto dados) {
+        // TODO: Implementação da geração de PDF real
+        // Aqui você usaria uma biblioteca como iText, Apache PDFBox, ou similar
+
+        logger.info("Gerando PDF para relatório: {}", dados.getTitulo());
+
+        try {
+            // IMPLEMENTAÇÃO FUTURA COM iText:
+            /*
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            PdfWriter writer = new PdfWriter(baos);
+            PdfDocument pdf = new PdfDocument(writer);
+            Document document = new Document(pdf);
+
+            // Header
+            document.add(new Paragraph(dados.getTitulo())
+                .setFontSize(18)
+                .setBold()
+                .setTextAlignment(TextAlignment.CENTER));
+
+            document.add(new Paragraph("Gerado por: " + dados.getUsuarioGerador()));
+            document.add(new Paragraph("Período: " + dados.getPeriodoInicio() + " a " + dados.getPeriodoFim()));
+            document.add(new Paragraph("Total de registros: " + dados.getTotalRegistros()));
+            document.add(new Paragraph("Data de geração: " + dados.getDataGeracao()));
+
+            // Tabela de dados
+            Table table = new Table(UnitValue.createPercentArray(new float[]{2, 3, 2, 2, 2, 3}));
+            table.setWidth(UnitValue.createPercentValue(100));
+
+            // Headers
+            table.addHeaderCell("Tipo");
+            table.addHeaderCell("Paciente");
+            table.addHeaderCell("Guia/Ficha");
+            table.addHeaderCell("Status");
+            table.addHeaderCell("Especialidade");
+            table.addHeaderCell("Data");
+
+            // Dados
+            for (RelatorioItemDto item : dados.getItens()) {
+                table.addCell(item.getTipoEntidade());
+                table.addCell(item.getPacienteNome());
+                table.addCell(item.getNumeroGuia() != null ? item.getNumeroGuia() : item.getCodigoFicha());
+                table.addCell(item.getStatusNovo());
+                table.addCell(item.getEspecialidade());
+                table.addCell(item.getDataMudancaStatus());
+            }
+
+            document.add(table);
+            document.close();
+            return baos.toByteArray();
+            */
+
+            // Placeholder - retorna PDF simples ou vazio
+            String pdfContent = "Relatório: " + dados.getTitulo() + "\n" +
+                    "Total de registros: " + dados.getTotalRegistros() + "\n" +
+                    "Gerado em: " + dados.getDataGeracao();
+
+            return pdfContent.getBytes();
+
+        } catch (Exception e) {
+            logger.error("Erro ao gerar PDF: {}", e.getMessage(), e);
+            throw new RuntimeException("Erro ao gerar PDF", e);
+        }
+    }
+
+    // =================================================================================
+    // MÉTODOS DE MAPEAMENTO DTO
+    // =================================================================================
+
+    private RelatorioDto mapToDto(Relatorio relatorio) {
+        RelatorioDto dto = new RelatorioDto();
+        dto.setId(relatorio.getId().toString());
+        dto.setTitulo(relatorio.getTitulo());
+        dto.setDescricao(relatorio.getDescricao());
+        dto.setUsuarioGeradorId(relatorio.getUsuarioGerador().getId().toString());
+        dto.setUsuarioGeradorNome(relatorio.getUsuarioGerador().getFullName());
+        dto.setPeriodoInicio(relatorio.getPeriodoInicio().toString());
+        dto.setPeriodoFim(relatorio.getPeriodoFim().toString());
+
+        // Converter JSON string para Map
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            objectMapper.registerModule(new JavaTimeModule());
+            Map<String, Object> filtrosMap = objectMapper.readValue(relatorio.getFiltros(), new TypeReference<Map<String, Object>>() {});
+            dto.setFiltros(filtrosMap);
+        } catch (Exception e) {
+            logger.warn("Erro ao converter filtros JSON: {}", e.getMessage());
+            dto.setFiltros(new HashMap<>());
+        }
+
+        dto.setTotalRegistros(relatorio.getTotalRegistros());
+        dto.setHashCompartilhamento(relatorio.getHashCompartilhamento());
+        dto.setStatusRelatorio(relatorio.getStatusRelatorio().name());
+        dto.setCreatedAt(relatorio.getCreatedAt().toString());
+        dto.setUpdatedAt(relatorio.getUpdatedAt().toString());
+        return dto;
+    }
+
+    private RelatorioSummaryDto mapToSummaryDto(Relatorio relatorio) {
+        RelatorioSummaryDto dto = new RelatorioSummaryDto();
+        dto.setId(relatorio.getId().toString());
+        dto.setTitulo(relatorio.getTitulo());
+        dto.setUsuarioGeradorNome(relatorio.getUsuarioGerador().getFullName());
+        dto.setPeriodoInicio(relatorio.getPeriodoInicio().toString());
+        dto.setPeriodoFim(relatorio.getPeriodoFim().toString());
+        dto.setTotalRegistros(relatorio.getTotalRegistros());
+        dto.setStatusRelatorio(relatorio.getStatusRelatorio().name());
+        dto.setCreatedAt(relatorio.getCreatedAt().toString());
+
+        // Verificar se tem compartilhamentos
+        boolean hasCompartilhamentos = !compartilhamentoRepository.findByRelatorioId(relatorio.getId()).isEmpty();
+        dto.setPossuiCompartilhamento(hasCompartilhamentos);
+
+        return dto;
+    }
+
+    private RelatorioCompartilhamentoDto mapToCompartilhamentoDto(RelatorioCompartilhamento compartilhamento) {
+        RelatorioCompartilhamentoDto dto = new RelatorioCompartilhamentoDto();
+        dto.setId(compartilhamento.getId().toString());
+        dto.setRelatorioId(compartilhamento.getRelatorio().getId().toString());
+        dto.setRelatorioTitulo(compartilhamento.getRelatorio().getTitulo());
+        dto.setUsuarioOrigemId(compartilhamento.getUsuarioOrigem().getId().toString());
+        dto.setUsuarioOrigemNome(compartilhamento.getUsuarioOrigem().getFullName());
+        dto.setUsuarioDestinoId(compartilhamento.getUsuarioDestino().getId().toString());
+        dto.setUsuarioDestinoNome(compartilhamento.getUsuarioDestino().getFullName());
+        dto.setObservacao(compartilhamento.getObservacao());
+        dto.setDataCompartilhamento(compartilhamento.getDataCompartilhamento().toString());
+        dto.setVisualizado(compartilhamento.getVisualizado());
+        if (compartilhamento.getDataVisualizacao() != null) {
+            dto.setDataVisualizacao(compartilhamento.getDataVisualizacao().toString());
+        }
+        return dto;
+    }
+
+    private RelatorioLogDto mapToLogDto(RelatorioLog log) {
+        RelatorioLogDto dto = new RelatorioLogDto();
+        dto.setId(log.getId().toString());
+        dto.setAcao(log.getAcao());
+        if (log.getUsuario() != null) {
+            dto.setUsuarioId(log.getUsuario().getId().toString());
+            dto.setUsuarioNome(log.getUsuario().getFullName());
+        }
+
+        // Converter JSON string para Map
+        try {
+            if (log.getDetalhes() != null && !log.getDetalhes().trim().isEmpty()) {
+                ObjectMapper objectMapper = new ObjectMapper();
+                Map<String, Object> detalhesMap = objectMapper.readValue(log.getDetalhes(), new TypeReference<Map<String, Object>>() {});
+                dto.setDetalhes(detalhesMap);
+            }
+        } catch (Exception e) {
+            logger.warn("Erro ao converter detalhes JSON: {}", e.getMessage());
+            dto.setDetalhes(new HashMap<>());
+        }
+
+        dto.setIpAddress(log.getIpAddress());
+        dto.setCreatedAt(log.getCreatedAt().toString());
+        return dto;
     }
 }

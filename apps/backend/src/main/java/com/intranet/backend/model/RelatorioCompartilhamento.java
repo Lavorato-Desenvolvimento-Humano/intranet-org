@@ -1,131 +1,65 @@
 package com.intranet.backend.model;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Entity
-@Table(name = "relatorio_compartilhamentos")
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
-@EntityListeners(AuditingEntityListener.class)
+@Entity
+@Table(name = "relatorios_compartilhamentos")
 public class RelatorioCompartilhamento {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
 
-    @Column(name = "titulo", nullable = false, length = 255)
-    private String titulo;
-
-    @Lob
-    @Column(name = "dados_relatorio", nullable = false)
-    private String dadosRelatorio; // JSON com os dados do relatório
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "relatorio_id", nullable = false)
+    private Relatorio relatorio;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "usuario_origem", nullable = false)
+    @JoinColumn(name = "usuario_origem_id", nullable = false)
     private User usuarioOrigem;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "usuario_destino", nullable = false)
+    @JoinColumn(name = "usuario_destino_id", nullable = false)
     private User usuarioDestino;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
-    private StatusCompartilhamento status = StatusCompartilhamento.PENDENTE;
-
-    @Column(name = "observacao", columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT")
     private String observacao;
 
-    @Column(name = "observacao_resposta", columnDefinition = "TEXT")
-    private String observacaoResposta;
-
     @Column(name = "data_compartilhamento", nullable = false)
-    private LocalDateTime dataCompartilhamento;
+    private LocalDateTime dataCompartilhamento = LocalDateTime.now();
 
-    @Column(name = "data_resposta")
-    private LocalDateTime dataResposta;
+    @Column(nullable = false)
+    private Boolean visualizado = false;
 
-    @CreatedDate
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    @Column(name = "data_visualizacao")
+    private LocalDateTime dataVisualizacao;
 
-    @LastModifiedDate
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt = LocalDateTime.now();
+
     @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+    private LocalDateTime updatedAt = LocalDateTime.now();
 
-    /**
-     * Enum para status do compartilhamento
-     */
-    public enum StatusCompartilhamento {
-        PENDENTE("Pendente"),
-        CONFIRMADO("Confirmado"),
-        REJEITADO("Rejeitado");
-
-        private final String displayName;
-
-        StatusCompartilhamento(String displayName) {
-            this.displayName = displayName;
-        }
-
-        public String getDisplayName() {
-            return displayName;
-        }
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
     }
 
-    /**
-     * Método conveniente para criar um novo compartilhamento
-     */
-    public static RelatorioCompartilhamento create(String titulo, String dadosRelatorio,
-                                                   User usuarioOrigem, User usuarioDestino,
-                                                   String observacao) {
-        RelatorioCompartilhamento compartilhamento = new RelatorioCompartilhamento();
-        compartilhamento.setTitulo(titulo);
-        compartilhamento.setDadosRelatorio(dadosRelatorio);
-        compartilhamento.setUsuarioOrigem(usuarioOrigem);
-        compartilhamento.setUsuarioDestino(usuarioDestino);
-        compartilhamento.setObservacao(observacao);
-        compartilhamento.setDataCompartilhamento(LocalDateTime.now());
-        compartilhamento.setStatus(StatusCompartilhamento.PENDENTE);
-        return compartilhamento;
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 
-    /**
-     * Método para confirmar o compartilhamento
-     */
-    public void confirmar(String observacaoResposta) {
-        this.status = StatusCompartilhamento.CONFIRMADO;
-        this.observacaoResposta = observacaoResposta;
-        this.dataResposta = LocalDateTime.now();
-    }
-
-    /**
-     * Método para rejeitar o compartilhamento
-     */
-    public void rejeitar(String observacaoResposta) {
-        this.status = StatusCompartilhamento.REJEITADO;
-        this.observacaoResposta = observacaoResposta;
-        this.dataResposta = LocalDateTime.now();
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        RelatorioCompartilhamento that = (RelatorioCompartilhamento) o;
-        return id != null && id.equals(that.id);
-    }
-
-    @Override
-    public int hashCode() {
-        return getClass().hashCode();
+    // Método para marcar como visualizado
+    public void marcarComoVisualizado() {
+        this.visualizado = true;
+        this.dataVisualizacao = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
     }
 }

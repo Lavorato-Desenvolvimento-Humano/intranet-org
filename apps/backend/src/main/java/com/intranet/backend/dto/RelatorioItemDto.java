@@ -1,31 +1,43 @@
 package com.intranet.backend.dto;
 
-import com.intranet.backend.model.StatusHistory;
 import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
 public class RelatorioItemDto {
-    private UUID id;
-    private StatusHistory.EntityType tipoEntidade;
+
+    // Identificação
+    private String tipoEntidade; // GUIA, FICHA, PACIENTE
     private UUID entidadeId;
-    private String entidadeDescricao;
-    private String numeroGuia;
-    private String codigoFicha;
+
+    // Informações do paciente
     private String pacienteNome;
+    private UUID pacienteId;
+
+    // Informações da guia
+    private String numeroGuia;
+    private UUID guiaId;
+
+    // Informações da ficha
+    private String codigoFicha;
+    private UUID fichaId;
+
+    // Informações gerais
     private String convenioNome;
+    private String status;
     private String especialidade;
-    private String tipoAcao;
+    private String unidade;
+    private Integer mes;
+    private Integer ano;
+    private Integer quantidadeAutorizada;
+    private String usuarioResponsavelNome;
+    private LocalDateTime dataAtualizacao;
+
+    // Informações de mudança de status
     private String statusAnterior;
     private String statusNovo;
-    private String motivo;
-    private String observacoes;
-    private String usuarioResponsavel;
-    private LocalDateTime dataAcao;
+    private String motivoMudanca;
+    private LocalDateTime dataMudancaStatus;
 }

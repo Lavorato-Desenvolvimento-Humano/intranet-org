@@ -1,24 +1,25 @@
 package com.intranet.backend.dto;
 
-import com.intranet.backend.model.StatusHistory;
 import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
 public class RelatorioFilterRequest {
+
+    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+    private LocalDateTime startDate;
+
+    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+    private LocalDateTime endDate;
+
     private UUID usuarioId;
-    private LocalDateTime dataInicio;
-    private LocalDateTime dataFim;
-    private StatusHistory.EntityType tipoEntidade; // GUIA, FICHA ou null para ambos
-    private String status;
-    private UUID convenioId;
-    private UUID pacienteId;
-    private String especialidade;
-    private String tipoAcao; // CRIACAO, EDICAO, MUDANCA_STATUS
+    private List<String> status;
+    private List<String> especialidades;
+    private List<UUID> convenioIds;
+    private List<String> unidades;
+    private String search;
 }
