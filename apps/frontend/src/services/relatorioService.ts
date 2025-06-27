@@ -1,3 +1,4 @@
+// src/services/relatorioService.ts - VERSÃO CORRIGIDA
 import api from "./api";
 
 export interface RelatorioFilterRequest {
@@ -86,6 +87,19 @@ export interface CompartilhamentoResponseRequest {
   observacaoResposta?: string;
 }
 
+export interface StatusHistoryItem {
+  id: string;
+  entityType: "GUIA" | "FICHA";
+  entityId: string;
+  entityDescricao: string;
+  statusAnterior?: string;
+  statusNovo: string;
+  motivo?: string;
+  observacoes?: string;
+  alteradoPorNome: string;
+  dataAlteracao: string;
+}
+
 export interface PaginatedResponse<T> {
   content: T[];
   pageable: {
@@ -99,13 +113,103 @@ export interface PaginatedResponse<T> {
 }
 
 class RelatorioService {
-  // === GERAÇÃO DE RELATÓRIOS ===
+  // === GERAÇÃO DE RELATÓRIOS USANDO ENDPOINTS EXISTENTES ===
 
   async gerarRelatorioGeral(
     filters: RelatorioFilterRequest
   ): Promise<RelatorioGeral> {
-    const response = await api.post("/relatorios/gerar", filters);
-    return response.data;
+    console.log("🚀 Gerando relatório com filtros:", filters);
+
+    try {
+      let historico: StatusHistoryItem[] = [];
+
+      // Buscar histórico baseado nos filtros
+      if (filters.usuarioId) {
+        // Usar endpoint por usuário
+        const response = await api.get(
+          `/status/history/user/${filters.usuarioId}`,
+          {
+            params: {
+              page: 0,
+              size: 1000, // Buscar muitos registros
+            },
+          }
+        );
+        historico = response.data.content;
+      } else if (filters.dataInicio && filters.dataFim) {
+        // Usar endpoint por período
+        const response = await api.get("/status/history/periodo", {
+          params: {
+            startDate: filters.dataInicio,
+            endDate: filters.dataFim,
+            page: 0,
+            size: 1000,
+          },
+        });
+        historico = response.data.content;
+      } else {
+        // Usar endpoint geral
+        const response = await api.get("/status/history", {
+          params: {
+            page: 0,
+            size: 1000,
+          },
+        });
+        historico = response.data.content;
+      }
+
+      // Filtrar por tipo de entidade se especificado
+      if (filters.tipoEntidade) {
+        historico = historico.filter(
+          (item) => item.entityType === filters.tipoEntidade
+        );
+      }
+
+      // Filtrar por status se especificado
+      if (filters.status) {
+        historico = historico.filter(
+          (item) => item.statusNovo === filters.status
+        );
+      }
+
+      // Converter para formato do relatório
+      const itens: RelatorioItem[] = historico.map(
+        this.mapHistoricoToRelatorioItem
+      );
+
+      // Gerar totalizações
+      const totalizacao = this.calcularTotalizacao(itens);
+
+      // Gerar agrupamentos
+      const agrupamentos = this.gerarAgrupamentos(itens);
+
+      // Gerar metadata
+      const metadata: RelatorioMetadata = {
+        titulo: "Relatório de Atividades do Sistema",
+        descricao: `Relatório contendo ${itens.length} registros de atividades`,
+        dataGeracao: new Date().toISOString(),
+        usuarioGerador: "Sistema", // TODO: pegar usuário atual
+        periodoInicio: filters.dataInicio || "",
+        periodoFim: filters.dataFim || "",
+        filtrosAplicados: filters,
+      };
+
+      console.log("✅ Relatório gerado com sucesso:", {
+        totalItens: itens.length,
+        totalGuias: totalizacao.totalGuias,
+        totalFichas: totalizacao.totalFichas,
+      });
+
+      return {
+        metadata,
+        itens,
+        totalizacao,
+        agrupamentos,
+      };
+    } catch (error) {
+      console.error("❌ Erro ao gerar relatório:", error);
+      throw new Error("Erro ao gerar relatório: " + (error as any).message);
+    }
   }
 
   async gerarRelatorioUsuario(
@@ -113,14 +217,11 @@ class RelatorioService {
     dataInicio?: string,
     dataFim?: string
   ): Promise<RelatorioGeral> {
-    const params = new URLSearchParams();
-    if (dataInicio) params.append("dataInicio", dataInicio);
-    if (dataFim) params.append("dataFim", dataFim);
-
-    const response = await api.get(
-      `/relatorios/usuario/${usuarioId}?${params.toString()}`
-    );
-    return response.data;
+    return this.gerarRelatorioGeral({
+      usuarioId,
+      dataInicio,
+      dataFim,
+    });
   }
 
   async gerarRelatorioMudancasStatus(
@@ -128,238 +229,219 @@ class RelatorioService {
     dataFim?: string,
     usuarioId?: string
   ): Promise<RelatorioGeral> {
-    const params = new URLSearchParams();
-    if (dataInicio) params.append("dataInicio", dataInicio);
-    if (dataFim) params.append("dataFim", dataFim);
-    if (usuarioId) params.append("usuarioId", usuarioId);
-
-    const response = await api.get(
-      `/relatorios/mudancas-status?${params.toString()}`
-    );
-    return response.data;
+    return this.gerarRelatorioGeral({
+      dataInicio,
+      dataFim,
+      usuarioId,
+      tipoAcao: "MUDANCA_STATUS",
+    });
   }
 
-  async gerarRelatorioCriacoes(
-    usuarioId: string,
-    dataInicio?: string,
-    dataFim?: string
-  ): Promise<RelatorioGeral> {
-    const params = new URLSearchParams();
-    params.append("usuarioId", usuarioId);
-    if (dataInicio) params.append("dataInicio", dataInicio);
-    if (dataFim) params.append("dataFim", dataFim);
+  // === COMPARTILHAMENTO (MOCK POR ENQUANTO) ===
 
-    const response = await api.get(`/relatorios/criacoes?${params.toString()}`);
-    return response.data;
+  async countRelatoriosPendentes(): Promise<{ count: number }> {
+    // Por enquanto retornar 0 até implementarmos compartilhamentos
+    return { count: 0 };
   }
 
-  async gerarRelatorioEdicoes(
-    usuarioId: string,
-    dataInicio?: string,
-    dataFim?: string
-  ): Promise<RelatorioGeral> {
-    const params = new URLSearchParams();
-    params.append("usuarioId", usuarioId);
-    if (dataInicio) params.append("dataInicio", dataInicio);
-    if (dataFim) params.append("dataFim", dataFim);
-
-    const response = await api.get(`/relatorios/edicoes?${params.toString()}`);
-    return response.data;
-  }
-
-  async gerarRelatorioComparativo(
-    usuarioIds: string[],
-    dataInicio?: string,
-    dataFim?: string
-  ): Promise<RelatorioGeral> {
-    const params = new URLSearchParams();
-    if (dataInicio) params.append("dataInicio", dataInicio);
-    if (dataFim) params.append("dataFim", dataFim);
-
-    const response = await api.post(
-      `/relatorios/comparativo?${params.toString()}`,
-      usuarioIds
-    );
-    return response.data;
-  }
-
-  // === COMPARTILHAMENTO DE RELATÓRIOS ===
-
-  async compartilharRelatorio(
-    request: CompartilhamentoCreateRequest
-  ): Promise<any> {
-    const response = await api.post("/relatorios/compartilhar", request);
-    return response.data;
-  }
-
-  async responderCompartilhamento(
-    compartilhamentoId: string,
-    request: CompartilhamentoResponseRequest
-  ): Promise<any> {
-    const response = await api.put(
-      `/relatorios/compartilhamentos/${compartilhamentoId}/responder`,
-      request
-    );
-    return response.data;
+  async getRelatoriosPendentes(): Promise<any[]> {
+    // Por enquanto retornar array vazio
+    return [];
   }
 
   async getRelatoriosRecebidos(
     page = 0,
     size = 20
-  ): Promise<PaginatedResponse<RelatorioCompartilhamento>> {
-    const response = await api.get(
-      `/relatorios/compartilhamentos/recebidos?page=${page}&size=${size}`
-    );
-    return response.data;
+  ): Promise<PaginatedResponse<any>> {
+    // Mock por enquanto
+    return {
+      content: [],
+      pageable: { pageNumber: page, pageSize: size },
+      totalElements: 0,
+      totalPages: 0,
+      first: true,
+      last: true,
+    };
   }
 
   async getRelatoriosEnviados(
     page = 0,
     size = 20
-  ): Promise<PaginatedResponse<RelatorioCompartilhamento>> {
-    const response = await api.get(
-      `/relatorios/compartilhamentos/enviados?page=${page}&size=${size}`
-    );
-    return response.data;
+  ): Promise<PaginatedResponse<any>> {
+    // Mock por enquanto
+    return {
+      content: [],
+      pageable: { pageNumber: page, pageSize: size },
+      totalElements: 0,
+      totalPages: 0,
+      first: true,
+      last: true,
+    };
   }
 
-  async getRelatoriosPendentes(): Promise<RelatorioCompartilhamento[]> {
-    const response = await api.get("/relatorios/compartilhamentos/pendentes");
-    return response.data;
+  async compartilharRelatorio(request: any): Promise<any> {
+    // Mock por enquanto
+    console.log("🔄 Mock: Compartilhando relatório:", request.titulo);
+    return {
+      success: true,
+      message: "Funcionalidade de compartilhamento será implementada em breve",
+      compartilhamento: {
+        id: "mock-id",
+        titulo: request.titulo,
+        status: "PENDENTE",
+      },
+    };
   }
 
-  async countRelatoriosPendentes(): Promise<{ count: number }> {
-    const response = await api.get(
-      "/relatorios/compartilhamentos/pendentes/count"
+  async responderCompartilhamento(
+    compartilhamentoId: string,
+    request: any
+  ): Promise<any> {
+    // Mock por enquanto
+    console.log(
+      "🔄 Mock: Respondendo compartilhamento:",
+      compartilhamentoId,
+      request.status
     );
-    return response.data;
-  }
-
-  async getCompartilhamento(
-    compartilhamentoId: string
-  ): Promise<RelatorioCompartilhamento> {
-    const response = await api.get(
-      `/relatorios/compartilhamentos/${compartilhamentoId}`
-    );
-    return response.data;
+    return {
+      success: true,
+      message: "Funcionalidade de resposta será implementada em breve",
+      compartilhamento: {
+        id: compartilhamentoId,
+        status: request.status,
+      },
+    };
   }
 
   async excluirCompartilhamento(compartilhamentoId: string): Promise<any> {
-    const response = await api.delete(
-      `/relatorios/compartilhamentos/${compartilhamentoId}`
-    );
-    return response.data;
-  }
-
-  async exportarRelatorioJson(compartilhamentoId: string): Promise<string> {
-    const response = await api.get(
-      `/relatorios/compartilhamentos/${compartilhamentoId}/exportar`
-    );
-    return response.data;
-  }
-
-  // === ESTATÍSTICAS ===
-
-  async getEstatisticasRelatorios(
-    dataInicio?: string,
-    dataFim?: string
-  ): Promise<Record<string, any>> {
-    const params = new URLSearchParams();
-    if (dataInicio) params.append("dataInicio", dataInicio);
-    if (dataFim) params.append("dataFim", dataFim);
-
-    const response = await api.get(
-      `/relatorios/estatisticas?${params.toString()}`
-    );
-    return response.data;
-  }
-
-  // === UTILITÁRIOS ===
-
-  async validarPermissaoVisualizacao(
-    compartilhamentoId: string
-  ): Promise<{ temPermissao: boolean; message: string }> {
-    const response = await api.get(
-      `/relatorios/compartilhamentos/${compartilhamentoId}/validar-permissao`
-    );
-    return response.data;
-  }
-
-  // === MÉTODOS AUXILIARES ===
-
-  formatarDataParaInput(data: Date): string {
-    return data.toISOString().slice(0, 16); // yyyy-MM-ddThh:mm
-  }
-
-  formatarDataParaExibicao(dataString: string): string {
-    return new Date(dataString).toLocaleString("pt-BR");
-  }
-
-  formatarStatus(status: string): string {
-    const statusMap: Record<string, string> = {
-      PENDENTE: "Pendente",
-      CONFIRMADO: "Confirmado",
-      REJEITADO: "Rejeitado",
+    // Mock por enquanto
+    console.log("🔄 Mock: Excluindo compartilhamento:", compartilhamentoId);
+    return {
+      success: true,
+      message: "Funcionalidade de exclusão será implementada em breve",
     };
-    return statusMap[status] || status;
   }
-
-  getStatusBadgeClass(status: string): string {
-    const classMap: Record<string, string> = {
-      PENDENTE: "bg-yellow-100 text-yellow-800",
-      CONFIRMADO: "bg-green-100 text-green-800",
-      REJEITADO: "bg-red-100 text-red-800",
-    };
-    return classMap[status] || "bg-gray-100 text-gray-800";
-  }
-
-  getTipoAcaoDescription(tipoAcao: string): string {
-    const descMap: Record<string, string> = {
-      CRIACAO: "Criação",
-      EDICAO: "Edição",
-      MUDANCA_STATUS: "Mudança de Status",
-    };
-    return descMap[tipoAcao] || tipoAcao;
-  }
-
-  getTipoEntidadeDescription(tipoEntidade: string): string {
-    const descMap: Record<string, string> = {
-      GUIA: "Guia",
-      FICHA: "Ficha",
-    };
-    return descMap[tipoEntidade] || tipoEntidade;
-  }
-
-  // === DOWNLOAD DE ARQUIVOS ===
 
   async downloadRelatorioJson(
     compartilhamentoId: string,
     titulo: string
   ): Promise<void> {
-    try {
-      const response = await api.get(
-        `/relatorios/compartilhamentos/${compartilhamentoId}/exportar`,
-        {
-          responseType: "blob",
-        }
-      );
+    // Mock por enquanto - criar download fake
+    console.log("🔄 Mock: Download do relatório:", titulo);
 
-      const blob = new Blob([response.data], { type: "application/json" });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `${titulo.replace(/[^a-zA-Z0-9]/g, "_")}_${compartilhamentoId.slice(0, 8)}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("Erro ao fazer download do relatório:", error);
-      throw new Error("Erro ao fazer download do relatório");
-    }
+    const mockData = {
+      id: compartilhamentoId,
+      titulo: titulo,
+      dataDownload: new Date().toISOString(),
+      message:
+        "Este é um download de exemplo. A funcionalidade completa será implementada em breve.",
+    };
+
+    const blob = new Blob([JSON.stringify(mockData, null, 2)], {
+      type: "application/json",
+    });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${titulo.replace(/[^a-zA-Z0-9]/g, "_")}_mock.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
   }
 
-  // === VALIDAÇÕES ===
+  // === MÉTODOS AUXILIARES ===
+
+  private mapHistoricoToRelatorioItem = (
+    history: StatusHistoryItem
+  ): RelatorioItem => {
+    return {
+      id: history.id,
+      tipoEntidade: history.entityType,
+      entidadeId: history.entityId,
+      entidadeDescricao:
+        history.entityDescricao ||
+        `${history.entityType} ${history.entityId.slice(0, 8)}`,
+      pacienteNome: "N/A", // TODO: buscar dados reais
+      convenioNome: "N/A", // TODO: buscar dados reais
+      tipoAcao: "MUDANCA_STATUS",
+      statusAnterior: history.statusAnterior,
+      statusNovo: history.statusNovo,
+      motivo: history.motivo,
+      observacoes: history.observacoes,
+      usuarioResponsavel: history.alteradoPorNome || "Sistema",
+      dataAcao: history.dataAlteracao,
+    };
+  };
+
+  private calcularTotalizacao(itens: RelatorioItem[]): RelatorioTotalizacao {
+    const totalGuias = itens.filter(
+      (item) => item.tipoEntidade === "GUIA"
+    ).length;
+    const totalFichas = itens.filter(
+      (item) => item.tipoEntidade === "FICHA"
+    ).length;
+    const totalMudancasStatus = itens.filter(
+      (item) => item.tipoAcao === "MUDANCA_STATUS"
+    ).length;
+
+    return {
+      totalItens: itens.length,
+      totalGuias,
+      totalFichas,
+      totalCriacoes: 0, // TODO: implementar quando tivermos dados de criação
+      totalEdicoes: 0, // TODO: implementar quando tivermos dados de edição
+      totalMudancasStatus,
+      valorTotalGuias: 0, // TODO: implementar quando tivermos dados financeiros
+      quantidadeAutorizadaTotal: 0, // TODO: implementar quando tivermos dados de quantidade
+    };
+  }
+
+  private gerarAgrupamentos(itens: RelatorioItem[]): Record<string, any> {
+    const porTipoAcao = itens.reduce(
+      (acc, item) => {
+        acc[item.tipoAcao] = (acc[item.tipoAcao] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
+
+    const porUsuario = itens.reduce(
+      (acc, item) => {
+        acc[item.usuarioResponsavel] = (acc[item.usuarioResponsavel] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
+
+    const porStatus = itens.reduce(
+      (acc, item) => {
+        if (item.statusNovo) {
+          acc[item.statusNovo] = (acc[item.statusNovo] || 0) + 1;
+        }
+        return acc;
+      },
+      {} as Record<string, number>
+    );
+
+    const porDia = itens.reduce(
+      (acc, item) => {
+        const dia = item.dataAcao.split("T")[0]; // Pegar apenas a data
+        acc[dia] = (acc[dia] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
+
+    return {
+      porTipoAcao,
+      porUsuario,
+      porStatus,
+      porDia,
+    };
+  }
+
+  // === UTILITÁRIOS ===
 
   validarFiltros(filters: RelatorioFilterRequest): string[] {
     const erros: string[] = [];
@@ -380,6 +462,51 @@ class RelatorioService {
     }
 
     return erros;
+  }
+
+  formatarDataParaInput(data: Date): string {
+    return data.toISOString().slice(0, 16); // yyyy-MM-ddThh:mm
+  }
+
+  formatarDataParaExibicao(dataString: string): string {
+    return new Date(dataString).toLocaleString("pt-BR");
+  }
+
+  getTipoAcaoDescription(tipoAcao: string): string {
+    const descMap: Record<string, string> = {
+      CRIACAO: "Criação",
+      EDICAO: "Edição",
+      MUDANCA_STATUS: "Mudança de Status",
+    };
+    return descMap[tipoAcao] || tipoAcao;
+  }
+
+  getTipoEntidadeDescription(tipoEntidade: string): string {
+    const descMap: Record<string, string> = {
+      GUIA: "Guia",
+      FICHA: "Ficha",
+    };
+    return descMap[tipoEntidade] || tipoEntidade;
+  }
+
+  // === MÉTODOS AUXILIARES ADICIONAIS ===
+
+  formatarStatus(status: string): string {
+    const statusMap: Record<string, string> = {
+      PENDENTE: "Pendente",
+      CONFIRMADO: "Confirmado",
+      REJEITADO: "Rejeitado",
+    };
+    return statusMap[status] || status;
+  }
+
+  getStatusBadgeClass(status: string): string {
+    const classMap: Record<string, string> = {
+      PENDENTE: "bg-yellow-100 text-yellow-800",
+      CONFIRMADO: "bg-green-100 text-green-800",
+      REJEITADO: "bg-red-100 text-red-800",
+    };
+    return classMap[status] || "bg-gray-100 text-gray-800";
   }
 
   // === CACHE SIMPLES ===
