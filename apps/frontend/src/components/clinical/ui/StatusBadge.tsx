@@ -18,8 +18,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   size = "sm",
   variant = "default",
 }) => {
-  const { getStatusColor, getStatusDescription, getStatusIcon, loading } =
-    useStatus();
+  const { getStatusColor, getStatusDescription, loading } = useStatus();
 
   // Loading state
   if (loading) {
@@ -33,7 +32,6 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
 
   const statusColor = getStatusColor(status);
   const description = getStatusDescription(status);
-  const icon = getStatusIcon(status);
 
   // Size classes
   const sizeClasses = {
@@ -73,11 +71,6 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
         className={`inline-flex items-center rounded-full font-medium transition-colors ${sizeClasses[size]} ${className}`}
         style={getVariantStyles()}
         title={description}>
-        {/* Ícone opcional */}
-        {icon && (
-          <span className="mr-1">{/*talvez não tenha necessidade*/}</span>
-        )}
-
         {status}
       </span>
 

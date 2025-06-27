@@ -21,6 +21,8 @@ import {
   PageResponse,
   ClinicalStats,
   StatusHistorySummaryDto,
+  StatusStatsDto,
+  StatusInitializeResponse,
 } from "@/types/clinical";
 
 export const pacienteService = {
@@ -417,6 +419,42 @@ export const statusService = {
     const response = await api.get("/api/status/enum-values");
     return response.data;
   },
+
+  async initializeDefaultStatuses(): Promise<StatusInitializeResponse> {
+    const response = await api.post("/api/status/initialize");
+    return response.data;
+  },
+
+  async getStatusStats(): Promise<StatusStatsDto> {
+    const response = await api.get("/api/status/stats");
+    return response.data;
+  },
+
+  async countStatusesAtivos(): Promise<number> {
+    const statuses = await this.getAllStatusesAtivos();
+    return statuses.length;
+  },
+
+  async validateStatus(statusName: string): Promise<boolean> {
+    try {
+      const status = await this.getStatusByName(statusName);
+      return status.ativo;
+    } catch {
+      return false;
+    }
+  },
+
+  async getStatusesByOrdem(): Promise<StatusDto[]> {
+    const statuses = await this.getAllStatuses();
+    return statuses.sort((a, b) => {
+      if (a.ordemExibicao && b.ordemExibicao) {
+        return a.ordemExibicao - b.ordemExibicao;
+      }
+      if (a.ordemExibicao && !b.ordemExibicao) return -1;
+      if (!a.ordemExibicao && b.ordemExibicao) return 1;
+      return a.status.localeCompare(b.status);
+    });
+  },
 };
 
 export const statusHistoryService = {
@@ -472,6 +510,11 @@ export const statusHistoryService = {
 
   async getHistoricoGuia(guiaId: string): Promise<StatusHistoryDto[]> {
     const response = await api.get(`/api/guias/${guiaId}/historico-status`);
+    return response.data;
+  },
+
+  async getHistoricoById(id: string): Promise<StatusHistoryDto> {
+    const response = await api.get(`/api/status/history/${id}`);
     return response.data;
   },
 };

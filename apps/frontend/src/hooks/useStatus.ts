@@ -44,11 +44,6 @@ export const useStatus = () => {
     return statusData?.descricao || status;
   };
 
-  const getStatusIcon = (status: string): string | undefined => {
-    const statusData = statuses.find((s) => s.status === status.toUpperCase());
-    return statusData?.icone;
-  };
-
   const getDefaultStatusColor = (status: string): string => {
     const upperStatus = status.toUpperCase();
 
@@ -90,7 +85,6 @@ export const useStatus = () => {
     error,
     getStatusColor,
     getStatusDescription,
-    getStatusIcon,
     refreshStatuses: loadStatuses,
   };
 };
