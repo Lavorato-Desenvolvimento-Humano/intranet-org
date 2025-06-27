@@ -1,5 +1,4 @@
 // src/types/clinical.ts
-
 // Enums
 export enum UnidadeEnum {
   KIDS = "KIDS",
@@ -188,66 +187,88 @@ export interface FichaUpdateRequest {
 export interface StatusDto {
   id: string;
   status: string;
-  descricao: string;
-  cor: string;
-  icone?: string;
-  ordem: number;
+  descricao?: string;
   ativo: boolean;
-  createdAt: string;
-  updatedAt: string;
+  cor: string;
+  ordemExibicao?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface StatusCreateRequest {
   status: string;
-  descricao: string;
-  cor: string;
-  icone?: string;
-  ordem?: number;
+  descricao?: string;
+  ativo: boolean;
+  ordemExibicao?: number;
 }
 
 export interface StatusUpdateRequest {
-  status?: string;
+  status: string;
   descricao?: string;
-  cor?: string;
-  icone?: string;
-  ordem?: number;
-  ativo?: boolean;
+  ativo: boolean;
+  ordemExibicao?: number;
 }
 
 export interface StatusHistoryDto {
   id: string;
-  entityType: EntityTypeEnum;
+  entityType: string;
   entityId: string;
-  statusAnterior: string;
+  statusAnterior?: string;
   statusNovo: string;
-  motivo: string;
+  motivo?: string;
   observacoes?: string;
+  dataAlteracao: string;
   alteradoPorId: string;
   alteradoPorNome: string;
   alteradoPorEmail: string;
-  dataAlteracao: string;
-  createdAt: string;
-  updatedAt: string;
-  entityDescricao?: string;
-  numeroGuia?: string;
-  codigoFicha?: string;
 }
 
 export interface StatusHistorySummaryDto {
   id: string;
-  entityType: EntityTypeEnum;
+  entityType: string;
   entityId: string;
-  statusAnterior: string;
+  statusAnterior?: string;
   statusNovo: string;
-  motivo: string;
-  alteradoPorNome: string;
+  motivo?: string;
   dataAlteracao: string;
-  entityDescricao: string;
+  alteradoPorNome: string;
+  alteradoPorEmail: string;
+}
+
+export interface StatusHistoryCreateRequest {
+  entityType: string;
+  entityId: string;
+  statusAnterior?: string;
+  statusNovo: string;
+  motivo?: string;
+  observacoes?: string;
+}
+
+export interface StatusHistoryFilterRequest {
+  entityType?: string;
+  entityId?: string;
+  statusNovo?: string;
+  alteradoPorId?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface StatusStatsDto {
+  totalStatuses: number;
+  statusesAtivos: number;
+  statusesInativos: number;
+  ultimaAtualizacao?: string;
+}
+
+export interface StatusBadgeProps {
+  status: string;
+  size?: "xs" | "sm" | "md" | "lg";
+  className?: string;
 }
 
 export interface StatusChangeRequest {
   novoStatus: string;
-  motivo: string;
+  motivo?: string;
   observacoes?: string;
 }
 
@@ -271,4 +292,11 @@ export interface ClinicalStats {
   guiasComQuantidadeExcedida: number;
   totalFichas: number;
   fichasPorStatus: Record<string, number>;
+}
+
+export interface StatusInitializeResponse {
+  message: string;
+  statusesCriados: number;
+  statusesExistentes: number;
+  detalhes: string[];
 }

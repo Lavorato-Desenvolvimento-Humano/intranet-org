@@ -11,14 +11,17 @@ import {
   Eye,
   ChevronDown,
   ChevronUp,
+  FileText,
+  User,
 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
 import { Loading } from "@/components/ui/loading";
 import { CustomButton } from "@/components/ui/custom-button";
 import { StatusBadge } from "@/components/clinical/ui/StatusBadge";
+import { Pagination } from "@/components/ui/pagination";
 import { statusHistoryService } from "@/services/clinical";
-import { StatusHistorySummaryDto } from "@/types/clinical";
+import { StatusHistorySummaryDto, PageResponse } from "@/types/clinical";
 import { formatDateTime } from "@/utils/dateUtils";
 import toastUtil from "@/utils/toast";
 
@@ -32,66 +35,70 @@ interface Filters {
 function HistoricoContent() {
   const router = useRouter();
 
-  // Estados principais - lista simples sem paginação
-  const [historico, setHistorico] = useState<StatusHistorySummaryDto[]>([]);
+  const [historico, setHistorico] = useState<
+    PageResponse<StatusHistorySummaryDto>
+  >({
+    content: [],
+    totalElements: 0,
+    totalPages: 0,
+    size: 20,
+    number: 0,
+    first: true,
+    last: true,
+    numberOfElements: 0,
+  });
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
 
-  // Estados de filtros simplificados
+  // Estados de filtros
   const [filters, setFilters] = useState<Filters>({
     entityType: "",
     startDate: "",
     endDate: "",
   });
 
-  // Estados para exibição
-  const [displayedItems, setDisplayedItems] = useState<
-    StatusHistorySummaryDto[]
-  >([]);
-  const [itemsToShow, setItemsToShow] = useState(20);
-
-  // Carregar dados na inicialização
+  // Carregar dados na inicialização e quando filtros/página mudarem
   useEffect(() => {
     loadHistorico();
-  }, []);
-
-  // Aplicar filtros localmente
-  useEffect(() => {
-    let filtered = [...historico];
-
-    if (filters.entityType) {
-      filtered = filtered.filter(
-        (item) => item.entityType === filters.entityType
-      );
-    }
-
-    if (filters.startDate) {
-      const startDate = new Date(filters.startDate);
-      filtered = filtered.filter(
-        (item) => new Date(item.dataAlteracao) >= startDate
-      );
-    }
-
-    if (filters.endDate) {
-      const endDate = new Date(filters.endDate);
-      endDate.setHours(23, 59, 59, 999); // Fim do dia
-      filtered = filtered.filter(
-        (item) => new Date(item.dataAlteracao) <= endDate
-      );
-    }
-
-    setDisplayedItems(filtered.slice(0, itemsToShow));
-  }, [historico, filters, itemsToShow]);
+  }, [currentPage, filters]);
 
   const loadHistorico = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // Carregar uma quantidade maior para filtrar localmente
-      const historicoData = await statusHistoryService.getAllHistorico(0, 100);
-      setHistorico(historicoData.content);
+      let historicoData: PageResponse<StatusHistorySummaryDto>;
+
+      if (filters.startDate && filters.endDate) {
+        // Buscar por período
+        historicoData = await statusHistoryService.getHistoricoByPeriodo(
+          filters.startDate,
+          filters.endDate,
+          currentPage,
+          20
+        );
+      } else {
+        historicoData = await statusHistoryService.getAllHistorico(
+          currentPage,
+          20
+        );
+      }
+
+      if (filters.entityType && (!filters.startDate || !filters.endDate)) {
+        const filteredContent = historicoData.content.filter(
+          (item) => item.entityType === filters.entityType
+        );
+        historicoData = {
+          ...historicoData,
+          content: filteredContent,
+          numberOfElements: filteredContent.length,
+        };
+      }
+
+      setHistorico(historicoData);
     } catch (err) {
       console.error("Erro ao carregar histórico:", err);
       setError("Erro ao carregar histórico de status");
@@ -103,7 +110,7 @@ function HistoricoContent() {
 
   const handleFilterChange = (key: keyof Filters, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
-    setItemsToShow(20); // Reset para mostrar apenas os primeiros 20
+    setCurrentPage(0); // Reset para primeira página ao filtrar
   };
 
   const clearFilters = () => {
@@ -112,11 +119,11 @@ function HistoricoContent() {
       startDate: "",
       endDate: "",
     });
-    setItemsToShow(20);
+    setCurrentPage(0);
   };
 
-  const loadMore = () => {
-    setItemsToShow((prev) => prev + 20);
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page - 1); // Pagination component usa 1-based, backend usa 0-based
   };
 
   const exportData = async () => {
@@ -127,27 +134,27 @@ function HistoricoContent() {
     }
   };
 
-  const hasMoreItems =
-    displayedItems.length < historico.length &&
-    (filters.entityType || filters.startDate || filters.endDate
-      ? displayedItems.length <
-        historico.filter((item) => {
-          let matches = true;
-          if (filters.entityType && item.entityType !== filters.entityType)
-            matches = false;
-          if (
-            filters.startDate &&
-            new Date(item.dataAlteracao) < new Date(filters.startDate)
-          )
-            matches = false;
-          if (filters.endDate) {
-            const endDate = new Date(filters.endDate);
-            endDate.setHours(23, 59, 59, 999);
-            if (new Date(item.dataAlteracao) > endDate) matches = false;
-          }
-          return matches;
-        }).length
-      : displayedItems.length < historico.length);
+  const getEntityIcon = (entityType: string) => {
+    switch (entityType?.toUpperCase()) {
+      case "GUIA":
+        return <FileText className="h-4 w-4 text-blue-500" />;
+      case "FICHA":
+        return <User className="h-4 w-4 text-green-500" />;
+      default:
+        return <History className="h-4 w-4 text-gray-500" />;
+    }
+  };
+
+  const getEntityTypeLabel = (entityType: string) => {
+    switch (entityType?.toUpperCase()) {
+      case "GUIA":
+        return "Guia";
+      case "FICHA":
+        return "Ficha";
+      default:
+        return entityType;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -155,195 +162,202 @@ function HistoricoContent() {
 
       <main className="flex-grow container mx-auto p-6">
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800 flex items-center">
-              <History className="mr-2 h-6 w-6" />
+            <h1 className="text-3xl font-bold text-gray-800 flex items-center">
+              <History className="mr-3 h-8 w-8 text-blue-600" />
               Histórico de Status
             </h1>
-            <p className="text-gray-600 mt-1">
-              Acompanhe todas as mudanças de status das entidades
+            <p className="text-gray-600 mt-2">
+              Acompanhe todas as mudanças de status de guias e fichas
             </p>
           </div>
 
           <div className="flex space-x-3">
             <CustomButton
               variant="primary"
-              onClick={exportData}
-              title="Exportar dados">
-              <Download className="mr-2 h-4 w-4" />
-              Exportar
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center">
+              <Filter className="h-4 w-4 mr-2" />
+              Filtros
+              {showFilters ? (
+                <ChevronUp className="h-4 w-4 ml-1" />
+              ) : (
+                <ChevronDown className="h-4 w-4 ml-1" />
+              )}
             </CustomButton>
 
             <CustomButton variant="primary" onClick={loadHistorico}>
-              <RefreshCw className="mr-2 h-4 w-4" />
+              <RefreshCw className="h-4 w-4 mr-2" />
               Atualizar
+            </CustomButton>
+
+            <CustomButton variant="primary" onClick={exportData}>
+              <Download className="h-4 w-4 mr-2" />
+              Exportar
             </CustomButton>
           </div>
         </div>
 
-        {error && (
-          <div className="bg-red-50 text-red-700 p-4 rounded-md mb-6">
-            {error}
-          </div>
-        )}
-
-        {/* Filtros Simplificados */}
-        <div className="bg-white rounded-lg shadow-md mb-6">
-          <div className="p-4 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-800">Filtros</h3>
-              <CustomButton
-                variant="primary"
-                size="small"
-                onClick={() => setShowFilters(!showFilters)}>
-                <Filter className="mr-2 h-4 w-4" />
-                {showFilters ? (
-                  <ChevronUp className="ml-1 h-4 w-4" />
-                ) : (
-                  <ChevronDown className="ml-1 h-4 w-4" />
-                )}
-              </CustomButton>
-            </div>
-          </div>
-
-          {showFilters && (
-            <div className="p-4 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Tipo de Entidade */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tipo de Entidade
-                  </label>
-                  <select
-                    value={filters.entityType}
-                    onChange={(e) =>
-                      handleFilterChange("entityType", e.target.value)
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <option value="">Todos os tipos</option>
-                    <option value="FICHA">Ficha</option>
-                    <option value="GUIA">Guia</option>
-                  </select>
-                </div>
-
-                {/* Data Início */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Data Início
-                  </label>
-                  <input
-                    type="date"
-                    value={filters.startDate}
-                    onChange={(e) =>
-                      handleFilterChange("startDate", e.target.value)
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                {/* Data Fim */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Data Fim
-                  </label>
-                  <input
-                    type="date"
-                    value={filters.endDate}
-                    onChange={(e) =>
-                      handleFilterChange("endDate", e.target.value)
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
+        {/* Filtros */}
+        {showFilters && (
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tipo de Entidade
+                </label>
+                <select
+                  value={filters.entityType}
+                  onChange={(e) =>
+                    handleFilterChange("entityType", e.target.value)
+                  }
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="">Todos</option>
+                  <option value="GUIA">Guias</option>
+                  <option value="FICHA">Fichas</option>
+                </select>
               </div>
 
-              <div className="flex justify-end space-x-3 pt-4 border-t">
-                <CustomButton variant="primary" onClick={clearFilters}>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Data Início
+                </label>
+                <input
+                  type="date"
+                  value={filters.startDate}
+                  onChange={(e) =>
+                    handleFilterChange("startDate", e.target.value)
+                  }
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Data Fim
+                </label>
+                <input
+                  type="date"
+                  value={filters.endDate}
+                  onChange={(e) =>
+                    handleFilterChange("endDate", e.target.value)
+                  }
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="flex items-end">
+                <CustomButton
+                  variant="primary"
+                  onClick={clearFilters}
+                  className="w-full">
                   Limpar Filtros
                 </CustomButton>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* Tabela Simplificada */}
+        {/* Conteúdo */}
         <div className="bg-white rounded-lg shadow-md">
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-800">
-                Histórico de Mudanças
-              </h3>
-              <div className="text-sm text-gray-600">
-                Mostrando {displayedItems.length} de {historico.length}{" "}
-                registros
+          {/* Stats Header */}
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">
+                  Total de registros encontrados
+                </p>
+                <p className="text-2xl font-bold text-gray-800">
+                  {historico.totalElements}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm text-gray-600">
+                  Página {currentPage + 1} de {historico.totalPages || 1}
+                </p>
+                <p className="text-sm text-gray-600">
+                  {historico.numberOfElements} registros nesta página
+                </p>
               </div>
             </div>
+          </div>
 
+          <div className="p-6">
             {loading ? (
+              <Loading message="Carregando histórico..." />
+            ) : error ? (
               <div className="text-center py-8">
-                <Loading message="Carregando histórico..." />
+                <History className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  Erro ao carregar dados
+                </h3>
+                <p className="text-gray-600 mb-4">{error}</p>
+                <CustomButton variant="primary" onClick={loadHistorico}>
+                  Tentar Novamente
+                </CustomButton>
               </div>
-            ) : displayedItems.length === 0 ? (
-              <div className="text-center py-8">
-                <History className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-gray-500">Nenhum registro encontrado</p>
-                {(filters.entityType ||
-                  filters.startDate ||
-                  filters.endDate) && (
-                  <p className="text-sm text-gray-400 mt-1">
-                    Tente ajustar os filtros
-                  </p>
-                )}
+            ) : historico.content.length === 0 ? (
+              <div className="text-center py-12">
+                <History className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  Nenhum registro encontrado
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  Não foram encontrados registros de histórico com os filtros
+                  aplicados.
+                </p>
+                <CustomButton variant="primary" onClick={clearFilters}>
+                  Limpar Filtros
+                </CustomButton>
               </div>
             ) : (
               <>
-                {/* Lista de Cards (mais responsiva que tabela) */}
+                {/* Lista de registros */}
                 <div className="space-y-4">
-                  {displayedItems.map((item) => (
+                  {historico.content.map((item) => (
                     <div
                       key={item.id}
-                      className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex-1 space-y-2 sm:space-y-0 sm:grid sm:grid-cols-6 sm:gap-4">
-                          {/* Data/Hora */}
+                      className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                      <div className="flex items-center justify-between">
+                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 flex-1">
+                          {/* Tipo e Data */}
                           <div className="sm:col-span-1">
-                            <div className="text-sm font-medium text-gray-900">
+                            <div className="flex items-center mb-2">
+                              {getEntityIcon(item.entityType)}
+                              <span className="ml-2 text-sm font-medium text-gray-700">
+                                {getEntityTypeLabel(item.entityType)}
+                              </span>
+                            </div>
+                            <div className="text-xs text-gray-500">
                               {formatDateTime(item.dataAlteracao)}
                             </div>
                           </div>
 
-                          {/* Tipo */}
+                          {/* ID da Entidade */}
                           <div className="sm:col-span-1">
-                            <span
-                              className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                                item.entityType === "FICHA"
-                                  ? "bg-purple-100 text-purple-800"
-                                  : "bg-blue-100 text-blue-800"
-                              }`}>
-                              {item.entityType}
-                            </span>
-                          </div>
-
-                          {/* Entidade */}
-                          <div className="sm:col-span-1">
-                            <div className="text-sm font-medium text-gray-900">
-                              {item.entityDescricao || "N/A"}
+                            <div className="text-sm text-gray-600">
+                              ID da Entidade
                             </div>
-                            <code className="text-xs text-gray-500">
-                              {item.entityId.substring(0, 8)}...
+                            <code className="text-xs bg-gray-100 px-2 py-1 rounded">
+                              {item.entityId.toString().substring(0, 8)}...
                             </code>
                           </div>
 
-                          {/* Status */}
-                          <div className="sm:col-span-2 flex items-center space-x-2">
-                            {item.statusAnterior ? (
-                              <StatusBadge status={item.statusAnterior} />
-                            ) : (
-                              <span className="text-gray-400 text-xs">-</span>
-                            )}
-                            <span className="text-gray-400">→</span>
-                            <StatusBadge status={item.statusNovo} />
+                          {/* Mudança de Status */}
+                          <div className="sm:col-span-1">
+                            <div className="flex items-center space-x-2">
+                              {item.statusAnterior ? (
+                                <StatusBadge
+                                  status={item.statusAnterior}
+                                  size="xs"
+                                />
+                              ) : (
+                                <span className="text-gray-400 text-xs">-</span>
+                              )}
+                              <span className="text-gray-400">→</span>
+                              <StatusBadge status={item.statusNovo} size="xs" />
+                            </div>
                           </div>
 
                           {/* Usuário */}
@@ -381,12 +395,15 @@ function HistoricoContent() {
                   ))}
                 </div>
 
-                {/* Botão Carregar Mais */}
-                {hasMoreItems && (
-                  <div className="text-center mt-6 pt-6 border-t border-gray-200">
-                    <CustomButton variant="primary" onClick={loadMore}>
-                      Carregar Mais Registros
-                    </CustomButton>
+                {historico.totalPages > 1 && (
+                  <div className="mt-6">
+                    <Pagination
+                      currentPage={currentPage + 1}
+                      totalPages={historico.totalPages}
+                      onPageChange={handlePageChange}
+                      totalItems={historico.totalElements}
+                      pageSize={historico.size}
+                    />
                   </div>
                 )}
               </>
