@@ -101,7 +101,7 @@ export const RelatorioNotifications: React.FC<RelatorioNotificationsProps> = ({
             statusRelatorio: StatusRelatorioEnum.CONCLUIDO, // Assumir concluído se foi compartilhado
             createdAt: compartilhamento.dataCompartilhamento,
             possuiCompartilhamento: true,
-            updatedAt: "",
+            updatedAt: "", // Não disponível no compartilhamento
           };
 
           newNotifications.push({
