@@ -52,28 +52,28 @@ public interface RelatorioRepository extends JpaRepository<Relatorio, UUID> {
      * Busca relatórios com filtros
      */
     @Query("SELECT r FROM Relatorio r LEFT JOIN FETCH r.usuarioGerador " +
-            "WHERE (:usuarioId IS NULL OR r.usuarioGerador.id = :usuarioId) " +
-            "AND (:status IS NULL OR r.statusRelatorio = :status) " +
+            "WHERE (:status IS NULL OR r.statusRelatorio = :status) " +
+            "AND (:usuarioId IS NULL OR r.usuarioGerador.id = :usuarioId) " +
             "AND (:startDate IS NULL OR r.createdAt >= :startDate) " +
             "AND (:endDate IS NULL OR r.createdAt <= :endDate) " +
-            "AND (:search IS NULL OR LOWER(r.titulo) LIKE LOWER(CONCAT('%', :search, '%'))) " +
             "ORDER BY r.createdAt DESC")
-    Page<Relatorio> findWithFilters(@Param("usuarioId") UUID usuarioId,
-                                    @Param("status") Relatorio.StatusRelatorio status,
+    Page<Relatorio> findWithFilters(@Param("status") Relatorio.StatusRelatorio status,
+                                    @Param("usuarioId") UUID usuarioId,
                                     @Param("startDate") LocalDateTime startDate,
                                     @Param("endDate") LocalDateTime endDate,
-                                    @Param("search") String search,
                                     Pageable pageable);
 
     /**
      * Conta relatórios por usuário
      */
-    long countByUsuarioGeradorId(UUID usuarioId);
+    @Query("SELECT COUNT(r) FROM Relatorio r WHERE r.usuarioGerador.id = :usuarioId")
+    long countByUsuarioGeradorId(@Param("usuarioId") UUID usuarioId);
 
     /**
      * Conta relatórios por status
      */
-    long countByStatusRelatorio(Relatorio.StatusRelatorio status);
+    @Query("SELECT COUNT(r) FROM Relatorio r WHERE r.statusRelatorio = :status")
+    long countByStatusRelatorio(@Param("status") Relatorio.StatusRelatorio status);
 
     /**
      * Busca relatórios recentes (últimos 30 dias)
