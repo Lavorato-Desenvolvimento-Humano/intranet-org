@@ -9,17 +9,7 @@ import com.intranet.backend.model.*;
 import com.intranet.backend.repository.*;
 import com.intranet.backend.service.RelatorioService;
 import com.itextpdf.io.source.ByteArrayOutputStream;
-import com.itextpdf.kernel.colors.DeviceGray;
-import com.itextpdf.kernel.colors.DeviceRgb;
-import com.itextpdf.kernel.geom.PageSize;
-import com.itextpdf.kernel.pdf.canvas.draw.SolidLine;
-import com.itextpdf.layout.borders.Border;
-import com.itextpdf.layout.borders.SolidBorder;
-import com.itextpdf.layout.element.Cell;
-import com.itextpdf.layout.element.LineSeparator;
-import com.itextpdf.layout.properties.TextAlignment;
 import com.itextpdf.layout.properties.UnitValue;
-import com.itextpdf.layout.properties.VerticalAlignment;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -349,395 +339,69 @@ public class RelatorioServiceImpl implements RelatorioService {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             PdfWriter writer = new PdfWriter(baos);
             PdfDocument pdf = new PdfDocument(writer);
-            Document document = new Document(pdf, PageSize.A4);
+            Document document = new Document(pdf);
 
-            // Configurar margens
-            document.setMargins(50, 50, 50, 50);
+            // Título
+            document.add(new Paragraph(dados.getTitulo())
+                    .setFontSize(18)
+                    .setBold()
+                    .setMarginBottom(20));
 
-            // CABEÇALHO COM IDENTIDADE VISUAL
-            addPDFHeader(document, dados);
+            // Informações gerais
+            document.add(new Paragraph("Usuário Gerador: " + dados.getUsuarioGerador()));
+            document.add(new Paragraph("Período: " + dados.getPeriodoInicio() + " a " + dados.getPeriodoFim()));
+            document.add(new Paragraph("Total de Registros: " + dados.getTotalRegistros()));
+            document.add(new Paragraph("Data de Geração: " + dados.getDataGeracao()));
 
-            // INFORMAÇÕES GERAIS DO RELATÓRIO
-            addRelatorioInfo(document, dados);
+            // Estatísticas
+            if (dados.getDistribuicaoPorStatus() != null && !dados.getDistribuicaoPorStatus().isEmpty()) {
+                document.add(new Paragraph("\nDistribuição por Status:").setBold());
+                dados.getDistribuicaoPorStatus().forEach((status, count) ->
+                        document.add(new Paragraph("• " + status + ": " + count))
+                );
+            }
 
-            // ESTATÍSTICAS RESUMIDAS
-            addEstatisticasResumo(document, dados);
+            // Tabela de itens (primeiros 100 para não sobrecarregar)
+            if (dados.getItens() != null && !dados.getItens().isEmpty()) {
+                document.add(new Paragraph("\nDetalhes dos Itens:").setBold().setMarginTop(20));
 
-            // DETALHAMENTO DOS ITENS
-            addItensDetalhados(document, dados);
+                Table table = new Table(UnitValue.createPercentArray(new float[]{2, 2, 2, 2, 2}));
+                table.setWidth(UnitValue.createPercentValue(100));
 
-            // RODAPÉ
-            addPDFFooter(document, dados);
+                // Cabeçalho
+                table.addHeaderCell("Tipo");
+                table.addHeaderCell("Status");
+                table.addHeaderCell("Paciente");
+                table.addHeaderCell("Convênio");
+                table.addHeaderCell("Data");
+
+                // Dados (limitado a 100 itens)
+                dados.getItens().stream()
+                        .limit(100)
+                        .forEach(item -> {
+                            table.addCell(item.getTipoEntidade() != null ? item.getTipoEntidade() : "-");
+                            table.addCell(item.getStatusNovo() != null ? item.getStatusNovo() : "-");
+                            table.addCell(item.getPacienteNome() != null ? item.getPacienteNome() : "-");
+                            table.addCell(item.getConvenioNome() != null ? item.getConvenioNome() : "-");
+                            table.addCell(item.getDataMudancaStatus() != null ?
+                                    item.getDataMudancaStatus().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) : "-");
+                        });
+
+                document.add(table);
+
+                if (dados.getItens().size() > 100) {
+                    document.add(new Paragraph("... e mais " + (dados.getItens().size() - 100) + " itens")
+                            .setItalic().setMarginTop(10));
+                }
+            }
 
             document.close();
             return baos.toByteArray();
 
         } catch (Exception e) {
             logger.error("Erro ao gerar PDF: {}", e.getMessage(), e);
-            throw new RuntimeException("Erro ao gerar PDF: " + e.getMessage(), e);
+            throw new RuntimeException("Erro ao gerar PDF", e);
         }
-    }
-
-    private void addPDFHeader(Document document, RelatorioDataDto dados) {
-        try {
-            // Cores da identidade visual
-            DeviceRgb primaryColor = new DeviceRgb(46, 166, 184); // #2ea6b8
-            DeviceRgb lightBlue = new DeviceRgb(88, 197, 214); // #58c5d6
-
-            // Criar tabela para o cabeçalho
-            Table headerTable = new Table(UnitValue.createPercentArray(new float[]{1, 2}))
-                    .setWidth(UnitValue.createPercentValue(100));
-
-            // Logo/Ícone (placeholder - pode ser substituído por logo real)
-            Cell logoCell = new Cell()
-                    .setBackgroundColor(primaryColor)
-                    .setBorder(Border.NO_BORDER)
-                    .setTextAlignment(TextAlignment.CENTER)
-                    .setVerticalAlignment(VerticalAlignment.MIDDLE)
-                    .setPadding(20);
-
-            logoCell.add(new Paragraph("📊")
-                    .setFontSize(40)
-                    .setTextAlignment(TextAlignment.CENTER));
-
-            headerTable.addCell(logoCell);
-
-            // Informações da empresa/sistema
-            Cell infoCell = new Cell()
-                    .setBackgroundColor(lightBlue)
-                    .setBorder(Border.NO_BORDER)
-                    .setPadding(20);
-
-            infoCell.add(new Paragraph("SISTEMA DE GESTÃO CLÍNICA")
-                    .setFontSize(16)
-                    .setBold()
-                    .setFontColor(primaryColor));
-
-            infoCell.add(new Paragraph("Relatório de Análise de Dados")
-                    .setFontSize(12)
-                    .setFontColor(DeviceGray.GRAY)
-                    .setMarginTop(5));
-
-            infoCell.add(new Paragraph("Gerado em: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")))
-                    .setFontSize(10)
-                    .setFontColor(DeviceGray.GRAY)
-                    .setMarginTop(10));
-
-            headerTable.addCell(infoCell);
-
-            document.add(headerTable);
-            document.add(new Paragraph("\n"));
-
-        } catch (Exception e) {
-            logger.warn("Erro ao adicionar cabeçalho do PDF: {}", e.getMessage());
-        }
-    }
-
-    private void addRelatorioInfo(Document document, RelatorioDataDto dados) {
-        try {
-            DeviceRgb primaryColor = new DeviceRgb(46, 166, 184);
-
-            // Título do relatório
-            document.add(new Paragraph(dados.getTitulo())
-                    .setFontSize(24)
-                    .setBold()
-                    .setFontColor(primaryColor)
-                    .setTextAlignment(TextAlignment.CENTER)
-                    .setMarginBottom(20));
-
-            // Tabela com informações principais
-            Table infoTable = new Table(UnitValue.createPercentArray(new float[]{1, 1, 1, 1}))
-                    .setWidth(UnitValue.createPercentValue(100))
-                    .setMarginBottom(20);
-
-            // Headers
-            String[] headers = {"Gerado por", "Período", "Total de Registros", "Data de Geração"};
-            for (String header : headers) {
-                Cell headerCell = new Cell()
-                        .setBackgroundColor(primaryColor)
-                        .setFontColor(DeviceGray.WHITE)
-                        .setBold()
-                        .setPadding(10)
-                        .setTextAlignment(TextAlignment.CENTER);
-                headerCell.add(new Paragraph(header).setFontSize(10));
-                infoTable.addHeaderCell(headerCell);
-            }
-
-            // Dados
-            infoTable.addCell(createInfoCell(dados.getUsuarioGerador()));
-            infoTable.addCell(createInfoCell(formatPeriodo(dados.getPeriodoInicio(), dados.getPeriodoFim())));
-            infoTable.addCell(createInfoCell(String.valueOf(dados.getTotalRegistros())));
-            infoTable.addCell(createInfoCell(dados.getDataGeracao().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))));
-
-            document.add(infoTable);
-
-        } catch (Exception e) {
-            logger.warn("Erro ao adicionar informações do relatório: {}", e.getMessage());
-        }
-    }
-
-    private void addEstatisticasResumo(Document document, RelatorioDataDto dados) {
-        try {
-            DeviceRgb primaryColor = new DeviceRgb(46, 166, 184);
-
-            document.add(new Paragraph("📈 RESUMO ESTATÍSTICO")
-                    .setFontSize(16)
-                    .setBold()
-                    .setFontColor(primaryColor)
-                    .setMarginTop(20)
-                    .setMarginBottom(15));
-
-            // Criar grid de estatísticas
-            Table statsTable = new Table(UnitValue.createPercentArray(new float[]{1, 1, 1}))
-                    .setWidth(UnitValue.createPercentValue(100))
-                    .setMarginBottom(20);
-
-            // Distribuição por Status
-            if (dados.getDistribuicaoPorStatus() != null && !dados.getDistribuicaoPorStatus().isEmpty()) {
-                Cell statusCell = createStatsCard("Status", dados.getDistribuicaoPorStatus());
-                statsTable.addCell(statusCell);
-            }
-
-            // Distribuição por Convênio
-            if (dados.getDistribuicaoPorConvenio() != null && !dados.getDistribuicaoPorConvenio().isEmpty()) {
-                Cell convenioCell = createStatsCard("Convênios", dados.getDistribuicaoPorConvenio());
-                statsTable.addCell(convenioCell);
-            }
-
-            // Distribuição por Especialidade
-            if (dados.getDistribuicaoPorEspecialidade() != null && !dados.getDistribuicaoPorEspecialidade().isEmpty()) {
-                Cell especialidadeCell = createStatsCard("Especialidades", dados.getDistribuicaoPorEspecialidade());
-                statsTable.addCell(especialidadeCell);
-            }
-
-            document.add(statsTable);
-
-        } catch (Exception e) {
-            logger.warn("Erro ao adicionar estatísticas: {}", e.getMessage());
-        }
-    }
-
-    private void addItensDetalhados(Document document, RelatorioDataDto dados) {
-        try {
-            DeviceRgb primaryColor = new DeviceRgb(46, 166, 184);
-
-            document.add(new Paragraph("📋 DETALHAMENTO DOS REGISTROS")
-                    .setFontSize(16)
-                    .setBold()
-                    .setFontColor(primaryColor)
-                    .setMarginTop(20)
-                    .setMarginBottom(15));
-
-            if (dados.getItens() == null || dados.getItens().isEmpty()) {
-                document.add(new Paragraph("Nenhum registro encontrado.")
-                        .setFontSize(12)
-                        .setFontColor(DeviceGray.GRAY)
-                        .setTextAlignment(TextAlignment.CENTER));
-                return;
-            }
-
-            // Tabela detalhada
-            float[] columnWidths = {0.8f, 1.2f, 1.5f, 1f, 1f, 1f, 1.2f, 1.2f};
-            Table detailTable = new Table(UnitValue.createPercentArray(columnWidths))
-                    .setWidth(UnitValue.createPercentValue(100))
-                    .setFontSize(8);
-
-            // Headers da tabela
-            String[] headers = {
-                    "Tipo", "Paciente", "Identificação", "Convênio",
-                    "Especialidade", "Status", "Responsável", "Atualização"
-            };
-
-            for (String header : headers) {
-                Cell headerCell = new Cell()
-                        .setBackgroundColor(primaryColor)
-                        .setFontColor(DeviceGray.WHITE)
-                        .setBold()
-                        .setPadding(8)
-                        .setTextAlignment(TextAlignment.CENTER);
-                headerCell.add(new Paragraph(header).setFontSize(9));
-                detailTable.addHeaderCell(headerCell);
-            }
-
-            // Adicionar itens
-            for (int i = 0; i < dados.getItens().size(); i++) {
-                RelatorioItemDto item = dados.getItens().get(i);
-
-                // Alternar cores das linhas
-                DeviceRgb rowColor = (i % 2 == 0) ? new DeviceRgb(255, 255, 255) : new DeviceRgb(248, 249, 250);
-
-                // Tipo
-                detailTable.addCell(createDataCell(item.getTipoEntidade(), rowColor));
-
-                // Paciente
-                detailTable.addCell(createDataCell(
-                        truncateText(item.getPacienteNome(), 20), rowColor));
-
-                // Identificação (MELHORADO)
-                String identificacao = buildIdentificacao(item);
-                detailTable.addCell(createDataCell(identificacao, rowColor));
-
-                // Convênio
-                detailTable.addCell(createDataCell(
-                        truncateText(item.getConvenioNome(), 15), rowColor));
-
-                // Especialidade
-                detailTable.addCell(createDataCell(
-                        truncateText(item.getEspecialidade(), 15), rowColor));
-
-                // Status
-                detailTable.addCell(createDataCell(
-                        truncateText(item.getStatus(), 15), rowColor));
-
-                // Responsável
-                detailTable.addCell(createDataCell(
-                        truncateText(item.getUsuarioResponsavelNome(), 15), rowColor));
-
-                // Atualização
-                String dataFormatada = item.getDataAtualizacao() != null ?
-                        item.getDataAtualizacao().format(DateTimeFormatter.ofPattern("dd/MM/yy HH:mm")) : "N/A";
-                detailTable.addCell(createDataCell(dataFormatada, rowColor));
-            }
-
-            document.add(detailTable);
-
-        } catch (Exception e) {
-            logger.warn("Erro ao adicionar itens detalhados: {}", e.getMessage());
-        }
-    }
-
-    private void addPDFFooter(Document document, RelatorioDataDto dados) {
-        try {
-            DeviceRgb primaryColor = new DeviceRgb(46, 166, 184);
-
-            // Adicionar linha separadora
-            document.add(new Paragraph("\n"));
-            document.add(new LineSeparator(new SolidLine(1))
-                    .setMarginTop(20)
-                    .setMarginBottom(10));
-
-            // Informações do rodapé
-            Table footerTable = new Table(UnitValue.createPercentArray(new float[]{1, 1}))
-                    .setWidth(UnitValue.createPercentValue(100));
-
-            // Lado esquerdo
-            Cell leftCell = new Cell()
-                    .setBorder(Border.NO_BORDER)
-                    .setPadding(5);
-            leftCell.add(new Paragraph("Sistema de Gestão Clínica")
-                    .setFontSize(10)
-                    .setFontColor(primaryColor)
-                    .setBold());
-            leftCell.add(new Paragraph("Relatório gerado automaticamente")
-                    .setFontSize(8)
-                    .setFontColor(DeviceGray.GRAY));
-
-            // Lado direito
-            Cell rightCell = new Cell()
-                    .setBorder(Border.NO_BORDER)
-                    .setPadding(5)
-                    .setTextAlignment(TextAlignment.RIGHT);
-            rightCell.add(new Paragraph("Total de " + dados.getTotalRegistros() + " registros processados")
-                    .setFontSize(8)
-                    .setFontColor(DeviceGray.GRAY));
-            rightCell.add(new Paragraph("Página 1")
-                    .setFontSize(8)
-                    .setFontColor(DeviceGray.GRAY));
-
-            footerTable.addCell(leftCell);
-            footerTable.addCell(rightCell);
-
-            document.add(footerTable);
-
-        } catch (Exception e) {
-            logger.warn("Erro ao adicionar rodapé: {}", e.getMessage());
-        }
-    }
-
-    // === MÉTODOS AUXILIARES ===
-
-    private String buildIdentificacao(RelatorioItemDto item) {
-        List<String> partes = new ArrayList<>();
-
-        if (item.getCodigoFicha() != null) {
-            partes.add("F:" + item.getCodigoFicha());
-        }
-
-        if (item.getNumeroGuia() != null) {
-            partes.add("G:" + item.getNumeroGuia());
-        }
-
-        // Se há relação ficha-guia, mostrar a vinculação
-        if (item.getCodigoFicha() != null && item.getNumeroGuia() != null) {
-            return String.format("F:%s → G:%s", item.getCodigoFicha(), item.getNumeroGuia());
-        }
-
-        return partes.isEmpty() ? "N/A" : String.join(" | ", partes);
-    }
-
-    private Cell createInfoCell(String text) {
-        Cell cell = new Cell()
-                .setPadding(8)
-                .setTextAlignment(TextAlignment.CENTER)
-                .setBorder(new SolidBorder(DeviceGray.GRAY, 1));
-        cell.add(new Paragraph(text != null ? text : "N/A").setFontSize(10));
-        return cell;
-    }
-
-    private Cell createStatsCard(String title, Map<String, Long> data) {
-        Cell cell = new Cell()
-                .setPadding(10)
-                .setBorder(new SolidBorder(new DeviceRgb(46, 166, 184), 1))
-                .setBackgroundColor(new DeviceRgb(46, 166, 184));
-
-        // Título
-        cell.add(new Paragraph(title)
-                .setFontSize(12)
-                .setBold()
-                .setFontColor(new DeviceRgb(46, 166, 184))
-                .setMarginBottom(8));
-
-        // Dados - mostrar apenas os top 5
-        data.entrySet().stream()
-                .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
-                .limit(5)
-                .forEach(entry -> {
-                    String linha = String.format("• %s: %d",
-                            truncateText(entry.getKey(), 20), entry.getValue());
-                    cell.add(new Paragraph(linha)
-                            .setFontSize(9)
-                            .setMarginBottom(3));
-                });
-
-        if (data.size() > 5) {
-            cell.add(new Paragraph("... e mais " + (data.size() - 5) + " itens")
-                    .setFontSize(8)
-                    .setFontColor(DeviceGray.GRAY)
-                    .setItalic());
-        }
-
-        return cell;
-    }
-
-    private Cell createDataCell(String text, DeviceRgb backgroundColor) {
-        Cell cell = new Cell()
-                .setPadding(6)
-                .setBackgroundColor(backgroundColor)
-                .setBorder(new SolidBorder(DeviceGray.GRAY, 0.5f));
-        cell.add(new Paragraph(text != null ? text : "N/A")
-                .setFontSize(8));
-        return cell;
-    }
-
-    private String truncateText(String text, int maxLength) {
-        if (text == null) return "N/A";
-        if (text.length() <= maxLength) return text;
-        return text.substring(0, maxLength - 3) + "...";
-    }
-
-    private String formatPeriodo(LocalDateTime inicio, LocalDateTime fim) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-        return inicio.format(formatter) + " - " + fim.format(formatter);
     }
 
     @Override
@@ -950,11 +614,63 @@ public class RelatorioServiceImpl implements RelatorioService {
         try {
             switch (history.getEntityType()) {
                 case GUIA:
-                    enrichGuiaData(item, history);
+                    guiaRepository.findById(history.getEntityId()).ifPresent(guia -> {
+                        item.setNumeroGuia(guia.getNumeroGuia());
+                        item.setGuiaId(guia.getId());
+
+                        if (guia.getPaciente() != null) {
+                            item.setPacienteNome(guia.getPaciente().getNome());
+                            item.setPacienteId(guia.getPaciente().getId());
+
+                            try {
+                                item.setUnidade(guia.getPaciente().getUnidade().name());
+                            } catch (Exception e) {
+                                logger.warn("Método getUnidade() não existe no Paciente. Usando valor padrão.");
+                                item.setUnidade("N/A");
+                            }
+                        }
+
+                        if (guia.getConvenio() != null) {
+                            try {
+                                item.setConvenioNome(guia.getConvenio().getName());
+                            } catch (Exception e) {
+                                logger.warn("Erro ao obter nome do convênio: {}", e.getMessage());
+                                item.setConvenioNome("N/A");
+                            }
+                        }
+
+                        item.setMes(guia.getMes());
+                        item.setAno(guia.getAno());
+                        item.setQuantidadeAutorizada(guia.getQuantidadeAutorizada());
+                        item.setStatus(guia.getStatus());
+
+                        if (guia.getEspecialidades() != null && !guia.getEspecialidades().isEmpty()) {
+                            item.setEspecialidade(String.join(", ", guia.getEspecialidades()));
+                        }
+
+                        item.setDataAtualizacao(guia.getUpdatedAt());
+                    });
                     break;
+
                 case FICHA:
-                    enrichFichaData(item, history);
+                    fichaRepository.findById(history.getEntityId()).ifPresent(ficha -> {
+                        item.setCodigoFicha(ficha.getCodigoFicha());
+                        item.setFichaId(ficha.getId());
+                        item.setEspecialidade(ficha.getEspecialidade());
+                        item.setPacienteNome(ficha.getPacienteNome());
+
+                        UUID pacienteId = null;
+                        if (ficha.getPaciente() != null) {
+                            pacienteId = ficha.getPaciente().getId();
+                        } else if (ficha.getGuia() != null && ficha.getGuia().getPaciente() != null) {
+                            pacienteId = ficha.getGuia().getPaciente().getId();
+                        }
+                        item.setPacienteId(pacienteId);
+
+                        item.setDataAtualizacao(ficha.getUpdatedAt());
+                    });
                     break;
+
                 default:
                     logger.warn("Tipo de entidade não suportado para enriquecimento: {}", history.getEntityType());
             }
@@ -962,151 +678,6 @@ public class RelatorioServiceImpl implements RelatorioService {
             logger.error("Erro ao enriquecer dados da entidade {}: {}", history.getEntityType(), e.getMessage());
             // Continuar processamento mesmo com erro
         }
-    }
-
-    private void enrichGuiaData(RelatorioItemDto item, StatusHistory history) {
-        guiaRepository.findById(history.getEntityId()).ifPresent(guia -> {
-            // Dados básicos da guia
-            item.setNumeroGuia(guia.getNumeroGuia());
-            item.setGuiaId(guia.getId());
-            item.setStatusGuia(guia.getStatus());
-
-            // Dados do paciente
-            if (guia.getPaciente() != null) {
-                item.setPacienteNome(guia.getPaciente().getNome());
-                item.setPacienteId(guia.getPaciente().getId());
-
-                try {
-                    item.setUnidade(guia.getPaciente().getUnidade() != null ?
-                            guia.getPaciente().getUnidade().name() : "N/A");
-                } catch (Exception e) {
-                    logger.warn("Erro ao obter unidade do paciente: {}", e.getMessage());
-                    item.setUnidade("N/A");
-                }
-            }
-
-            // Dados do convênio
-            if (guia.getConvenio() != null) {
-                item.setConvenioNome(guia.getConvenio().getName());
-                item.setConvenioId(guia.getConvenio().getId());
-            }
-
-            // Informações gerais
-            item.setMes(guia.getMes());
-            item.setAno(guia.getAno());
-            item.setQuantidadeAutorizada(guia.getQuantidadeAutorizada());
-            item.setStatus(guia.getStatus());
-
-            // Especialidades
-            if (guia.getEspecialidades() != null && !guia.getEspecialidades().isEmpty()) {
-                item.setEspecialidade(String.join(", ", guia.getEspecialidades()));
-            }
-
-            // Usuário responsável
-            if (guia.getUsuarioResponsavel() != null) {
-                item.setUsuarioResponsavelNome(guia.getUsuarioResponsavel().getFullName());
-                item.setUsuarioResponsavelId(guia.getUsuarioResponsavel().getId());
-            }
-
-            item.setDataAtualizacao(guia.getUpdatedAt());
-
-            // NOVO: Campos para melhor identificação
-            item.setDescricaoCompleta(String.format("Paciente %s - Guia %s - %s",
-                    item.getPacienteNome() != null ? item.getPacienteNome() : "N/A",
-                    item.getNumeroGuia() != null ? item.getNumeroGuia() : "N/A",
-                    item.getEspecialidade() != null ? item.getEspecialidade() : "N/A"));
-
-            item.setIdentificadorCompleto(String.format("G%s - %s",
-                    item.getNumeroGuia() != null ? item.getNumeroGuia() : "N/A",
-                    item.getPacienteNome() != null ? item.getPacienteNome() : "N/A"));
-        });
-    }
-
-    private void enrichFichaData(RelatorioItemDto item, StatusHistory history) {
-        fichaRepository.findByIdWithRelations(history.getEntityId()).ifPresent(ficha -> {
-            // Dados básicos da ficha
-            item.setCodigoFicha(ficha.getCodigoFicha());
-            item.setFichaId(ficha.getId());
-            item.setEspecialidade(ficha.getEspecialidade());
-            item.setStatusFicha(ficha.getStatus());
-            item.setTipoFicha(ficha.getTipoFicha() != null ? ficha.getTipoFicha().name() : "N/A");
-            item.setStatus(ficha.getStatus());
-
-            // Dados do paciente (via ficha ou guia)
-            String pacienteNome = ficha.getPacienteNome();
-            UUID pacienteId = null;
-
-            if (ficha.getPaciente() != null) {
-                pacienteId = ficha.getPaciente().getId();
-                pacienteNome = ficha.getPaciente().getNome();
-            } else if (ficha.getGuia() != null && ficha.getGuia().getPaciente() != null) {
-                pacienteId = ficha.getGuia().getPaciente().getId();
-                pacienteNome = ficha.getGuia().getPaciente().getNome();
-            }
-
-            item.setPacienteNome(pacienteNome);
-            item.setPacienteId(pacienteId);
-
-            // Dados da guia vinculada
-            if (ficha.getGuia() != null) {
-                item.setNumeroGuia(ficha.getGuia().getNumeroGuia());
-                item.setGuiaId(ficha.getGuia().getId());
-                item.setStatusGuia(ficha.getGuia().getStatus());
-
-                // Relacionamento Ficha-Guia
-                item.setRelacaoFichaGuia(String.format("Ficha %s vinculada à Guia %s",
-                        ficha.getCodigoFicha() != null ? ficha.getCodigoFicha() : "N/A",
-                        ficha.getGuia().getNumeroGuia() != null ? ficha.getGuia().getNumeroGuia() : "N/A"));
-
-                item.setVinculacaoInfo(String.format("Ficha de %s vinculada à Guia %s",
-                        ficha.getEspecialidade() != null ? ficha.getEspecialidade() : "N/A",
-                        ficha.getGuia().getNumeroGuia() != null ? ficha.getGuia().getNumeroGuia() : "N/A"));
-
-                // Obter unidade do paciente da guia
-                if (ficha.getGuia().getPaciente() != null) {
-                    try {
-                        item.setUnidade(ficha.getGuia().getPaciente().getUnidade() != null ?
-                                ficha.getGuia().getPaciente().getUnidade().name() : "N/A");
-                    } catch (Exception e) {
-                        logger.warn("Erro ao obter unidade do paciente: {}", e.getMessage());
-                        item.setUnidade("N/A");
-                    }
-                }
-            }
-
-            // Dados do convênio
-            if (ficha.getConvenio() != null) {
-                item.setConvenioNome(ficha.getConvenio().getName());
-                item.setConvenioId(ficha.getConvenio().getId());
-            }
-
-            // Informações gerais
-            item.setMes(ficha.getMes());
-            item.setAno(ficha.getAno());
-            item.setQuantidadeAutorizada(ficha.getQuantidadeAutorizada());
-
-            // Usuário responsável
-            if (ficha.getUsuarioResponsavel() != null) {
-                item.setUsuarioResponsavelNome(ficha.getUsuarioResponsavel().getFullName());
-                item.setUsuarioResponsavelId(ficha.getUsuarioResponsavel().getId());
-            }
-
-            item.setDataAtualizacao(ficha.getUpdatedAt());
-
-            // Campos para melhor identificação
-            String numeroGuia = item.getNumeroGuia() != null ? item.getNumeroGuia() : "Sem Guia";
-
-            item.setDescricaoCompleta(String.format("Paciente %s - Ficha %s - Guia %s - %s",
-                    pacienteNome != null ? pacienteNome : "N/A",
-                    ficha.getCodigoFicha() != null ? ficha.getCodigoFicha() : "N/A",
-                    numeroGuia,
-                    ficha.getEspecialidade() != null ? ficha.getEspecialidade() : "N/A"));
-
-            item.setIdentificadorCompleto(String.format("F%s → G%s - %s",
-                    ficha.getCodigoFicha() != null ? ficha.getCodigoFicha() : "N/A",
-                    numeroGuia,
-                    pacienteNome != null ? pacienteNome : "N/A"));
-        });
     }
 
     private Map<String, Long> calculateStatusDistribution(List<RelatorioItemDto> itens) {
@@ -1249,6 +820,7 @@ public class RelatorioServiceImpl implements RelatorioService {
 
     private RelatorioDto mapToDto(Relatorio relatorio) {
         RelatorioDto dto = new RelatorioDto();
+        // CORREÇÃO: Manter ID como String se o DTO espera String
         dto.setId(relatorio.getId());
         dto.setTitulo(relatorio.getTitulo());
         dto.setDescricao(relatorio.getDescricao());
@@ -1286,6 +858,7 @@ public class RelatorioServiceImpl implements RelatorioService {
         dto.setPeriodoInicio(relatorio.getPeriodoInicio());
         dto.setPeriodoFim(relatorio.getPeriodoFim());
         dto.setTotalRegistros(relatorio.getTotalRegistros());
+        // CORREÇÃO: Usar enum direto se DTO espera enum
         dto.setStatusRelatorio(relatorio.getStatusRelatorio());
         dto.setCreatedAt(relatorio.getCreatedAt());
 
