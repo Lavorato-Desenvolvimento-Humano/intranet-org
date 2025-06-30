@@ -1,0 +1,334 @@
+/* Cartões de identificação melhorados */
+.relatorio-item-card {
+  @apply bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-all duration-200;
+}
+
+.relatorio-item-card:hover {
+  @apply border-primary/30 shadow-lg;
+}
+
+/* Badge de relacionamento Ficha-Guia */
+.ficha-guia-relation {
+  @apply bg-gradient-to-r from-blue-50 to-indigo-50 p-3 rounded-lg border border-blue-200;
+}
+
+.ficha-guia-relation .relation-arrow {
+  @apply text-blue-600;
+}
+
+/* Identificadores com destaque */
+.identificador-badge {
+  @apply font-mono text-xs px-2 py-1 rounded-md font-medium;
+}
+
+.identificador-badge.ficha {
+  @apply bg-blue-100 text-blue-800;
+}
+
+.identificador-badge.guia {
+  @apply bg-green-100 text-green-800;
+}
+
+.identificador-badge.convenio {
+  @apply bg-purple-100 text-purple-800;
+}
+
+/* Status badges melhorados */
+.status-badge {
+  @apply inline-flex items-center px-3 py-1 text-sm font-medium rounded-full;
+}
+
+.status-badge.aprovado {
+  @apply bg-green-100 text-green-800;
+}
+
+.status-badge.pendente {
+  @apply bg-yellow-100 text-yellow-800;
+}
+
+.status-badge.rejeitado {
+  @apply bg-red-100 text-red-800;
+}
+
+.status-badge.processando {
+  @apply bg-blue-100 text-blue-800;
+}
+
+/* Cards de estatísticas */
+.stats-card {
+  @apply bg-white rounded-lg shadow-md p-6 border-l-4;
+}
+
+.stats-card.primary {
+  @apply border-primary;
+}
+
+.stats-card.success {
+  @apply border-green-500;
+}
+
+.stats-card.warning {
+  @apply border-yellow-500;
+}
+
+.stats-card.danger {
+  @apply border-red-500;
+}
+
+/* Tabela de dados melhorada */
+.relatorio-table {
+  @apply w-full;
+}
+
+.relatorio-table th {
+  @apply bg-gray-50 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider;
+}
+
+.relatorio-table td {
+  @apply px-6 py-4 whitespace-nowrap text-sm text-gray-900;
+}
+
+.relatorio-table tr:nth-child(even) {
+  @apply bg-gray-50;
+}
+
+.relatorio-table tr:hover {
+  @apply bg-primary/5;
+}
+
+/* Seções de informação */
+.info-section {
+  @apply bg-white rounded-lg shadow-md p-6 border border-gray-200;
+}
+
+.info-section-header {
+  @apply flex items-center mb-4 pb-3 border-b border-gray-200;
+}
+
+.info-section-title {
+  @apply text-lg font-semibold text-gray-900;
+}
+
+.info-section-icon {
+  @apply h-5 w-5 mr-2 text-primary;
+}
+
+/* Grid de informações */
+.info-grid {
+  @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4;
+}
+
+.info-item {
+  @apply space-y-1;
+}
+
+.info-label {
+  @apply text-sm font-medium text-gray-600;
+}
+
+.info-value {
+  @apply text-gray-900 font-medium;
+}
+
+/* Vinculação ficha-guia específica */
+.vinculacao-container {
+  @apply bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200 mt-3;
+}
+
+.vinculacao-header {
+  @apply flex items-center text-sm font-medium text-blue-800 mb-2;
+}
+
+.vinculacao-path {
+  @apply flex items-center text-sm text-blue-700;
+}
+
+.vinculacao-codigo {
+  @apply font-mono bg-blue-100 px-2 py-1 rounded text-xs font-medium;
+}
+
+.vinculacao-arrow {
+  @apply h-4 w-4 mx-2 text-blue-600;
+}
+
+/* Histórico de mudanças */
+.historico-container {
+  @apply bg-gray-50 p-4 rounded-lg border border-gray-200 mt-3;
+}
+
+.historico-header {
+  @apply font-medium text-gray-700 mb-2;
+}
+
+.historico-change {
+  @apply flex items-center text-sm space-x-2;
+}
+
+.historico-change .status-from {
+  @apply px-2 py-1 rounded text-xs bg-gray-200 text-gray-700;
+}
+
+.historico-change .status-to {
+  @apply px-2 py-1 rounded text-xs bg-green-200 text-green-700;
+}
+
+/* Componente de dados do relatório */
+.relatorio-data-component {
+  @apply space-y-6;
+}
+
+.relatorio-summary {
+  @apply bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg border border-blue-200;
+}
+
+.relatorio-summary-header {
+  @apply flex items-center mb-4;
+}
+
+.relatorio-summary-title {
+  @apply text-xl font-bold text-gray-900;
+}
+
+.relatorio-summary-stats {
+  @apply grid grid-cols-1 md:grid-cols-3 gap-4 text-sm;
+}
+
+.relatorio-summary-stat {
+  @apply space-y-1;
+}
+
+.relatorio-summary-stat-label {
+  @apply text-gray-600;
+}
+
+.relatorio-summary-stat-value {
+  @apply text-2xl font-bold text-primary;
+}
+
+/* Detalhes do item */
+.item-detail-card {
+  @apply bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow;
+}
+
+.item-detail-header {
+  @apply flex items-start justify-between mb-3;
+}
+
+.item-detail-title {
+  @apply font-semibold text-gray-900 text-lg;
+}
+
+.item-detail-subtitle {
+  @apply text-sm text-gray-600 font-mono mt-1;
+}
+
+.item-detail-grid {
+  @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-3;
+}
+
+.item-detail-section {
+  @apply space-y-3;
+}
+
+.item-detail-section-title {
+  @apply font-medium text-gray-700 mb-2 flex items-center;
+}
+
+.item-detail-section-content {
+  @apply space-y-1 text-sm;
+}
+
+/* Alertas específicos */
+.status-diferente-alert {
+  @apply bg-yellow-50 p-3 rounded-lg border border-yellow-200;
+}
+
+.status-diferente-header {
+  @apply font-medium text-yellow-800 mb-2;
+}
+
+.status-diferente-content {
+  @apply flex gap-4 text-sm;
+}
+
+/* Gráficos */
+.chart-container {
+  @apply bg-white rounded-lg shadow-md p-6;
+}
+
+.chart-header {
+  @apply text-lg font-semibold text-gray-900 mb-4 flex items-center;
+}
+
+.chart-icon {
+  @apply h-5 w-5 mr-2;
+}
+
+/* Tabs melhoradas */
+.relatorio-tabs {
+  @apply bg-white rounded-lg shadow-md mb-6;
+}
+
+.relatorio-tabs-nav {
+  @apply border-b border-gray-200;
+}
+
+.relatorio-tab {
+  @apply px-6 py-4 text-sm font-medium border-b-2 transition-colors;
+}
+
+.relatorio-tab.active {
+  @apply border-primary text-primary;
+}
+
+.relatorio-tab.inactive {
+  @apply border-transparent text-gray-500 hover:text-gray-700;
+}
+
+/* Responsividade específica */
+@media (max-width: 768px) {
+  .relatorio-summary-stats {
+    @apply grid-cols-1;
+  }
+
+  .item-detail-grid {
+    @apply grid-cols-1;
+  }
+
+  .vinculacao-path {
+    @apply flex-col items-start space-y-2;
+  }
+
+  .vinculacao-arrow {
+    @apply rotate-90 mx-0 my-1;
+  }
+}
+
+/* Animações suaves */
+.relatorio-item-card,
+.item-detail-card,
+.info-section {
+  transition: all 0.2s ease-in-out;
+}
+
+.relatorio-item-card:hover,
+.item-detail-card:hover {
+  transform: translateY(-1px);
+}
+
+/* Print styles para relatórios */
+@media print {
+  .relatorio-item-card,
+  .item-detail-card {
+    @apply shadow-none border border-gray-300;
+    break-inside: avoid;
+  }
+
+  .relatorio-summary {
+    @apply bg-white border border-gray-300;
+  }
+
+  .vinculacao-container {
+    @apply bg-white border border-gray-300;
+  }
+}
