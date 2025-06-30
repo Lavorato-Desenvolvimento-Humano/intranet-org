@@ -664,10 +664,20 @@ export default function RelatorioDetalhesPage() {
                         </div>
                         <div className="overflow-x-auto">
                           <DataTable
-                            data={dadosRelatorio.itens || []}
+                            data={{
+                              content: dadosRelatorio.itens || [],
+                              totalElements: dadosRelatorio.itens?.length || 0,
+                              totalPages: 1,
+                              size: dadosRelatorio.itens?.length || 0,
+                              number: 0,
+                              numberOfElements:
+                                dadosRelatorio.itens?.length || 0,
+                              first: true,
+                              last: true,
+                            }}
                             columns={dadosColumns}
                             loading={false}
-                            emptyMessage="Nenhum dado encontrado"
+                            onPageChange={() => {}}
                           />
                         </div>
                       </div>
@@ -840,10 +850,19 @@ export default function RelatorioDetalhesPage() {
                       </div>
                       <div className="overflow-x-auto">
                         <DataTable
-                          data={logs}
+                          data={{
+                            content: logs,
+                            totalElements: logs.length,
+                            totalPages: 1,
+                            size: logs.length,
+                            number: 0,
+                            numberOfElements: logs.length,
+                            first: true,
+                            last: true,
+                          }}
                           columns={logsColumns}
                           loading={false}
-                          emptyMessage="Nenhum log encontrado"
+                          onPageChange={() => {}}
                         />
                       </div>
                     </div>
