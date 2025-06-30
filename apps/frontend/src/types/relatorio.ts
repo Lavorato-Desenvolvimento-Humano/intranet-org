@@ -74,6 +74,7 @@ export interface RelatorioSummaryDto {
   statusRelatorio: StatusRelatorioEnum;
   createdAt: string;
   possuiCompartilhamento: boolean;
+  updatedAt: string;
 }
 
 export interface RelatorioItemDto {
