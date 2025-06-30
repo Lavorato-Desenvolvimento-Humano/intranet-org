@@ -71,11 +71,11 @@ const FichaGuiaRelation = ({ item }: { item: RelatorioItemDto }) => {
         <span className="font-medium">Vinculação:</span>
       </div>
       <div className="mt-1 flex items-center text-sm text-blue-700">
-        <span className="font-mono bg-blue-100 px-2 py-1 rounded">
+        <span className="font-mono bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium">
           Ficha {item.codigoFicha}
         </span>
-        <ArrowRight className="h-4 w-4 mx-2" />
-        <span className="font-mono bg-blue-100 px-2 py-1 rounded">
+        <ArrowRight className="h-4 w-4 mx-2 text-blue-600" />
+        <span className="font-mono bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium">
           Guia {item.numeroGuia}
         </span>
       </div>
@@ -89,7 +89,7 @@ const FichaGuiaRelation = ({ item }: { item: RelatorioItemDto }) => {
 // Componente para informações detalhadas do item
 const ItemDetailCard = ({ item }: { item: RelatorioItemDto }) => {
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200 hover:border-primary/30">
       {/* Header com identificação principal */}
       <div className="flex items-start justify-between mb-3">
         <div>
@@ -120,7 +120,7 @@ const ItemDetailCard = ({ item }: { item: RelatorioItemDto }) => {
         {/* Coluna 1: Paciente e Identificadores */}
         <div>
           <h5 className="font-medium text-gray-700 mb-2 flex items-center">
-            <User className="h-4 w-4 mr-1" />
+            <User className="h-4 w-4 mr-1 text-primary" />
             Paciente
           </h5>
           <div className="space-y-1 text-sm">
@@ -135,14 +135,14 @@ const ItemDetailCard = ({ item }: { item: RelatorioItemDto }) => {
           {(item.codigoFicha || item.numeroGuia) && (
             <div className="mt-3">
               <h6 className="font-medium text-gray-700 mb-1 flex items-center">
-                <Hash className="h-4 w-4 mr-1" />
+                <Hash className="h-4 w-4 mr-1 text-primary" />
                 Identificadores
               </h6>
               <div className="space-y-1 text-sm">
                 {item.codigoFicha && (
                   <p>
                     <strong>Código Ficha:</strong>
-                    <span className="font-mono bg-gray-100 px-2 py-1 rounded ml-2">
+                    <span className="font-mono bg-blue-100 text-blue-800 px-2 py-1 rounded ml-2 text-xs font-medium">
                       {item.codigoFicha}
                     </span>
                   </p>
@@ -150,7 +150,7 @@ const ItemDetailCard = ({ item }: { item: RelatorioItemDto }) => {
                 {item.numeroGuia && (
                   <p>
                     <strong>Número Guia:</strong>
-                    <span className="font-mono bg-gray-100 px-2 py-1 rounded ml-2">
+                    <span className="font-mono bg-green-100 text-green-800 px-2 py-1 rounded ml-2 text-xs font-medium">
                       {item.numeroGuia}
                     </span>
                   </p>
@@ -163,7 +163,7 @@ const ItemDetailCard = ({ item }: { item: RelatorioItemDto }) => {
         {/* Coluna 2: Convênio e Especialidade */}
         <div>
           <h5 className="font-medium text-gray-700 mb-2 flex items-center">
-            <Building className="h-4 w-4 mr-1" />
+            <Building className="h-4 w-4 mr-1 text-primary" />
             Assistência
           </h5>
           <div className="space-y-1 text-sm">
@@ -182,7 +182,7 @@ const ItemDetailCard = ({ item }: { item: RelatorioItemDto }) => {
         {/* Coluna 3: Datas e Responsável */}
         <div>
           <h5 className="font-medium text-gray-700 mb-2 flex items-center">
-            <Calendar className="h-4 w-4 mr-1" />
+            <Calendar className="h-4 w-4 mr-1 text-primary" />
             Informações Temporais
           </h5>
           <div className="space-y-1 text-sm">
