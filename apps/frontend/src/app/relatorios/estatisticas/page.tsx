@@ -94,9 +94,9 @@ export default function EstatisticasRelatoriosPage() {
       datasets: [
         {
           data: [
-            estatisticas.relatoriosConcluidos,
-            estatisticas.relatoriosProcessando,
-            estatisticas.relatoriosErro,
+            estatisticas.relatoriosConcluidos || 0,
+            estatisticas.relatoriosProcessando || 0,
+            estatisticas.relatoriosErro || 0,
           ],
           backgroundColor: [
             "#10B981", // verde
@@ -116,8 +116,8 @@ export default function EstatisticasRelatoriosPage() {
         {
           label: "Compartilhamentos",
           data: [
-            estatisticas.compartilhamentosRecebidos,
-            estatisticas.compartilhamentosEnviados,
+            estatisticas.compartilhamentosRecebidos || 0,
+            estatisticas.compartilhamentosEnviados || 0,
           ],
           backgroundColor: ["#3B82F6", "#8B5CF6"],
           borderColor: ["#1D4ED8", "#7C3AED"],
@@ -218,7 +218,7 @@ export default function EstatisticasRelatoriosPage() {
                     Total de Relatórios
                   </p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {estatisticas.totalRelatorios.toLocaleString()}
+                    {(estatisticas?.totalRelatorios || 0).toLocaleString()}
                   </p>
                 </div>
               </div>
@@ -234,10 +234,10 @@ export default function EstatisticasRelatoriosPage() {
                     Concluídos
                   </p>
                   <p className="text-2xl font-bold text-green-900">
-                    {estatisticas.relatoriosConcluidos.toLocaleString()}
+                    {(estatisticas?.relatoriosConcluidos || 0).toLocaleString()}
                   </p>
                   <p className="text-xs text-gray-500">
-                    {estatisticas.totalRelatorios > 0
+                    {estatisticas && estatisticas.totalRelatorios > 0
                       ? `${((estatisticas.relatoriosConcluidos / estatisticas.totalRelatorios) * 100).toFixed(1)}%`
                       : "0%"}
                   </p>
@@ -255,10 +255,12 @@ export default function EstatisticasRelatoriosPage() {
                     Processando
                   </p>
                   <p className="text-2xl font-bold text-yellow-900">
-                    {estatisticas.relatoriosProcessando.toLocaleString()}
+                    {(
+                      estatisticas?.relatoriosProcessando || 0
+                    ).toLocaleString()}
                   </p>
                   <p className="text-xs text-gray-500">
-                    {estatisticas.totalRelatorios > 0
+                    {estatisticas && estatisticas.totalRelatorios > 0
                       ? `${((estatisticas.relatoriosProcessando / estatisticas.totalRelatorios) * 100).toFixed(1)}%`
                       : "0%"}
                   </p>
@@ -274,10 +276,10 @@ export default function EstatisticasRelatoriosPage() {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Com Erro</p>
                   <p className="text-2xl font-bold text-red-900">
-                    {estatisticas.relatoriosErro.toLocaleString()}
+                    {(estatisticas?.relatoriosErro || 0).toLocaleString()}
                   </p>
                   <p className="text-xs text-gray-500">
-                    {estatisticas.totalRelatorios > 0
+                    {estatisticas && estatisticas.totalRelatorios > 0
                       ? `${((estatisticas.relatoriosErro / estatisticas.totalRelatorios) * 100).toFixed(1)}%`
                       : "0%"}
                   </p>
@@ -298,7 +300,9 @@ export default function EstatisticasRelatoriosPage() {
                 </div>
               </div>
               <p className="text-3xl font-bold text-blue-900 mb-2">
-                {estatisticas.compartilhamentosRecebidos.toLocaleString()}
+                {(
+                  estatisticas?.compartilhamentosRecebidos || 0
+                ).toLocaleString()}
               </p>
               <p className="text-sm text-gray-600">
                 Relatórios compartilhados com você
@@ -315,7 +319,9 @@ export default function EstatisticasRelatoriosPage() {
                 </div>
               </div>
               <p className="text-3xl font-bold text-purple-900 mb-2">
-                {estatisticas.compartilhamentosEnviados.toLocaleString()}
+                {(
+                  estatisticas?.compartilhamentosEnviados || 0
+                ).toLocaleString()}
               </p>
               <p className="text-sm text-gray-600">
                 Relatórios que você compartilhou
@@ -410,7 +416,9 @@ export default function EstatisticasRelatoriosPage() {
                     Total de Registros
                   </p>
                   <p className="font-medium text-gray-900">
-                    {estatisticas.ultimoRelatorio.totalRegistros.toLocaleString()}
+                    {(
+                      estatisticas.ultimoRelatorio.totalRegistros || 0
+                    ).toLocaleString()}
                   </p>
                 </div>
 
@@ -447,8 +455,8 @@ export default function EstatisticasRelatoriosPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="text-center">
                 <p className="text-2xl font-bold text-blue-900">
-                  {estatisticas.totalRelatorios > 0
-                    ? `${((estatisticas.relatoriosConcluidos / estatisticas.totalRelatorios) * 100).toFixed(1)}%`
+                  {estatisticas && estatisticas.totalRelatorios > 0
+                    ? `${(((estatisticas.relatoriosConcluidos || 0) / estatisticas.totalRelatorios) * 100).toFixed(1)}%`
                     : "0%"}
                 </p>
                 <p className="text-sm text-gray-600">Taxa de Sucesso</p>
@@ -457,8 +465,8 @@ export default function EstatisticasRelatoriosPage() {
               <div className="text-center">
                 <p className="text-2xl font-bold text-purple-900">
                   {(
-                    estatisticas.compartilhamentosRecebidos +
-                    estatisticas.compartilhamentosEnviados
+                    (estatisticas?.compartilhamentosRecebidos || 0) +
+                    (estatisticas?.compartilhamentosEnviados || 0)
                   ).toLocaleString()}
                 </p>
                 <p className="text-sm text-gray-600">
@@ -468,7 +476,7 @@ export default function EstatisticasRelatoriosPage() {
 
               <div className="text-center">
                 <p className="text-2xl font-bold text-green-900">
-                  {estatisticas.relatoriosProcessando}
+                  {estatisticas?.relatoriosProcessando || 0}
                 </p>
                 <p className="text-sm text-gray-600">Em Processamento</p>
               </div>
