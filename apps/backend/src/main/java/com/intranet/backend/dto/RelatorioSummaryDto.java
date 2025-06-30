@@ -17,4 +17,5 @@ public class RelatorioSummaryDto {
     private Relatorio.StatusRelatorio statusRelatorio;
     private LocalDateTime createdAt;
     private Boolean possuiCompartilhamento;
+    private LocalDateTime updatedAt;
 }
