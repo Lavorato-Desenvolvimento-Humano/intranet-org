@@ -11,4 +11,5 @@ public class GraficoTimelineDto {
     private Long criações;
     private Long mudancasStatus;
     private Long atualizacoes;
+    private Long quantidade;
 }
