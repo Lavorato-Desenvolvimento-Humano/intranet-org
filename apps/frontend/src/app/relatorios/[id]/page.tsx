@@ -1,5 +1,4 @@
-// apps/frontend/src/app/relatorios/[id]/page.tsx - VERSÃO MELHORADA
-
+// apps/frontend/src/app/relatorios/[id]/page.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -21,8 +20,6 @@ import {
   PieChart,
   Eye,
   FileText,
-  Link,
-  Hash,
 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
@@ -50,7 +47,6 @@ import {
   ArcElement,
 } from "chart.js";
 import { Bar, Pie } from "react-chartjs-2";
-import { RelatorioDataComponent } from "@/components/relatorio/RelatorioDataComponent";
 
 // Registrar componentes do Chart.js
 ChartJS.register(
@@ -89,7 +85,7 @@ const StatusBadge = ({ status }: { status: StatusRelatorioEnum }) => {
         return {
           label: "Cancelado",
           className: "bg-gray-100 text-gray-800",
-          icon: AlertCircle,
+          icon: XCircle,
         };
       default:
         return {
@@ -101,131 +97,18 @@ const StatusBadge = ({ status }: { status: StatusRelatorioEnum }) => {
   };
 
   const config = getStatusConfig(status);
-  const Icon = config.icon;
+  const IconComponent = config.icon;
 
   return (
     <span
       className={`inline-flex items-center px-3 py-1 text-sm font-medium rounded-full ${config.className}`}>
-      <Icon className="h-4 w-4 mr-2" />
+      <IconComponent className="h-4 w-4 mr-1" />
       {config.label}
     </span>
   );
 };
 
-// Componente melhorado para tabela de dados
-const RelatorioTable = ({ dados }: { dados: RelatorioDataDto }) => {
-  const columns = [
-    {
-      header: "Tipo",
-      accessor: "tipoEntidade" as keyof RelatorioItemDto,
-      className: "text-center font-medium",
-    },
-    {
-      header: "Identificação",
-      accessor: ((item: RelatorioItemDto) => (
-        <div className="space-y-1">
-          <div className="font-medium text-gray-900">
-            {item.pacienteNome || "N/A"}
-          </div>
-          <div className="flex items-center space-x-2 text-xs text-gray-600">
-            {item.codigoFicha && (
-              <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded font-mono">
-                F:{item.codigoFicha}
-              </span>
-            )}
-            {item.numeroGuia && (
-              <span className="bg-green-100 text-green-800 px-2 py-1 rounded font-mono">
-                G:{item.numeroGuia}
-              </span>
-            )}
-          </div>
-          {item.codigoFicha && item.numeroGuia && (
-            <div className="flex items-center text-xs text-gray-500">
-              <Link className="h-3 w-3 mr-1" />
-              Ficha vinculada à Guia
-            </div>
-          )}
-        </div>
-      )) as any,
-    },
-    {
-      header: "Convênio & Especialidade",
-      accessor: ((item: RelatorioItemDto) => (
-        <div className="space-y-1">
-          <div className="font-medium text-gray-900">
-            {item.convenioNome || "N/A"}
-          </div>
-          <div className="text-sm text-gray-600">
-            {item.especialidade || "N/A"}
-          </div>
-        </div>
-      )) as any,
-    },
-    {
-      header: "Status",
-      accessor: ((item: RelatorioItemDto) => (
-        <div className="space-y-1">
-          <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
-            {item.status}
-          </span>
-          {item.statusFicha &&
-            item.statusGuia &&
-            item.statusFicha !== item.statusGuia && (
-              <div className="text-xs text-gray-500">
-                F: {item.statusFicha} | G: {item.statusGuia}
-              </div>
-            )}
-        </div>
-      )) as any,
-    },
-    {
-      header: "Responsável",
-      accessor: ((item: RelatorioItemDto) => (
-        <div className="flex items-center">
-          <User className="h-4 w-4 mr-2 text-gray-400" />
-          <span className="text-sm">
-            {item.usuarioResponsavelNome || "N/A"}
-          </span>
-        </div>
-      )) as any,
-    },
-    {
-      header: "Atualização",
-      accessor: ((item: RelatorioItemDto) => (
-        <div className="text-sm text-gray-600">
-          {formatDateTime(item.dataAtualizacao)}
-        </div>
-      )) as any,
-    },
-  ];
-
-  return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden">
-      <div className="px-6 py-4 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-          <FileText className="h-5 w-5 mr-2" />
-          Registros Detalhados ({dados.itens.length})
-        </h3>
-      </div>
-      <DataTable
-        data={{
-          content: dados.itens,
-          totalElements: dados.itens.length,
-          totalPages: 1,
-          size: dados.itens.length,
-          number: 0,
-          first: true,
-          last: true,
-          numberOfElements: dados.itens.length,
-        }}
-        columns={columns}
-        onPageChange={() => {}}
-      />
-    </div>
-  );
-};
-
-export default function RelatorioDetailPage() {
+export default function RelatorioDetalhesPage() {
   const router = useRouter();
   const params = useParams();
   const relatorioId = params.id as string;
@@ -246,16 +129,16 @@ export default function RelatorioDetailPage() {
 
   // Carregar dados iniciais
   useEffect(() => {
-    if (relatorioId) {
-      loadRelatorio();
-    }
+    loadRelatorio();
   }, [relatorioId]);
 
-  // Carregar dados específicos baseado na aba ativa
+  // Carregar dados quando aba mudar
   useEffect(() => {
-    if (!relatorio) return;
-
-    if (activeTab === "dados" && !dadosRelatorio) {
+    if (
+      activeTab === "dados" &&
+      !dadosRelatorio &&
+      relatorio?.statusRelatorio === StatusRelatorioEnum.CONCLUIDO
+    ) {
       loadDadosRelatorio();
     }
     if (activeTab === "logs" && logs.length === 0) {
@@ -332,19 +215,123 @@ export default function RelatorioDetailPage() {
         toastUtil.success("Reprocessamento iniciado!");
         await loadRelatorio();
       } catch (error: any) {
-        toastUtil.error("Erro ao reprocessar relatório");
+        toastUtil.error(
+          error.response?.data?.message || "Erro ao reprocessar relatório"
+        );
       }
     }
+  };
+
+  // Colunas para tabela de dados
+  const dadosColumns = [
+    {
+      header: "Tipo",
+      accessor: "tipoEntidade" as keyof RelatorioItemDto,
+      className: "font-medium",
+    },
+    {
+      header: "Paciente",
+      accessor: "pacienteNome" as keyof RelatorioItemDto,
+    },
+    {
+      header: "Código/Número",
+      accessor: ((item: RelatorioItemDto) =>
+        item.numeroGuia || item.codigoFicha || "-") as any,
+    },
+    {
+      header: "Convênio",
+      accessor: "convenioNome" as keyof RelatorioItemDto,
+    },
+    {
+      header: "Status",
+      accessor: "status" as keyof RelatorioItemDto,
+    },
+    {
+      header: "Especialidade",
+      accessor: "especialidade" as keyof RelatorioItemDto,
+    },
+    {
+      header: "Responsável",
+      accessor: "usuarioResponsavelNome" as keyof RelatorioItemDto,
+    },
+    {
+      header: "Atualização",
+      accessor: ((item: RelatorioItemDto) =>
+        formatDateTime(item.dataAtualizacao)) as any,
+    },
+  ];
+
+  // Colunas para tabela de logs
+  const logsColumns = [
+    {
+      header: "Ação",
+      accessor: "acao" as keyof RelatorioLogDto,
+      className: "font-medium",
+    },
+    {
+      header: "Usuário",
+      accessor: "usuarioNome" as keyof RelatorioLogDto,
+    },
+    {
+      header: "IP",
+      accessor: "ipAddress" as keyof RelatorioLogDto,
+    },
+    {
+      header: "Data/Hora",
+      accessor: ((log: RelatorioLogDto) =>
+        formatDateTime(log.createdAt)) as any,
+    },
+  ];
+
+  // Configuração dos gráficos
+  const getChartData = () => {
+    if (!dadosRelatorio) return null;
+
+    // Gráfico de distribuição por status
+    const statusData = {
+      labels: Object.keys(dadosRelatorio.distribuicaoPorStatus),
+      datasets: [
+        {
+          data: Object.values(dadosRelatorio.distribuicaoPorStatus),
+          backgroundColor: [
+            "#10B981", // verde
+            "#F59E0B", // amarelo
+            "#EF4444", // vermelho
+            "#6B7280", // cinza
+            "#3B82F6", // azul
+            "#8B5CF6", // roxo
+          ],
+          borderWidth: 2,
+          borderColor: "#fff",
+        },
+      ],
+    };
+
+    // Gráfico de distribuição por especialidade
+    const especialidadeData = {
+      labels: Object.keys(dadosRelatorio.distribuicaoPorEspecialidade),
+      datasets: [
+        {
+          label: "Quantidade",
+          data: Object.values(dadosRelatorio.distribuicaoPorEspecialidade),
+          backgroundColor: "#3B82F6",
+          borderColor: "#1D4ED8",
+          borderWidth: 1,
+        },
+      ],
+    };
+
+    return { statusData, especialidadeData };
   };
 
   if (loading) {
     return (
       <ProtectedRoute>
-        <Navbar />
-        <div className="min-h-screen bg-gray-50 pt-20">
-          <div className="max-w-7xl mx-auto p-6">
+        <div className="min-h-screen bg-gray-50 flex flex-col">
+          <Navbar />
+          <main className="flex-grow container mx-auto p-6">
             <Loading message="Carregando relatório..." />
-          </div>
+          </main>
         </div>
       </ProtectedRoute>
     );
@@ -353,65 +340,44 @@ export default function RelatorioDetailPage() {
   if (error || !relatorio) {
     return (
       <ProtectedRoute>
-        <Navbar />
-        <div className="min-h-screen bg-gray-50 pt-20">
-          <div className="max-w-7xl mx-auto p-6">
-            <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-              <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-              <h2 className="text-xl font-semibold text-red-800 mb-2">
-                Erro ao Carregar Relatório
-              </h2>
-              <p className="text-red-600 mb-4">
-                {error || "Relatório não encontrado"}
-              </p>
-              <CustomButton variant="primary" onClick={() => router.back()}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Voltar
-              </CustomButton>
+        <div className="min-h-screen bg-gray-50 flex flex-col">
+          <Navbar />
+          <main className="flex-grow container mx-auto p-6">
+            <div className="bg-red-50 text-red-700 p-4 rounded-md">
+              {error || "Relatório não encontrado"}
             </div>
-          </div>
+          </main>
         </div>
       </ProtectedRoute>
     );
   }
 
+  const chartData = getChartData();
+
   return (
     <ProtectedRoute>
-      <Navbar />
-      <div className="min-h-screen bg-gray-50 pt-20">
-        <div className="max-w-7xl mx-auto p-6">
-          {/* Header melhorado */}
-          <div className="flex items-start justify-between mb-6">
-            <div className="flex items-start">
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <Navbar />
+
+        <main className="flex-grow container mx-auto p-6">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center">
               <CustomButton
-                variant="secondary"
+                variant="primary"
                 onClick={() => router.back()}
                 className="mr-4">
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Voltar
               </CustomButton>
               <div>
-                <h1 className="text-3xl font-bold text-gray-800 flex items-center">
-                  <FileBarChart className="mr-3 h-8 w-8 text-primary" />
+                <h1 className="text-2xl font-bold text-gray-800 flex items-center">
+                  <FileBarChart className="mr-2 h-6 w-6" />
                   {relatorio.titulo}
                 </h1>
-                <p className="text-gray-600 mt-2 flex items-center">
-                  <User className="h-4 w-4 mr-2" />
-                  Gerado por {relatorio.usuarioGeradorNome} em{" "}
-                  {formatDateTime(relatorio.createdAt)}
+                <p className="text-gray-600 mt-1">
+                  Detalhes e dados do relatório
                 </p>
-                <div className="flex items-center mt-2 space-x-4">
-                  <div className="flex items-center text-sm text-gray-600">
-                    <Calendar className="h-4 w-4 mr-1" />
-                    {formatDate(relatorio.periodoInicio)} -{" "}
-                    {formatDate(relatorio.periodoFim)}
-                  </div>
-                  <div className="flex items-center text-sm text-gray-600">
-                    <Hash className="h-4 w-4 mr-1" />
-                    {relatorio.totalRegistros} registros
-                  </div>
-                  <StatusBadge status={relatorio.statusRelatorio} />
-                </div>
               </div>
             </div>
 
@@ -424,7 +390,7 @@ export default function RelatorioDetailPage() {
               )}
 
               <CustomButton
-                variant="secondary"
+                variant="primary"
                 onClick={() =>
                   router.push(`/relatorios/${relatorioId}/compartilhar`)
                 }>
@@ -441,15 +407,15 @@ export default function RelatorioDetailPage() {
             </div>
           </div>
 
-          {/* Navegação por tabs melhorada */}
+          {/* Navegação por tabs */}
           <div className="bg-white rounded-lg shadow-md mb-6">
             <div className="border-b border-gray-200">
               <nav className="flex">
                 <button
                   onClick={() => setActiveTab("visao-geral")}
-                  className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                  className={`px-6 py-3 text-sm font-medium border-b-2 ${
                     activeTab === "visao-geral"
-                      ? "border-primary text-primary"
+                      ? "border-blue-500 text-blue-600"
                       : "border-transparent text-gray-500 hover:text-gray-700"
                   }`}>
                   <Eye className="h-4 w-4 mr-2 inline" />
@@ -461,20 +427,20 @@ export default function RelatorioDetailPage() {
                   <>
                     <button
                       onClick={() => setActiveTab("dados")}
-                      className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                      className={`px-6 py-3 text-sm font-medium border-b-2 ${
                         activeTab === "dados"
-                          ? "border-primary text-primary"
+                          ? "border-blue-500 text-blue-600"
                           : "border-transparent text-gray-500 hover:text-gray-700"
                       }`}>
                       <FileText className="h-4 w-4 mr-2 inline" />
-                      Dados Detalhados
+                      Dados ({relatorio.totalRegistros})
                     </button>
 
                     <button
                       onClick={() => setActiveTab("graficos")}
-                      className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                      className={`px-6 py-3 text-sm font-medium border-b-2 ${
                         activeTab === "graficos"
-                          ? "border-primary text-primary"
+                          ? "border-blue-500 text-blue-600"
                           : "border-transparent text-gray-500 hover:text-gray-700"
                       }`}>
                       <BarChart3 className="h-4 w-4 mr-2 inline" />
@@ -485,341 +451,427 @@ export default function RelatorioDetailPage() {
 
                 <button
                   onClick={() => setActiveTab("logs")}
-                  className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                  className={`px-6 py-3 text-sm font-medium border-b-2 ${
                     activeTab === "logs"
-                      ? "border-primary text-primary"
+                      ? "border-blue-500 text-blue-600"
                       : "border-transparent text-gray-500 hover:text-gray-700"
                   }`}>
-                  <Filter className="h-4 w-4 mr-2 inline" />
+                  <FileText className="h-4 w-4 mr-2 inline" />
                   Logs
                 </button>
               </nav>
             </div>
-          </div>
 
-          {/* Conteúdo das tabs */}
-          <div className="space-y-6">
-            {activeTab === "visao-geral" && (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Card de informações gerais */}
-                <div className="lg:col-span-2 bg-white rounded-lg shadow-md p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                    <FileBarChart className="h-5 w-5 mr-2 text-primary" />
-                    Informações do Relatório
-                  </h3>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">
-                        Título:
-                      </label>
-                      <p className="text-gray-900 font-medium">
-                        {relatorio.titulo}
-                      </p>
-                    </div>
-
-                    {relatorio.descricao && (
-                      <div className="md:col-span-2">
-                        <label className="text-sm font-medium text-gray-600">
-                          Descrição:
-                        </label>
-                        <p className="text-gray-900">{relatorio.descricao}</p>
-                      </div>
-                    )}
-
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">
-                        Período:
-                      </label>
-                      <p className="text-gray-900">
-                        {formatDate(relatorio.periodoInicio)} até{" "}
-                        {formatDate(relatorio.periodoFim)}
-                      </p>
-                    </div>
-
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">
-                        Total de Registros:
-                      </label>
-                      <p className="text-2xl font-bold text-primary">
-                        {relatorio.totalRegistros}
-                      </p>
-                    </div>
-
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">
-                        Status:
-                      </label>
-                      <div className="mt-1">
-                        <StatusBadge status={relatorio.statusRelatorio} />
+            {/* Conteúdo das abas */}
+            <div className="p-6">
+              {/* Aba Visão Geral */}
+              {activeTab === "visao-geral" && (
+                <div className="space-y-6">
+                  {/* Informações básicas */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">
+                            Status
+                          </p>
+                          <StatusBadge status={relatorio.statusRelatorio} />
+                        </div>
                       </div>
                     </div>
 
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">
-                        Última Atualização:
-                      </label>
-                      <p className="text-gray-900">
-                        {formatDateTime(relatorio.updatedAt)}
-                      </p>
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <div className="flex items-center">
+                        <User className="h-8 w-8 text-gray-400 mr-3" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">
+                            Criado por
+                          </p>
+                          <p className="text-lg font-semibold text-gray-900">
+                            {relatorio.usuarioGeradorNome}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <div className="flex items-center">
+                        <Calendar className="h-8 w-8 text-gray-400 mr-3" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">
+                            Período
+                          </p>
+                          <p className="text-sm font-semibold text-gray-900">
+                            {formatDate(relatorio.periodoInicio)} a{" "}
+                            {formatDate(relatorio.periodoFim)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <div className="flex items-center">
+                        <BarChart3 className="h-8 w-8 text-gray-400 mr-3" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">
+                            Total de Registros
+                          </p>
+                          <p className="text-2xl font-bold text-gray-900">
+                            {relatorio.totalRegistros.toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Filtros aplicados */}
-                  {relatorio.filtros &&
-                    Object.keys(relatorio.filtros).length > 0 && (
-                      <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                        <h4 className="font-medium text-gray-700 mb-2 flex items-center">
-                          <Filter className="h-4 w-4 mr-2" />
-                          Filtros Aplicados
-                        </h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                          {Object.entries(relatorio.filtros).map(
-                            ([key, value]) => (
-                              <div key={key} className="flex">
-                                <span className="font-medium text-gray-600 capitalize mr-2">
-                                  {key.replace(/([A-Z])/g, " $1").toLowerCase()}
-                                  :
-                                </span>
-                                <span className="text-gray-900">
-                                  {Array.isArray(value)
-                                    ? value.join(", ")
-                                    : String(value)}
-                                </span>
-                              </div>
-                            )
-                          )}
-                        </div>
-                      </div>
-                    )}
-                </div>
+                  {/* Descrição e filtros */}
+                  {relatorio.descricao && (
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                        Descrição
+                      </h3>
+                      <p className="text-gray-700">{relatorio.descricao}</p>
+                    </div>
+                  )}
 
-                {/* Card de ações rápidas */}
-                <div className="space-y-4">
-                  <div className="bg-white rounded-lg shadow-md p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                      Ações Rápidas
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                      <Filter className="h-5 w-5 mr-2" />
+                      Filtros Aplicados
                     </h3>
-                    <div className="space-y-3">
-                      {relatorio.statusRelatorio ===
-                        StatusRelatorioEnum.CONCLUIDO && (
-                        <CustomButton
-                          variant="primary"
-                          onClick={handleDownloadPDF}
-                          className="w-full">
-                          <Download className="h-4 w-4 mr-2" />
-                          Baixar PDF
-                        </CustomButton>
-                      )}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {Object.entries(relatorio.filtros).map(([key, value]) => {
+                        if (
+                          !value ||
+                          (Array.isArray(value) && value.length === 0)
+                        )
+                          return null;
 
-                      <CustomButton
-                        variant="secondary"
-                        onClick={() =>
-                          router.push(`/relatorios/${relatorioId}/compartilhar`)
-                        }
-                        className="w-full">
-                        <Share2 className="h-4 w-4 mr-2" />
-                        Compartilhar
-                      </CustomButton>
-
-                      {relatorio.statusRelatorio ===
-                        StatusRelatorioEnum.ERRO && (
-                        <CustomButton
-                          variant="secondary"
-                          onClick={handleReprocessar}
-                          className="w-full">
-                          <RefreshCw className="h-4 w-4 mr-2" />
-                          Reprocessar
-                        </CustomButton>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Card de status */}
-                  <div className="bg-white rounded-lg shadow-md p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                      Status
-                    </h3>
-                    <div className="text-center">
-                      <StatusBadge status={relatorio.statusRelatorio} />
-                      <p className="text-sm text-gray-600 mt-2">
-                        {relatorio.statusRelatorio ===
-                          StatusRelatorioEnum.CONCLUIDO &&
-                          "Relatório processado com sucesso"}
-                        {relatorio.statusRelatorio ===
-                          StatusRelatorioEnum.PROCESSANDO &&
-                          "Processando dados..."}
-                        {relatorio.statusRelatorio ===
-                          StatusRelatorioEnum.ERRO &&
-                          "Erro durante o processamento"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === "dados" && (
-              <div>
-                {loadingDados ? (
-                  <Loading message="Carregando dados detalhados..." />
-                ) : dadosRelatorio ? (
-                  <RelatorioDataComponent dados={dadosRelatorio} />
-                ) : (
-                  <div className="bg-white rounded-lg shadow-md p-8 text-center">
-                    <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600">
-                      Nenhum dado disponível para exibição
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {activeTab === "graficos" && (
-              <div>
-                {loadingDados ? (
-                  <Loading message="Carregando gráficos..." />
-                ) : dadosRelatorio ? (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Gráficos de distribuição */}
-                    {dadosRelatorio.distribuicaoPorStatus &&
-                      Object.keys(dadosRelatorio.distribuicaoPorStatus).length >
-                        0 && (
-                        <div className="bg-white rounded-lg shadow-md p-6">
-                          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                            <PieChart className="h-5 w-5 mr-2" />
-                            Distribuição por Status
-                          </h3>
-                          <Pie
-                            data={{
-                              labels: Object.keys(
-                                dadosRelatorio.distribuicaoPorStatus
-                              ),
-                              datasets: [
-                                {
-                                  data: Object.values(
-                                    dadosRelatorio.distribuicaoPorStatus
-                                  ),
-                                  backgroundColor: [
-                                    "#2EA6B8",
-                                    "#58C5D6",
-                                    "#A7A9AC",
-                                    "#939598",
-                                    "#808285",
-                                  ],
-                                },
-                              ],
-                            }}
-                            options={{
-                              responsive: true,
-                              plugins: {
-                                legend: { position: "bottom" },
-                              },
-                            }}
-                          />
-                        </div>
-                      )}
-
-                    {dadosRelatorio.distribuicaoPorConvenio &&
-                      Object.keys(dadosRelatorio.distribuicaoPorConvenio)
-                        .length > 0 && (
-                        <div className="bg-white rounded-lg shadow-md p-6">
-                          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                            <BarChart3 className="h-5 w-5 mr-2" />
-                            Distribuição por Convênio
-                          </h3>
-                          <Bar
-                            data={{
-                              labels: Object.keys(
-                                dadosRelatorio.distribuicaoPorConvenio
-                              ),
-                              datasets: [
-                                {
-                                  label: "Registros",
-                                  data: Object.values(
-                                    dadosRelatorio.distribuicaoPorConvenio
-                                  ),
-                                  backgroundColor: "#2EA6B8",
-                                },
-                              ],
-                            }}
-                            options={{
-                              responsive: true,
-                              plugins: {
-                                legend: { display: false },
-                              },
-                              scales: {
-                                y: { beginAtZero: true },
-                              },
-                            }}
-                          />
-                        </div>
-                      )}
-                  </div>
-                ) : (
-                  <div className="bg-white rounded-lg shadow-md p-8 text-center">
-                    <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600">
-                      Nenhum dado disponível para gráficos
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {activeTab === "logs" && (
-              <div className="bg-white rounded-lg shadow-md">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-                    <Filter className="h-5 w-5 mr-2" />
-                    Logs do Relatório
-                  </h3>
-                </div>
-
-                <div className="p-6">
-                  {loadingLogs ? (
-                    <Loading message="Carregando logs..." />
-                  ) : logs.length > 0 ? (
-                    <div className="space-y-4">
-                      {logs.map((log, index) => (
-                        <div
-                          key={log.id || index}
-                          className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="font-medium text-gray-900">
-                              {log.acao}
+                        return (
+                          <div key={key} className="flex">
+                            <span className="font-medium text-gray-600 capitalize mr-2">
+                              {key.replace(/([A-Z])/g, " $1").toLowerCase()}:
                             </span>
-                            <span className="text-sm text-gray-500">
-                              {formatDateTime(log.createdAt)}
+                            <span className="text-gray-800">
+                              {Array.isArray(value)
+                                ? value.join(", ")
+                                : String(value)}
                             </span>
                           </div>
-                          <div className="text-sm text-gray-600 mb-2">
-                            <User className="h-4 w-4 inline mr-1" />
-                            {log.usuarioNome}
-                          </div>
-                          {log.detalhes &&
-                            Object.keys(log.detalhes).length > 0 && (
-                              <div className="text-xs text-gray-500 bg-gray-100 p-2 rounded">
-                                <pre className="whitespace-pre-wrap">
-                                  {JSON.stringify(log.detalhes, null, 2)}
-                                </pre>
-                              </div>
-                            )}
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                      Informações do Sistema
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="font-medium text-gray-600">
+                          Criado em:
+                        </span>
+                        <span className="ml-2 text-gray-800">
+                          {formatDateTime(relatorio.createdAt)}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-600">
+                          Atualizado em:
+                        </span>
+                        <span className="ml-2 text-gray-800">
+                          {formatDateTime(relatorio.updatedAt)}
+                        </span>
+                      </div>
+                      {relatorio.hashCompartilhamento && (
+                        <div className="md:col-span-2">
+                          <span className="font-medium text-gray-600">
+                            Hash de compartilhamento:
+                          </span>
+                          <code className="ml-2 text-xs bg-white px-2 py-1 rounded border">
+                            {relatorio.hashCompartilhamento}
+                          </code>
                         </div>
-                      ))}
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Aba Dados */}
+              {activeTab === "dados" && (
+                <div>
+                  {loadingDados ? (
+                    <Loading message="Carregando dados do relatório..." />
+                  ) : dadosRelatorio ? (
+                    <div className="space-y-6">
+                      {/* Resumo estatístico */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="bg-blue-50 p-4 rounded-lg">
+                          <p className="text-sm text-blue-600 font-medium">
+                            Total de Itens
+                          </p>
+                          <p className="text-2xl font-bold text-blue-900">
+                            {dadosRelatorio.itens?.length || 0}
+                          </p>
+                        </div>
+                        <div className="bg-green-50 p-4 rounded-lg">
+                          <p className="text-sm text-green-600 font-medium">
+                            Status Únicos
+                          </p>
+                          <p className="text-2xl font-bold text-green-900">
+                            {
+                              Object.keys(
+                                dadosRelatorio.distribuicaoPorStatus || {}
+                              ).length
+                            }
+                          </p>
+                        </div>
+                        <div className="bg-purple-50 p-4 rounded-lg">
+                          <p className="text-sm text-purple-600 font-medium">
+                            Especialidades
+                          </p>
+                          <p className="text-2xl font-bold text-purple-900">
+                            {
+                              Object.keys(
+                                dadosRelatorio.distribuicaoPorEspecialidade ||
+                                  {}
+                              ).length
+                            }
+                          </p>
+                        </div>
+                        <div className="bg-orange-50 p-4 rounded-lg">
+                          <p className="text-sm text-orange-600 font-medium">
+                            Convênios
+                          </p>
+                          <p className="text-2xl font-bold text-orange-900">
+                            {
+                              Object.keys(
+                                dadosRelatorio.distribuicaoPorConvenio || {}
+                              ).length
+                            }
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Tabela de dados */}
+                      <div className="bg-white border rounded-lg">
+                        <div className="p-4 border-b">
+                          <h3 className="text-lg font-semibold text-gray-800">
+                            Dados Detalhados
+                          </h3>
+                        </div>
+                        <div className="overflow-x-auto">
+                          <DataTable
+                            data={{
+                              content: dadosRelatorio.itens || [],
+                              totalElements: dadosRelatorio.itens?.length || 0,
+                              totalPages: 1,
+                              size: dadosRelatorio.itens?.length || 0,
+                              number: 0,
+                              numberOfElements:
+                                dadosRelatorio.itens?.length || 0,
+                              first: true,
+                              last: true,
+                            }}
+                            columns={dadosColumns}
+                            loading={false}
+                            onPageChange={() => {}}
+                          />
+                        </div>
+                      </div>
                     </div>
                   ) : (
                     <div className="text-center py-8">
-                      <Filter className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-600">Nenhum log encontrado</p>
+                      <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-600">Dados não disponíveis</p>
                     </div>
                   )}
                 </div>
-              </div>
-            )}
+              )}
+
+              {/* Aba Gráficos */}
+              {activeTab === "graficos" && (
+                <div>
+                  {loadingDados ? (
+                    <Loading message="Carregando gráficos..." />
+                  ) : chartData ? (
+                    <div className="space-y-8">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* Gráfico de pizza - Status */}
+                        <div className="bg-white border rounded-lg p-6">
+                          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                            <PieChart className="h-5 w-5 mr-2" />
+                            Distribuição por Status
+                          </h3>
+                          <div className="h-64">
+                            <Pie
+                              data={chartData.statusData}
+                              options={{
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                  legend: {
+                                    position: "bottom",
+                                  },
+                                },
+                              }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Gráfico de barras - Especialidades */}
+                        <div className="bg-white border rounded-lg p-6">
+                          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                            <BarChart3 className="h-5 w-5 mr-2" />
+                            Distribuição por Especialidade
+                          </h3>
+                          <div className="h-64">
+                            <Bar
+                              data={chartData.especialidadeData}
+                              options={{
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                  legend: {
+                                    display: false,
+                                  },
+                                },
+                                scales: {
+                                  y: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                      precision: 0,
+                                    },
+                                  },
+                                },
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Tabelas de distribuição */}
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        {/* Distribuição por Status */}
+                        <div className="bg-white border rounded-lg p-4">
+                          <h4 className="font-semibold text-gray-800 mb-3">
+                            Por Status
+                          </h4>
+                          <div className="space-y-2">
+                            {Object.entries(
+                              dadosRelatorio?.distribuicaoPorStatus || {}
+                            ).map(([status, count]) => (
+                              <div
+                                key={status}
+                                className="flex justify-between">
+                                <span className="text-sm text-gray-600">
+                                  {status}
+                                </span>
+                                <span className="text-sm font-medium">
+                                  {count}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Distribuição por Convênio */}
+                        <div className="bg-white border rounded-lg p-4">
+                          <h4 className="font-semibold text-gray-800 mb-3">
+                            Por Convênio
+                          </h4>
+                          <div className="space-y-2">
+                            {Object.entries(
+                              dadosRelatorio?.distribuicaoPorConvenio || {}
+                            ).map(([convenio, count]) => (
+                              <div
+                                key={convenio}
+                                className="flex justify-between">
+                                <span className="text-sm text-gray-600 truncate">
+                                  {convenio}
+                                </span>
+                                <span className="text-sm font-medium">
+                                  {count}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Distribuição por Unidade */}
+                        <div className="bg-white border rounded-lg p-4">
+                          <h4 className="font-semibold text-gray-800 mb-3">
+                            Por Unidade
+                          </h4>
+                          <div className="space-y-2">
+                            {Object.entries(
+                              dadosRelatorio?.distribuicaoPorUnidade || {}
+                            ).map(([unidade, count]) => (
+                              <div
+                                key={unidade}
+                                className="flex justify-between">
+                                <span className="text-sm text-gray-600">
+                                  {unidade}
+                                </span>
+                                <span className="text-sm font-medium">
+                                  {count}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-600">Gráficos não disponíveis</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Aba Logs */}
+              {activeTab === "logs" && (
+                <div>
+                  {loadingLogs ? (
+                    <Loading message="Carregando logs..." />
+                  ) : (
+                    <div className="bg-white border rounded-lg">
+                      <div className="p-4 border-b">
+                        <h3 className="text-lg font-semibold text-gray-800">
+                          Histórico de Ações
+                        </h3>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {logs.length} registros encontrados
+                        </p>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <DataTable
+                          data={{
+                            content: logs,
+                            totalElements: logs.length,
+                            totalPages: 1,
+                            size: logs.length,
+                            number: 0,
+                            numberOfElements: logs.length,
+                            first: true,
+                            last: true,
+                          }}
+                          columns={logsColumns}
+                          loading={false}
+                          onPageChange={() => {}}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        </main>
       </div>
     </ProtectedRoute>
   );

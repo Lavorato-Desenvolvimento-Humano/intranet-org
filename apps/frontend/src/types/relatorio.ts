@@ -78,32 +78,15 @@ export interface RelatorioSummaryDto {
 }
 
 export interface RelatorioItemDto {
-  // Identificação
   tipoEntidade: string; // GUIA, FICHA, PACIENTE
   entidadeId: string;
-
-  // Informações do paciente
   pacienteNome?: string;
   pacienteId?: string;
-
-  // Informações da guia
   numeroGuia?: string;
   guiaId?: string;
-  statusGuia?: string; // STATUS ESPECÍFICO DA GUIA
-
-  // Informações da ficha
   codigoFicha?: string;
   fichaId?: string;
-  statusFicha?: string; // STATUS ESPECÍFICO DA FICHA
-  tipoFicha?: string; // COM_GUIA, ASSINATURA
-
-  // Relacionamento Ficha-Guia
-  relacaoFichaGuia?: string; // "Ficha F123456 vinculada à Guia G789012"
-  identificadorCompleto?: string; // "F123456 → G789012 - João Silva"
-
-  // Informações gerais
   convenioNome?: string;
-  convenioId?: string;
   status: string;
   especialidade?: string;
   unidade?: string;
@@ -111,18 +94,11 @@ export interface RelatorioItemDto {
   ano?: number;
   quantidadeAutorizada?: number;
   usuarioResponsavelNome?: string;
-  usuarioResponsavelId?: string;
   dataAtualizacao: string;
-
-  // Informações de mudança de status
   statusAnterior?: string;
   statusNovo?: string;
   motivoMudanca?: string;
   dataMudancaStatus?: string;
-
-  // Campos calculados para melhor identificação
-  descricaoCompleta?: string; // "Paciente João Silva - Ficha F123456 - Guia G789012 - Cardiologia"
-  vinculacaoInfo?: string; // "Ficha de Cardiologia vinculada à Guia G789012"
 }
 
 export interface GraficoTimelineDto {
