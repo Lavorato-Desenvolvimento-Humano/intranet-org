@@ -3,7 +3,6 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { useStatus } from "@/hooks/useStatus";
 import {
   ArrowLeft,
   Download,
@@ -21,10 +20,6 @@ import {
   PieChart,
   Eye,
   FileText,
-  Stethoscope,
-  Building,
-  Hash,
-  ArrowRight,
 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
@@ -116,7 +111,6 @@ const StatusBadge = ({ status }: { status: StatusRelatorioEnum }) => {
 export default function RelatorioDetalhesPage() {
   const router = useRouter();
   const params = useParams();
-  const { getStatusColor } = useStatus();
   const relatorioId = params.id as string;
 
   // Estados principais
@@ -228,176 +222,42 @@ export default function RelatorioDetalhesPage() {
     }
   };
 
-  // Colunas melhoradas para tabela de dados
+  // Colunas para tabela de dados
   const dadosColumns = [
     {
-      header: "Tipo/Identificação",
-      accessor: ((item: RelatorioItemDto) => (
-        <div className="space-y-2">
-          {/* Badge do tipo */}
-          <div className="flex items-center">
-            <span
-              className={`inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full ${
-                item.tipoEntidade === "FICHA"
-                  ? "bg-blue-100 text-blue-800 border border-blue-200"
-                  : item.tipoEntidade === "GUIA"
-                    ? "bg-green-100 text-green-800 border border-green-200"
-                    : "bg-gray-100 text-gray-800 border border-gray-200"
-              }`}>
-              {item.tipoEntidade === "FICHA" && (
-                <FileText className="h-3 w-3 mr-1" />
-              )}
-              {item.tipoEntidade === "GUIA" && (
-                <Hash className="h-3 w-3 mr-1" />
-              )}
-              {item.tipoEntidade}
-            </span>
-          </div>
-
-          {/* Código/Número principal */}
-          <div className="font-mono text-sm font-semibold">
-            {item.tipoEntidade === "FICHA" && item.codigoFicha && (
-              <div className="text-blue-700">Código: {item.codigoFicha}</div>
-            )}
-            {item.tipoEntidade === "GUIA" && item.numeroGuia && (
-              <div className="text-green-700">Nº Guia: {item.numeroGuia}</div>
-            )}
-          </div>
-
-          {/* Vinculação para fichas */}
-          {item.tipoEntidade === "FICHA" && item.numeroGuia && (
-            <div className="flex items-center text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
-              <ArrowRight className="h-3 w-3 mr-1" />
-              Vinculada à Guia:{" "}
-              <span className="font-mono ml-1">{item.numeroGuia}</span>
-            </div>
-          )}
-        </div>
-      )) as any,
-      className: "min-w-[200px]",
+      header: "Tipo",
+      accessor: "tipoEntidade" as keyof RelatorioItemDto,
+      className: "font-medium",
     },
     {
       header: "Paciente",
-      accessor: ((item: RelatorioItemDto) => (
-        <div className="space-y-1">
-          <div className="flex items-center">
-            <User className="h-4 w-4 mr-2 text-gray-400" />
-            <span className="font-medium text-gray-900">
-              {item.pacienteNome || (
-                <span className="text-red-500 text-sm italic">
-                  Não informado
-                </span>
-              )}
-            </span>
-          </div>
-          {item.pacienteId && (
-            <div className="text-xs text-gray-500 font-mono pl-6">
-              ID: {item.pacienteId.substring(0, 8)}...
-            </div>
-          )}
-        </div>
-      )) as any,
-      className: "min-w-[180px]",
+      accessor: "pacienteNome" as keyof RelatorioItemDto,
+    },
+    {
+      header: "Código/Número",
+      accessor: ((item: RelatorioItemDto) =>
+        item.numeroGuia || item.codigoFicha || "-") as any,
     },
     {
       header: "Convênio",
-      accessor: ((item: RelatorioItemDto) => (
-        <div className="flex items-center">
-          <Building className="h-4 w-4 mr-2 text-gray-400" />
-          {item.convenioNome &&
-          item.convenioNome !== "Convênio não informado" ? (
-            <span className="font-medium">{item.convenioNome}</span>
-          ) : (
-            <span className="text-red-500 text-sm italic flex items-center">
-              <AlertCircle className="h-3 w-3 mr-1" />
-              Não informado
-            </span>
-          )}
-        </div>
-      )) as any,
-      className: "min-w-[150px]",
+      accessor: "convenioNome" as keyof RelatorioItemDto,
     },
     {
       header: "Status",
-      accessor: ((item: RelatorioItemDto) => (
-        <div className="space-y-2">
-          {/* Status atual usando o hook useStatus */}
-          <span
-            className={`inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full ${getStatusColor(
-              item.status
-            )}`}>
-            {item.status || "Não informado"}
-          </span>
-
-          {/* Mudança de status */}
-          {item.statusAnterior && item.statusNovo && (
-            <div className="text-xs text-gray-600 bg-gray-50 px-2 py-1 rounded">
-              <div className="flex items-center">
-                <span className="text-gray-500">{item.statusAnterior}</span>
-                <ArrowRight className="h-3 w-3 mx-1" />
-                <span className="font-medium">{item.statusNovo}</span>
-              </div>
-              {item.dataMudancaStatus && (
-                <div className="text-xs text-gray-500 mt-1">
-                  {formatDateTime(item.dataMudancaStatus)}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )) as any,
-      className: "min-w-[160px]",
+      accessor: "status" as keyof RelatorioItemDto,
     },
     {
       header: "Especialidade",
-      accessor: ((item: RelatorioItemDto) => (
-        <div className="flex items-center">
-          <Stethoscope className="h-4 w-4 mr-2 text-gray-400" />
-          <span
-            className={
-              item.especialidade && item.especialidade !== "Não informado"
-                ? "text-gray-900"
-                : "text-gray-400 italic"
-            }>
-            {item.especialidade || "N/A"}
-          </span>
-        </div>
-      )) as any,
-      className: "min-w-[140px]",
+      accessor: "especialidade" as keyof RelatorioItemDto,
     },
     {
       header: "Responsável",
-      accessor: ((item: RelatorioItemDto) => (
-        <div className="flex items-center">
-          <User className="h-4 w-4 mr-2 text-gray-400" />
-          <span
-            className={
-              item.usuarioResponsavelNome
-                ? "text-gray-900"
-                : "text-gray-400 italic"
-            }>
-            {item.usuarioResponsavelNome || "Não informado"}
-          </span>
-        </div>
-      )) as any,
-      className: "min-w-[140px]",
+      accessor: "usuarioResponsavelNome" as keyof RelatorioItemDto,
     },
     {
-      header: "Última Atualização",
-      accessor: ((item: RelatorioItemDto) => (
-        <div className="space-y-1">
-          <div className="flex items-center text-sm">
-            <Calendar className="h-4 w-4 mr-2 text-gray-400" />
-            {formatDateTime(item.dataAtualizacao)}
-          </div>
-          {item.motivoMudanca && (
-            <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
-              <strong>Motivo:</strong> {item.motivoMudanca}
-            </div>
-          )}
-        </div>
-      )) as any,
-      className: "min-w-[180px]",
+      header: "Atualização",
+      accessor: ((item: RelatorioItemDto) =>
+        formatDateTime(item.dataAtualizacao)) as any,
     },
   ];
 
@@ -423,144 +283,6 @@ export default function RelatorioDetalhesPage() {
     },
   ];
 
-  // Componente de estatísticas melhorado
-  const EstatisticasCard: React.FC<{ dadosRelatorio: RelatorioDataDto }> = ({
-    dadosRelatorio,
-  }) => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      {/* Total de Registros */}
-      <div className="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-gray-600">
-              Total de Registros
-            </p>
-            <p className="text-3xl font-bold text-gray-900">
-              {dadosRelatorio.totalRegistros}
-            </p>
-            <p className="text-xs text-gray-500 mt-1">
-              Registros processados no período
-            </p>
-          </div>
-          <FileText className="h-8 w-8 text-blue-500" />
-        </div>
-      </div>
-
-      {/* Distribuição por Convênio */}
-      <div className="bg-white rounded-lg shadow p-6 border-l-4 border-green-500">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <p className="text-sm font-medium text-gray-600">
-              Convênios Ativos
-            </p>
-            <p className="text-3xl font-bold text-gray-900">
-              {Object.keys(dadosRelatorio.distribuicaoPorConvenio || {}).length}
-            </p>
-          </div>
-          <Building className="h-6 w-6 text-green-500" />
-        </div>
-        <div className="space-y-2 max-h-24 overflow-y-auto">
-          {Object.entries(dadosRelatorio.distribuicaoPorConvenio || {})
-            .slice(0, 3)
-            .map(([convenio, count]) => (
-              <div key={convenio} className="flex justify-between text-sm">
-                <span className="text-gray-700 truncate" title={convenio}>
-                  {convenio.length > 15
-                    ? `${convenio.substring(0, 15)}...`
-                    : convenio}
-                </span>
-                <span className="font-medium text-gray-900">{count}</span>
-              </div>
-            ))}
-          {Object.keys(dadosRelatorio.distribuicaoPorConvenio || {}).length >
-            3 && (
-            <div className="text-xs text-gray-500 italic">
-              +
-              {Object.keys(dadosRelatorio.distribuicaoPorConvenio || {})
-                .length - 3}{" "}
-              mais...
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Distribuição por Status */}
-      <div className="bg-white rounded-lg shadow p-6 border-l-4 border-yellow-500">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <p className="text-sm font-medium text-gray-600">Status Únicos</p>
-            <p className="text-3xl font-bold text-gray-900">
-              {Object.keys(dadosRelatorio.distribuicaoPorStatus || {}).length}
-            </p>
-          </div>
-          <CheckCircle className="h-6 w-6 text-yellow-500" />
-        </div>
-        <div className="space-y-2 max-h-24 overflow-y-auto">
-          {Object.entries(dadosRelatorio.distribuicaoPorStatus || {})
-            .slice(0, 3)
-            .map(([status, count]) => (
-              <div key={status} className="flex justify-between text-sm">
-                <span className="text-gray-700 truncate" title={status}>
-                  {status.length > 15
-                    ? `${status.substring(0, 15)}...`
-                    : status}
-                </span>
-                <span className="font-medium text-gray-900">{count}</span>
-              </div>
-            ))}
-          {Object.keys(dadosRelatorio.distribuicaoPorStatus || {}).length >
-            3 && (
-            <div className="text-xs text-gray-500 italic">
-              +
-              {Object.keys(dadosRelatorio.distribuicaoPorStatus || {}).length -
-                3}{" "}
-              mais...
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Distribuição por Especialidade */}
-      <div className="bg-white rounded-lg shadow p-6 border-l-4 border-purple-500">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <p className="text-sm font-medium text-gray-600">Especialidades</p>
-            <p className="text-3xl font-bold text-gray-900">
-              {
-                Object.keys(dadosRelatorio.distribuicaoPorEspecialidade || {})
-                  .length
-              }
-            </p>
-          </div>
-          <Stethoscope className="h-6 w-6 text-purple-500" />
-        </div>
-        <div className="space-y-2 max-h-24 overflow-y-auto">
-          {Object.entries(dadosRelatorio.distribuicaoPorEspecialidade || {})
-            .slice(0, 3)
-            .map(([especialidade, count]) => (
-              <div key={especialidade} className="flex justify-between text-sm">
-                <span className="text-gray-700 truncate" title={especialidade}>
-                  {especialidade.length > 15
-                    ? `${especialidade.substring(0, 15)}...`
-                    : especialidade}
-                </span>
-                <span className="font-medium text-gray-900">{count}</span>
-              </div>
-            ))}
-          {Object.keys(dadosRelatorio.distribuicaoPorEspecialidade || {})
-            .length > 3 && (
-            <div className="text-xs text-gray-500 italic">
-              +
-              {Object.keys(dadosRelatorio.distribuicaoPorEspecialidade || {})
-                .length - 3}{" "}
-              mais...
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-
   // Configuração dos gráficos
   const getChartData = () => {
     if (!dadosRelatorio) return null;
@@ -572,14 +294,15 @@ export default function RelatorioDetalhesPage() {
         {
           data: Object.values(dadosRelatorio.distribuicaoPorStatus),
           backgroundColor: [
-            "#10B981",
-            "#F59E0B",
-            "#EF4444",
-            "#3B82F6",
-            "#8B5CF6",
-            "#F97316",
+            "#10B981", // verde
+            "#F59E0B", // amarelo
+            "#EF4444", // vermelho
+            "#6B7280", // cinza
+            "#3B82F6", // azul
+            "#8B5CF6", // roxo
           ],
-          borderWidth: 1,
+          borderWidth: 2,
+          borderColor: "#fff",
         },
       ],
     };
@@ -883,8 +606,54 @@ export default function RelatorioDetalhesPage() {
                     <Loading message="Carregando dados do relatório..." />
                   ) : dadosRelatorio ? (
                     <div className="space-y-6">
-                      {/* Estatísticas melhoradas */}
-                      <EstatisticasCard dadosRelatorio={dadosRelatorio} />
+                      {/* Resumo estatístico */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="bg-blue-50 p-4 rounded-lg">
+                          <p className="text-sm text-blue-600 font-medium">
+                            Total de Itens
+                          </p>
+                          <p className="text-2xl font-bold text-blue-900">
+                            {dadosRelatorio.itens?.length || 0}
+                          </p>
+                        </div>
+                        <div className="bg-green-50 p-4 rounded-lg">
+                          <p className="text-sm text-green-600 font-medium">
+                            Status Únicos
+                          </p>
+                          <p className="text-2xl font-bold text-green-900">
+                            {
+                              Object.keys(
+                                dadosRelatorio.distribuicaoPorStatus || {}
+                              ).length
+                            }
+                          </p>
+                        </div>
+                        <div className="bg-purple-50 p-4 rounded-lg">
+                          <p className="text-sm text-purple-600 font-medium">
+                            Especialidades
+                          </p>
+                          <p className="text-2xl font-bold text-purple-900">
+                            {
+                              Object.keys(
+                                dadosRelatorio.distribuicaoPorEspecialidade ||
+                                  {}
+                              ).length
+                            }
+                          </p>
+                        </div>
+                        <div className="bg-orange-50 p-4 rounded-lg">
+                          <p className="text-sm text-orange-600 font-medium">
+                            Convênios
+                          </p>
+                          <p className="text-2xl font-bold text-orange-900">
+                            {
+                              Object.keys(
+                                dadosRelatorio.distribuicaoPorConvenio || {}
+                              ).length
+                            }
+                          </p>
+                        </div>
+                      </div>
 
                       {/* Tabela de dados */}
                       <div className="bg-white border rounded-lg">
