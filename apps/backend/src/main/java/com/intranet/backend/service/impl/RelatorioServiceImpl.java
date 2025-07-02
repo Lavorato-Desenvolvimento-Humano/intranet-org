@@ -9,6 +9,7 @@ import com.intranet.backend.model.*;
 import com.intranet.backend.repository.*;
 import com.intranet.backend.service.RelatorioService;
 import com.itextpdf.io.source.ByteArrayOutputStream;
+import com.itextpdf.kernel.geom.PageSize;
 import com.itextpdf.layout.element.Cell;
 import com.itextpdf.layout.properties.UnitValue;
 import jakarta.servlet.http.HttpServletRequest;
@@ -350,102 +351,112 @@ public class RelatorioServiceImpl implements RelatorioService {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             PdfWriter writer = new PdfWriter(baos);
             PdfDocument pdf = new PdfDocument(writer);
-            Document document = new Document(pdf);
 
-            // Título
+            Document document = new Document(pdf, PageSize.A4.rotate());
+
+            document.setMargins(15, 15, 15, 15);
+
             document.add(new Paragraph(dados.getTitulo())
-                    .setFontSize(18)
+                    .setFontSize(14)
                     .setBold()
-                    .setMarginBottom(20));
+                    .setMarginBottom(10));
 
-            // Informações gerais
-            document.add(new Paragraph("Usuário Gerador: " + dados.getUsuarioGerador()));
-            document.add(new Paragraph("Período: " +
-                    dados.getPeriodoInicio().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + " a " +
-                    dados.getPeriodoFim().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))));
-            document.add(new Paragraph("Total de Registros: " + dados.getTotalRegistros()));
-            document.add(new Paragraph("Data de Geração: " +
-                    dados.getDataGeracao().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))));
+            String infoGeral = String.format(
+                    "Gerador: %s | Período: %s a %s | Total: %d registros | Gerado em: %s",
+                    dados.getUsuarioGerador(),
+                    dados.getPeriodoInicio().format(DateTimeFormatter.ofPattern("dd/MM/yy")),
+                    dados.getPeriodoFim().format(DateTimeFormatter.ofPattern("dd/MM/yy")),
+                    dados.getTotalRegistros(),
+                    dados.getDataGeracao().format(DateTimeFormatter.ofPattern("dd/MM/yy HH:mm"))
+            );
 
-            // Estatísticas
+            document.add(new Paragraph(infoGeral)
+                    .setFontSize(8)
+                    .setMarginBottom(10));
+
             if (dados.getDistribuicaoPorStatus() != null && !dados.getDistribuicaoPorStatus().isEmpty()) {
-                document.add(new Paragraph("\nDistribuição por Status:").setBold().setMarginTop(15));
+                StringBuilder statusInfo = new StringBuilder("Status: ");
                 dados.getDistribuicaoPorStatus().forEach((status, count) ->
-                        document.add(new Paragraph("• " + status + ": " + count))
-                );
+                        statusInfo.append(status).append("(").append(count).append(") "));
+
+                document.add(new Paragraph(statusInfo.toString())
+                        .setFontSize(7)
+                        .setItalic()
+                        .setMarginBottom(8));
             }
 
-            // Tabela de itens com nova estrutura
             if (dados.getItens() != null && !dados.getItens().isEmpty()) {
-                document.add(new Paragraph("\nDetalhes dos Itens:").setBold().setMarginTop(20));
+                document.add(new Paragraph("Dados dos Itens:")
+                        .setBold()
+                        .setFontSize(10)
+                        .setMarginTop(5)
+                        .setMarginBottom(5));
 
-                // Criar tabela com 9 colunas conforme especificado
                 Table table = new Table(UnitValue.createPercentArray(new float[]{
-                        3f,    // Nome do Paciente
-                        2.5f,  // Convênio
-                        2f,    // Número/Código
-                        1.5f,  // Status
-                        2f,    // Especialidade
-                        1f,    // Mês
-                        1f,    // Qtd. Autorizada
-                        2f,    // Atualização
-                        1f     // Tipo
+                        2.8f,  // Nome do Paciente
+                        1.8f,  // Convênio
+                        1.3f,  // Número/Código
+                        1.0f,  // Status
+                        1.5f,  // Especialidade
+                        0.8f,  // Unidade
+                        0.7f,  // Mês
+                        0.8f,  // Qtd. Autorizada
+                        1.2f,  // Atualização
+                        0.8f   // Tipo
                 }));
                 table.setWidth(UnitValue.createPercentValue(100));
 
-                // Cabeçalho da tabela
-                table.addHeaderCell(createHeaderCell("Nome do Paciente"));
-                table.addHeaderCell(createHeaderCell("Convênio"));
-                table.addHeaderCell(createHeaderCell("Número/Código"));
-                table.addHeaderCell(createHeaderCell("Status"));
-                table.addHeaderCell(createHeaderCell("Especialidade"));
-                table.addHeaderCell(createHeaderCell("Mês"));
-                table.addHeaderCell(createHeaderCell("Qtd. Autorizada"));
-                table.addHeaderCell(createHeaderCell("Atualização"));
-                table.addHeaderCell(createHeaderCell("Tipo"));
+                table.addHeaderCell(createCompactHeaderCell("Paciente"));
+                table.addHeaderCell(createCompactHeaderCell("Convênio"));
+                table.addHeaderCell(createCompactHeaderCell("Nº/Código"));
+                table.addHeaderCell(createCompactHeaderCell("Status"));
+                table.addHeaderCell(createCompactHeaderCell("Especialidade"));
+                table.addHeaderCell(createCompactHeaderCell("Unidade"));
+                table.addHeaderCell(createCompactHeaderCell("Mês"));
+                table.addHeaderCell(createCompactHeaderCell("Qtd."));
+                table.addHeaderCell(createCompactHeaderCell("Atualização"));
+                table.addHeaderCell(createCompactHeaderCell("Tipo"));
 
-                // Dados (limitado a 100 itens para performance)
                 dados.getItens().stream()
                         .limit(500)
                         .forEach(item -> {
-                            // Nome do Paciente
-                            table.addCell(createDataCell(item.getPacienteNome()));
+                            String nomeFormatado = truncateText(item.getPacienteNome(), 25);
+                            table.addCell(createCompactDataCell(nomeFormatado));
 
-                            // Convênio
-                            table.addCell(createDataCell(item.getConvenioNome()));
+                            String convenioFormatado = truncateText(item.getConvenioNome(), 18);
+                            table.addCell(createCompactDataCell(convenioFormatado));
 
-                            // Número/Código
                             String numeroOuCodigo = getNumeroOuCodigoPDF(item);
-                            table.addCell(createDataCell(numeroOuCodigo));
+                            table.addCell(createCompactDataCell(numeroOuCodigo));
 
-                            // Status
-                            table.addCell(createDataCell(item.getStatus()));
+                            table.addCell(createCompactDataCell(item.getStatus()));
 
-                            // Especialidade
-                            table.addCell(createDataCell(item.getEspecialidade()));
+                            String especialidadeFormatada = truncateText(item.getEspecialidade(), 15);
+                            table.addCell(createCompactDataCell(especialidadeFormatada));
 
-                            // Mês
+                            table.addCell(createCompactDataCell(getUnidadeFormatadaPDF(item)));
+
                             String mesFormatado = getMesFormatadoPDF(item);
-                            table.addCell(createDataCell(mesFormatado));
+                            table.addCell(createCompactDataCell(mesFormatado));
 
-                            // Quantidade Autorizada
                             String quantidade = getQuantidadeFormatadaPDF(item);
-                            table.addCell(createDataCell(quantidade));
+                            table.addCell(createCompactDataCell(quantidade));
 
-                            // Atualização
                             String dataAtualizacao = item.getDataAtualizacao() != null ?
-                                    item.getDataAtualizacao().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) : "-";
-                            table.addCell(createDataCell(dataAtualizacao));
+                                    item.getDataAtualizacao().format(DateTimeFormatter.ofPattern("dd/MM HH:mm")) : "-";
+                            table.addCell(createCompactDataCell(dataAtualizacao));
 
-                            // Tipo
-                            table.addCell(createDataCell(item.getTipoEntidade()));
+                            String tipoAbreviado = "GUIA".equals(item.getTipoEntidade()) ? "G" : "F";
+                            table.addCell(createCompactDataCell(tipoAbreviado));
                         });
 
                 document.add(table);
 
                 if (dados.getItens().size() > 500) {
-                    document.add(new Paragraph("... e mais " + (dados.getItens().size() - 500) + " itens")
-                            .setItalic().setMarginTop(10));
+                    document.add(new Paragraph("+ " + (dados.getItens().size() - 500) + " itens")
+                            .setFontSize(7)
+                            .setItalic()
+                            .setMarginTop(5));
                 }
             }
 
@@ -457,6 +468,7 @@ public class RelatorioServiceImpl implements RelatorioService {
             throw new RuntimeException("Erro ao gerar PDF", e);
         }
     }
+
 
     private List<GraficoTimelineDto> generateTimelineDataEstadoAtual(List<RelatorioItemDto> itens,
                                                                      LocalDateTime periodoInicio,
@@ -874,21 +886,37 @@ public class RelatorioServiceImpl implements RelatorioService {
         return "-";
     }
 
-    private Cell createHeaderCell(String content) {
+    private String getUnidadeFormatadaPDF(RelatorioItemDto item) {
+        if (item.getUnidade() != null && !item.getUnidade().trim().isEmpty()) {
+            return item.getUnidade();
+        }
+        return "N/A";
+    }
+
+    private Cell createCompactHeaderCell(String content) {
         return new Cell()
                 .add(new Paragraph(content))
                 .setBold()
+                .setFontSize(8)  // Fonte menor para cabeçalho
                 .setBackgroundColor(com.itextpdf.kernel.colors.ColorConstants.LIGHT_GRAY)
                 .setTextAlignment(com.itextpdf.layout.properties.TextAlignment.CENTER)
-                .setPadding(5);
+                .setPadding(3);  // Padding reduzido
     }
 
-    private Cell createDataCell(String content) {
+    private Cell createCompactDataCell(String content) {
         String cellContent = content != null ? content : "-";
         return new Cell()
                 .add(new Paragraph(cellContent))
-                .setPadding(3)
+                .setFontSize(7)  // Fonte menor para dados
+                .setPadding(2)   // Padding reduzido
                 .setTextAlignment(com.itextpdf.layout.properties.TextAlignment.LEFT);
+    }
+
+    private String truncateText(String text, int maxLength) {
+        if (text == null || text.length() <= maxLength) {
+            return text;
+        }
+        return text.substring(0, maxLength - 3) + "...";
     }
 
     // =================================================================================
