@@ -12,8 +12,11 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Repository
 public interface GuiaRepository extends JpaRepository<Guia, UUID> {
@@ -65,4 +68,79 @@ public interface GuiaRepository extends JpaRepository<Guia, UUID> {
 
     @Query("SELECT COUNT(g) > 0 FROM Guia g WHERE g.numeroGuia = :numero AND g.mes = :mes AND g.ano = :ano")
     boolean existsByNumeroGuiaAndMesAndAno(@Param("numero") String numeroGuia, @Param("mes") Integer mes, @Param("ano") Integer ano);
+
+    @Query("SELECT DISTINCT g FROM Guia g " +
+            "LEFT JOIN FETCH g.paciente p " +
+            "LEFT JOIN FETCH g.convenio c " +
+            "LEFT JOIN FETCH g.usuarioResponsavel u " +
+            "WHERE (:usuarioResponsavel IS NULL OR g.usuarioResponsavel.id = :usuarioResponsavel) " +
+            "AND (g.createdAt BETWEEN :periodoInicio AND :periodoFim " +
+            "     OR g.updatedAt BETWEEN :periodoInicio AND :periodoFim) " +
+            "AND (:status IS NULL OR g.status IN :status) " +
+            "AND (:convenioIds IS NULL OR g.convenio.id IN :convenioIds) " +
+            "ORDER BY g.updatedAt DESC")
+    List<Guia> findGuiasForRelatorio(
+            @Param("usuarioResponsavel") UUID usuarioResponsavel,
+            @Param("periodoInicio") LocalDateTime periodoInicio,
+            @Param("periodoFim") LocalDateTime periodoFim,
+            @Param("status") List<String> status,
+            @Param("convenioIds") List<UUID> convenioIds
+    );
+
+    @Query("SELECT DISTINCT g FROM Guia g " +
+            "LEFT JOIN FETCH g.paciente p " +
+            "LEFT JOIN FETCH g.convenio c " +
+            "LEFT JOIN FETCH g.usuarioResponsavel u " +
+            "WHERE (:usuarioResponsavel IS NULL OR g.usuarioResponsavel.id = :usuarioResponsavel) " +
+            "AND (g.createdAt BETWEEN :periodoInicio AND :periodoFim " +
+            "     OR g.updatedAt BETWEEN :periodoInicio AND :periodoFim) " +
+            "AND (:status IS NULL OR g.status IN :status) " +
+            "AND (:convenioIds IS NULL OR g.convenio.id IN :convenioIds) " +
+            "ORDER BY g.updatedAt DESC")
+    List<Guia> findGuiasForRelatorioBase(
+            @Param("usuarioResponsavel") UUID usuarioResponsavel,
+            @Param("periodoInicio") LocalDateTime periodoInicio,
+            @Param("periodoFim") LocalDateTime periodoFim,
+            @Param("status") List<String> status,
+            @Param("convenioIds") List<UUID> convenioIds
+    );
+
+    default List<Guia> findGuiasForRelatorio(UUID usuarioResponsavel,
+                                             LocalDateTime periodoInicio,
+                                             LocalDateTime periodoFim,
+                                             List<String> status,
+                                             List<String> especialidades,
+                                             List<UUID> convenioIds,
+                                             List<String> unidades) {
+
+        List<Guia> guias = findGuiasForRelatorioBase(
+                usuarioResponsavel, periodoInicio, periodoFim, status, convenioIds
+        );
+
+        // Aplicar filtros de especialidades
+        if (especialidades != null && !especialidades.isEmpty()) {
+            guias = guias.stream()
+                    .filter(guia -> guia.getEspecialidades() != null &&
+                            guia.getEspecialidades().stream()
+                                    .anyMatch(especialidades::contains))
+                    .collect(Collectors.toList());
+        }
+
+        // Aplicar filtros de unidades
+        if (unidades != null && !unidades.isEmpty()) {
+            guias = guias.stream()
+                    .filter(guia -> {
+                        if (guia.getPaciente() == null) return false;
+                        try {
+                            String unidadePaciente = guia.getPaciente().getUnidade().name();
+                            return unidades.contains(unidadePaciente);
+                        } catch (Exception e) {
+                            return false;
+                        }
+                    })
+                    .collect(Collectors.toList());
+        }
+
+        return guias;
+    }
 }

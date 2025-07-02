@@ -55,7 +55,7 @@ public class RelatorioServiceImpl implements RelatorioService {
     @Override
     @Transactional
     public RelatorioDto gerarRelatorio(RelatorioCreateRequest request) {
-        logger.info("Iniciando geração de relatório: {}", request.getTitulo());
+        logger.info("Iniciando geração de relatório: {} - Nova regra: estado atual", request.getTitulo());
 
         User currentUser = getCurrentUser();
 
@@ -67,42 +67,52 @@ public class RelatorioServiceImpl implements RelatorioService {
             throw new IllegalArgumentException("Usuário não tem permissão para gerar relatórios de outros usuários");
         }
 
-        // Criar entidade do relatório
-        Relatorio relatorio = new Relatorio();
-        relatorio.setTitulo(request.getTitulo());
-        relatorio.setDescricao(request.getDescricao());
-        relatorio.setUsuarioGerador(currentUser);
-        relatorio.setPeriodoInicio(request.getPeriodoInicio());
-        relatorio.setPeriodoFim(request.getPeriodoFim());
-        relatorio.setFiltros(buildFiltrosJson(request));
-        relatorio.gerarHashCompartilhamento();
-        relatorio.setStatusRelatorio(Relatorio.StatusRelatorio.PROCESSANDO);
-
-        relatorio = relatorioRepository.save(relatorio);
-
-        // Gerar dados do relatório
         try {
-            RelatorioDataDto dadosRelatorio = processarDadosRelatorio(request, usuarioAlvo);
-            relatorio.setTotalRegistros(dadosRelatorio.getTotalRegistros());
-            relatorio.setDadosRelatorio(convertToJsonString(dadosRelatorio));
-            relatorio.setStatusRelatorio(Relatorio.StatusRelatorio.CONCLUIDO);
+            // Criar o registro do relatório
+            Relatorio relatorio = new Relatorio();
+            relatorio.setTitulo(request.getTitulo());
+            relatorio.setDescricao(request.getDescricao());
+            relatorio.setUsuarioGerador(currentUser);
+            relatorio.setPeriodoInicio(request.getPeriodoInicio());
+            relatorio.setPeriodoFim(request.getPeriodoFim());
+            relatorio.setFiltros(buildFiltrosJson(request));
+            relatorio.gerarHashCompartilhamento();
+            relatorio.setStatusRelatorio(Relatorio.StatusRelatorio.PROCESSANDO);
 
             relatorio = relatorioRepository.save(relatorio);
+            logger.info("Relatório criado com ID: {}", relatorio.getId());
 
-            // Registrar log de geração
-            registrarLog(RelatorioLog.gerado(relatorio, currentUser, getClientIpAddress()));
+            try {
+                RelatorioDataDto dados = processarDadosRelatorioEstadoAtual(request, usuarioAlvo);
 
-            logger.info("Relatório gerado com sucesso. ID: {}, Total de registros: {}",
-                    relatorio.getId(), relatorio.getTotalRegistros());
+                // Armazenar dados do relatório
+                ObjectMapper mapper = new ObjectMapper();
+                mapper.registerModule(new JavaTimeModule());
+                String dadosJson = mapper.writeValueAsString(dados);
+
+                relatorio.setDadosRelatorio(dadosJson);
+                relatorio.setTotalRegistros(dados.getTotalRegistros());
+                relatorio.setStatusRelatorio(Relatorio.StatusRelatorio.CONCLUIDO);
+
+                relatorio = relatorioRepository.save(relatorio);
+
+                registrarLog(RelatorioLog.gerado(relatorio, currentUser, getClientIpAddress()));
+
+                logger.info("Relatório processado com sucesso. Total de registros: {}", dados.getTotalRegistros());
+
+            } catch (Exception e) {
+                logger.error("Erro ao processar relatório {}: {}", relatorio.getId(), e.getMessage(), e);
+                relatorio.setStatusRelatorio(Relatorio.StatusRelatorio.ERRO);
+                relatorioRepository.save(relatorio);
+                throw e;
+            }
+
+            return mapToDto(relatorio);
 
         } catch (Exception e) {
-            logger.error("Erro ao processar dados do relatório: {}", e.getMessage(), e);
-            relatorio.setStatusRelatorio(Relatorio.StatusRelatorio.ERRO);
-            relatorioRepository.save(relatorio);
+            logger.error("Erro ao gerar relatório: {}", e.getMessage(), e);
             throw new RuntimeException("Erro ao gerar relatório: " + e.getMessage(), e);
         }
-
-        return mapToDto(relatorio);
     }
 
     @Override
@@ -404,6 +414,32 @@ public class RelatorioServiceImpl implements RelatorioService {
         }
     }
 
+    private List<GraficoTimelineDto> generateTimelineDataEstadoAtual(List<RelatorioItemDto> itens,
+                                                                     LocalDateTime periodoInicio,
+                                                                     LocalDateTime periodoFim) {
+        if (itens == null || itens.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // Agrupa por data de atualização
+        Map<LocalDate, Long> timelineMap = itens.stream()
+                .filter(item -> item.getDataAtualizacao() != null)
+                .collect(Collectors.groupingBy(
+                        item -> item.getDataAtualizacao().toLocalDate(),
+                        Collectors.counting()
+                ));
+
+        return timelineMap.entrySet().stream()
+                .map(entry -> {
+                    GraficoTimelineDto dto = new GraficoTimelineDto();
+                    dto.setData(entry.getKey());
+                    dto.setQuantidade(entry.getValue());
+                    return dto;
+                })
+                .sorted(Comparator.comparing(GraficoTimelineDto::getData))
+                .collect(Collectors.toList());
+    }
+
     @Override
     public Map<String, Object> getEstatisticasRelatorios() {
         logger.info("Obtendo estatísticas de relatórios");
@@ -489,7 +525,7 @@ public class RelatorioServiceImpl implements RelatorioService {
         relatorio = relatorioRepository.save(relatorio);
 
         try {
-            RelatorioDataDto dadosRelatorio = processarDadosRelatorio(request, relatorio.getUsuarioGerador().getId());
+            RelatorioDataDto dadosRelatorio = processarDadosRelatorioEstadoAtual(request, relatorio.getUsuarioGerador().getId());
             relatorio.setTotalRegistros(dadosRelatorio.getTotalRegistros());
             relatorio.setDadosRelatorio(convertToJsonString(dadosRelatorio));
             relatorio.setStatusRelatorio(Relatorio.StatusRelatorio.CONCLUIDO);
@@ -529,8 +565,8 @@ public class RelatorioServiceImpl implements RelatorioService {
     // MÉTODOS AUXILIARES PRIVADOS
     // =================================================================================
 
-    private RelatorioDataDto processarDadosRelatorio(RelatorioCreateRequest request, UUID usuarioAlvo) {
-        logger.info("Processando dados do relatório para usuário: {}", usuarioAlvo);
+    private RelatorioDataDto processarDadosRelatorioEstadoAtual(RelatorioCreateRequest request, UUID usuarioAlvo) {
+        logger.info("Processando dados do relatório - Estado atual das entidades para usuário: {}", usuarioAlvo);
 
         RelatorioDataDto dados = new RelatorioDataDto();
         dados.setTitulo(request.getTitulo());
@@ -539,6 +575,7 @@ public class RelatorioServiceImpl implements RelatorioService {
         dados.setPeriodoFim(request.getPeriodoFim());
         dados.setDataGeracao(LocalDateTime.now());
 
+        // Configurar filtros aplicados
         Map<String, Object> filtrosAplicados = new HashMap<>();
         filtrosAplicados.put("usuarioResponsavelId", request.getUsuarioResponsavelId());
         filtrosAplicados.put("status", request.getStatus());
@@ -546,45 +583,93 @@ public class RelatorioServiceImpl implements RelatorioService {
         filtrosAplicados.put("convenioIds", request.getConvenioIds());
         filtrosAplicados.put("unidades", request.getUnidades());
         filtrosAplicados.put("tipoEntidade", request.getTipoEntidade());
+        filtrosAplicados.put("regra", "ESTADO_ATUAL");
         dados.setFiltrosAplicados(filtrosAplicados);
-
-        List<StatusHistory> historicoStatus = statusHistoryRepository
-                .findByDataAlteracaoBetween(request.getPeriodoInicio(), request.getPeriodoFim(), Pageable.unpaged())
-                .getContent()
-                .stream()
-                .filter(h -> h.getAlteradoPor().getId().equals(usuarioAlvo))
-                .collect(Collectors.toList());
-
-        historicoStatus = aplicarFiltros(historicoStatus, request);
 
         List<RelatorioItemDto> itens = new ArrayList<>();
 
-        for (StatusHistory history : historicoStatus) {
-            RelatorioItemDto item = new RelatorioItemDto();
-            item.setTipoEntidade(history.getEntityType().name());
-            item.setEntidadeId(history.getEntityId());
-            item.setStatusAnterior(history.getStatusAnterior());
-            item.setStatusNovo(history.getStatusNovo());
-            item.setMotivoMudanca(history.getMotivo());
-            item.setDataMudancaStatus(history.getDataAlteracao());
-            item.setUsuarioResponsavelNome(history.getAlteradoPor().getFullName());
+        // Buscar guias se solicitado
+        if (request.getTipoEntidade() == null ||
+                "TODOS".equals(request.getTipoEntidade()) ||
+                "GUIA".equals(request.getTipoEntidade())) {
 
-            enrichItemWithEntityData(item, history);
-
-            itens.add(item);
+            logger.info("Buscando guias para o relatório...");
+            List<RelatorioItemDto> itensGuias = buscarGuiasComEstadoAtual(request, usuarioAlvo);
+            itens.addAll(itensGuias);
+            logger.info("Encontradas {} guias", itensGuias.size());
         }
+
+        // Buscar fichas se solicitado
+        if (request.getTipoEntidade() == null ||
+                "TODOS".equals(request.getTipoEntidade()) ||
+                "FICHA".equals(request.getTipoEntidade())) {
+
+            logger.info("Buscando fichas para o relatório...");
+            List<RelatorioItemDto> itensFichas = buscarFichasComEstadoAtual(request, usuarioAlvo);
+            itens.addAll(itensFichas);
+            logger.info("Encontradas {} fichas", itensFichas.size());
+        }
+
+        // Ordenar por data de atualização (mais recentes primeiro)
+        itens.sort((a, b) -> {
+            LocalDateTime dateA = a.getDataAtualizacao();
+            LocalDateTime dateB = b.getDataAtualizacao();
+            if (dateA == null && dateB == null) return 0;
+            if (dateA == null) return 1;
+            if (dateB == null) return -1;
+            return dateB.compareTo(dateA);
+        });
 
         dados.setItens(itens);
         dados.setTotalRegistros(itens.size());
 
+        // Calcular estatísticas baseadas no estado atual
         dados.setDistribuicaoPorStatus(calculateStatusDistribution(itens));
         dados.setDistribuicaoPorEspecialidade(calculateEspecialidadeDistribution(itens));
         dados.setDistribuicaoPorConvenio(calculateConvenioDistribution(itens));
         dados.setDistribuicaoPorUnidade(calculateUnidadeDistribution(itens));
 
-        dados.setTimelineData(generateTimelineData(itens, request.getPeriodoInicio(), request.getPeriodoFim()));
+        // Timeline baseada em datas de criação/atualização
+        dados.setTimelineData(generateTimelineDataEstadoAtual(itens, request.getPeriodoInicio(), request.getPeriodoFim()));
 
+        logger.info("Processamento concluído. Total de itens: {}", itens.size());
         return dados;
+    }
+
+    private List<RelatorioItemDto> buscarGuiasComEstadoAtual(RelatorioCreateRequest request, UUID usuarioAlvo) {
+        logger.info("Buscando guias com estado atual para relatório");
+
+        List<Guia> guias = guiaRepository.findGuiasForRelatorio(
+                usuarioAlvo,
+                request.getPeriodoInicio(),
+                request.getPeriodoFim(),
+                request.getStatus(),
+                request.getEspecialidades(),
+                request.getConvenioIds(),
+                request.getUnidades()
+        );
+
+        return guias.stream()
+                .map(this::mapGuiaToRelatorioItem)
+                .collect(Collectors.toList());
+    }
+
+    private List<RelatorioItemDto> buscarFichasComEstadoAtual(RelatorioCreateRequest request, UUID usuarioAlvo) {
+        logger.info("Buscando fichas com estado atual para relatório");
+
+        List<Ficha> fichas = fichaRepository.findFichasForRelatorio(
+                usuarioAlvo,
+                request.getPeriodoInicio(),
+                request.getPeriodoFim(),
+                request.getStatus(),
+                request.getEspecialidades(),
+                request.getConvenioIds(),
+                request.getUnidades()
+        );
+
+        return fichas.stream()
+                .map(this::mapFichaToRelatorioItem)
+                .collect(Collectors.toList());
     }
 
     private List<StatusHistory> aplicarFiltros(List<StatusHistory> historicoStatus, RelatorioCreateRequest request) {
@@ -809,8 +894,10 @@ public class RelatorioServiceImpl implements RelatorioService {
     private void registrarLog(RelatorioLog log) {
         try {
             logRepository.save(log);
+            logger.debug("Log registrado: {}", log.getAcao());
         } catch (Exception e) {
-            logger.error("Erro ao registrar log: {}", e.getMessage(), e);
+            logger.warn("Erro ao registrar log: {}", e.getMessage());
+            // Não propagar exceção para não quebrar o processo principal
         }
     }
 
@@ -818,9 +905,134 @@ public class RelatorioServiceImpl implements RelatorioService {
     // MÉTODOS DE MAPEAMENTO DTO
     // =================================================================================
 
+    private RelatorioItemDto mapGuiaToRelatorioItem(Guia guia) {
+        RelatorioItemDto item = new RelatorioItemDto();
+
+        item.setTipoEntidade("GUIA");
+        item.setEntidadeId(guia.getId());
+        item.setNumeroGuia(guia.getNumeroGuia());
+        item.setGuiaId(guia.getId());
+
+        // Status atual (sem anterior pois não é mudança)
+        item.setStatus(guia.getStatus());
+        item.setStatusNovo(guia.getStatus());
+        item.setStatusAnterior(null);
+
+        // Dados do paciente
+        if (guia.getPaciente() != null) {
+            item.setPacienteNome(guia.getPaciente().getNome());
+            item.setPacienteId(guia.getPaciente().getId());
+
+            try {
+                item.setUnidade(guia.getPaciente().getUnidade().name());
+            } catch (Exception e) {
+                logger.warn("Erro ao obter unidade do paciente da guia {}: {}", guia.getId(), e.getMessage());
+                item.setUnidade("N/A");
+            }
+        }
+
+        // Dados do convênio
+        if (guia.getConvenio() != null) {
+            try {
+                item.setConvenioNome(guia.getConvenio().getName());
+            } catch (Exception e) {
+                logger.warn("Erro ao obter nome do convênio da guia {}: {}", guia.getId(), e.getMessage());
+                item.setConvenioNome("N/A");
+            }
+        }
+
+        // Outros dados
+        item.setMes(guia.getMes());
+        item.setAno(guia.getAno());
+        item.setQuantidadeAutorizada(guia.getQuantidadeAutorizada());
+
+        if (guia.getEspecialidades() != null && !guia.getEspecialidades().isEmpty()) {
+            item.setEspecialidade(String.join(", ", guia.getEspecialidades()));
+        }
+
+        // Usuário responsável
+        if (guia.getUsuarioResponsavel() != null) {
+            item.setUsuarioResponsavelNome(guia.getUsuarioResponsavel().getFullName());
+        }
+
+        // Data de atualização (não é mudança de status)
+        item.setDataAtualizacao(guia.getUpdatedAt());
+        item.setDataMudancaStatus(null); // Não há mudança específica, é estado atual
+        item.setMotivoMudanca(null);
+
+        return item;
+    }
+
+    private RelatorioItemDto mapFichaToRelatorioItem(Ficha ficha) {
+        RelatorioItemDto item = new RelatorioItemDto();
+
+        item.setTipoEntidade("FICHA");
+        item.setEntidadeId(ficha.getId());
+        item.setCodigoFicha(ficha.getCodigoFicha());
+        item.setFichaId(ficha.getId());
+
+        // Status atual
+        item.setStatus(ficha.getStatus());
+        item.setStatusNovo(ficha.getStatus());
+        item.setStatusAnterior(null);
+
+        // Dados do paciente
+        item.setPacienteNome(ficha.getPacienteNome());
+
+        UUID pacienteId = null;
+        if (ficha.getPaciente() != null) {
+            pacienteId = ficha.getPaciente().getId();
+            try {
+                item.setUnidade(ficha.getPaciente().getUnidade().name());
+            } catch (Exception e) {
+                logger.warn("Erro ao obter unidade do paciente da ficha {}: {}", ficha.getId(), e.getMessage());
+                item.setUnidade("N/A");
+            }
+        } else if (ficha.getGuia() != null && ficha.getGuia().getPaciente() != null) {
+            pacienteId = ficha.getGuia().getPaciente().getId();
+            try {
+                item.setUnidade(ficha.getGuia().getPaciente().getUnidade().name());
+            } catch (Exception e) {
+                logger.warn("Erro ao obter unidade do paciente via guia da ficha {}: {}", ficha.getId(), e.getMessage());
+                item.setUnidade("N/A");
+            }
+        }
+        item.setPacienteId(pacienteId);
+
+        // Especialidade
+        item.setEspecialidade(ficha.getEspecialidade());
+
+        // Dados do convênio
+        if (ficha.getConvenio() != null) {
+            try {
+                item.setConvenioNome(ficha.getConvenio().getName());
+            } catch (Exception e) {
+                logger.warn("Erro ao obter nome do convênio da ficha {}: {}", ficha.getId(), e.getMessage());
+                item.setConvenioNome("N/A");
+            }
+        }
+
+        // Outros dados
+        item.setMes(ficha.getMes());
+        item.setAno(ficha.getAno());
+        item.setQuantidadeAutorizada(ficha.getQuantidadeAutorizada());
+
+        // Usuário responsável
+        if (ficha.getUsuarioResponsavel() != null) {
+            item.setUsuarioResponsavelNome(ficha.getUsuarioResponsavel().getFullName());
+        }
+
+        // Data de atualização
+        item.setDataAtualizacao(ficha.getUpdatedAt());
+        item.setDataMudancaStatus(null);
+        item.setMotivoMudanca(null);
+
+        return item;
+    }
+
+
     private RelatorioDto mapToDto(Relatorio relatorio) {
         RelatorioDto dto = new RelatorioDto();
-        // CORREÇÃO: Manter ID como String se o DTO espera String
         dto.setId(relatorio.getId());
         dto.setTitulo(relatorio.getTitulo());
         dto.setDescricao(relatorio.getDescricao());
@@ -852,13 +1064,12 @@ public class RelatorioServiceImpl implements RelatorioService {
 
     private RelatorioSummaryDto mapToSummaryDto(Relatorio relatorio) {
         RelatorioSummaryDto dto = new RelatorioSummaryDto();
-        dto.setId(relatorio.getId()); // UUID direto se DTO espera UUID
+        dto.setId(relatorio.getId());
         dto.setTitulo(relatorio.getTitulo());
         dto.setUsuarioGeradorNome(relatorio.getUsuarioGerador().getFullName());
         dto.setPeriodoInicio(relatorio.getPeriodoInicio());
         dto.setPeriodoFim(relatorio.getPeriodoFim());
         dto.setTotalRegistros(relatorio.getTotalRegistros());
-        // CORREÇÃO: Usar enum direto se DTO espera enum
         dto.setStatusRelatorio(relatorio.getStatusRelatorio());
         dto.setCreatedAt(relatorio.getCreatedAt());
 
