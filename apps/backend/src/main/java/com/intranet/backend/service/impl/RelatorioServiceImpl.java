@@ -351,7 +351,7 @@ public class RelatorioServiceImpl implements RelatorioService {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             PdfWriter writer = new PdfWriter(baos);
             PdfDocument pdf = new PdfDocument(writer);
-            
+
             Document document = new Document(pdf, PageSize.A4.rotate());
 
             document.setMargins(15, 15, 15, 15);
