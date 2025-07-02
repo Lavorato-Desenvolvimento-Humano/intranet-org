@@ -101,7 +101,6 @@ export default function RelatoriosPage() {
 
   // Lista de tipos de entidade
   const tipoEntidadeOptions = [
-    { value: "TODOS", label: "Todos" },
     { value: "GUIA", label: "Guias" },
     { value: "FICHA", label: "Fichas" },
     { value: "PACIENTE", label: "Pacientes" },
@@ -459,7 +458,7 @@ export default function RelatoriosPage() {
           </div>
 
           {/* Card de atalhos rápidos */}
-          <div className="mt-6 grid grid-cols-3 md:grid-cols-3 gap-6">
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
             <div
               className="bg-white rounded-lg shadow-md p-6 cursor-pointer hover:shadow-lg transition-shadow"
               onClick={() =>
