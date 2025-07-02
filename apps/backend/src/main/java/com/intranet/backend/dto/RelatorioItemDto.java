@@ -9,7 +9,7 @@ import java.util.UUID;
 public class RelatorioItemDto {
 
     // Identificação
-    private String tipoEntidade; // GUIA, FICHA, PACIENTE
+    private String tipoEntidade; //GUIA, FICHA, PACIENTE
     private UUID entidadeId;
 
     // Informações do paciente
