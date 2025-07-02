@@ -459,7 +459,7 @@ export default function RelatoriosPage() {
           </div>
 
           {/* Card de atalhos rápidos */}
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="mt-6 grid grid-cols-3 md:grid-cols-3 gap-6">
             <div
               className="bg-white rounded-lg shadow-md p-6 cursor-pointer hover:shadow-lg transition-shadow"
               onClick={() =>
@@ -475,24 +475,6 @@ export default function RelatoriosPage() {
                   </h3>
                   <p className="text-sm text-gray-600">
                     Ver relatórios compartilhados
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div
-              className="bg-white rounded-lg shadow-md p-6 cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => router.push("/relatorios/meus")}>
-              <div className="flex items-center">
-                <div className="bg-green-100 p-3 rounded-full mr-4">
-                  <User className="h-6 w-6 text-green-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-800">
-                    Meus Relatórios
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    Ver apenas meus relatórios
                   </p>
                 </div>
               </div>
