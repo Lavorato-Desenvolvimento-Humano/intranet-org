@@ -78,23 +78,23 @@ export interface RelatorioSummaryDto {
 }
 
 export interface RelatorioItemDto {
-  tipoEntidade: string; // GUIA, FICHA, PACIENTE
+  tipoEntidade: string; // GUIA, FICHA
   entidadeId: string;
   pacienteNome?: string;
   pacienteId?: string;
+  convenioNome?: string;
   numeroGuia?: string;
   guiaId?: string;
   codigoFicha?: string;
   fichaId?: string;
-  convenioNome?: string;
   status: string;
   especialidade?: string;
-  unidade?: string;
   mes?: number;
   ano?: number;
   quantidadeAutorizada?: number;
-  usuarioResponsavelNome?: string;
   dataAtualizacao: string;
+  unidade?: string;
+  usuarioResponsavelNome?: string;
   statusAnterior?: string;
   statusNovo?: string;
   motivoMudanca?: string;
@@ -150,3 +150,38 @@ export interface RelatorioEstatisticas {
   compartilhamentosEnviados: number;
   ultimoRelatorio?: RelatorioSummaryDto;
 }
+
+export const relatorioItemHelpers = {
+  getNumeroOuCodigo: (item: RelatorioItemDto): string => {
+    if (item.tipoEntidade === "GUIA" && item.numeroGuia) {
+      return item.numeroGuia;
+    } else if (item.tipoEntidade === "FICHA" && item.codigoFicha) {
+      return item.codigoFicha;
+    }
+    return "-";
+  },
+
+  getMesFormatado: (item: RelatorioItemDto): string => {
+    if (item.mes && item.ano) {
+      return `${item.mes.toString().padStart(2, "0")}/${item.ano}`;
+    }
+    return "-";
+  },
+
+  getQuantidadeFormatada: (item: RelatorioItemDto): string => {
+    return item.quantidadeAutorizada?.toString() || "-";
+  },
+
+  formatDataAtualizacao: (dataString: string): string => {
+    try {
+      const data = new Date(dataString);
+      return (
+        data.toLocaleDateString("pt-BR") +
+        " " +
+        data.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+      );
+    } catch {
+      return "-";
+    }
+  },
+};
