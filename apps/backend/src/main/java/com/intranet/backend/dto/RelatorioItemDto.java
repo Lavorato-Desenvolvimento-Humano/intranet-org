@@ -8,34 +8,56 @@ import java.util.UUID;
 @Data
 public class RelatorioItemDto {
 
-    // Identificação
-    private String tipoEntidade; //GUIA, FICHA, PACIENTE
+    private String tipoEntidade; // GUIA, FICHA
     private UUID entidadeId;
-
-    // Informações do paciente
     private String pacienteNome;
     private UUID pacienteId;
-
-    // Informações da guia
+    private String convenioNome;
     private String numeroGuia;
     private UUID guiaId;
-
-    // Informações da ficha
     private String codigoFicha;
     private UUID fichaId;
 
-    // Informações gerais
-    private String convenioNome;
+    // Método helper para obter número/código unificado
+    public String getNumeroOuCodigo() {
+        if ("GUIA".equals(tipoEntidade) && numeroGuia != null) {
+            return numeroGuia;
+        } else if ("FICHA".equals(tipoEntidade) && codigoFicha != null) {
+            return codigoFicha;
+        }
+        return "-";
+    }
+
     private String status;
     private String especialidade;
-    private String unidade;
     private Integer mes;
     private Integer ano;
+
+    // Método helper para obter mês formatado
+    public String getMesFormatado() {
+        if (mes != null && ano != null) {
+            return String.format("%02d/%d", mes, ano);
+        }
+        return "-";
+    }
+
     private Integer quantidadeAutorizada;
-    private String usuarioResponsavelNome;
+
+    // Método helper para quantidade formatada
+    public String getQuantidadeFormatada() {
+        if (quantidadeAutorizada != null) {
+            return quantidadeAutorizada.toString();
+        }
+        return "-";
+    }
+
     private LocalDateTime dataAtualizacao;
 
-    // Informações de mudança de status
+    // Outros campos auxiliares
+    private String unidade;
+    private String usuarioResponsavelNome;
+
+    // Campos para histórico de mudanças
     private String statusAnterior;
     private String statusNovo;
     private String motivoMudanca;

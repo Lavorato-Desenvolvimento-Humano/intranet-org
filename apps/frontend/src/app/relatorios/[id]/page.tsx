@@ -1,4 +1,3 @@
-// apps/frontend/src/app/relatorios/[id]/page.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -47,6 +46,7 @@ import {
   ArcElement,
 } from "chart.js";
 import { Bar, Pie } from "react-chartjs-2";
+import { StatusBadge as SystemStatusBadge } from "@/components/clinical/ui/StatusBadge";
 
 // Registrar componentes do Chart.js
 ChartJS.register(
@@ -225,39 +225,65 @@ export default function RelatorioDetalhesPage() {
   // Colunas para tabela de dados
   const dadosColumns = [
     {
-      header: "Tipo",
-      accessor: "tipoEntidade" as keyof RelatorioItemDto,
-      className: "font-medium",
-    },
-    {
-      header: "Paciente",
+      header: "Nome do Paciente",
       accessor: "pacienteNome" as keyof RelatorioItemDto,
-    },
-    {
-      header: "Código/Número",
-      accessor: ((item: RelatorioItemDto) =>
-        item.numeroGuia || item.codigoFicha || "-") as any,
+      className: "font-medium",
     },
     {
       header: "Convênio",
       accessor: "convenioNome" as keyof RelatorioItemDto,
     },
     {
+      header: "Número/Código",
+      accessor: ((item: RelatorioItemDto) =>
+        item.numeroGuia || item.codigoFicha || "-") as any,
+      className: "font-mono text-sm",
+    },
+    {
       header: "Status",
-      accessor: "status" as keyof RelatorioItemDto,
+      accessor: ((item: RelatorioItemDto) => (
+        <SystemStatusBadge status={item.status} size="sm" variant="default" />
+      )) as any,
     },
     {
       header: "Especialidade",
       accessor: "especialidade" as keyof RelatorioItemDto,
     },
     {
-      header: "Responsável",
-      accessor: "usuarioResponsavelNome" as keyof RelatorioItemDto,
+      header: "Mês",
+      accessor: ((item: RelatorioItemDto) => {
+        if (item.mes && item.ano) {
+          return `${item.mes.toString().padStart(2, "0")}/${item.ano}`;
+        }
+        return "-";
+      }) as any,
+      className: "text-center",
+    },
+    {
+      header: "Qtd. Autorizada",
+      accessor: ((item: RelatorioItemDto) =>
+        item.quantidadeAutorizada?.toString() || "-") as any,
+      className: "text-center",
     },
     {
       header: "Atualização",
       accessor: ((item: RelatorioItemDto) =>
         formatDateTime(item.dataAtualizacao)) as any,
+      className: "text-sm",
+    },
+    {
+      header: "Tipo",
+      accessor: ((item: RelatorioItemDto) => (
+        <span
+          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+            item.tipoEntidade === "GUIA"
+              ? "bg-purple-100 text-purple-800"
+              : "bg-indigo-100 text-indigo-800"
+          }`}>
+          {item.tipoEntidade}
+        </span>
+      )) as any,
+      className: "text-center",
     },
   ];
 

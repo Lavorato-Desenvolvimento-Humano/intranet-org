@@ -9,6 +9,7 @@ import com.intranet.backend.model.*;
 import com.intranet.backend.repository.*;
 import com.intranet.backend.service.RelatorioService;
 import com.itextpdf.io.source.ByteArrayOutputStream;
+import com.itextpdf.layout.element.Cell;
 import com.itextpdf.layout.properties.UnitValue;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -359,48 +360,91 @@ public class RelatorioServiceImpl implements RelatorioService {
 
             // Informações gerais
             document.add(new Paragraph("Usuário Gerador: " + dados.getUsuarioGerador()));
-            document.add(new Paragraph("Período: " + dados.getPeriodoInicio() + " a " + dados.getPeriodoFim()));
+            document.add(new Paragraph("Período: " +
+                    dados.getPeriodoInicio().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + " a " +
+                    dados.getPeriodoFim().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))));
             document.add(new Paragraph("Total de Registros: " + dados.getTotalRegistros()));
-            document.add(new Paragraph("Data de Geração: " + dados.getDataGeracao()));
+            document.add(new Paragraph("Data de Geração: " +
+                    dados.getDataGeracao().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))));
 
             // Estatísticas
             if (dados.getDistribuicaoPorStatus() != null && !dados.getDistribuicaoPorStatus().isEmpty()) {
-                document.add(new Paragraph("\nDistribuição por Status:").setBold());
+                document.add(new Paragraph("\nDistribuição por Status:").setBold().setMarginTop(15));
                 dados.getDistribuicaoPorStatus().forEach((status, count) ->
                         document.add(new Paragraph("• " + status + ": " + count))
                 );
             }
 
-            // Tabela de itens (primeiros 100 para não sobrecarregar)
+            // Tabela de itens com nova estrutura
             if (dados.getItens() != null && !dados.getItens().isEmpty()) {
                 document.add(new Paragraph("\nDetalhes dos Itens:").setBold().setMarginTop(20));
 
-                Table table = new Table(UnitValue.createPercentArray(new float[]{2, 2, 2, 2, 2}));
+                // Criar tabela com 9 colunas conforme especificado
+                Table table = new Table(UnitValue.createPercentArray(new float[]{
+                        3f,    // Nome do Paciente
+                        2.5f,  // Convênio
+                        2f,    // Número/Código
+                        1.5f,  // Status
+                        2f,    // Especialidade
+                        1f,    // Mês
+                        1f,    // Qtd. Autorizada
+                        2f,    // Atualização
+                        1f     // Tipo
+                }));
                 table.setWidth(UnitValue.createPercentValue(100));
 
-                // Cabeçalho
-                table.addHeaderCell("Tipo");
-                table.addHeaderCell("Status");
-                table.addHeaderCell("Paciente");
-                table.addHeaderCell("Convênio");
-                table.addHeaderCell("Data");
+                // Cabeçalho da tabela
+                table.addHeaderCell(createHeaderCell("Nome do Paciente"));
+                table.addHeaderCell(createHeaderCell("Convênio"));
+                table.addHeaderCell(createHeaderCell("Número/Código"));
+                table.addHeaderCell(createHeaderCell("Status"));
+                table.addHeaderCell(createHeaderCell("Especialidade"));
+                table.addHeaderCell(createHeaderCell("Mês"));
+                table.addHeaderCell(createHeaderCell("Qtd. Autorizada"));
+                table.addHeaderCell(createHeaderCell("Atualização"));
+                table.addHeaderCell(createHeaderCell("Tipo"));
 
-                // Dados (limitado a 100 itens)
+                // Dados (limitado a 100 itens para performance)
                 dados.getItens().stream()
-                        .limit(100)
+                        .limit(500)
                         .forEach(item -> {
-                            table.addCell(item.getTipoEntidade() != null ? item.getTipoEntidade() : "-");
-                            table.addCell(item.getStatusNovo() != null ? item.getStatusNovo() : "-");
-                            table.addCell(item.getPacienteNome() != null ? item.getPacienteNome() : "-");
-                            table.addCell(item.getConvenioNome() != null ? item.getConvenioNome() : "-");
-                            table.addCell(item.getDataMudancaStatus() != null ?
-                                    item.getDataMudancaStatus().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) : "-");
+                            // Nome do Paciente
+                            table.addCell(createDataCell(item.getPacienteNome()));
+
+                            // Convênio
+                            table.addCell(createDataCell(item.getConvenioNome()));
+
+                            // Número/Código
+                            String numeroOuCodigo = getNumeroOuCodigoPDF(item);
+                            table.addCell(createDataCell(numeroOuCodigo));
+
+                            // Status
+                            table.addCell(createDataCell(item.getStatus()));
+
+                            // Especialidade
+                            table.addCell(createDataCell(item.getEspecialidade()));
+
+                            // Mês
+                            String mesFormatado = getMesFormatadoPDF(item);
+                            table.addCell(createDataCell(mesFormatado));
+
+                            // Quantidade Autorizada
+                            String quantidade = getQuantidadeFormatadaPDF(item);
+                            table.addCell(createDataCell(quantidade));
+
+                            // Atualização
+                            String dataAtualizacao = item.getDataAtualizacao() != null ?
+                                    item.getDataAtualizacao().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) : "-";
+                            table.addCell(createDataCell(dataAtualizacao));
+
+                            // Tipo
+                            table.addCell(createDataCell(item.getTipoEntidade()));
                         });
 
                 document.add(table);
 
-                if (dados.getItens().size() > 100) {
-                    document.add(new Paragraph("... e mais " + (dados.getItens().size() - 100) + " itens")
+                if (dados.getItens().size() > 500) {
+                    document.add(new Paragraph("... e mais " + (dados.getItens().size() - 500) + " itens")
                             .setItalic().setMarginTop(10));
                 }
             }
@@ -695,76 +739,6 @@ public class RelatorioServiceImpl implements RelatorioService {
                 .collect(Collectors.toList());
     }
 
-    private void enrichItemWithEntityData(RelatorioItemDto item, StatusHistory history) {
-        try {
-            switch (history.getEntityType()) {
-                case GUIA:
-                    guiaRepository.findById(history.getEntityId()).ifPresent(guia -> {
-                        item.setNumeroGuia(guia.getNumeroGuia());
-                        item.setGuiaId(guia.getId());
-
-                        if (guia.getPaciente() != null) {
-                            item.setPacienteNome(guia.getPaciente().getNome());
-                            item.setPacienteId(guia.getPaciente().getId());
-
-                            try {
-                                item.setUnidade(guia.getPaciente().getUnidade().name());
-                            } catch (Exception e) {
-                                logger.warn("Método getUnidade() não existe no Paciente. Usando valor padrão.");
-                                item.setUnidade("N/A");
-                            }
-                        }
-
-                        if (guia.getConvenio() != null) {
-                            try {
-                                item.setConvenioNome(guia.getConvenio().getName());
-                            } catch (Exception e) {
-                                logger.warn("Erro ao obter nome do convênio: {}", e.getMessage());
-                                item.setConvenioNome("N/A");
-                            }
-                        }
-
-                        item.setMes(guia.getMes());
-                        item.setAno(guia.getAno());
-                        item.setQuantidadeAutorizada(guia.getQuantidadeAutorizada());
-                        item.setStatus(guia.getStatus());
-
-                        if (guia.getEspecialidades() != null && !guia.getEspecialidades().isEmpty()) {
-                            item.setEspecialidade(String.join(", ", guia.getEspecialidades()));
-                        }
-
-                        item.setDataAtualizacao(guia.getUpdatedAt());
-                    });
-                    break;
-
-                case FICHA:
-                    fichaRepository.findById(history.getEntityId()).ifPresent(ficha -> {
-                        item.setCodigoFicha(ficha.getCodigoFicha());
-                        item.setFichaId(ficha.getId());
-                        item.setEspecialidade(ficha.getEspecialidade());
-                        item.setPacienteNome(ficha.getPacienteNome());
-
-                        UUID pacienteId = null;
-                        if (ficha.getPaciente() != null) {
-                            pacienteId = ficha.getPaciente().getId();
-                        } else if (ficha.getGuia() != null && ficha.getGuia().getPaciente() != null) {
-                            pacienteId = ficha.getGuia().getPaciente().getId();
-                        }
-                        item.setPacienteId(pacienteId);
-
-                        item.setDataAtualizacao(ficha.getUpdatedAt());
-                    });
-                    break;
-
-                default:
-                    logger.warn("Tipo de entidade não suportado para enriquecimento: {}", history.getEntityType());
-            }
-        } catch (Exception e) {
-            logger.error("Erro ao enriquecer dados da entidade {}: {}", history.getEntityType(), e.getMessage());
-            // Continuar processamento mesmo com erro
-        }
-    }
-
     private Map<String, Long> calculateStatusDistribution(List<RelatorioItemDto> itens) {
         return itens.stream()
                 .filter(item -> item.getStatusNovo() != null)
@@ -799,31 +773,6 @@ public class RelatorioServiceImpl implements RelatorioService {
                         RelatorioItemDto::getUnidade,
                         Collectors.counting()
                 ));
-    }
-
-    private List<GraficoTimelineDto> generateTimelineData(List<RelatorioItemDto> itens,
-                                                          LocalDateTime periodoInicio,
-                                                          LocalDateTime periodoFim) {
-        if (itens == null || itens.isEmpty()) {
-            return new ArrayList<>();
-        }
-
-        Map<LocalDate, Long> timelineMap = itens.stream()
-                .filter(item -> item.getDataMudancaStatus() != null)
-                .collect(Collectors.groupingBy(
-                        item -> item.getDataMudancaStatus().toLocalDate(),
-                        Collectors.counting()
-                ));
-
-        return timelineMap.entrySet().stream()
-                .map(entry -> {
-                    GraficoTimelineDto dto = new GraficoTimelineDto();
-                    dto.setData(entry.getKey());
-                    dto.setQuantidade(entry.getValue());
-                    return dto;
-                })
-                .sorted(Comparator.comparing(GraficoTimelineDto::getData))
-                .collect(Collectors.toList());
     }
 
     private String buildFiltrosJson(RelatorioCreateRequest request) {
@@ -901,6 +850,47 @@ public class RelatorioServiceImpl implements RelatorioService {
         }
     }
 
+    // Métodos auxiliares para formatação no PDF
+    private String getNumeroOuCodigoPDF(RelatorioItemDto item) {
+        if ("GUIA".equals(item.getTipoEntidade()) && item.getNumeroGuia() != null) {
+            return item.getNumeroGuia();
+        } else if ("FICHA".equals(item.getTipoEntidade()) && item.getCodigoFicha() != null) {
+            return item.getCodigoFicha();
+        }
+        return "-";
+    }
+
+    private String getMesFormatadoPDF(RelatorioItemDto item) {
+        if (item.getMes() != null && item.getAno() != null) {
+            return String.format("%02d/%d", item.getMes(), item.getAno());
+        }
+        return "-";
+    }
+
+    private String getQuantidadeFormatadaPDF(RelatorioItemDto item) {
+        if (item.getQuantidadeAutorizada() != null) {
+            return item.getQuantidadeAutorizada().toString();
+        }
+        return "-";
+    }
+
+    private Cell createHeaderCell(String content) {
+        return new Cell()
+                .add(new Paragraph(content))
+                .setBold()
+                .setBackgroundColor(com.itextpdf.kernel.colors.ColorConstants.LIGHT_GRAY)
+                .setTextAlignment(com.itextpdf.layout.properties.TextAlignment.CENTER)
+                .setPadding(5);
+    }
+
+    private Cell createDataCell(String content) {
+        String cellContent = content != null ? content : "-";
+        return new Cell()
+                .add(new Paragraph(cellContent))
+                .setPadding(3)
+                .setTextAlignment(com.itextpdf.layout.properties.TextAlignment.LEFT);
+    }
+
     // =================================================================================
     // MÉTODOS DE MAPEAMENTO DTO
     // =================================================================================
@@ -913,7 +903,6 @@ public class RelatorioServiceImpl implements RelatorioService {
         item.setNumeroGuia(guia.getNumeroGuia());
         item.setGuiaId(guia.getId());
 
-        // Status atual (sem anterior pois não é mudança)
         item.setStatus(guia.getStatus());
         item.setStatusNovo(guia.getStatus());
         item.setStatusAnterior(null);
@@ -941,13 +930,15 @@ public class RelatorioServiceImpl implements RelatorioService {
             }
         }
 
-        // Outros dados
-        item.setMes(guia.getMes());
-        item.setAno(guia.getAno());
-        item.setQuantidadeAutorizada(guia.getQuantidadeAutorizada());
-
         if (guia.getEspecialidades() != null && !guia.getEspecialidades().isEmpty()) {
-            item.setEspecialidade(String.join(", ", guia.getEspecialidades()));
+            item.setEspecialidade(guia.getEspecialidades().get(0));
+        }
+
+         item.setMes(guia.getMes());
+         item.setAno(guia.getAno());
+
+        if (guia.getQuantidadeAutorizada() != null) {
+            item.setQuantidadeAutorizada(guia.getQuantidadeAutorizada());
         }
 
         // Usuário responsável
@@ -955,9 +946,9 @@ public class RelatorioServiceImpl implements RelatorioService {
             item.setUsuarioResponsavelNome(guia.getUsuarioResponsavel().getFullName());
         }
 
-        // Data de atualização (não é mudança de status)
+        // Data de atualização
         item.setDataAtualizacao(guia.getUpdatedAt());
-        item.setDataMudancaStatus(null); // Não há mudança específica, é estado atual
+        item.setDataMudancaStatus(null);
         item.setMotivoMudanca(null);
 
         return item;
@@ -976,33 +967,23 @@ public class RelatorioServiceImpl implements RelatorioService {
         item.setStatusNovo(ficha.getStatus());
         item.setStatusAnterior(null);
 
-        // Dados do paciente
-        item.setPacienteNome(ficha.getPacienteNome());
-
+        // Dados do paciente (via guia ou direto)
         UUID pacienteId = null;
-        if (ficha.getPaciente() != null) {
-            pacienteId = ficha.getPaciente().getId();
-            try {
-                item.setUnidade(ficha.getPaciente().getUnidade().name());
-            } catch (Exception e) {
-                logger.warn("Erro ao obter unidade do paciente da ficha {}: {}", ficha.getId(), e.getMessage());
-                item.setUnidade("N/A");
-            }
-        } else if (ficha.getGuia() != null && ficha.getGuia().getPaciente() != null) {
+        if (ficha.getGuia() != null && ficha.getGuia().getPaciente() != null) {
+            item.setPacienteNome(ficha.getGuia().getPaciente().getNome());
             pacienteId = ficha.getGuia().getPaciente().getId();
+
             try {
                 item.setUnidade(ficha.getGuia().getPaciente().getUnidade().name());
             } catch (Exception e) {
-                logger.warn("Erro ao obter unidade do paciente via guia da ficha {}: {}", ficha.getId(), e.getMessage());
+                logger.warn("Erro ao obter unidade do paciente da ficha {}: {}", ficha.getId(), e.getMessage());
                 item.setUnidade("N/A");
             }
         }
         item.setPacienteId(pacienteId);
 
-        // Especialidade
         item.setEspecialidade(ficha.getEspecialidade());
 
-        // Dados do convênio
         if (ficha.getConvenio() != null) {
             try {
                 item.setConvenioNome(ficha.getConvenio().getName());
@@ -1012,9 +993,9 @@ public class RelatorioServiceImpl implements RelatorioService {
             }
         }
 
-        // Outros dados
         item.setMes(ficha.getMes());
         item.setAno(ficha.getAno());
+
         item.setQuantidadeAutorizada(ficha.getQuantidadeAutorizada());
 
         // Usuário responsável
@@ -1029,6 +1010,7 @@ public class RelatorioServiceImpl implements RelatorioService {
 
         return item;
     }
+
 
 
     private RelatorioDto mapToDto(Relatorio relatorio) {
