@@ -351,15 +351,15 @@ public class RelatorioServiceImpl implements RelatorioService {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             PdfWriter writer = new PdfWriter(baos);
             PdfDocument pdf = new PdfDocument(writer);
-
+            
             Document document = new Document(pdf, PageSize.A4.rotate());
 
             document.setMargins(15, 15, 15, 15);
 
             document.add(new Paragraph(dados.getTitulo())
-                    .setFontSize(14)
+                    .setFontSize(14)  // Reduzido de 18 para 14
                     .setBold()
-                    .setMarginBottom(10));
+                    .setMarginBottom(10)); // Reduzido de 20 para 10
 
             String infoGeral = String.format(
                     "Gerador: %s | Período: %s a %s | Total: %d registros | Gerado em: %s",
@@ -393,15 +393,15 @@ public class RelatorioServiceImpl implements RelatorioService {
                         .setMarginBottom(5));
 
                 Table table = new Table(UnitValue.createPercentArray(new float[]{
-                        2.8f,  // Nome do Paciente
-                        1.8f,  // Convênio
-                        1.3f,  // Número/Código
-                        1.0f,  // Status
-                        1.5f,  // Especialidade
+                        2.2f,  // Nome do Paciente
+                        1.5f,  // Convênio
+                        1.0f,  // Número/Código
+                        1.2f,  // Status
+                        2.0f,  // Especialidade
                         0.8f,  // Unidade
                         0.7f,  // Mês
                         0.8f,  // Qtd. Autorizada
-                        1.2f,  // Atualização
+                        1.0f,  // Atualização
                         0.8f   // Tipo
                 }));
                 table.setWidth(UnitValue.createPercentValue(100));
@@ -431,8 +431,7 @@ public class RelatorioServiceImpl implements RelatorioService {
 
                             table.addCell(createCompactDataCell(item.getStatus()));
 
-                            String especialidadeFormatada = truncateText(item.getEspecialidade(), 15);
-                            table.addCell(createCompactDataCell(especialidadeFormatada));
+                            table.addCell(createCompactDataCell(item.getEspecialidade()));
 
                             table.addCell(createCompactDataCell(getUnidadeFormatadaPDF(item)));
 
@@ -446,8 +445,7 @@ public class RelatorioServiceImpl implements RelatorioService {
                                     item.getDataAtualizacao().format(DateTimeFormatter.ofPattern("dd/MM HH:mm")) : "-";
                             table.addCell(createCompactDataCell(dataAtualizacao));
 
-                            String tipoAbreviado = "GUIA".equals(item.getTipoEntidade()) ? "G" : "F";
-                            table.addCell(createCompactDataCell(tipoAbreviado));
+                            table.addCell(createCompactDataCell(item.getTipoEntidade()));
                         });
 
                 document.add(table);
