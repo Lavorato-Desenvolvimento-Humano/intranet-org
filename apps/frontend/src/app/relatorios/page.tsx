@@ -497,22 +497,6 @@ export default function RelatoriosPage() {
                 </div>
               </div>
             </div>
-
-            <div
-              className="bg-white rounded-lg shadow-md p-6 cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => router.push("/relatorios/agendados")}>
-              <div className="flex items-center">
-                <div className="bg-purple-100 p-3 rounded-full mr-4">
-                  <Calendar className="h-6 w-6 text-purple-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-800">
-                    Agendados
-                  </h3>
-                  <p className="text-sm text-gray-600">Relatórios agendados</p>
-                </div>
-              </div>
-            </div>
           </div>
         </main>
       </div>
