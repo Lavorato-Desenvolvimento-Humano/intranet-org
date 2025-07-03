@@ -266,6 +266,22 @@ export default function RelatorioDetalhesPage() {
       className: "text-center",
     },
     {
+      header: "Unidade",
+      accessor: ((item: RelatorioItemDto) => (
+        <span
+          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+            item.unidade === "KIDS"
+              ? "bg-blue-100 text-blue-800"
+              : item.unidade === "SENIOR"
+                ? "bg-green-100 text-green-800"
+                : "bg-gray-100 text-gray-800"
+          }`}>
+          {item.unidade || "N/A"}
+        </span>
+      )) as any,
+      className: "text-center",
+    },
+    {
       header: "Atualização",
       accessor: ((item: RelatorioItemDto) =>
         formatDateTime(item.dataAtualizacao)) as any,
