@@ -79,31 +79,11 @@ public interface GuiaRepository extends JpaRepository<Guia, UUID> {
             "AND (:status IS NULL OR g.status IN :status) " +
             "AND (:convenioIds IS NULL OR g.convenio.id IN :convenioIds) " +
             "ORDER BY g.updatedAt DESC")
-    List<Guia> findGuiasForRelatorio(
-            @Param("usuarioResponsavel") UUID usuarioResponsavel,
-            @Param("periodoInicio") LocalDateTime periodoInicio,
-            @Param("periodoFim") LocalDateTime periodoFim,
-            @Param("status") List<String> status,
-            @Param("convenioIds") List<UUID> convenioIds
-    );
-
-    @Query("SELECT DISTINCT g FROM Guia g " +
-            "LEFT JOIN FETCH g.paciente p " +
-            "LEFT JOIN FETCH g.convenio c " +
-            "LEFT JOIN FETCH g.usuarioResponsavel u " +
-            "WHERE (:usuarioResponsavel IS NULL OR g.usuarioResponsavel.id = :usuarioResponsavel) " +
-            "AND (g.createdAt BETWEEN :periodoInicio AND :periodoFim " +
-            "     OR g.updatedAt BETWEEN :periodoInicio AND :periodoFim) " +
-            "AND (:status IS NULL OR g.status IN :status) " +
-            "AND (:convenioIds IS NULL OR g.convenio.id IN :convenioIds) " +
-            "AND (:especialidades IS NULL OR EXISTS (SELECT 1 FROM g.especialidades esp WHERE esp IN :especialidades)) " +
-            "ORDER BY g.updatedAt DESC")
     List<Guia> findGuiasForRelatorioBase(
             @Param("usuarioResponsavel") UUID usuarioResponsavel,
             @Param("periodoInicio") LocalDateTime periodoInicio,
             @Param("periodoFim") LocalDateTime periodoFim,
             @Param("status") List<String> status,
-            @Param("especialidades") List<String> especialidades,
             @Param("convenioIds") List<UUID> convenioIds
     );
 
@@ -116,7 +96,7 @@ public interface GuiaRepository extends JpaRepository<Guia, UUID> {
                                              List<String> unidades) {
 
         List<Guia> guias = findGuiasForRelatorioBase(
-                usuarioResponsavel, periodoInicio, periodoFim, status, especialidades, convenioIds
+                usuarioResponsavel, periodoInicio, periodoFim, status, convenioIds
         );
 
         // Aplicar filtros de especialidades
