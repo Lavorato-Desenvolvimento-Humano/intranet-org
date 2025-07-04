@@ -726,29 +726,6 @@ public class RelatorioServiceImpl implements RelatorioService {
                 .collect(Collectors.toList());
     }
 
-    private List<StatusHistory> aplicarFiltros(List<StatusHistory> historicoStatus, RelatorioCreateRequest request) {
-        return historicoStatus.stream()
-                .filter(history -> {
-                    // Filtro por tipo de entidade
-                    if (request.getTipoEntidade() != null &&
-                            !"TODOS".equals(request.getTipoEntidade())) {
-                        if (!history.getEntityType().name().equals(request.getTipoEntidade())) {
-                            return false;
-                        }
-                    }
-
-                    // Filtro por status
-                    if (request.getStatus() != null && !request.getStatus().isEmpty()) {
-                        if (!request.getStatus().contains(history.getStatusNovo())) {
-                            return false;
-                        }
-                    }
-
-                    return true;
-                })
-                .collect(Collectors.toList());
-    }
-
     private Map<String, Long> calculateStatusDistribution(List<RelatorioItemDto> itens) {
         return itens.stream()
                 .filter(item -> item.getStatusNovo() != null)

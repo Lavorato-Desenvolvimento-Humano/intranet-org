@@ -1,6 +1,8 @@
 package com.intranet.backend.repository;
 
 import com.intranet.backend.model.Ficha;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -16,6 +18,8 @@ import java.util.stream.Collectors;
 
 @Repository
 public interface FichaRepository extends JpaRepository<Ficha, UUID> {
+
+    Logger logger = LoggerFactory.getLogger(FichaRepository.class);
 
     @Query("SELECT f FROM Ficha f WHERE f.guia.id = :guiaId ORDER BY f.especialidade ASC")
     List<Ficha> findByGuiaId(@Param("guiaId") UUID guiaId);
@@ -66,7 +70,7 @@ public interface FichaRepository extends JpaRepository<Ficha, UUID> {
             "LEFT JOIN FETCH f.usuarioResponsavel u " +
             "WHERE (:usuarioResponsavel IS NULL OR f.usuarioResponsavel.id = :usuarioResponsavel) " +
             "AND (f.createdAt BETWEEN :periodoInicio AND :periodoFim " +
-            "     OR f.updatedAt BETWEEN :periodoInicio AND :periodoFim) " +
+            "OR f.updatedAt BETWEEN :periodoInicio AND :periodoFim) " +
             "AND (:status IS NULL OR f.status IN :status) " +
             "AND (:especialidades IS NULL OR f.especialidade IN :especialidades) " +
             "AND (:convenioIds IS NULL OR f.convenio.id IN :convenioIds) " +
@@ -96,21 +100,15 @@ public interface FichaRepository extends JpaRepository<Ficha, UUID> {
         if (unidades != null && !unidades.isEmpty()) {
             fichas = fichas.stream()
                     .filter(ficha -> {
+                        if (ficha.getGuia() == null || ficha.getGuia().getPaciente() == null) {
+                            return false;
+                        }
                         try {
-                            String unidadePaciente = null;
-
-                            // Verificar se tem paciente direto
-                            if (ficha.getPaciente() != null) {
-                                unidadePaciente = ficha.getPaciente().getUnidade().name();
-                            }
-                            // Senão, verificar via guia
-                            else if (ficha.getGuia() != null && ficha.getGuia().getPaciente() != null) {
-                                unidadePaciente = ficha.getGuia().getPaciente().getUnidade().name();
-                            }
-
-                            return unidadePaciente != null && unidades.contains(unidadePaciente);
-
+                            String unidadePaciente = ficha.getGuia().getPaciente().getUnidade().name();
+                            return unidades.contains(unidadePaciente);
                         } catch (Exception e) {
+                            logger.warn("Erro ao verificar unidade da ficha {}: {}",
+                                    ficha.getId(), e.getMessage());
                             return false;
                         }
                     })
