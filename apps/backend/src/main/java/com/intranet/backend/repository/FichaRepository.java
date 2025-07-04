@@ -100,15 +100,12 @@ public interface FichaRepository extends JpaRepository<Ficha, UUID> {
         if (unidades != null && !unidades.isEmpty()) {
             fichas = fichas.stream()
                     .filter(ficha -> {
-                        if (ficha.getGuia() == null || ficha.getGuia().getPaciente() == null) {
-                            return false;
-                        }
+                        if (ficha.getGuia() == null) return false;
+                        if (ficha.getGuia().getPaciente() == null) return false;
                         try {
                             String unidadePaciente = ficha.getGuia().getPaciente().getUnidade().name();
                             return unidades.contains(unidadePaciente);
                         } catch (Exception e) {
-                            logger.warn("Erro ao verificar unidade da ficha {}: {}",
-                                    ficha.getId(), e.getMessage());
                             return false;
                         }
                     })
