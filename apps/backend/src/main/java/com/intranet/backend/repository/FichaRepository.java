@@ -84,6 +84,32 @@ public interface FichaRepository extends JpaRepository<Ficha, UUID> {
             @Param("convenioIds") List<UUID> convenioIds
     );
 
+    /**
+     * Conta fichas por guia e data de atualização
+     */
+    long countByGuiaIdAndUpdatedAtAfter(UUID guiaId, LocalDateTime dataLimite);
+
+    /**
+     * Conta fichas por paciente, especialidade e data
+     */
+    @Query("SELECT COUNT(f) FROM Ficha f WHERE f.guia.paciente.id = :pacienteId " +
+            "AND f.especialidade = :especialidade AND f.createdAt > :dataLimite")
+    long countByPacienteIdAndEspecialidadeAndCreatedAtAfter(
+            @Param("pacienteId") UUID pacienteId,
+            @Param("especialidade") String especialidade,
+            @Param("dataLimite") LocalDateTime dataLimite
+    );
+
+    /**
+     * Lista fichas recentes por especialidade
+     */
+    @Query("SELECT f FROM Ficha f WHERE f.especialidade = :especialidade " +
+            "AND f.createdAt > :dataLimite ORDER BY f.createdAt DESC")
+    List<Ficha> findFichasRecentesPorEspecialidade(
+            @Param("especialidade") String especialidade,
+            @Param("dataLimite") LocalDateTime dataLimite
+    );
+
     default List<Ficha> findFichasForRelatorio(UUID usuarioResponsavel,
                                                LocalDateTime periodoInicio,
                                                LocalDateTime periodoFim,
