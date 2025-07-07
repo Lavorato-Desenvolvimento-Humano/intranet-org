@@ -357,9 +357,9 @@ public class RelatorioServiceImpl implements RelatorioService {
             document.setMargins(15, 15, 15, 15);
 
             document.add(new Paragraph(dados.getTitulo())
-                    .setFontSize(14)  // Reduzido de 18 para 14
+                    .setFontSize(14)
                     .setBold()
-                    .setMarginBottom(10)); // Reduzido de 20 para 10
+                    .setMarginBottom(10));
 
             String infoGeral = String.format(
                     "Gerador: %s | Período: %s a %s | Total: %d registros | Gerado em: %s",
