@@ -1,6 +1,7 @@
 package com.intranet.backend.service;
 
 import com.intranet.backend.dto.FichaPdfItemDto;
+import org.springframework.stereotype.Service;
 
 public interface FichaPdfTemplateService {
 
