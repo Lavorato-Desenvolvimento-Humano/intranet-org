@@ -505,7 +505,9 @@ export default function EstatisticasRelatoriosPage() {
 
             <div
               className="bg-white rounded-lg shadow-md p-6 cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => router.push("/relatorios/compartilhamentos")}>
+              onClick={() =>
+                router.push("/relatorios/compartilhamentos/enviados")
+              }>
               <div className="flex items-center">
                 <div className="bg-green-100 p-3 rounded-full mr-4">
                   <Users className="h-6 w-6 text-green-600" />
@@ -515,7 +517,7 @@ export default function EstatisticasRelatoriosPage() {
                     Compartilhamentos
                   </h3>
                   <p className="text-sm text-gray-600">
-                    Gerencie compartilhamentos
+                    Gerencie compartilhamentos enviados
                   </p>
                 </div>
               </div>
