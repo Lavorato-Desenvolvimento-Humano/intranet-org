@@ -12,7 +12,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface FichaPdfLogRepository {
+public interface FichaPdfLogRepository extends JpaRepository<FichaPdfLog, UUID> {
     /**
      * Lista logs por job
      */
