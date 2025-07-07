@@ -1,11 +1,13 @@
 package com.intranet.backend.util;
 
+import com.intranet.backend.dto.FichaPdfResponseDto;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Classe utilitária para criação de respostas padronizadas da API
