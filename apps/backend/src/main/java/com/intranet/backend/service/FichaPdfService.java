@@ -1,12 +1,13 @@
 package com.intranet.backend.service;
 
 import com.intranet.backend.dto.*;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
-
+@Service
 public interface FichaPdfService {
 
     /*
