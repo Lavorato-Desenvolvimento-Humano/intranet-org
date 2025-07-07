@@ -48,7 +48,7 @@ public class FichaPdfController {
         logger.info("Requisição para gerar fichas do convênio: {}", request.getConvenioId());
 
         CompletableFuture<FichaPdfResponseDto> response = fichaPdfService.gerarFichasConvenio(request);
-        return ResponseUtil.accepted(response);
+        return ResponseUtil.success(response);
     }
 
     /**
@@ -60,7 +60,7 @@ public class FichaPdfController {
         logger.info("Requisição para gerar fichas em lote para {} convênios", request.getConvenioIds().size());
 
         CompletableFuture<FichaPdfResponseDto> response = fichaPdfService.gerarFichasLote(request);
-        return ResponseUtil.accepted(response);
+        return ResponseUtil.success(response);
     }
 
     /**
