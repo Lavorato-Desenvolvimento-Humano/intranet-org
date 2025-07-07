@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -41,4 +42,26 @@ public interface PacienteRepository extends JpaRepository<Paciente, UUID> {
 
     @Query("SELECT p FROM Paciente p LEFT JOIN FETCH p.convenio LEFT JOIN FETCH p.createdBy")
     Page<Paciente> findAllWithRelations(Pageable pageable);
+
+    /**
+     * Lista pacientes por convênio
+     */
+    List<Paciente> findByConvenioId(UUID convenioId);
+
+    /**
+     * Lista pacientes por convênio e unidade
+     */
+    List<Paciente> findByConvenioIdAndUnidade(UUID convenioId, Paciente.UnidadeEnum unidade);
+
+    /**
+     * Conta pacientes ativos por convênio
+     */
+    @Query("SELECT COUNT(p) FROM Paciente p WHERE p.convenio.id = :convenioId")
+    long countByConvenioId(@Param("convenioId") UUID convenioId);
+
+    /**
+     * Lista pacientes com guias ativas
+     */
+    @Query("SELECT DISTINCT p FROM Paciente p JOIN p.guias g WHERE g.status IN :statusAtivos")
+    List<Paciente> findPacientesComGuiasAtivas(@Param("statusAtivos") List<String> statusAtivos);
 }
