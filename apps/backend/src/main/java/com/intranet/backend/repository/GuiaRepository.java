@@ -87,6 +87,35 @@ public interface GuiaRepository extends JpaRepository<Guia, UUID> {
             @Param("convenioIds") List<UUID> convenioIds
     );
 
+    /**
+     * Busca guias ativas para geração de fichas
+     */
+    @Query("SELECT g FROM Guia g JOIN FETCH g.paciente p JOIN FETCH g.convenio c " +
+            "WHERE g.paciente.id = :pacienteId " +
+            "AND g.status IN :statusPermitidos " +
+            "AND (:especialidades IS NULL OR EXISTS (SELECT 1 FROM g.especialidades e WHERE e IN :especialidades)) " +
+            "ORDER BY g.updatedAt DESC")
+    List<Guia> findGuiasAtivasParaFichas(
+            @Param("pacienteId") UUID pacienteId,
+            @Param("statusPermitidos") List<String> statusPermitidos,
+            @Param("especialidades") List<String> especialidades
+    );
+
+    /**
+     * Conta guias ativas por paciente
+     */
+    @Query("SELECT COUNT(g) FROM Guia g WHERE g.paciente.id = :pacienteId AND g.status IN :statusAtivos")
+    long countGuiasAtivasPorPaciente(
+            @Param("pacienteId") UUID pacienteId,
+            @Param("statusAtivos") List<String> statusAtivos
+    );
+
+    /**
+     * Busca guias por convênio e status
+     */
+    @Query("SELECT g FROM Guia g JOIN FETCH g.paciente p WHERE g.convenio.id = :convenioId AND g.status IN :status ORDER BY p.nome ASC")
+    List<Guia> findByConvenioIdAndStatusIn(@Param("convenioId") UUID convenioId, @Param("status") List<String> status);
+
     default List<Guia> findGuiasForRelatorio(UUID usuarioResponsavel,
                                              LocalDateTime periodoInicio,
                                              LocalDateTime periodoFim,
