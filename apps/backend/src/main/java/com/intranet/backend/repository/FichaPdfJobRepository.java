@@ -133,15 +133,6 @@ public interface FichaPdfJobRepository extends JpaRepository<FichaPdfJob, UUID> 
     List<Object[]> getEstatisticasPorPeriodo(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
 
     /**
-     * Verifica se existe job ativo para o mesmo conjunto de parâmetros
-     */
-    @Query("SELECT j FROM FichaPdfJob j WHERE j.parametros = :parametros AND j.status IN :statusAtivos")
-    List<FichaPdfJob> findJobsAtivosByParametros(
-            @Param("parametros") String parametros,
-            @Param("statusAtivos") List<FichaPdfJob.StatusJob> statusAtivos
-    );
-
-    /**
      * Lista jobs com erro para reprocessamento
      */
     @Query("SELECT j FROM FichaPdfJob j WHERE j.status = :status AND j.concluido >= :desde ORDER BY j.concluido DESC")
@@ -149,12 +140,6 @@ public interface FichaPdfJobRepository extends JpaRepository<FichaPdfJob, UUID> 
             @Param("status") FichaPdfJob.StatusJob status,
             @Param("desde") LocalDateTime desde
     );
-
-    /**
-     * Busca jobs por título (busca parcial)
-     */
-    @Query("SELECT j FROM FichaPdfJob j WHERE j.titulo ILIKE %:titulo% ORDER BY j.createdAt DESC")
-    List<FichaPdfJob> findByTituloContaining(@Param("titulo") String titulo);
 
     /**
      * Lista últimos jobs do usuário (para dashboard)
