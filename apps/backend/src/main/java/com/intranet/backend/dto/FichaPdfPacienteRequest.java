@@ -25,8 +25,9 @@ public class FichaPdfPacienteRequest {
 
     private List<String> especialidades;
     private Boolean incluirGuiasVencidas = true;
+    private Boolean incluirInativos = false;
 
-    public Boolean getIncluirInativos() {
-        return false; // Implementação posterior
+    public Boolean setIncluirInativos(boolean b) {
+        return b;
     }
 }

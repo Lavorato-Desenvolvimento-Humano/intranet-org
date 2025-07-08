@@ -12,70 +12,61 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "ficha_pdf_jobs")
+@Table(name = "ficha_pdf_job")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
 public class FichaPdfJob {
+
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
 
-    @Column(name = "job_id", unique = true, nullable = false)
+    @Column(name = "job_id", nullable = false, unique = true, length = 100)
     private String jobId;
 
-    @Column(name = "tipo", nullable = false)
     @Enumerated(EnumType.STRING)
+    @Column(name = "tipo", nullable = false)
     private TipoGeracao tipo;
 
     @Column(name = "titulo", length = 500)
     private String titulo;
 
-    @Column(name = "status", nullable = false)
+    @Column(name = "parametros", columnDefinition = "TEXT")
+    private String parametros;
+
     @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
     private StatusJob status;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_id", nullable = false)
     private User usuario;
 
-    // Parâmetros da geração (JSON)
-    @Column(name = "parametros", columnDefinition = "TEXT")
-    private String parametros;
-
-    // Resultados
     @Column(name = "total_fichas")
-    private Integer totalFichas;
+    private Integer totalFichas = 0;
 
     @Column(name = "fichas_processadas")
-    private Integer fichasProcessadas;
+    private Integer fichasProcessadas = 0;
 
-    @Column(name = "arquivo_path")
-    private String arquivoPath; // Caminho do arquivo PDF gerado
-
-    @Column(name = "arquivo_nome")
-    private String arquivoNome;
-
-    @Column(name = "arquivo_tamanho")
-    private Long arquivoTamanho; // Tamanho em bytes
-
-    // Controle de tempo
     @Column(name = "iniciado")
     private LocalDateTime iniciado;
 
     @Column(name = "concluido")
     private LocalDateTime concluido;
 
-    @Column(name = "tempo_processamento")
-    private Long tempoProcessamento; // Milissegundos
+    @Column(name = "arquivo_path", length = 1000)
+    private String arquivoPath;
 
-    // Erro
+    @Column(name = "arquivo_nome", length = 500)
+    private String arquivoNome;
+
+    @Column(name = "arquivo_tamanho")
+    private Long arquivoTamanho;
+
     @Column(name = "erro", columnDefinition = "TEXT")
     private String erro;
-
-    @Column(name = "stack_trace", columnDefinition = "TEXT")
-    private String stackTrace;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -85,11 +76,10 @@ public class FichaPdfJob {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    // Enums
     public enum TipoGeracao {
-        PACIENTE("Paciente Individual"),
-        CONVENIO("Por Convênio"),
-        LOTE("Lote de Convênios");
+        PACIENTE("Fichas de Paciente"),
+        CONVENIO("Fichas de Convênio"),
+        LOTE("Geração em Lote");
 
         private final String descricao;
 
@@ -118,24 +108,164 @@ public class FichaPdfJob {
         public String getDescricao() {
             return descricao;
         }
+
+        public boolean isAtivo() {
+            return this == INICIADO || this == PROCESSANDO;
+        }
+
+        public boolean isFinalizado() {
+            return this == CONCLUIDO || this == ERRO || this == CANCELADO;
+        }
     }
 
-    // Métodos utilitários
-    public Double getPercentualConcluido() {
+    /**
+     * Verifica se o job pode ser baixado
+     */
+    public boolean isPodeDownload() {
+        return status == StatusJob.CONCLUIDO &&
+                arquivoPath != null &&
+                !arquivoPath.trim().isEmpty();
+    }
+
+    /**
+     * Calcula o progresso percentual
+     */
+    public double getProgressoPercentual() {
         if (totalFichas == null || totalFichas == 0) {
             return 0.0;
         }
         if (fichasProcessadas == null) {
             return 0.0;
         }
-        return (fichasProcessadas.doubleValue() / totalFichas.doubleValue()) * 100.0;
+        return Math.min(100.0, (double) fichasProcessadas / totalFichas * 100.0);
     }
 
-    public boolean isCompleto() {
-        return status == StatusJob.CONCLUIDO || status == StatusJob.ERRO;
+    /**
+     * Verifica se o job está ativo (em processamento)
+     */
+    public boolean isAtivo() {
+        return status != null && status.isAtivo();
     }
 
-    public boolean isPodeDownload() {
-        return status == StatusJob.CONCLUIDO && arquivoPath != null;
+    /**
+     * Verifica se o job está finalizado
+     */
+    public boolean isFinalizado() {
+        return status != null && status.isFinalizado();
+    }
+
+    /**
+     * Obtém duração do processamento em minutos
+     */
+    public Long getDuracaoMinutos() {
+        if (iniciado == null) {
+            return null;
+        }
+
+        LocalDateTime fim = concluido != null ? concluido : LocalDateTime.now();
+        return java.time.Duration.between(iniciado, fim).toMinutes();
+    }
+
+    /**
+     * Verifica se o job está em timeout
+     */
+    public boolean isTimeout(int timeoutMinutos) {
+        if (!isAtivo() || iniciado == null) {
+            return false;
+        }
+
+        LocalDateTime limite = iniciado.plusMinutes(timeoutMinutos);
+        return LocalDateTime.now().isAfter(limite);
+    }
+
+    /**
+     * Obtém tamanho do arquivo formatado
+     */
+    public String getArquivoTamanhoFormatado() {
+        if (arquivoTamanho == null || arquivoTamanho == 0) {
+            return "0 B";
+        }
+
+        final String[] unidades = {"B", "KB", "MB", "GB"};
+        double tamanho = arquivoTamanho.doubleValue();
+        int unidadeIndex = 0;
+
+        while (tamanho >= 1024 && unidadeIndex < unidades.length - 1) {
+            tamanho /= 1024;
+            unidadeIndex++;
+        }
+
+        return String.format("%.1f %s", tamanho, unidades[unidadeIndex]);
+    }
+
+    /**
+     * Obtém mensagem de status personalizada
+     */
+    public String getMensagemStatus() {
+        if (status == null) {
+            return "Status desconhecido";
+        }
+
+        switch (status) {
+            case INICIADO:
+                return "Preparando geração de fichas...";
+            case PROCESSANDO:
+                if (totalFichas != null && totalFichas > 0) {
+                    return String.format("Processando: %d/%d fichas (%.1f%%)",
+                            fichasProcessadas != null ? fichasProcessadas : 0,
+                            totalFichas,
+                            getProgressoPercentual());
+                } else {
+                    return "Processando fichas...";
+                }
+            case CONCLUIDO:
+                if (fichasProcessadas != null && fichasProcessadas > 0) {
+                    return String.format("Concluído: %d fichas geradas", fichasProcessadas);
+                } else {
+                    return "Geração concluída";
+                }
+            case ERRO:
+                return "Erro no processamento" + (erro != null ? ": " + erro : "");
+            case CANCELADO:
+                return "Processamento cancelado";
+            default:
+                return status.getDescricao();
+        }
+    }
+
+    /**
+     * Verifica se o arquivo ainda existe fisicamente
+     */
+    public boolean isArquivoExiste() {
+        if (arquivoPath == null || arquivoPath.trim().isEmpty()) {
+            return false;
+        }
+
+        try {
+            return java.nio.file.Files.exists(java.nio.file.Paths.get(arquivoPath));
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    @Override
+    public String toString() {
+        return String.format("FichaPdfJob{jobId='%s', tipo=%s, status=%s, fichas=%d/%d}",
+                jobId, tipo, status,
+                fichasProcessadas != null ? fichasProcessadas : 0,
+                totalFichas != null ? totalFichas : 0);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof FichaPdfJob)) return false;
+        FichaPdfJob that = (FichaPdfJob) o;
+        return jobId != null && jobId.equals(that.jobId);
+    }
+
+    @Override
+    public int hashCode() {
+        return jobId != null ? jobId.hashCode() : 0;
     }
 }

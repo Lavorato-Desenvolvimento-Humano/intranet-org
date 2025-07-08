@@ -47,14 +47,10 @@ public class FichaPdfServiceImpl implements FichaPdfService {
     @Value("${app.pdf.storage.path:/tmp/fichas-pdf}")
     private String pdfStoragePath;
 
-    // =================================================================================
-    // MÉTODOS PÚBLICOS DA INTERFACE
-    // =================================================================================
-
     @Override
     @Transactional
     public FichaPdfResponseDto gerarFichasPaciente(FichaPdfPacienteRequest request) {
-        logger.info("Iniciando geração de fichas para paciente: {}", request.getPacienteId());
+        logger.info("Gerando fichas PDF para paciente: {}", request.getPacienteId());
 
         User currentUser = getCurrentUser();
         String jobId = UUID.randomUUID().toString();
@@ -65,14 +61,12 @@ public class FichaPdfServiceImpl implements FichaPdfService {
         job.setParametros(buildParametrosPaciente(request));
 
         try {
-            // Buscar dados para geração
             List<FichaPdfItemDto> itens = buscarItensParaPaciente(request);
 
             if (itens.isEmpty()) {
                 job.setStatus(FichaPdfJob.StatusJob.ERRO);
                 job.setErro("Nenhuma ficha encontrada para os critérios especificados");
                 jobRepository.save(job);
-
                 return buildResponse(job, "Nenhuma ficha encontrada");
             }
 
@@ -80,12 +74,15 @@ public class FichaPdfServiceImpl implements FichaPdfService {
             job.setStatus(FichaPdfJob.StatusJob.PROCESSANDO);
             jobRepository.save(job);
 
-            // Gerar PDF (síncrono para paciente individual)
+            // Gerar PDF síncrono (paciente individual)
             byte[] pdfBytes = pdfGeneratorService.gerarPdfCompleto(itens, request.getMes(), request.getAno());
 
             // Salvar arquivo
+            Paciente paciente = pacienteRepository.findById(request.getPacienteId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Paciente não encontrado"));
+
             String nomeArquivo = String.format("fichas_%s_%02d_%d.pdf",
-                    slugify(getCurrentUser().getFullName()), request.getMes(), request.getAno());
+                    slugify(paciente.getNome()), request.getMes(), request.getAno());
             String caminhoArquivo = salvarArquivoPdf(jobId, nomeArquivo, pdfBytes);
 
             // Registrar logs
@@ -100,7 +97,7 @@ public class FichaPdfServiceImpl implements FichaPdfService {
             job.setArquivoTamanho((long) pdfBytes.length);
             jobRepository.save(job);
 
-            logger.info("Geração concluída para paciente. JobId: {}, Fichas: {}", jobId, itens.size());
+            logger.info("Fichas geradas com sucesso. JobId: {}, Fichas: {}", jobId, itens.size());
             return buildResponse(job, "PDF gerado com sucesso");
 
         } catch (Exception e) {
@@ -293,7 +290,7 @@ public class FichaPdfServiceImpl implements FichaPdfService {
             config.setDiasAtividade(30); // Padrão
         }
         if (config.getPrefixoIdentificacao() == null) {
-            config.setPrefixoIdentificacao("PNE"); // Padrão
+            config.setPrefixoIdentificacao(""); // Padrão
         }
 
         configRepository.save(config);
@@ -327,10 +324,6 @@ public class FichaPdfServiceImpl implements FichaPdfService {
                 .collect(Collectors.toList());
     }
 
-    // =================================================================================
-    // MÉTODOS PRIVADOS - BUSCA DE DADOS
-    // =================================================================================
-
     private List<FichaPdfItemDto> buscarItensParaPaciente(FichaPdfPacienteRequest request) {
         logger.info("Buscando itens para paciente: {}", request.getPacienteId());
 
@@ -352,14 +345,19 @@ public class FichaPdfServiceImpl implements FichaPdfService {
     private List<FichaPdfItemDto> buscarItensParaConvenio(FichaPdfConvenioRequest request) {
         logger.info("Buscando itens para convênio: {}", request.getConvenioId());
 
-        // Buscar pacientes do convênio
+        // Buscar pacientes do convênio com paginação para performance
         List<Paciente> pacientes = pacienteRepository.findByConvenioId(request.getConvenioId());
 
-        if (request.getUnidade() != null) {
-            Paciente.UnidadeEnum unidadeEnum = Paciente.UnidadeEnum.valueOf(request.getUnidade());
-            pacientes = pacientes.stream()
-                    .filter(p -> p.getUnidade() == unidadeEnum)
-                    .collect(Collectors.toList());
+        if (request.getUnidade() != null && !request.getUnidade().trim().isEmpty()) {
+            try {
+                Paciente.UnidadeEnum unidadeEnum = Paciente.UnidadeEnum.valueOf(request.getUnidade().toUpperCase());
+                pacientes = pacientes.stream()
+                        .filter(p -> p.getUnidade() == unidadeEnum)
+                        .collect(Collectors.toList());
+            } catch (IllegalArgumentException e) {
+                logger.warn("Unidade inválida: {}", request.getUnidade());
+                return new ArrayList<>();
+            }
         }
 
         List<FichaPdfItemDto> todosItens = new ArrayList<>();
@@ -384,9 +382,9 @@ public class FichaPdfServiceImpl implements FichaPdfService {
                                                    List<String> especialidades, Boolean incluirInativos) {
 
         // Critérios de busca baseados nas regras de negócio
-        List<String> statusPermitidos = incluirInativos ?
-                Arrays.asList("ATIVO", "EM_ANDAMENTO", "PENDENTE", "PAUSADO") :
-                Arrays.asList("ATIVO", "EM_ANDAMENTO");
+        List<String> statusPermitidos = incluirInativos != null && incluirInativos ?
+                Arrays.asList("EMITIDO", "SUBIU", "ANALISE", "CANCELADO", "RETORNOU", "ASSINADO", "FATURADO", "ENVIADO A BM", "DEVOLVIDO A BM") :
+                Arrays.asList("EMITIDO", "SUBIU", "ANALISE", "CANCELADO", "RETORNOU", "ASSINADO", "FATURADO", "ENVIADO A BM", "DEVOLVIDO A BM");
 
         // Buscar guias do paciente no período
         List<Guia> guias = guiaRepository.findGuiasAtivasParaFichas(
@@ -395,7 +393,7 @@ public class FichaPdfServiceImpl implements FichaPdfService {
                 especialidades
         );
 
-        // Filtrar por atividade recente (últimos 30 dias)
+        // Filtrar por atividade recente (últimos 30 dias por padrão)
         LocalDateTime dataLimite = LocalDateTime.now().minusDays(30);
 
         return guias.stream()
@@ -415,63 +413,37 @@ public class FichaPdfServiceImpl implements FichaPdfService {
         List<FichaPdfItemDto> itens = new ArrayList<>();
 
         for (Guia guia : guias) {
-            // Para cada especialidade da guia, criar uma ficha
-            for (String especialidade : guia.getEspecialidades()) {
-                // Verificar se deve criar ficha para esta especialidade
-                if (deveGerarFichaParaEspecialidade(guia, especialidade, mes, ano)) {
+            // Processar cada especialidade da guia
+            if (guia.getEspecialidades() != null && !guia.getEspecialidades().isEmpty()) {
+                for (String especialidade : guia.getEspecialidades()) {
                     FichaPdfItemDto item = criarItemFicha(guia, especialidade, mes, ano);
                     itens.add(item);
                 }
+            } else {
+                // Criar ficha sem especialidade específica
+                FichaPdfItemDto item = criarItemFicha(guia, "Não informado", mes, ano);
+                itens.add(item);
             }
         }
 
         return itens;
     }
 
-    private boolean deveGerarFichaParaEspecialidade(Guia guia, String especialidade, Integer mes, Integer ano) {
-        // Verificar se já existe ficha gerada para esta especialidade no mês
-        boolean jaExisteFicha = logRepository.existsByPacienteIdAndEspecialidadeAndMesAndAno(
-                guia.getPaciente().getId(), especialidade, mes, ano
-        );
-
-        if (jaExisteFicha) {
-            logger.debug("Ficha já existe para paciente {} especialidade {} no mês {}/{}",
-                    guia.getPaciente().getNome(), especialidade, mes, ano);
-            return false;
-        }
-
-        // Verificar se teve atividade na especialidade nos últimos 30 dias
-        return temAtividadeNaEspecialidade(guia.getPaciente().getId(), especialidade);
-    }
-
     private boolean temAtividadeRecente(Guia guia, LocalDateTime dataLimite) {
-        // Verificar se teve fichas criadas ou atualizadas recentemente
-        long atividadeRecente = fichaRepository.countByGuiaIdAndUpdatedAtAfter(guia.getId(), dataLimite);
-        return atividadeRecente > 0 || guia.getUpdatedAt().isAfter(dataLimite);
-    }
-
-    private boolean temAtividadeNaEspecialidade(UUID pacienteId, String especialidade) {
-        LocalDateTime dataLimite = LocalDateTime.now().minusDays(30);
-
-        // Verificar se teve fichas da especialidade nos últimos 30 dias
-        long fichasRecentes = fichaRepository.countByPacienteIdAndEspecialidadeAndCreatedAtAfter(
-                pacienteId, especialidade, dataLimite
-        );
-
-        return fichasRecentes > 0;
+        return guia.getCreatedAt() != null && guia.getCreatedAt().isAfter(dataLimite) ||
+                guia.getUpdatedAt() != null && guia.getUpdatedAt().isAfter(dataLimite);
     }
 
     private boolean isGuiaValidaParaMes(Guia guia, Integer mes, Integer ano) {
-        // Verificar se a guia está válida para o mês/ano especificado
-        // Pode ser baseado na validade da guia, quantidade restante, etc.
+        if (guia.getMes() != null && guia.getAno() != null) {
+            return guia.getMes().equals(mes) && guia.getAno().equals(ano);
+        }
 
-        // Verificar validade
         LocalDate dataGuia = LocalDate.of(ano, mes, 1);
         if (guia.getValidade() != null && guia.getValidade().isBefore(dataGuia)) {
             return false;
         }
 
-        // Verificar se ainda tem quantidade disponível
         if (guia.getQuantidadeRestante() != null && guia.getQuantidadeRestante() <= 0) {
             return false;
         }
@@ -482,7 +454,6 @@ public class FichaPdfServiceImpl implements FichaPdfService {
     private FichaPdfItemDto criarItemFicha(Guia guia, String especialidade, Integer mes, Integer ano) {
         FichaPdfItemDto item = new FichaPdfItemDto();
 
-        // Dados básicos
         item.setPacienteId(guia.getPaciente().getId());
         item.setPacienteNome(guia.getPaciente().getNome());
         item.setEspecialidade(especialidade);
@@ -492,18 +463,15 @@ public class FichaPdfServiceImpl implements FichaPdfService {
 
         // Gerar número de identificação único
         String prefixo = getPrefixoIdentificacao(guia.getConvenio().getId());
-        item.setNumeroIdentificacao(prefixo + gerarNumeroAleatorio());
+        item.setNumeroIdentificacao(prefixo + gerarNumeroUnico());
 
-        // Dados do convênio
         item.setConvenioId(guia.getConvenio().getId());
         item.setConvenioNome(guia.getConvenio().getName());
 
-        // Dados da unidade
         if (guia.getPaciente().getUnidade() != null) {
             item.setUnidade(guia.getPaciente().getUnidade().name());
         }
 
-        // Dados da guia
         item.setGuiaId(guia.getId());
         item.setNumeroGuia(guia.getNumeroGuia());
         item.setQuantidadeAutorizada(guia.getQuantidadeAutorizada());
@@ -512,10 +480,6 @@ public class FichaPdfServiceImpl implements FichaPdfService {
         return item;
     }
 
-    // =================================================================================
-    // MÉTODOS PRIVADOS - UTILITÁRIOS
-    // =================================================================================
-
     private FichaPdfJob criarJob(String jobId, FichaPdfJob.TipoGeracao tipo, User usuario) {
         FichaPdfJob job = new FichaPdfJob();
         job.setJobId(jobId);
@@ -523,48 +487,52 @@ public class FichaPdfServiceImpl implements FichaPdfService {
         job.setUsuario(usuario);
         job.setStatus(FichaPdfJob.StatusJob.INICIADO);
         job.setIniciado(LocalDateTime.now());
+        job.setTotalFichas(0);
         job.setFichasProcessadas(0);
 
         return jobRepository.save(job);
     }
 
+    private void atualizarProgressoJob(String jobId, int processadas) {
+        try {
+            Optional<FichaPdfJob> jobOpt = jobRepository.findByJobId(jobId);
+            if (jobOpt.isPresent()) {
+                FichaPdfJob job = jobOpt.get();
+                job.setFichasProcessadas(processadas);
+                jobRepository.save(job);
+                logger.debug("Progresso atualizado - Job: {}, Processadas: {}", jobId, processadas);
+            }
+        } catch (Exception e) {
+            logger.warn("Erro ao atualizar progresso do job {}: {}", jobId, e.getMessage());
+        }
+    }
+
     private void finalizarJobComErro(FichaPdfJob job, Exception e) {
         job.setStatus(FichaPdfJob.StatusJob.ERRO);
         job.setErro(e.getMessage());
-        job.setStackTrace(getStackTrace(e));
         job.setConcluido(LocalDateTime.now());
         jobRepository.save(job);
     }
 
-    private void atualizarProgressoJob(String jobId, Integer fichasProcessadas) {
-        Optional<FichaPdfJob> jobOpt = jobRepository.findByJobId(jobId);
-        if (jobOpt.isPresent()) {
-            FichaPdfJob job = jobOpt.get();
-            job.setFichasProcessadas(fichasProcessadas);
-            jobRepository.save(job);
-        }
-    }
-
     private void registrarLogs(FichaPdfJob job, List<FichaPdfItemDto> itens) {
-        List<FichaPdfLog> logs = itens.stream()
-                .map(item -> criarLog(job, item))
-                .collect(Collectors.toList());
+        List<FichaPdfLog> logs = new ArrayList<>();
 
-//        logRepository.saveAll(logs);
+        for (FichaPdfItemDto item : itens) {
+            FichaPdfLog log = criarLogItem(job, item);
+            logs.add(log);
+        }
+
+        logRepository.saveAll(logs);
+        logger.info("Registrados {} logs para o job {}", logs.size(), job.getJobId());
     }
 
-    private FichaPdfLog criarLog(FichaPdfJob job, FichaPdfItemDto item) {
+    private FichaPdfLog criarLogItem(FichaPdfJob job, FichaPdfItemDto item) {
+        Paciente paciente = pacienteRepository.findById(item.getPacienteId())
+                .orElseThrow(() -> new ResourceNotFoundException("Paciente não encontrado: " + item.getPacienteId()));
+
         FichaPdfLog log = new FichaPdfLog();
         log.setJob(job);
-
-        Paciente paciente = pacienteRepository.getReferenceById(item.getPacienteId());
         log.setPaciente(paciente);
-
-        if (item.getGuiaId() != null) {
-            Guia guia = guiaRepository.getReferenceById(item.getGuiaId());
-            log.setGuiaOrigem(guia);
-        }
-
         log.setEspecialidade(item.getEspecialidade());
         log.setNumeroIdentificacao(item.getNumeroIdentificacao());
         log.setMes(item.getMes());
@@ -576,12 +544,15 @@ public class FichaPdfServiceImpl implements FichaPdfService {
     }
 
     private String salvarArquivoPdf(String jobId, String nomeArquivo, byte[] pdfBytes) {
-        // Implementação do salvamento do arquivo PDF
-        // Retorna o caminho onde foi salvo
         String caminhoCompleto = pdfStoragePath + "/" + jobId + "_" + nomeArquivo;
 
         try {
-            java.nio.file.Files.createDirectories(java.nio.file.Paths.get(pdfStoragePath));
+            // Criar diretórios se não existirem
+            java.nio.file.Path diretorio = java.nio.file.Paths.get(pdfStoragePath);
+            if (!java.nio.file.Files.exists(diretorio)) {
+                java.nio.file.Files.createDirectories(diretorio);
+            }
+
             java.nio.file.Files.write(java.nio.file.Paths.get(caminhoCompleto), pdfBytes);
             logger.info("PDF salvo em: {}", caminhoCompleto);
             return caminhoCompleto;
@@ -591,33 +562,6 @@ public class FichaPdfServiceImpl implements FichaPdfService {
         }
     }
 
-    private boolean isConvenioHabilitado(UUID convenioId) {
-        return configRepository.findByConvenioId(convenioId)
-                .map(ConvenioFichaPdfConfig::getHabilitado)
-                .orElse(false);
-    }
-
-    private String getPrefixoIdentificacao(UUID convenioId) {
-        return configRepository.findByConvenioId(convenioId)
-                .map(ConvenioFichaPdfConfig::getPrefixoIdentificacao)
-                .orElse("PNE");
-    }
-
-    private String gerarNumeroAleatorio() {
-        return String.valueOf(new Random().nextInt(9000) + 1000); // 1000-9999
-    }
-
-    private String getMesExtenso(Integer mes) {
-        return java.time.Month.of(mes).getDisplayName(TextStyle.FULL, new Locale("pt", "BR"));
-    }
-
-    private String slugify(String input) {
-        return input.toLowerCase()
-                .replaceAll("[^a-z0-9\\s-]", "")
-                .replaceAll("\\s+", "_")
-                .replaceAll("-+", "_");
-    }
-
     private FichaPdfResponseDto buildResponse(FichaPdfJob job, String mensagem) {
         FichaPdfResponseDto response = new FichaPdfResponseDto();
         response.setJobId(job.getJobId());
@@ -625,9 +569,7 @@ public class FichaPdfServiceImpl implements FichaPdfService {
         response.setMensagem(mensagem);
         response.setTotalFichas(job.getTotalFichas());
         response.setFichasProcessadas(job.getFichasProcessadas());
-        response.setIniciado(job.getIniciado());
-        response.setConcluido(job.getConcluido());
-        response.setErro(job.getErro());
+        response.setPodeDownload(job.isPodeDownload());
 
         if (job.isPodeDownload()) {
             response.setDownloadUrl("/api/fichas-pdf/download/" + job.getJobId());
@@ -642,26 +584,29 @@ public class FichaPdfServiceImpl implements FichaPdfService {
         status.setStatus(job.getStatus().name());
         status.setTotalFichas(job.getTotalFichas());
         status.setFichasProcessadas(job.getFichasProcessadas());
-        status.setPercentualConcluido(job.getPercentualConcluido());
         status.setIniciado(job.getIniciado());
-        status.setUltimaAtualizacao(job.getUpdatedAt());
-        status.setErro(job.getErro());
+        status.setConcluido(job.getConcluido());
+        status.setPodeDownload(job.isPodeDownload());
 
-        if (job.isPodeDownload()) {
-            status.setDownloadUrl("/api/fichas-pdf/download/" + job.getJobId());
+        // Calcular progresso
+        if (job.getTotalFichas() > 0) {
+            double progresso = (double) job.getFichasProcessadas() / job.getTotalFichas() * 100;
+            status.setPercentualConcluido((double) Math.round(progresso));
+        } else {
+            status.setPercentualConcluido(0.00);
         }
 
-        // Mensagem atual baseada no status
+        // Mensagem baseada no status
         switch (job.getStatus()) {
             case INICIADO:
-                status.setMensagemAtual("Iniciando processamento...");
+                status.setMensagemAtual("Preparando geração...");
                 break;
             case PROCESSANDO:
-                status.setMensagemAtual(String.format("Processando fichas... (%d/%d)",
+                status.setMensagemAtual(String.format("Processando fichas: %d/%d",
                         job.getFichasProcessadas(), job.getTotalFichas()));
                 break;
             case CONCLUIDO:
-                status.setMensagemAtual("Processamento concluído com sucesso!");
+                status.setMensagemAtual("Geração concluída com sucesso");
                 break;
             case ERRO:
                 status.setMensagemAtual("Erro no processamento: " + job.getErro());
@@ -695,7 +640,6 @@ public class FichaPdfServiceImpl implements FichaPdfService {
         ConvenioDto dto = new ConvenioDto();
         dto.setId(convenio.getId());
         dto.setName(convenio.getName());
-//        dto.setActive(convenio.getActive());
         return dto;
     }
 
@@ -722,6 +666,7 @@ public class FichaPdfServiceImpl implements FichaPdfService {
         try {
             return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(request);
         } catch (Exception e) {
+            logger.warn("Erro ao serializar parâmetros do paciente: {}", e.getMessage());
             return "{}";
         }
     }
@@ -730,6 +675,7 @@ public class FichaPdfServiceImpl implements FichaPdfService {
         try {
             return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(request);
         } catch (Exception e) {
+            logger.warn("Erro ao serializar parâmetros do convênio: {}", e.getMessage());
             return "{}";
         }
     }
@@ -738,25 +684,99 @@ public class FichaPdfServiceImpl implements FichaPdfService {
         try {
             return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(request);
         } catch (Exception e) {
+            logger.warn("Erro ao serializar parâmetros do lote: {}", e.getMessage());
             return "{}";
         }
     }
 
     private User getCurrentUser() {
-        UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        return userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
+        try {
+            Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+
+            if (principal instanceof UserDetails) {
+                UserDetails userDetails = (UserDetails) principal;
+                return userRepository.findByEmail(userDetails.getUsername())
+                        .orElseThrow(() -> new RuntimeException("Usuário não encontrado: " + userDetails.getUsername()));
+            } else {
+                throw new RuntimeException("Principal não é uma instância de UserDetails");
+            }
+        } catch (Exception e) {
+            logger.error("Erro ao obter usuário atual: {}", e.getMessage());
+            throw new RuntimeException("Erro ao obter usuário atual", e);
+        }
     }
 
     private boolean isAdmin(User user) {
-        // Implementação posterior
-       return false;
+        try {
+            List<String> userRoles = userRepository.findRoleNamesByUserId(user.getId());
+
+            return userRoles.stream()
+                    .anyMatch(role -> role.equalsIgnoreCase("ADMIN") ||
+                            role.equalsIgnoreCase("ROLE_ADMIN") ||
+                            role.equalsIgnoreCase("ADMINISTRATOR"));
+        } catch (Exception e) {
+            logger.warn("Erro ao verificar se usuário é admin: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    private boolean isConvenioHabilitado(UUID convenioId) {
+        return configRepository.findByConvenioId(convenioId)
+                .map(ConvenioFichaPdfConfig::getHabilitado)
+                .orElse(false);
+    }
+
+    private String getPrefixoIdentificacao(UUID convenioId) {
+        return configRepository.findByConvenioId(convenioId)
+                .map(ConvenioFichaPdfConfig::getPrefixoIdentificacao)
+                .filter(prefixo -> prefixo != null && !prefixo.trim().isEmpty())
+                .orElse("PNE");
+    }
+
+    private String gerarNumeroUnico() {
+        // Gerar número único com timestamp para evitar duplicatas
+        long timestamp = System.currentTimeMillis();
+        int random = new Random().nextInt(1000);
+        return String.format("%d%03d", timestamp % 10000, random);
+    }
+
+    private String getMesExtenso(Integer mes) {
+        try {
+            return java.time.Month.of(mes).getDisplayName(TextStyle.FULL, new Locale("pt", "BR"));
+        } catch (Exception e) {
+            logger.warn("Erro ao obter mês por extenso para {}: {}", mes, e.getMessage());
+            return "Mês " + mes;
+        }
+    }
+
+    private String slugify(String input) {
+        if (input == null || input.trim().isEmpty()) {
+            return "sem_nome";
+        }
+
+        return input.toLowerCase()
+                .replaceAll("[àáâãäå]", "a")
+                .replaceAll("[èéêë]", "e")
+                .replaceAll("[ìíîï]", "i")
+                .replaceAll("[òóôõö]", "o")
+                .replaceAll("[ùúûü]", "u")
+                .replaceAll("[ç]", "c")
+                .replaceAll("[ñ]", "n")
+                .replaceAll("[^a-z0-9\\s-]", "")
+                .replaceAll("\\s+", "_")
+                .replaceAll("-+", "_")
+                .replaceAll("_+", "_")
+                .trim();
     }
 
     private String getStackTrace(Exception e) {
-        java.io.StringWriter sw = new java.io.StringWriter();
-        java.io.PrintWriter pw = new java.io.PrintWriter(sw);
-        e.printStackTrace(pw);
-        return sw.toString();
+        try {
+            java.io.StringWriter sw = new java.io.StringWriter();
+            java.io.PrintWriter pw = new java.io.PrintWriter(sw);
+            e.printStackTrace(pw);
+            return sw.toString();
+        } catch (Exception ex) {
+            return "Erro ao obter stack trace: " + ex.getMessage();
+        }
     }
 }

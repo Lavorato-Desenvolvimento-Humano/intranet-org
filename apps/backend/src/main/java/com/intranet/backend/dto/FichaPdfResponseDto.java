@@ -14,4 +14,5 @@ public class FichaPdfResponseDto {
     private LocalDateTime iniciado;
     private LocalDateTime concluido;
     private String erro;
+    private Boolean podeDownload;
 }
