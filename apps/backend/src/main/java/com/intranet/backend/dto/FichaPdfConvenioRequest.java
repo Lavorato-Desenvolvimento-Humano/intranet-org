@@ -21,8 +21,11 @@ public class FichaPdfConvenioRequest {
     @Min(value = 2024, message = "Ano deve ser maior ou igual a 2024")
     private Integer ano;
 
-    private String unidade;
     private List<String> especialidades;
-    private Boolean incluirInativos = false;
-    private Boolean processarAsync = true;
+
+    private Boolean incluirInativos = false; // Incluir pacientes inativos
+    private Boolean modoAntecipacao = true; // Gerar fichas para próximo mês
+    private Boolean incluirPacientesComFichas = false; // Incluir pacientes que já têm fichas
+    private Boolean apenasNovosSupported = true; // Apenas pacientes sem fichas no período
+    private Integer diasValidadeMinima = 30; // Mínimo de dias de validade para antecipação
 }
