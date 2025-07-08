@@ -16,4 +16,6 @@ public class FichaPdfStatusDto {
     private LocalDateTime ultimaAtualizacao;
     private String downloadUrl;
     private String erro;
+    private LocalDateTime concluido;
+    private Boolean podeDownload;
 }
