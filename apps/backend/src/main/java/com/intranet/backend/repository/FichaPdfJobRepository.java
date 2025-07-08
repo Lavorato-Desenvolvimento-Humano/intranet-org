@@ -161,4 +161,16 @@ public interface FichaPdfJobRepository extends JpaRepository<FichaPdfJob, UUID> 
      */
     @Query("SELECT j FROM FichaPdfJob j WHERE j.usuario.id = :usuarioId ORDER BY j.createdAt DESC")
     List<FichaPdfJob> findTop10ByUsuarioIdOrderByCreatedAtDesc(@Param("usuarioId") UUID usuarioId, Pageable pageable);
+
+    /**
+     * Lista jobs em processamento (para monitoramento)
+     */
+    @Query("SELECT j FROM FichaPdfJob j WHERE j.status IN ('INICIADO', 'PROCESSANDO') ORDER BY j.createdAt ASC")
+    List<FichaPdfJob> findJobsEmProcessamento();
+
+    /**
+     * Lista jobs concluídos nos últimos X dias
+     */
+    @Query("SELECT j FROM FichaPdfJob j WHERE j.status = 'CONCLUIDO' AND j.concluido >= :dataLimite ORDER BY j.concluido DESC")
+    List<FichaPdfJob> findJobsConcluidosRecentes(@Param("dataLimite") LocalDateTime dataLimite);
 }
