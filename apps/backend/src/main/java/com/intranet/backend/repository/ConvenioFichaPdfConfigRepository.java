@@ -42,4 +42,7 @@ public interface ConvenioFichaPdfConfigRepository extends JpaRepository<Convenio
      * Busca por prefixo de identificação
      */
     List<ConvenioFichaPdfConfig> findByPrefixoIdentificacao(String prefixo);
+
+    @Query("SELECT c FROM ConvenioFichaPdfConfig c WHERE c.convenio.id = :convenioId")
+    Optional<ConvenioFichaPdfConfig> findByConvenio(@Param("convenioId") UUID convenioId);
 }

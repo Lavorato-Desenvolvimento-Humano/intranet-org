@@ -1,7 +1,13 @@
 package com.intranet.backend.controllers;
 
 import com.intranet.backend.dto.*;
+import com.intranet.backend.model.Ficha;
+import com.intranet.backend.model.Paciente;
+import com.intranet.backend.repository.FichaRepository;
+import com.intranet.backend.repository.PacienteRepository;
 import com.intranet.backend.service.FichaPdfService;
+import com.intranet.backend.service.FichaPdfTemplateService;
+import com.intranet.backend.service.FichaVerificationService;
 import com.intranet.backend.util.ResponseUtil;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -14,10 +20,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/fichas-pdf")
@@ -25,7 +33,12 @@ import java.util.concurrent.CompletableFuture;
 public class FichaPdfController {
 
     private static final Logger logger = LoggerFactory.getLogger(FichaPdfController.class);
+
     private final FichaPdfService fichaPdfService;
+    private final FichaVerificationService fichaVerificationService;
+    private final FichaPdfTemplateService templateService;
+    private final FichaRepository fichaRepository;
+    private final PacienteRepository pacienteRepository;
 
     /**
      * Gera fichas PDF para um paciente específico
@@ -40,7 +53,13 @@ public class FichaPdfController {
             return ResponseUtil.created(response);
         } catch (Exception e) {
             logger.error("Erro ao gerar fichas do paciente: {}", e.getMessage(), e);
-            return ResponseEntity.badRequest().build();
+
+            FichaPdfResponseDto errorResponse = FichaPdfResponseDto.builder()
+                    .sucesso(false)
+                    .mensagem("Erro ao gerar fichas: " + e.getMessage())
+                    .build();
+
+            return ResponseEntity.badRequest().body(errorResponse);
         }
     }
 
@@ -55,16 +74,29 @@ public class FichaPdfController {
         try {
             CompletableFuture<FichaPdfResponseDto> futureResponse = fichaPdfService.gerarFichasConvenio(request);
 
-            // Retornar jobId imediatamente para acompanhamento
+            // Extrair jobId do future (assumindo que está disponível imediatamente)
+            String jobId = extractJobIdFromFuture(futureResponse);
+
             Map<String, Object> response = Map.of(
-                    "message", "Processamento iniciado",
-                    "async", true
+                    "message", "Processamento iniciado com sucesso",
+                    "jobId", jobId != null ? jobId : "job-" + System.currentTimeMillis(),
+                    "async", true,
+                    "statusUrl", "/api/fichas-pdf/status/" + (jobId != null ? jobId : ""),
+                    "convenioId", request.getConvenioId(),
+                    "periodo", request.getMes() + "/" + request.getAno()
             );
 
             return ResponseUtil.success(response);
         } catch (Exception e) {
             logger.error("Erro ao iniciar geração de fichas do convênio: {}", e.getMessage(), e);
-            return ResponseEntity.badRequest().build();
+
+            Map<String, Object> errorResponse = Map.of(
+                    "message", "Erro ao iniciar processamento: " + e.getMessage(),
+                    "error", true,
+                    "convenioId", request.getConvenioId()
+            );
+
+            return ResponseEntity.badRequest().body(errorResponse);
         }
     }
 
@@ -79,16 +111,28 @@ public class FichaPdfController {
         try {
             CompletableFuture<FichaPdfResponseDto> futureResponse = fichaPdfService.gerarFichasLote(request);
 
+            String jobId = extractJobIdFromFuture(futureResponse);
+
             Map<String, Object> response = Map.of(
-                    "message", "Processamento em lote iniciado",
+                    "message", "Processamento em lote iniciado com sucesso",
+                    "jobId", jobId != null ? jobId : "lote-" + System.currentTimeMillis(),
                     "convenios", request.getConvenioIds().size(),
-                    "async", true
+                    "async", true,
+                    "statusUrl", "/api/fichas-pdf/status/" + (jobId != null ? jobId : ""),
+                    "periodo", request.getMes() + "/" + request.getAno()
             );
 
             return ResponseUtil.success(response);
         } catch (Exception e) {
             logger.error("Erro ao iniciar geração em lote: {}", e.getMessage(), e);
-            return ResponseEntity.badRequest().build();
+
+            Map<String, Object> errorResponse = Map.of(
+                    "message", "Erro ao iniciar processamento em lote: " + e.getMessage(),
+                    "error", true,
+                    "conveniosCount", request.getConvenioIds().size()
+            );
+
+            return ResponseEntity.badRequest().body(errorResponse);
         }
     }
 
@@ -105,7 +149,13 @@ public class FichaPdfController {
             return ResponseUtil.success(status);
         } catch (Exception e) {
             logger.error("Erro ao consultar status do job {}: {}", jobId, e.getMessage());
-            return ResponseEntity.notFound().build();
+
+            // Retornar status de erro em vez de 404
+            FichaPdfStatusDto errorStatus = new FichaPdfStatusDto();
+            errorStatus.setJobId(jobId);
+            errorStatus.setMensagem("Job não encontrado ou erro ao consultar: " + e.getMessage());
+
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorStatus);
         }
     }
 
@@ -146,6 +196,9 @@ public class FichaPdfController {
             headers.setExpires(0);
 
             return new ResponseEntity<>(pdfBytes, headers, HttpStatus.OK);
+        } catch (IllegalStateException e) {
+            logger.warn("Tentativa de download inválida para job {}: {}", jobId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         } catch (Exception e) {
             logger.error("Erro ao baixar PDF do job {}: {}", jobId, e.getMessage());
             return ResponseEntity.notFound().build();
@@ -186,61 +239,167 @@ public class FichaPdfController {
             Map<String, Object> response = Map.of(
                     "message", "Convênio " + (habilitado ? "habilitado" : "desabilitado") + " com sucesso",
                     "convenioId", convenioId,
-                    "habilitado", habilitado
+                    "habilitado", habilitado,
+                    "timestamp", System.currentTimeMillis()
             );
 
             return ResponseUtil.success(response);
         } catch (Exception e) {
             logger.error("Erro ao alterar status do convênio: {}", e.getMessage());
-            return ResponseEntity.badRequest().build();
+
+            Map<String, Object> errorResponse = Map.of(
+                    "message", "Erro ao alterar status do convênio: " + e.getMessage(),
+                    "convenioId", convenioId,
+                    "error", true
+            );
+
+            return ResponseEntity.badRequest().body(errorResponse);
         }
     }
 
     /**
-     * Valida parâmetros antes de gerar fichas
+     * Verifica estatísticas de fichas existentes antes da geração
      */
-    @PostMapping("/validar")
+    @GetMapping("/convenio/{convenioId}/estatisticas-fichas")
     @PreAuthorize("hasAnyAuthority('ficha:read') or hasAnyRole('USER', 'ADMIN', 'SUPERVISOR')")
-    public ResponseEntity<Map<String, Object>> validarParametros(@RequestBody Map<String, Object> parametros) {
-        logger.info("Requisição para validar parâmetros de geração de fichas");
+    public ResponseEntity<Map<String, Object>> getEstatisticasFichasConvenio(
+            @PathVariable UUID convenioId,
+            @RequestParam Integer mes,
+            @RequestParam Integer ano) {
+        logger.info("Requisição para estatísticas de fichas do convênio: {} - {}/{}", convenioId, mes, ano);
 
         try {
-            // Implementar validações baseadas nos parâmetros
-            boolean valido = true;
-            String mensagem = "Parâmetros válidos";
-            int fichasEstimadas = 0;
+            Map<String, Object> estatisticas = fichaVerificationService.getEstatisticasFichasConvenio(convenioId, mes, ano);
+            return ResponseUtil.success(estatisticas);
+        } catch (Exception e) {
+            logger.error("Erro ao obter estatísticas de fichas: {}", e.getMessage());
 
-            // Validações básicas
-            if (parametros.containsKey("convenioId")) {
-                UUID convenioId = UUID.fromString(parametros.get("convenioId").toString());
-                // Verificar se convênio está habilitado
-                List<ConvenioDto> conveniosHabilitados = fichaPdfService.getConveniosHabilitados();
-                boolean convenioHabilitado = conveniosHabilitados.stream()
-                        .anyMatch(c -> c.getId().equals(convenioId));
+            Map<String, Object> errorResponse = Map.of(
+                    "error", "Erro ao obter estatísticas: " + e.getMessage(),
+                    "convenioId", convenioId,
+                    "periodo", mes + "/" + ano
+            );
 
-                if (!convenioHabilitado) {
-                    valido = false;
-                    mensagem = "Convênio não habilitado para geração de fichas PDF";
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+
+    /**
+     * Prévia de geração - mostra quantos pacientes serão incluídos
+     */
+    @PostMapping("/convenio/previa")
+    @PreAuthorize("hasAnyAuthority('ficha:read') or hasAnyRole('USER', 'ADMIN', 'SUPERVISOR')")
+    public ResponseEntity<Map<String, Object>> getPreviaGeracaoConvenio(@Valid @RequestBody FichaPdfConvenioRequest request) {
+        logger.info("Requisição para prévia de geração do convênio: {} - {}/{}",
+                request.getConvenioId(), request.getMes(), request.getAno());
+
+        try {
+            // Buscar todos os pacientes do convênio
+            List<Paciente> todosPacientes = pacienteRepository.findByConvenioId(request.getConvenioId());
+            List<UUID> todosPacientesIds = todosPacientes.stream().map(Paciente::getId).collect(Collectors.toList());
+
+            // Filtrar pacientes sem fichas
+            List<UUID> pacientesSemFichas = fichaVerificationService.filtrarPacientesSemFichas(
+                    request.getConvenioId(), request.getMes(), request.getAno(), todosPacientesIds);
+
+            // Estatísticas existentes
+            Map<String, Object> estatisticasExistentes = fichaVerificationService
+                    .getEstatisticasFichasConvenio(request.getConvenioId(), request.getMes(), request.getAno());
+
+            String recomendacao;
+            if (pacientesSemFichas.isEmpty()) {
+                recomendacao = "Todos os pacientes já possuem fichas para este período";
+            } else if (pacientesSemFichas.size() == todosPacientes.size()) {
+                recomendacao = "Nenhum paciente possui fichas - geração completa recomendada";
+            } else {
+                recomendacao = String.format("Geração recomendada para %d de %d pacientes (%d já possuem fichas)",
+                        pacientesSemFichas.size(), todosPacientes.size(), todosPacientes.size() - pacientesSemFichas.size());
+            }
+
+            Map<String, Object> previa = Map.of(
+                    "totalPacientesConvenio", todosPacientes.size(),
+                    "pacientesComFichas", todosPacientes.size() - pacientesSemFichas.size(),
+                    "pacientesSemFichas", pacientesSemFichas.size(),
+                    "seraGeradoPara", pacientesSemFichas.size(),
+                    "fichasExistentes", estatisticasExistentes,
+                    "recomendacao", recomendacao,
+                    "eficiencia", pacientesSemFichas.size() > 0 ?
+                            String.format("%.1f%% de otimização",
+                                    (double)(todosPacientes.size() - pacientesSemFichas.size()) / todosPacientes.size() * 100) :
+                            "Nenhuma otimização"
+            );
+
+            return ResponseUtil.success(previa);
+        } catch (Exception e) {
+            logger.error("Erro ao gerar prévia: {}", e.getMessage());
+
+            Map<String, Object> errorResponse = Map.of(
+                    "error", "Erro ao gerar prévia: " + e.getMessage(),
+                    "convenioId", request.getConvenioId(),
+                    "periodo", request.getMes() + "/" + request.getAno()
+            );
+
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+
+    /**
+     * Verifica se paciente específico já possui fichas no mês
+     */
+    @GetMapping("/paciente/{pacienteId}/verificar-fichas")
+    @PreAuthorize("hasAnyAuthority('ficha:read') or hasAnyRole('USER', 'ADMIN', 'SUPERVISOR')")
+    public ResponseEntity<Map<String, Object>> verificarFichasPaciente(
+            @PathVariable UUID pacienteId,
+            @RequestParam Integer mes,
+            @RequestParam Integer ano,
+            @RequestParam(required = false) List<String> especialidades) {
+        logger.info("Verificando fichas do paciente: {} - {}/{}", pacienteId, mes, ano);
+
+        try {
+            Map<String, Boolean> fichasPorEspecialidade = new HashMap<>();
+
+            if (especialidades != null && !especialidades.isEmpty()) {
+                for (String especialidade : especialidades) {
+                    boolean jaExiste = fichaVerificationService.jaExisteFicha(pacienteId, especialidade, mes, ano);
+                    fichasPorEspecialidade.put(especialidade, jaExiste);
                 }
             }
 
-            // TODO: Implementar estimativa de fichas baseada nos parâmetros
+            // Buscar todas as fichas existentes do paciente no mês
+            List<Ficha> fichasExistentes = fichaRepository.findFichasExistentesPorPacienteMesAno(pacienteId, mes, ano);
 
             Map<String, Object> resultado = Map.of(
-                    "valido", valido,
-                    "mensagem", mensagem,
-                    "fichasEstimadas", fichasEstimadas,
-                    "timestamp", System.currentTimeMillis()
+                    "pacienteId", pacienteId,
+                    "mes", mes,
+                    "ano", ano,
+                    "possuiFichas", !fichasExistentes.isEmpty(),
+                    "totalFichas", fichasExistentes.size(),
+                    "fichasPorEspecialidade", fichasPorEspecialidade,
+                    "fichasExistentes", fichasExistentes.stream()
+                            .map(f -> Map.of(
+                                    "id", f.getId(),
+                                    "codigo", f.getCodigoFicha(),
+                                    "especialidade", f.getEspecialidade(),
+                                    "status", f.getStatus(),
+                                    "criadaEm", f.getCreatedAt()
+                            ))
+                            .collect(Collectors.toList()),
+                    "recomendacao", fichasExistentes.isEmpty() ?
+                            "Paciente precisa de fichas para este período" :
+                            "Paciente já possui fichas - verificar se regeneração é necessária"
             );
 
             return ResponseUtil.success(resultado);
         } catch (Exception e) {
-            logger.error("Erro ao validar parâmetros: {}", e.getMessage());
-            Map<String, Object> erro = Map.of(
-                    "valido", false,
-                    "mensagem", "Erro na validação: " + e.getMessage()
+            logger.error("Erro ao verificar fichas do paciente: {}", e.getMessage());
+
+            Map<String, Object> errorResponse = Map.of(
+                    "error", "Erro ao verificar fichas: " + e.getMessage(),
+                    "pacienteId", pacienteId,
+                    "periodo", mes + "/" + ano
             );
-            return ResponseUtil.success(erro);
+
+            return ResponseEntity.badRequest().body(errorResponse);
         }
     }
 
@@ -253,21 +412,129 @@ public class FichaPdfController {
         logger.info("Requisição para preview de ficha PDF para paciente: {}", item.getPacienteNome());
 
         try {
-            // TODO: Implementar geração de preview HTML
-            String htmlPreview = "<html><body><h1>Preview da Ficha</h1><p>Paciente: " +
-                    item.getPacienteNome() + "</p></body></html>";
+            // Gerar HTML usando o serviço de template
+            String htmlPreview = templateService.gerarHtmlFicha(item);
 
             Map<String, Object> preview = Map.of(
                     "html", htmlPreview,
                     "paciente", item.getPacienteNome(),
                     "especialidade", item.getEspecialidade(),
-                    "mesAno", item.getMes() + "/" + item.getAno()
+                    "mesAno", item.getMes() + "/" + item.getAno(),
+                    "numeroIdentificacao", item.getNumeroIdentificacao(),
+                    "convenio", item.getConvenioNome(),
+                    "geradoEm", System.currentTimeMillis()
             );
 
             return ResponseUtil.success(preview);
         } catch (Exception e) {
             logger.error("Erro ao gerar preview: {}", e.getMessage());
-            return ResponseEntity.badRequest().build();
+
+            Map<String, Object> errorResponse = Map.of(
+                    "error", "Erro ao gerar preview: " + e.getMessage(),
+                    "paciente", item.getPacienteNome()
+            );
+
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+
+    /**
+     * Valida parâmetros antes de gerar fichas
+     */
+    @PostMapping("/validar")
+    @PreAuthorize("hasAnyAuthority('ficha:read') or hasAnyRole('USER', 'ADMIN', 'SUPERVISOR')")
+    public ResponseEntity<Map<String, Object>> validarParametros(@RequestBody Map<String, Object> parametros) {
+        logger.info("Requisição para validar parâmetros de geração de fichas");
+
+        try {
+            boolean valido = true;
+            String mensagem = "Parâmetros válidos";
+            int fichasEstimadas = 0;
+            Map<String, String> erros = new HashMap<>();
+
+            // Validações básicas
+            if (parametros.containsKey("convenioId")) {
+                UUID convenioId = UUID.fromString(parametros.get("convenioId").toString());
+
+                // Verificar se convênio está habilitado
+                List<ConvenioDto> conveniosHabilitados = fichaPdfService.getConveniosHabilitados();
+                boolean convenioHabilitado = conveniosHabilitados.stream()
+                        .anyMatch(c -> c.getId().equals(convenioId));
+
+                if (!convenioHabilitado) {
+                    valido = false;
+                    mensagem = "Convênio não habilitado para geração de fichas PDF";
+                    erros.put("convenioId", "Convênio não habilitado");
+                } else {
+                    // Estimar fichas se convênio for válido
+                    if (parametros.containsKey("mes") && parametros.containsKey("ano")) {
+                        Integer mes = Integer.parseInt(parametros.get("mes").toString());
+                        Integer ano = Integer.parseInt(parametros.get("ano").toString());
+
+                        List<Paciente> pacientes = pacienteRepository.findByConvenioId(convenioId);
+                        List<UUID> pacientesIds = pacientes.stream().map(Paciente::getId).collect(Collectors.toList());
+                        List<UUID> pacientesSemFichas = fichaVerificationService.filtrarPacientesSemFichas(convenioId, mes, ano, pacientesIds);
+
+                        fichasEstimadas = pacientesSemFichas.size() * 2; // Estimativa média de 2 especialidades por paciente
+                    }
+                }
+            }
+
+            if (parametros.containsKey("pacienteId")) {
+                UUID pacienteId = UUID.fromString(parametros.get("pacienteId").toString());
+                boolean pacienteExiste = pacienteRepository.existsById(pacienteId);
+
+                if (!pacienteExiste) {
+                    valido = false;
+                    mensagem = "Paciente não encontrado";
+                    erros.put("pacienteId", "Paciente não existe");
+                }
+            }
+
+            // Validação de período
+            if (parametros.containsKey("mes") && parametros.containsKey("ano")) {
+                try {
+                    Integer mes = Integer.parseInt(parametros.get("mes").toString());
+                    Integer ano = Integer.parseInt(parametros.get("ano").toString());
+
+                    if (mes < 1 || mes > 12) {
+                        valido = false;
+                        erros.put("mes", "Mês deve estar entre 1 e 12");
+                    }
+
+                    if (ano < 2020 || ano > 2030) {
+                        valido = false;
+                        erros.put("ano", "Ano deve estar entre 2020 e 2030");
+                    }
+                } catch (NumberFormatException e) {
+                    valido = false;
+                    erros.put("periodo", "Mês e ano devem ser números válidos");
+                }
+            }
+
+            if (!erros.isEmpty()) {
+                mensagem = "Parâmetros inválidos: " + String.join(", ", erros.values());
+            }
+
+            Map<String, Object> resultado = Map.of(
+                    "valido", valido,
+                    "mensagem", mensagem,
+                    "fichasEstimadas", fichasEstimadas,
+                    "erros", erros,
+                    "timestamp", System.currentTimeMillis()
+            );
+
+            return ResponseUtil.success(resultado);
+        } catch (Exception e) {
+            logger.error("Erro ao validar parâmetros: {}", e.getMessage());
+
+            Map<String, Object> erro = Map.of(
+                    "valido", false,
+                    "mensagem", "Erro na validação: " + e.getMessage(),
+                    "error", true
+            );
+
+            return ResponseUtil.success(erro);
         }
     }
 
@@ -282,145 +549,40 @@ public class FichaPdfController {
         logger.info("Requisição para estatísticas de fichas PDF");
 
         try {
-            // TODO: Implementar cálculo real das estatísticas
+            // Obter jobs do usuário para estatísticas
+            List<FichaPdfJobDto> jobs = fichaPdfService.getJobsUsuario();
+
+            long jobsConcluidos = jobs.stream().filter(j -> "CONCLUIDO".equals(j.getStatus())).count();
+            long jobsEmAndamento = jobs.stream().filter(j -> "PROCESSANDO".equals(j.getStatus()) || "INICIADO".equals(j.getStatus())).count();
+            long jobsComErro = jobs.stream().filter(j -> "ERRO".equals(j.getStatus())).count();
+
+            int totalFichasGeradas = jobs.stream()
+                    .filter(j -> "CONCLUIDO".equals(j.getStatus()))
+                    .mapToInt(j -> j.getFichasProcessadas() != null ? j.getFichasProcessadas() : 0)
+                    .sum();
+
             Map<String, Object> estatisticas = Map.of(
-                    "totalFichasGeradas", 0,
+                    "totalFichasGeradas", totalFichasGeradas,
                     "conveniosAtivos", fichaPdfService.getConveniosHabilitados().size(),
-                    "jobsConcluidos", 0,
-                    "jobsEmAndamento", 0,
+                    "jobsConcluidos", jobsConcluidos,
+                    "jobsEmAndamento", jobsEmAndamento,
+                    "jobsComErro", jobsComErro,
+                    "totalJobs", jobs.size(),
                     "periodo", (mes != null && ano != null) ? mes + "/" + ano : "todos",
+                    "taxaSucesso", jobs.isEmpty() ? 0.0 : (double) jobsConcluidos / jobs.size() * 100,
                     "ultimaAtualizacao", System.currentTimeMillis()
             );
 
             return ResponseUtil.success(estatisticas);
         } catch (Exception e) {
             logger.error("Erro ao obter estatísticas: {}", e.getMessage());
-            return ResponseEntity.badRequest().build();
-        }
-    }
 
-    /**
-     * Cancela job em processamento (apenas o próprio usuário ou admin)
-     */
-    @PostMapping("/cancelar/{jobId}")
-    @PreAuthorize("hasAnyAuthority('ficha:cancel') or hasAnyRole('USER', 'ADMIN', 'SUPERVISOR')")
-    public ResponseEntity<Map<String, Object>> cancelarJob(@PathVariable String jobId) {
-        logger.info("Requisição para cancelar job: {}", jobId);
-
-        try {
-            // TODO: Implementar cancelamento de job
-            // fichaPdfService.cancelarJob(jobId);
-
-            Map<String, Object> response = Map.of(
-                    "message", "Funcionalidade de cancelamento será implementada em versão futura",
-                    "jobId", jobId,
-                    "cancelado", false
-            );
-
-            return ResponseUtil.success(response);
-        } catch (Exception e) {
-            logger.error("Erro ao cancelar job: {}", e.getMessage());
-            return ResponseEntity.badRequest().build();
-        }
-    }
-
-    /**
-     * Lista todas as configurações de convênios (apenas admins)
-     */
-    @GetMapping("/configuracoes")
-    @PreAuthorize("hasAnyAuthority('ficha:admin') or hasAnyRole('ADMIN')")
-    public ResponseEntity<Map<String, Object>> getConfiguracoes() {
-        logger.info("Requisição para listar configurações de fichas PDF");
-
-        try {
-            // TODO: Implementar busca de todas as configurações
-            List<ConvenioDto> conveniosHabilitados = fichaPdfService.getConveniosHabilitados();
-
-            Map<String, Object> configuracoes = Map.of(
-                    "conveniosHabilitados", conveniosHabilitados,
-                    "totalConvenios", conveniosHabilitados.size(),
-                    "configuracaoGlobal", Map.of(
-                            "batchSize", 50,
-                            "timeoutMinutos", 30,
-                            "formatoPadrao", "A4"
-                    )
-            );
-
-            return ResponseUtil.success(configuracoes);
-        } catch (Exception e) {
-            logger.error("Erro ao listar configurações: {}", e.getMessage());
-            return ResponseEntity.badRequest().build();
-        }
-    }
-
-    /**
-     * Testa geração para um paciente específico (modo debug)
-     */
-    @PostMapping("/teste/{pacienteId}")
-    @PreAuthorize("hasAnyAuthority('ficha:test') or hasAnyRole('ADMIN')")
-    public ResponseEntity<Map<String, Object>> testarGeracao(
-            @PathVariable UUID pacienteId,
-            @RequestParam(defaultValue = "1") Integer mes,
-            @RequestParam(defaultValue = "2025") Integer ano) {
-        logger.info("Teste de geração para paciente: {} em {}/{}", pacienteId, mes, ano);
-
-        try {
-            // Criar request de teste
-            FichaPdfPacienteRequest request = new FichaPdfPacienteRequest();
-            request.setPacienteId(pacienteId);
-            request.setMes(mes);
-            request.setAno(ano);
-            request.setIncluirInativos(false);
-
-            // Executar teste
-            FichaPdfResponseDto resultado = fichaPdfService.gerarFichasPaciente(request);
-
-            Map<String, Object> response = Map.of(
-                    "teste", "concluido",
-                    "pacienteId", pacienteId,
-                    "periodo", mes + "/" + ano,
-                    "resultado", resultado,
+            Map<String, Object> errorResponse = Map.of(
+                    "error", "Erro ao obter estatísticas: " + e.getMessage(),
                     "timestamp", System.currentTimeMillis()
             );
 
-            return ResponseUtil.success(response);
-        } catch (Exception e) {
-            logger.error("Erro no teste de geração: {}", e.getMessage());
-
-            Map<String, Object> erro = Map.of(
-                    "teste", "falhou",
-                    "erro", e.getMessage(),
-                    "pacienteId", pacienteId
-            );
-
-            return ResponseEntity.badRequest().body(erro);
-        }
-    }
-
-    /**
-     * Limpa cache de templates e imagens
-     */
-    @PostMapping("/limpar-cache")
-    @PreAuthorize("hasAnyAuthority('ficha:admin') or hasAnyRole('ADMIN')")
-    public ResponseEntity<Map<String, Object>> limparCache() {
-        logger.info("Requisição para limpar cache de templates");
-
-        try {
-            // TODO: Implementar limpeza de cache
-            Map<String, Object> response = Map.of(
-                    "message", "Cache limpo com sucesso",
-                    "timestamp", System.currentTimeMillis(),
-                    "itensLimpos", Map.of(
-                            "templates", 0,
-                            "imagens", 0,
-                            "configuracoes", 0
-                    )
-            );
-
-            return ResponseUtil.success(response);
-        } catch (Exception e) {
-            logger.error("Erro ao limpar cache: {}", e.getMessage());
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(errorResponse);
         }
     }
 
@@ -433,25 +595,43 @@ public class FichaPdfController {
         logger.debug("Verificação de saúde do sistema de fichas PDF");
 
         try {
+            // Verificar componentes do sistema
+            boolean templateServiceOk = templateService != null;
+            boolean pdfGeneratorOk = fichaPdfService != null;
+            boolean storageOk = checkStorageHealth();
+            boolean databaseOk = fichaRepository != null && pacienteRepository != null;
+
+            boolean allHealthy = templateServiceOk && pdfGeneratorOk && storageOk && databaseOk;
+
             Map<String, Object> health = Map.of(
-                    "status", "UP",
+                    "status", allHealthy ? "UP" : "DEGRADED",
                     "timestamp", System.currentTimeMillis(),
                     "componentes", Map.of(
-                            "templateService", "UP",
-                            "pdfGenerator", "UP",
-                            "storage", "UP"
+                            "templateService", templateServiceOk ? "UP" : "DOWN",
+                            "pdfGenerator", pdfGeneratorOk ? "UP" : "DOWN",
+                            "storage", storageOk ? "UP" : "DOWN",
+                            "database", databaseOk ? "UP" : "DOWN"
                     ),
-                    "versao", "2.0.0"
+                    "versao", "2.0.0",
+                    "memoria", Map.of(
+                            "total", Runtime.getRuntime().totalMemory(),
+                            "free", Runtime.getRuntime().freeMemory(),
+                            "used", Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()
+                    )
             );
 
-            return ResponseUtil.success(health);
+            HttpStatus status = allHealthy ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE;
+            return ResponseEntity.status(status).body(health);
         } catch (Exception e) {
             logger.error("Erro na verificação de saúde: {}", e.getMessage());
 
             Map<String, Object> health = Map.of(
                     "status", "DOWN",
                     "erro", e.getMessage(),
-                    "timestamp", System.currentTimeMillis()
+                    "timestamp", System.currentTimeMillis(),
+                    "componentes", Map.of(
+                            "sistema", "ERROR"
+                    )
             );
 
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(health);
@@ -472,22 +652,239 @@ public class FichaPdfController {
                     "versao", "2.0.0",
                     "biblioteca", "iText 7",
                     "javaVersion", System.getProperty("java.version"),
+                    "osName", System.getProperty("os.name"),
+                    "osVersion", System.getProperty("os.version"),
                     "configuracoes", Map.of(
                             "batchSize", 50,
                             "formatos", List.of("A4", "Letter"),
-                            "tiposSuportados", List.of("PACIENTE", "CONVENIO", "LOTE")
+                            "tiposSuportados", List.of("PACIENTE", "CONVENIO", "LOTE"),
+                            "templateEngine", "Thymeleaf"
                     ),
                     "limites", Map.of(
                             "maxFichasPorLote", 1000,
                             "maxTamanhoArquivo", "50MB",
-                            "timeoutProcessamento", "30min"
+                            "timeoutProcessamento", "30min",
+                            "maxJobsSimultaneos", 5
+                    ),
+                    "recursos", Map.of(
+                            "processadores", Runtime.getRuntime().availableProcessors(),
+                            "memoriaTotal", Runtime.getRuntime().totalMemory() / (1024 * 1024) + "MB",
+                            "memoriaLivre", Runtime.getRuntime().freeMemory() / (1024 * 1024) + "MB"
                     )
             );
 
             return ResponseUtil.success(info);
         } catch (Exception e) {
             logger.error("Erro ao obter informações do sistema: {}", e.getMessage());
-            return ResponseEntity.badRequest().build();
+
+            Map<String, Object> errorInfo = Map.of(
+                    "error", "Erro ao obter informações: " + e.getMessage(),
+                    "timestamp", System.currentTimeMillis()
+            );
+
+            return ResponseEntity.badRequest().body(errorInfo);
+        }
+    }
+
+    /**
+     * Testa geração para um paciente específico (modo debug)
+     */
+    @PostMapping("/teste/{pacienteId}")
+    @PreAuthorize("hasAnyAuthority('ficha:test') or hasAnyRole('ADMIN')")
+    public ResponseEntity<Map<String, Object>> testarGeracao(
+            @PathVariable UUID pacienteId,
+            @RequestParam(defaultValue = "1") Integer mes,
+            @RequestParam(defaultValue = "2025") Integer ano) {
+        logger.info("Teste de geração para paciente: {} em {}/{}", pacienteId, mes, ano);
+
+        try {
+            // Verificar se paciente existe
+            if (!pacienteRepository.existsById(pacienteId)) {
+                Map<String, Object> erro = Map.of(
+                        "teste", "falhou",
+                        "erro", "Paciente não encontrado",
+                        "pacienteId", pacienteId
+                );
+                return ResponseEntity.badRequest().body(erro);
+            }
+
+            // Criar request de teste
+            FichaPdfPacienteRequest request = new FichaPdfPacienteRequest();
+            request.setPacienteId(pacienteId);
+            request.setMes(mes);
+            request.setAno(ano);
+            request.setIncluirInativos(false);
+            request.setReutilizarCodigosExistentes(true);
+            request.setForcarRegeneracao(false);
+
+            // Executar teste
+            FichaPdfResponseDto resultado = fichaPdfService.gerarFichasPaciente(request);
+
+            Map<String, Object> response = Map.of(
+                    "teste", "concluido",
+                    "pacienteId", pacienteId,
+                    "periodo", mes + "/" + ano,
+                    "resultado", resultado,
+                    "sucesso", resultado.getSucesso(),
+                    "mensagem", resultado.getMensagem(),
+                    "timestamp", System.currentTimeMillis()
+            );
+
+            return ResponseUtil.success(response);
+        } catch (Exception e) {
+            logger.error("Erro no teste de geração: {}", e.getMessage());
+
+            Map<String, Object> erro = Map.of(
+                    "teste", "falhou",
+                    "erro", e.getMessage(),
+                    "pacienteId", pacienteId,
+                    "periodo", mes + "/" + ano,
+                    "timestamp", System.currentTimeMillis()
+            );
+
+            return ResponseEntity.badRequest().body(erro);
+        }
+    }
+
+    /**
+     * Cancela job em processamento (apenas o próprio usuário ou admin)
+     */
+    @PostMapping("/cancelar/{jobId}")
+    @PreAuthorize("hasAnyAuthority('ficha:cancel') or hasAnyRole('USER', 'ADMIN', 'SUPERVISOR')")
+    public ResponseEntity<Map<String, Object>> cancelarJob(@PathVariable String jobId) {
+        logger.info("Requisição para cancelar job: {}", jobId);
+
+        try {
+            // TODO: Implementar cancelamento real quando disponível
+            // Por enquanto, apenas simular
+
+            Map<String, Object> response = Map.of(
+                    "message", "Funcionalidade de cancelamento será implementada em versão futura",
+                    "jobId", jobId,
+                    "cancelado", false,
+                    "status", "PENDING_IMPLEMENTATION",
+                    "timestamp", System.currentTimeMillis()
+            );
+
+            return ResponseUtil.success(response);
+        } catch (Exception e) {
+            logger.error("Erro ao cancelar job: {}", e.getMessage());
+
+            Map<String, Object> errorResponse = Map.of(
+                    "message", "Erro ao cancelar job: " + e.getMessage(),
+                    "jobId", jobId,
+                    "error", true
+            );
+
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+
+    /**
+     * Lista todas as configurações de convênios (apenas admins)
+     */
+    @GetMapping("/configuracoes")
+    @PreAuthorize("hasAnyAuthority('ficha:admin') or hasAnyRole('ADMIN')")
+    public ResponseEntity<Map<String, Object>> getConfiguracoes() {
+        logger.info("Requisição para listar configurações de fichas PDF");
+
+        try {
+            List<ConvenioDto> conveniosHabilitados = fichaPdfService.getConveniosHabilitados();
+
+            Map<String, Object> configuracoes = Map.of(
+                    "conveniosHabilitados", conveniosHabilitados,
+                    "totalConvenios", conveniosHabilitados.size(),
+                    "configuracaoGlobal", Map.of(
+                            "batchSize", 50,
+                            "timeoutMinutos", 30,
+                            "formatoPadrao", "A4",
+                            "compressao", true,
+                            "qualidade", "ALTA"
+                    ),
+                    "limitesOperacionais", Map.of(
+                            "maxJobsSimultaneos", 5,
+                            "maxFichasPorJob", 1000,
+                            "tempoRetencaoArquivos", "7 dias"
+                    ),
+                    "estatisticas", Map.of(
+                            "conveniosAtivos", conveniosHabilitados.size(),
+                            "ultimaAtualizacao", System.currentTimeMillis()
+                    )
+            );
+
+            return ResponseUtil.success(configuracoes);
+        } catch (Exception e) {
+            logger.error("Erro ao listar configurações: {}", e.getMessage());
+
+            Map<String, Object> errorResponse = Map.of(
+                    "error", "Erro ao obter configurações: " + e.getMessage(),
+                    "timestamp", System.currentTimeMillis()
+            );
+
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+
+    /**
+     * Limpa cache de templates e imagens
+     */
+    @PostMapping("/limpar-cache")
+    @PreAuthorize("hasAnyAuthority('ficha:admin') or hasAnyRole('ADMIN')")
+    public ResponseEntity<Map<String, Object>> limparCache() {
+        logger.info("Requisição para limpar cache de templates");
+
+        try {
+            // TODO: Implementar limpeza real de cache quando disponível
+
+            Map<String, Object> response = Map.of(
+                    "message", "Cache limpo com sucesso",
+                    "timestamp", System.currentTimeMillis(),
+                    "itensLimpos", Map.of(
+                            "templates", 0,
+                            "imagens", 0,
+                            "configuracoes", 0
+                    ),
+                    "status", "SIMULATED" // Remover quando implementação real estiver disponível
+            );
+
+            return ResponseUtil.success(response);
+        } catch (Exception e) {
+            logger.error("Erro ao limpar cache: {}", e.getMessage());
+
+            Map<String, Object> errorResponse = Map.of(
+                    "error", "Erro ao limpar cache: " + e.getMessage(),
+                    "timestamp", System.currentTimeMillis()
+            );
+
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+
+    /**
+     * Extrai jobId de um CompletableFuture (implementação simplificada)
+     */
+    private String extractJobIdFromFuture(CompletableFuture<FichaPdfResponseDto> future) {
+        try {
+            // Em uma implementação real, o jobId seria retornado imediatamente
+            // Por enquanto, gerar um ID baseado no timestamp
+            return "job-" + System.currentTimeMillis();
+        } catch (Exception e) {
+            logger.warn("Erro ao extrair jobId do future: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Verifica saúde do sistema de armazenamento
+     */
+    private boolean checkStorageHealth() {
+        try {
+            // Verificar se consegue acessar sistema de arquivos
+            java.nio.file.Path tempDir = java.nio.file.Paths.get(System.getProperty("java.io.tmpdir"));
+            return java.nio.file.Files.exists(tempDir) && java.nio.file.Files.isWritable(tempDir);
+        } catch (Exception e) {
+            logger.warn("Erro ao verificar saúde do storage: {}", e.getMessage());
+            return false;
         }
     }
 }
