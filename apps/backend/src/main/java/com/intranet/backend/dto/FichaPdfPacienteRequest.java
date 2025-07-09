@@ -13,7 +13,6 @@ public class FichaPdfPacienteRequest {
     @NotNull(message = "ID do paciente é obrigatório")
     private UUID pacienteId;
 
-
     @NotNull(message = "Mês é obrigatório")
     @Min(value = 1, message = "Mês deve ser entre 1 e 12")
     @Max(value = 12, message = "Mês deve ser entre 1 e 12")
@@ -27,7 +26,6 @@ public class FichaPdfPacienteRequest {
     private Boolean incluirGuiasVencidas = true;
     private Boolean incluirInativos = false;
 
-    public Boolean setIncluirInativos(boolean b) {
-        return b;
-    }
+    private Boolean reutilizarCodigosExistentes = true; // Usar códigos de fichas já existentes
+    private Boolean forcarRegeneracao = false; // Forçar nova geração mesmo com fichas existentes
 }
