@@ -9,6 +9,7 @@ import java.util.UUID;
 
 @Data
 public class FichaPdfLoteRequest {
+
     @NotNull(message = "Lista de convênios é obrigatória")
     private List<UUID> convenioIds;
 
@@ -21,7 +22,6 @@ public class FichaPdfLoteRequest {
     @Min(value = 2024, message = "Ano deve ser maior ou igual a 2024")
     private Integer ano;
 
-    private String unidade;
     private List<String> especialidades;
     private Boolean incluirInativos = false;
 }

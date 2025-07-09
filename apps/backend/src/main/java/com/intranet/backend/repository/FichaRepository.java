@@ -157,4 +157,111 @@ public interface FichaRepository extends JpaRepository<Ficha, UUID> {
             @Param("inicio") LocalDateTime inicio,
             @Param("fim") LocalDateTime fim
     );
+
+    /**
+     * Verifica se já existe ficha para paciente/especialidade/mês/ano
+     */
+    @Query("SELECT COUNT(f) > 0 FROM Ficha f WHERE " +
+            "(f.paciente.id = :pacienteId OR f.guia.paciente.id = :pacienteId) " +
+            "AND f.especialidade = :especialidade " +
+            "AND f.mes = :mes AND f.ano = :ano")
+    boolean existsFichaByPacienteEspecialidadeMesAno(
+            @Param("pacienteId") UUID pacienteId,
+            @Param("especialidade") String especialidade,
+            @Param("mes") Integer mes,
+            @Param("ano") Integer ano
+    );
+
+    /**
+     * Busca ficha existente para reutilizar código
+     */
+    @Query("SELECT f FROM Ficha f WHERE " +
+            "(f.paciente.id = :pacienteId OR f.guia.paciente.id = :pacienteId) " +
+            "AND f.especialidade = :especialidade " +
+            "AND f.mes = :mes AND f.ano = :ano " +
+            "ORDER BY f.createdAt DESC")
+    Optional<Ficha> findFichaExistente(
+            @Param("pacienteId") UUID pacienteId,
+            @Param("especialidade") String especialidade,
+            @Param("mes") Integer mes,
+            @Param("ano") Integer ano
+    );
+
+    /**
+     * Lista pacientes que já possuem fichas no mês/ano
+     */
+    @Query("SELECT DISTINCT CASE " +
+            "WHEN f.paciente IS NOT NULL THEN f.paciente.id " +
+            "ELSE f.guia.paciente.id END " +
+            "FROM Ficha f WHERE f.mes = :mes AND f.ano = :ano " +
+            "AND f.convenio.id = :convenioId")
+    List<UUID> findPacientesComFichasNoMes(
+            @Param("convenioId") UUID convenioId,
+            @Param("mes") Integer mes,
+            @Param("ano") Integer ano
+    );
+
+    /**
+     * Lista fichas existentes por convênio/mês/ano
+     */
+    @Query("SELECT f FROM Ficha f WHERE f.convenio.id = :convenioId " +
+            "AND f.mes = :mes AND f.ano = :ano " +
+            "ORDER BY f.paciente.nome, f.especialidade")
+    List<Ficha> findFichasExistentesPorConvenioMesAno(
+            @Param("convenioId") UUID convenioId,
+            @Param("mes") Integer mes,
+            @Param("ano") Integer ano
+    );
+
+    /**
+     * Busca fichas existentes de um paciente específico no mês/ano
+     */
+    @Query("SELECT f FROM Ficha f WHERE " +
+            "(f.paciente.id = :pacienteId OR f.guia.paciente.id = :pacienteId) " +
+            "AND f.mes = :mes AND f.ano = :ano " +
+            "ORDER BY f.especialidade")
+    List<Ficha> findFichasExistentesPorPacienteMesAno(
+            @Param("pacienteId") UUID pacienteId,
+            @Param("mes") Integer mes,
+            @Param("ano") Integer ano
+    );
+
+    /**
+     * Conta total de fichas por convênio/mês/ano
+     */
+    @Query("SELECT COUNT(f) FROM Ficha f WHERE f.convenio.id = :convenioId " +
+            "AND f.mes = :mes AND f.ano = :ano")
+    long countFichasByConvenioMesAno(
+            @Param("convenioId") UUID convenioId,
+            @Param("mes") Integer mes,
+            @Param("ano") Integer ano
+    );
+
+    /**
+     * Lista especialidades com fichas existentes no convênio/mês/ano
+     */
+    @Query("SELECT DISTINCT f.especialidade FROM Ficha f WHERE f.convenio.id = :convenioId " +
+            "AND f.mes = :mes AND f.ano = :ano ORDER BY f.especialidade")
+    List<String> findEspecialidadesComFichas(
+            @Param("convenioId") UUID convenioId,
+            @Param("mes") Integer mes,
+            @Param("ano") Integer ano
+    );
+
+    /**
+     * Busca fichas que podem ser reutilizadas (mesmo código)
+     */
+    @Query("SELECT f FROM Ficha f WHERE f.codigoFicha = :codigoFicha")
+    Optional<Ficha> findByCodigoFichaForReuse(@Param("codigoFicha") String codigoFicha);
+
+    /**
+     * Verifica se há conflito de especialidade na mesma guia
+     */
+    @Query("SELECT COUNT(f) > 0 FROM Ficha f WHERE f.guia.id = :guiaId " +
+            "AND f.especialidade = :especialidade AND f.id != :fichaId")
+    boolean existsConflitEspecialidadeGuia(
+            @Param("guiaId") UUID guiaId,
+            @Param("especialidade") String especialidade,
+            @Param("fichaId") UUID fichaId
+    );
 }
