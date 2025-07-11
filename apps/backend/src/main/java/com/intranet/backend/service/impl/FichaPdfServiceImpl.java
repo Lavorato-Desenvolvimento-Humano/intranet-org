@@ -344,10 +344,6 @@ public class FichaPdfServiceImpl implements FichaPdfService {
                 .collect(Collectors.toList());
     }
 
-    // ===========================================================================================
-    // MÉTODOS PRIVADOS AUXILIARES
-    // ===========================================================================================
-
     private List<FichaPdfItemDto> buscarItensParaPaciente(FichaPdfPacienteRequest request) {
         logger.info("Buscando itens para paciente: {}", request.getPacienteId());
 
