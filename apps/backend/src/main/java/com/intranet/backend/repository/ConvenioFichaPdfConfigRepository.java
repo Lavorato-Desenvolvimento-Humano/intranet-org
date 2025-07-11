@@ -22,27 +22,4 @@ public interface ConvenioFichaPdfConfigRepository extends JpaRepository<Convenio
      */
     List<ConvenioFichaPdfConfig> findByHabilitadoTrue();
 
-    /**
-     * Lista convênios desabilitados
-     */
-    List<ConvenioFichaPdfConfig> findByHabilitadoFalse();
-
-    /**
-     * Verifica se convênio está habilitado
-     */
-    @Query("SELECT c.habilitado FROM ConvenioFichaPdfConfig c WHERE c.convenio.id = :convenioId")
-    Optional<Boolean> isConvenioHabilitado(@Param("convenioId") UUID convenioId);
-
-    /**
-     * Lista configurações por dias de atividade
-     */
-    List<ConvenioFichaPdfConfig> findByDiasAtividadeGreaterThan(Integer dias);
-
-    /**
-     * Busca por prefixo de identificação
-     */
-    List<ConvenioFichaPdfConfig> findByPrefixoIdentificacao(String prefixo);
-
-    @Query("SELECT c FROM ConvenioFichaPdfConfig c WHERE c.convenio.id = :convenioId")
-    Optional<ConvenioFichaPdfConfig> findByConvenio(@Param("convenioId") UUID convenioId);
 }

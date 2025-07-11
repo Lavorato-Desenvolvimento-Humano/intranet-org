@@ -615,10 +615,6 @@ public class RelatorioServiceImpl implements RelatorioService {
         return logs.stream().map(this::mapToLogDto).collect(Collectors.toList());
     }
 
-    // =================================================================================
-    // MÉTODOS AUXILIARES PRIVADOS
-    // =================================================================================
-
     private RelatorioDataDto processarDadosRelatorioEstadoAtual(RelatorioCreateRequest request, UUID usuarioAlvo) {
         logger.info("Processando dados do relatório - Estado atual das entidades para usuário: {}", usuarioAlvo);
 
@@ -789,7 +785,6 @@ public class RelatorioServiceImpl implements RelatorioService {
 
         if (principal instanceof UserDetails) {
             String username = ((UserDetails) principal).getUsername();
-            // CORREÇÃO: Usar método que existe no UserRepository
             return userRepository.findByEmail(username)
                     .orElseThrow(() -> new IllegalStateException("Usuário não encontrado: " + username));
         }
@@ -893,10 +888,6 @@ public class RelatorioServiceImpl implements RelatorioService {
         }
         return text.substring(0, maxLength - 3) + "...";
     }
-
-    // =================================================================================
-    // MÉTODOS DE MAPEAMENTO DTO
-    // =================================================================================
 
     private RelatorioItemDto mapGuiaToRelatorioItem(Guia guia) {
         RelatorioItemDto item = new RelatorioItemDto();
@@ -1014,8 +1005,6 @@ public class RelatorioServiceImpl implements RelatorioService {
         return item;
     }
 
-
-
     private RelatorioDto mapToDto(Relatorio relatorio) {
         RelatorioDto dto = new RelatorioDto();
         dto.setId(relatorio.getId());
@@ -1040,7 +1029,6 @@ public class RelatorioServiceImpl implements RelatorioService {
 
         dto.setTotalRegistros(relatorio.getTotalRegistros());
         dto.setHashCompartilhamento(relatorio.getHashCompartilhamento());
-        // CORREÇÃO: Usar enum direto em vez de .name() se DTO espera enum
         dto.setStatusRelatorio(relatorio.getStatusRelatorio());
         dto.setCreatedAt(relatorio.getCreatedAt());
         dto.setUpdatedAt(relatorio.getUpdatedAt());
@@ -1078,7 +1066,6 @@ public class RelatorioServiceImpl implements RelatorioService {
         dto.setDataCompartilhamento(compartilhamento.getDataCompartilhamento());
         dto.setVisualizado(compartilhamento.getVisualizado());
         dto.setDataVisualizacao(compartilhamento.getDataVisualizacao());
-        // CORREÇÃO: Removido setCreatedAt pois método não existe no DTO
         return dto;
     }
 
@@ -1114,10 +1101,6 @@ public class RelatorioServiceImpl implements RelatorioService {
         dto.setCreatedAt(log.getCreatedAt());
         return dto;
     }
-
-    // =================================================================================
-    // MÉTODOS DE CONVERSÃO JSON
-    // =================================================================================
 
     private String convertToJsonString(RelatorioDataDto dados) {
         try {
