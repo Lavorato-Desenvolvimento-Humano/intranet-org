@@ -106,9 +106,9 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
 
     private String criarTemplatePadrao() {
         return """
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ficha de Assinatura - {NUMERO_IDENTIFICACAO}</title>
@@ -303,8 +303,8 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
             }
         }
     </style>
-</head>
-<body>
+    </head>
+    <body>
     <div class="header">
         <img src="{LOGO_BASE64}" alt="Logo" />
         <h1>Ficha de Assinatura</h1>
@@ -367,9 +367,9 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
         <span>Guia: {NUMERO_GUIA}</span>
         <span>Sistema: Intranet v2.0</span>
     </div>
-</body>
-</html>
-                """;
+    </body>
+    </html>
+     """;
     }
 
     private String preencherTemplate(String template, FichaPdfItemDto item) {
