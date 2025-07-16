@@ -1,5 +1,6 @@
 package com.intranet.backend.controllers;
 
+import com.intranet.backend.config.FichaPdfProperties;
 import com.intranet.backend.dto.*;
 import com.intranet.backend.model.Ficha;
 import com.intranet.backend.model.Paciente;
@@ -13,6 +14,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -39,6 +41,9 @@ public class FichaPdfController {
     private final FichaPdfTemplateService templateService;
     private final FichaRepository fichaRepository;
     private final PacienteRepository pacienteRepository;
+
+    @Autowired
+    private FichaPdfProperties fichaPdfProperties;
 
     /**
      * Gera fichas PDF para um paciente específico
@@ -662,40 +667,88 @@ public class FichaPdfController {
                 queueSize = (int) jobs.stream()
                         .filter(job -> "INICIADO".equals(job.getStatus()))
                         .count();
+
+                logger.debug("Jobs encontrados: total={}, processando={}, queue={}",
+                        jobs.size(), processandoAtualmente, queueSize);
+
             } catch (Exception e) {
                 logger.warn("Erro ao obter status dos jobs: {}", e.getMessage());
                 servicoAtivo = false;
             }
 
-            Map<String, Object> info = Map.of(
-                    "versaoSistema", "2.0.0",
-                    "limitesOperacionais", Map.of(
-                            "maxJobSimultaneos", 5,
-                            "maxFichasPorJob", 1000,
-                            "tempoRetencaoArquivos", "7 dias"
-                    ),
-                    "configuracaoGlobal", Map.of(
-                            "batchSize", 50,
-                            "timeoutMinutos", 30,
-                            "formatoPadrao", "A4",
-                            "compressao", true,
-                            "qualidade", "ALTA"
-                    ),
-                    "statusServico", Map.of(
-                            "ativo", servicoAtivo,
-                            "queueSize", queueSize,
-                            "processandoAtualmente", processandoAtualmente
-                    )
+            // Verificar saúde do sistema
+            try {
+                // Teste básico de conectividade
+                fichaPdfService.getConveniosHabilitados();
+            } catch (Exception e) {
+                logger.warn("Erro ao verificar saúde do sistema: {}", e.getMessage());
+                servicoAtivo = false;
+            }
+
+            // Configurações dinâmicas (ou valores padrão se não tiver as propriedades)
+            Map<String, Object> limitesOperacionais;
+            Map<String, Object> configuracaoGlobal;
+
+            if (fichaPdfProperties != null) {
+                // Usar configurações das propriedades
+                limitesOperacionais = Map.of(
+                        "maxJobsSimultaneos", fichaPdfProperties.getProcessing().getMaxConcurrentJobs(),
+                        "maxFichasPorJob", fichaPdfProperties.getPdf().getMaxFichasPorJob(),
+                        "tempoRetencaoArquivos", fichaPdfProperties.getStorage().getRetentionDays() + " dias"
+                );
+
+                configuracaoGlobal = Map.of(
+                        "batchSize", fichaPdfProperties.getProcessing().getBatchSize(),
+                        "timeoutMinutos", fichaPdfProperties.getProcessing().getTimeoutMinutes(),
+                        "formatoPadrao", fichaPdfProperties.getPdf().getFormatoPadrao(),
+                        "compressao", fichaPdfProperties.getPdf().isCompressao(),
+                        "qualidade", fichaPdfProperties.getPdf().getQualidade()
+                );
+            } else {
+                // Valores padrão se não tiver as propriedades configuradas
+                limitesOperacionais = Map.of(
+                        "maxJobsSimultaneos", 5,
+                        "maxFichasPorJob", 1000,
+                        "tempoRetencaoArquivos", "7 dias"
+                );
+
+                configuracaoGlobal = Map.of(
+                        "batchSize", 50,
+                        "timeoutMinutos", 30,
+                        "formatoPadrao", "A4",
+                        "compressao", true,
+                        "qualidade", "ALTA"
+                );
+            }
+
+            Map<String, Object> statusServico = Map.of(
+                    "ativo", servicoAtivo,
+                    "queueSize", queueSize,
+                    "processandoAtualmente", processandoAtualmente
             );
 
+            // Informações do sistema
+            Map<String, Object> info = Map.of(
+                    "versaoSistema", "2.0.0",
+                    "limitesOperacionais", limitesOperacionais,
+                    "configuracaoGlobal", configuracaoGlobal,
+                    "statusServico", statusServico,
+                    "timestamp", System.currentTimeMillis()
+            );
+
+            logger.debug("Informações do sistema retornadas: servicoAtivo={}, queueSize={}, processando={}",
+                    servicoAtivo, queueSize, processandoAtualmente);
+
             return ResponseUtil.success(info);
+
         } catch (Exception e) {
             logger.error("Erro ao obter informações do sistema: {}", e.getMessage(), e);
 
+            // Retornar informações de erro mas ainda funcionais
             Map<String, Object> errorInfo = Map.of(
                     "versaoSistema", "2.0.0",
                     "limitesOperacionais", Map.of(
-                            "maxJobSimultaneos", 5,
+                            "maxJobsSimultaneos", 5,
                             "maxFichasPorJob", 1000,
                             "tempoRetencaoArquivos", "7 dias"
                     ),
@@ -711,10 +764,11 @@ public class FichaPdfController {
                             "queueSize", 0,
                             "processandoAtualmente", 0
                     ),
-                    "erro", "Erro ao obter informações: " + e.getMessage()
+                    "erro", "Erro interno do servidor: " + e.getMessage(),
+                    "timestamp", System.currentTimeMillis()
             );
 
-            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(errorInfo);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorInfo);
         }
     }
 
