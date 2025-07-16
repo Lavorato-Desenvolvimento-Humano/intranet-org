@@ -337,7 +337,30 @@ const fichaPdfService = {
       return response.data;
     } catch (error) {
       console.error("Erro ao obter informações do sistema de fichas", error);
-      throw error;
+
+      // Retornar dados padrão se o endpoint não estiver disponível
+      const fallbackInfo: FichaPdfInfoDto = {
+        versaoSistema: "2.0.0",
+        limitesOperacionais: {
+          maxJobSimultaneos: 5,
+          maxFichasPorJob: 1000,
+          tempoRetencaoArquivos: "7 dias",
+        },
+        configuracaoGlobal: {
+          batchSize: 50,
+          timeoutMinutos: 30,
+          formatoPadrao: "A4",
+          compressao: true,
+          qualidade: "ALTA",
+        },
+        statusServico: {
+          ativo: false, // Marcar como inativo se não conseguir conectar
+          queueSize: 0,
+          processandoAtualmente: 0,
+        },
+      };
+
+      return fallbackInfo;
     }
   },
 

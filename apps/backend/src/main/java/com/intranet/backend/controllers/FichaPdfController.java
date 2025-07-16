@@ -642,47 +642,79 @@ public class FichaPdfController {
      * Obtém informações detalhadas do sistema
      */
     @GetMapping("/info")
-    @PreAuthorize("hasAnyAuthority('ficha:admin') or hasAnyRole('ADMIN')")
-    public ResponseEntity<Map<String, Object>> getSystemInfo() {
-        logger.info("Requisição para informações do sistema");
+    @PreAuthorize("hasAnyAuthority('ficha:read') or hasAnyRole('USER', 'ADMIN', 'SUPERVISOR')")
+    public ResponseEntity<Map<String, Object>> getInfo() {
+        logger.info("Requisição para informações do sistema de fichas PDF");
 
         try {
+            // Verificar status do serviço
+            boolean servicoAtivo = true;
+            int queueSize = 0;
+            int processandoAtualmente = 0;
+
+            try {
+                // Verificar quantos jobs estão em execução
+                List<FichaPdfJobDto> jobs = fichaPdfService.getJobsUsuario();
+                processandoAtualmente = (int) jobs.stream()
+                        .filter(job -> "PROCESSANDO".equals(job.getStatus()) || "INICIADO".equals(job.getStatus()))
+                        .count();
+
+                queueSize = (int) jobs.stream()
+                        .filter(job -> "INICIADO".equals(job.getStatus()))
+                        .count();
+            } catch (Exception e) {
+                logger.warn("Erro ao obter status dos jobs: {}", e.getMessage());
+                servicoAtivo = false;
+            }
+
             Map<String, Object> info = Map.of(
-                    "sistema", "Gerador de Fichas PDF",
-                    "versao", "2.0.0",
-                    "biblioteca", "iText 7",
-                    "javaVersion", System.getProperty("java.version"),
-                    "osName", System.getProperty("os.name"),
-                    "osVersion", System.getProperty("os.version"),
-                    "configuracoes", Map.of(
+                    "versaoSistema", "2.0.0",
+                    "limitesOperacionais", Map.of(
+                            "maxJobSimultaneos", 5,
+                            "maxFichasPorJob", 1000,
+                            "tempoRetencaoArquivos", "7 dias"
+                    ),
+                    "configuracaoGlobal", Map.of(
                             "batchSize", 50,
-                            "formatos", List.of("A4", "Letter"),
-                            "tiposSuportados", List.of("PACIENTE", "CONVENIO", "LOTE"),
-                            "templateEngine", "Thymeleaf"
+                            "timeoutMinutos", 30,
+                            "formatoPadrao", "A4",
+                            "compressao", true,
+                            "qualidade", "ALTA"
                     ),
-                    "limites", Map.of(
-                            "maxFichasPorLote", 1000,
-                            "maxTamanhoArquivo", "50MB",
-                            "timeoutProcessamento", "30min",
-                            "maxJobsSimultaneos", 5
-                    ),
-                    "recursos", Map.of(
-                            "processadores", Runtime.getRuntime().availableProcessors(),
-                            "memoriaTotal", Runtime.getRuntime().totalMemory() / (1024 * 1024) + "MB",
-                            "memoriaLivre", Runtime.getRuntime().freeMemory() / (1024 * 1024) + "MB"
+                    "statusServico", Map.of(
+                            "ativo", servicoAtivo,
+                            "queueSize", queueSize,
+                            "processandoAtualmente", processandoAtualmente
                     )
             );
 
             return ResponseUtil.success(info);
         } catch (Exception e) {
-            logger.error("Erro ao obter informações do sistema: {}", e.getMessage());
+            logger.error("Erro ao obter informações do sistema: {}", e.getMessage(), e);
 
             Map<String, Object> errorInfo = Map.of(
-                    "error", "Erro ao obter informações: " + e.getMessage(),
-                    "timestamp", System.currentTimeMillis()
+                    "versaoSistema", "2.0.0",
+                    "limitesOperacionais", Map.of(
+                            "maxJobSimultaneos", 5,
+                            "maxFichasPorJob", 1000,
+                            "tempoRetencaoArquivos", "7 dias"
+                    ),
+                    "configuracaoGlobal", Map.of(
+                            "batchSize", 50,
+                            "timeoutMinutos", 30,
+                            "formatoPadrao", "A4",
+                            "compressao", true,
+                            "qualidade", "ALTA"
+                    ),
+                    "statusServico", Map.of(
+                            "ativo", false,
+                            "queueSize", 0,
+                            "processandoAtualmente", 0
+                    ),
+                    "erro", "Erro ao obter informações: " + e.getMessage()
             );
 
-            return ResponseEntity.badRequest().body(errorInfo);
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(errorInfo);
         }
     }
 
