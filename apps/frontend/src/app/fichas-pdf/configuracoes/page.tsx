@@ -45,15 +45,71 @@ export default function ConfiguracoesPage() {
   const carregarDados = async () => {
     try {
       setLoading(true);
-      const [configData, infoData] = await Promise.all([
-        fichaPdfService.getConfiguracoes().catch(() => null),
-        fichaPdfService.getInfo().catch(() => null),
-      ]);
+
+      // Tentar carregar configurações
+      let configData = null;
+      try {
+        configData = await fichaPdfService.getConfiguracoes();
+        console.log("Configurações carregadas:", configData);
+      } catch (error) {
+        console.error("Erro ao carregar configurações:", error);
+        // Configurações padrão se não conseguir carregar
+        configData = {
+          conveniosHabilitados: [],
+          totalConvenios: 0,
+          configuracaoGlobal: {
+            batchSize: 50,
+            timeoutMinutos: 30,
+            formatoPadrao: "A4",
+            compressao: true,
+            qualidade: "ALTA",
+          },
+          limitesOperacionais: {
+            maxJobsSimultaneos: 5,
+            maxFichasPorJob: 1000,
+            tempoRetencaoArquivos: "7 dias",
+          },
+          estatisticas: {
+            conveniosAtivos: 0,
+            ultimaAtualizacao: Date.now(),
+          },
+        };
+      }
+
+      // Tentar carregar informações do sistema
+      let infoData = null;
+      try {
+        infoData = await fichaPdfService.getInfo();
+        console.log("Info sistema carregada:", infoData);
+      } catch (error) {
+        console.error("Erro ao carregar info do sistema:", error);
+        // Informações padrão se não conseguir carregar
+        infoData = {
+          versaoSistema: "2.0.0",
+          limitesOperacionais: {
+            maxJobSimultaneos: 5,
+            maxFichasPorJob: 1000,
+            tempoRetencaoArquivos: "7 dias",
+          },
+          configuracaoGlobal: {
+            batchSize: 50,
+            timeoutMinutos: 30,
+            formatoPadrao: "A4",
+            compressao: true,
+            qualidade: "ALTA",
+          },
+          statusServico: {
+            ativo: false,
+            queueSize: 0,
+            processandoAtualmente: 0,
+          },
+        };
+      }
 
       setConfiguracoes(configData);
       setInfoSistema(infoData);
     } catch (error) {
-      console.error("Erro ao carregar configurações:", error);
+      console.error("Erro ao carregar dados:", error);
       toast.error("Erro ao carregar configurações");
     } finally {
       setLoading(false);
@@ -66,7 +122,7 @@ export default function ConfiguracoesPage() {
       await fichaPdfService.toggleConvenioHabilitado(convenioId, habilitado);
 
       // Atualizar estado local
-      if (configuracoes) {
+      if (configuracoes && configuracoes.conveniosHabilitados) {
         const conveniosAtualizados = configuracoes.conveniosHabilitados.map(
           (convenio) =>
             convenio.id === convenioId
@@ -100,7 +156,10 @@ export default function ConfiguracoesPage() {
       toast.success("Cache limpo com sucesso");
 
       // Recarregar informações do sistema
-      const infoData = await fichaPdfService.getInfo();
+      const infoData = await fichaPdfService.getInfo().catch((error) => {
+        console.error("Erro ao recarregar info:", error);
+        return null;
+      });
       setInfoSistema(infoData);
     } catch (error) {
       console.error("Erro ao limpar cache:", error);
@@ -111,7 +170,22 @@ export default function ConfiguracoesPage() {
   };
 
   const renderStatusSistema = () => {
-    if (!infoSistema) return null;
+    if (!infoSistema) {
+      return (
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+            <Server className="h-5 w-5 mr-2" />
+            Status do Sistema
+          </h3>
+          <div className="flex items-center justify-center py-8">
+            <AlertTriangle className="h-6 w-6 text-yellow-600 mr-2" />
+            <span className="text-gray-600">
+              Informações do sistema não disponíveis
+            </span>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -125,18 +199,18 @@ export default function ConfiguracoesPage() {
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Status do Serviço:</span>
               <div className="flex items-center">
-                {infoSistema.statusServico.ativo ? (
+                {infoSistema.statusServico?.ativo ? (
                   <CheckCircle className="h-4 w-4 text-green-600 mr-1" />
                 ) : (
                   <AlertTriangle className="h-4 w-4 text-red-600 mr-1" />
                 )}
                 <span
                   className={`text-sm font-medium ${
-                    infoSistema.statusServico.ativo
+                    infoSistema.statusServico?.ativo
                       ? "text-green-600"
                       : "text-red-600"
                   }`}>
-                  {infoSistema.statusServico.ativo ? "Ativo" : "Inativo"}
+                  {infoSistema.statusServico?.ativo ? "Ativo" : "Inativo"}
                 </span>
               </div>
             </div>
@@ -146,7 +220,7 @@ export default function ConfiguracoesPage() {
                 Fila de Processamento:
               </span>
               <span className="text-sm font-medium">
-                {infoSistema.statusServico.queueSize} jobs
+                {infoSistema.statusServico?.queueSize || 0}
               </span>
             </div>
 
@@ -155,52 +229,60 @@ export default function ConfiguracoesPage() {
                 Processando Atualmente:
               </span>
               <span className="text-sm font-medium">
-                {infoSistema.statusServico.processandoAtualmente} jobs
+                {infoSistema.statusServico?.processandoAtualmente || 0}
               </span>
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Versão do Sistema:</span>
-              <span className="text-sm font-mono bg-gray-100 px-2 py-1 rounded">
-                {infoSistema.versaoSistema}
+              <span className="text-sm text-gray-600">Versão:</span>
+              <span className="text-sm font-medium">
+                {infoSistema.versaoSistema || "N/A"}
               </span>
             </div>
           </div>
 
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">
-                Jobs Simultâneos (Máx):
-              </span>
-              <span className="text-sm font-medium">
-                {infoSistema.limitesOperacionais.maxJobSimultaneos}
-              </span>
-            </div>
+            {infoSistema.limitesOperacionais && (
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">
+                    Jobs Simultâneos (Máx):
+                  </span>
+                  <span className="text-sm font-medium">
+                    {infoSistema.limitesOperacionais.maxJobSimultaneos || "N/A"}
+                  </span>
+                </div>
 
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">
-                Fichas por Job (Máx):
-              </span>
-              <span className="text-sm font-medium">
-                {infoSistema.limitesOperacionais.maxFichasPorJob.toLocaleString()}
-              </span>
-            </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">
+                    Fichas por Job (Máx):
+                  </span>
+                  <span className="text-sm font-medium">
+                    {infoSistema.limitesOperacionais.maxFichasPorJob?.toLocaleString() ||
+                      "N/A"}
+                  </span>
+                </div>
 
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">
-                Retenção de Arquivos:
-              </span>
-              <span className="text-sm font-medium">
-                {infoSistema.limitesOperacionais.tempoRetencaoArquivos}
-              </span>
-            </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">
+                    Retenção de Arquivos:
+                  </span>
+                  <span className="text-sm font-medium">
+                    {infoSistema.limitesOperacionais.tempoRetencaoArquivos ||
+                      "N/A"}
+                  </span>
+                </div>
+              </>
+            )}
 
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Formato Padrão:</span>
-              <span className="text-sm font-medium">
-                {infoSistema.configuracaoGlobal.formatoPadrao}
-              </span>
-            </div>
+            {infoSistema.configuracaoGlobal && (
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Formato Padrão:</span>
+                <span className="text-sm font-medium">
+                  {infoSistema.configuracaoGlobal.formatoPadrao || "N/A"}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -208,7 +290,22 @@ export default function ConfiguracoesPage() {
   };
 
   const renderConfiguracaoGlobal = () => {
-    if (!configuracoes) return null;
+    if (!configuracoes || !configuracoes.configuracaoGlobal) {
+      return (
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+            <Settings className="h-5 w-5 mr-2" />
+            Configuração Global
+          </h3>
+          <div className="flex items-center justify-center py-8">
+            <AlertTriangle className="h-6 w-6 text-yellow-600 mr-2" />
+            <span className="text-gray-600">
+              Configurações globais não disponíveis
+            </span>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -226,7 +323,7 @@ export default function ConfiguracoesPage() {
               <HardDrive className="h-4 w-4 text-gray-400" />
             </div>
             <div className="text-2xl font-bold text-gray-900">
-              {configuracoes.configuracaoGlobal.batchSize}
+              {configuracoes.configuracaoGlobal.batchSize || "N/A"}
             </div>
             <div className="text-xs text-gray-500">fichas por lote</div>
           </div>
@@ -237,7 +334,7 @@ export default function ConfiguracoesPage() {
               <Clock className="h-4 w-4 text-gray-400" />
             </div>
             <div className="text-2xl font-bold text-gray-900">
-              {configuracoes.configuracaoGlobal.timeoutMinutos}
+              {configuracoes.configuracaoGlobal.timeoutMinutos || "N/A"}
             </div>
             <div className="text-xs text-gray-500">minutos</div>
           </div>
@@ -250,13 +347,15 @@ export default function ConfiguracoesPage() {
               <Zap className="h-4 w-4 text-gray-400" />
             </div>
             <div className="text-2xl font-bold text-gray-900">
-              {configuracoes.configuracaoGlobal.qualidade}
+              {configuracoes.configuracaoGlobal.qualidade || "N/A"}
             </div>
             <div className="text-xs text-gray-500">
               Compressão:{" "}
-              {configuracoes.configuracaoGlobal.compressao
-                ? "Ativa"
-                : "Inativa"}
+              {configuracoes.configuracaoGlobal.compressao !== undefined
+                ? configuracoes.configuracaoGlobal.compressao
+                  ? "Sim"
+                  : "Não"
+                : "N/A"}
             </div>
           </div>
         </div>
@@ -265,7 +364,22 @@ export default function ConfiguracoesPage() {
   };
 
   const renderConveniosHabilitados = () => {
-    if (!configuracoes) return null;
+    if (!configuracoes || !configuracoes.conveniosHabilitados) {
+      return (
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+            <Users className="h-5 w-5 mr-2" />
+            Convênios Habilitados
+          </h3>
+          <div className="flex items-center justify-center py-8">
+            <AlertTriangle className="h-6 w-6 text-yellow-600 mr-2" />
+            <span className="text-gray-600">
+              Lista de convênios não disponível
+            </span>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
@@ -273,7 +387,7 @@ export default function ConfiguracoesPage() {
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-medium text-gray-900 flex items-center">
               <Users className="h-5 w-5 mr-2" />
-              Convênios Habilitados ({configuracoes.totalConvenios})
+              Convênios Habilitados ({configuracoes.totalConvenios || 0})
             </h3>
             <span className="text-sm text-gray-500">
               {
@@ -286,58 +400,53 @@ export default function ConfiguracoesPage() {
         </div>
 
         <div className="divide-y divide-gray-200">
-          {configuracoes.conveniosHabilitados.map((convenio) => (
-            <div key={convenio.id} className="px-6 py-4 hover:bg-gray-50">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <h4 className="text-sm font-medium text-gray-900">
-                    {convenio.name}
-                  </h4>
-                  <p className="text-sm text-gray-500">
-                    Código: {convenio.code}
-                    {convenio.description && ` • ${convenio.description}`}
-                  </p>
-                </div>
+          {configuracoes.conveniosHabilitados.length === 0 ? (
+            <div className="px-6 py-8 text-center">
+              <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600">Nenhum convênio encontrado</p>
+            </div>
+          ) : (
+            configuracoes.conveniosHabilitados.map((convenio) => (
+              <div key={convenio.id} className="px-6 py-4 hover:bg-gray-50">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <h4 className="text-sm font-medium text-gray-900">
+                      {convenio.name || "Nome não disponível"}
+                    </h4>
+                    <p className="text-sm text-gray-500">
+                      Código: {convenio.code || "N/A"}
+                      {convenio.description && ` • ${convenio.description}`}
+                    </p>
+                  </div>
 
-                <div className="flex items-center space-x-3">
-                  <span
-                    className={`text-xs px-2 py-1 rounded-full ${
-                      convenio.active
-                        ? "bg-green-100 text-green-800"
-                        : "bg-gray-100 text-gray-800"
-                    }`}>
-                    {convenio.active ? "Habilitado" : "Desabilitado"}
-                  </span>
+                  <div className="flex items-center space-x-3">
+                    <span
+                      className={`text-xs px-2 py-1 rounded-full ${
+                        convenio.active
+                          ? "bg-green-100 text-green-800"
+                          : "bg-gray-100 text-gray-800"
+                      }`}>
+                      {convenio.active ? "Habilitado" : "Desabilitado"}
+                    </span>
 
-                  <button
-                    onClick={() =>
-                      toggleConvenio(convenio.id, !convenio.active)
-                    }
-                    disabled={salvando}
-                    className="transition-colors">
-                    {convenio.active ? (
-                      <ToggleRight className="h-6 w-6 text-green-600 hover:text-green-700" />
-                    ) : (
-                      <ToggleLeft className="h-6 w-6 text-gray-400 hover:text-gray-500" />
-                    )}
-                  </button>
+                    <button
+                      onClick={() =>
+                        toggleConvenio(convenio.id, !convenio.active)
+                      }
+                      disabled={salvando}
+                      className="transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                      {convenio.active ? (
+                        <ToggleRight className="h-6 w-6 text-green-600" />
+                      ) : (
+                        <ToggleLeft className="h-6 w-6 text-gray-400" />
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
-
-        {configuracoes.conveniosHabilitados.length === 0 && (
-          <div className="px-6 py-8 text-center">
-            <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-sm font-medium text-gray-900 mb-2">
-              Nenhum convênio encontrado
-            </h3>
-            <p className="text-sm text-gray-500">
-              Não há convênios disponíveis para configuração.
-            </p>
-          </div>
-        )}
       </div>
     );
   };
@@ -357,13 +466,13 @@ export default function ConfiguracoesPage() {
                 Limpar Cache
               </h4>
               <p className="text-sm text-gray-500">
-                Remove templates e imagens em cache para forçar recarregamento
+                Remove templates e imagens em cache
               </p>
             </div>
             <button
               onClick={limparCache}
               disabled={limpandoCache}
-              className="bg-yellow-600 text-white px-4 py-2 rounded-md hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center">
+              className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center">
               {limpandoCache ? (
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
               ) : (
