@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useStatusOptions } from "@/hooks/useStatusOptions";
 import {
   FichaPdfPacienteRequest,
   FichaPdfConvenioRequest,
@@ -26,6 +27,7 @@ import {
   Info,
   Search,
   X,
+  FileText,
 } from "lucide-react";
 
 type TipoGeracao = "paciente" | "convenio" | "lote";
@@ -43,6 +45,8 @@ interface FormData {
 
 export default function NovaGeracaoPage() {
   const router = useRouter();
+  const { options: statusOptions, loading: statusLoading } = useStatusOptions(); // Carrega os status disponíveis
+
   const [formData, setFormData] = useState<FormData>({
     tipo: "paciente",
     pacienteId: "",
@@ -63,25 +67,8 @@ export default function NovaGeracaoPage() {
   const [gerandoPrevia, setGerandoPrevia] = useState(false);
   const [verificandoPaciente, setVerificandoPaciente] = useState(false);
 
-  const especialidadesDisponiveis = [
-    "CARDIOLOGIA",
-    "NEUROLOGIA",
-    "PEDIATRIA",
-    "GINECOLOGIA",
-    "ORTOPEDIA",
-    "DERMATOLOGIA",
-    "PSIQUIATRIA",
-    "OFTALMOLOGIA",
-    "UROLOGIA",
-    "ENDOCRINOLOGIA",
-  ];
-
   useEffect(() => {
-    carregarConvenios();
-  }, []);
-
-  useEffect(() => {
-    if (formData.pacienteId && formData.tipo === "paciente") {
+    if (formData.tipo === "paciente") {
       verificarPaciente();
     }
   }, [formData.pacienteId]);
@@ -528,64 +515,94 @@ export default function NovaGeracaoPage() {
 
       <div className="mt-6">
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Especialidades (opcional)
+          Status (opcional)
         </label>
-        <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-md p-2">
-          {especialidadesDisponiveis.map((especialidade) => (
-            <label
-              key={especialidade}
-              className="flex items-center p-2 hover:bg-gray-50 cursor-pointer rounded">
-              <input
-                type="checkbox"
-                checked={formData.especialidades.includes(especialidade)}
-                onChange={(e) => {
-                  if (e.target.checked) {
-                    setFormData({
-                      ...formData,
-                      especialidades: [
-                        ...formData.especialidades,
-                        especialidade,
-                      ],
-                    });
-                  } else {
-                    setFormData({
-                      ...formData,
-                      especialidades: formData.especialidades.filter(
-                        (e) => e !== especialidade
-                      ),
-                    });
-                  }
-                }}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <span className="ml-2 text-sm text-gray-900">
-                {especialidade}
-              </span>
-            </label>
-          ))}
-        </div>
+        {statusLoading ? (
+          <div className="flex items-center justify-center p-4 border border-gray-300 rounded-md">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+            <span className="ml-2 text-sm text-gray-600">
+              Carregando status...
+            </span>
+          </div>
+        ) : (
+          <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-md p-2">
+            {statusOptions.map((statusOption) => (
+              <label
+                key={statusOption.value}
+                className="flex items-center p-2 hover:bg-gray-50 cursor-pointer rounded">
+                <input
+                  type="checkbox"
+                  checked={formData.especialidades.includes(statusOption.value)}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setFormData({
+                        ...formData,
+                        especialidades: [
+                          ...formData.especialidades,
+                          statusOption.value,
+                        ],
+                      });
+                    } else {
+                      setFormData({
+                        ...formData,
+                        especialidades: formData.especialidades.filter(
+                          (e) => e !== statusOption.value
+                        ),
+                      });
+                    }
+                  }}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <div className="ml-2 flex items-center">
+                  {statusOption.color && (
+                    <div
+                      className="w-3 h-3 rounded-full mr-2"
+                      style={{ backgroundColor: statusOption.color }}
+                    />
+                  )}
+                  <span className="text-sm text-gray-900">
+                    {statusOption.label}
+                  </span>
+                  {statusOption.description && (
+                    <span className="text-xs text-gray-500 ml-1">
+                      - {statusOption.description}
+                    </span>
+                  )}
+                </div>
+              </label>
+            ))}
+          </div>
+        )}
 
         {formData.especialidades.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-2">
-            {formData.especialidades.map((especialidade) => (
-              <span
-                key={especialidade}
-                className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                {especialidade}
-                <button
-                  onClick={() =>
-                    setFormData({
-                      ...formData,
-                      especialidades: formData.especialidades.filter(
-                        (e) => e !== especialidade
-                      ),
-                    })
-                  }
-                  className="ml-1 h-3 w-3 text-blue-600 hover:text-blue-800">
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
-            ))}
+            {formData.especialidades.map((especialidade) => {
+              const statusOption = statusOptions.find(
+                (opt) => opt.value === especialidade
+              );
+              return (
+                <span
+                  key={especialidade}
+                  className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white"
+                  style={{
+                    backgroundColor: statusOption?.color || "#3B82F6",
+                  }}>
+                  {statusOption?.label || especialidade}
+                  <button
+                    onClick={() =>
+                      setFormData({
+                        ...formData,
+                        especialidades: formData.especialidades.filter(
+                          (e) => e !== especialidade
+                        ),
+                      })
+                    }
+                    className="ml-1 h-3 w-3 text-white hover:text-gray-200">
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              );
+            })}
           </div>
         )}
       </div>
@@ -716,7 +733,7 @@ export default function NovaGeracaoPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="container mx-auto p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center">
@@ -726,7 +743,8 @@ export default function NovaGeracaoPage() {
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">
+            <h1 className="text-2xl font-bold text-gray-900 flex items-center">
+              <FileText className="mr-2 h-6 w-6" />
               Nova Geração de Fichas
             </h1>
             <p className="text-gray-600">
@@ -783,7 +801,7 @@ export default function NovaGeracaoPage() {
                 disabled={
                   loading ||
                   !validarFormulario() ||
-                  (previa?.bloqueios && previa.bloqueios.length > 0)
+                  (previa?.bloqueios?.length ?? 0) > 0
                 }
                 className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center">
                 {loading ? (

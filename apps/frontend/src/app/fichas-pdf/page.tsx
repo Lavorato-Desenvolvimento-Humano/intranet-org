@@ -58,7 +58,7 @@ export default function FichasPdfPage() {
       setEstatisticas(estatisticasData);
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
-      toast.error("Erro ao carregar dados das fichas PDF");
+      toast.error("Erro ao carregar dados das fichas PDF.");
     } finally {
       setLoading(false);
     }
@@ -68,9 +68,9 @@ export default function FichasPdfPage() {
     try {
       setRefreshing(true);
       await carregarDados();
-      toast.success("Dados atualizados com sucesso");
+      toast.success("Dados atualizados com sucesso.");
     } catch (error) {
-      toast.error("Erro ao atualizar dados");
+      toast.error("Erro ao atualizar dados.");
     } finally {
       setRefreshing(false);
     }
@@ -85,21 +85,21 @@ export default function FichasPdfPage() {
           new Date().getFullYear()
         )}_${job.jobId}.pdf`
       );
-      toast.success("PDF baixado com sucesso");
+      toast.success("PDF baixado com sucesso.");
     } catch (error) {
       console.error("Erro ao baixar PDF:", error);
-      toast.error("Erro ao baixar PDF");
+      toast.error("Erro ao baixar PDF.");
     }
   };
 
   const cancelarJob = async (jobId: string) => {
     try {
       await fichaPdfService.cancelarJob(jobId);
-      toast.success("Job cancelado com sucesso");
+      toast.success("Job cancelado com sucesso.");
       await carregarDados();
     } catch (error) {
       console.error("Erro ao cancelar job:", error);
-      toast.error("Erro ao cancelar job");
+      toast.error("Erro ao cancelar job.");
     }
   };
 
