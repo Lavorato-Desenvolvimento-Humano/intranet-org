@@ -1,70 +1,6 @@
-<div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Status do Serviço:</span>
-              <div className="flex items-center">
-                {infoSistema.statusServico?.ativo ? (
-                  <CheckCircle className="h-4 w-4 text-green-600 mr-1" />
-                ) : (
-                  <AlertTriangle className="h-4 w-4 text-red-600 mr-1" />
-                )}
-                <span
-                  className={`text-sm font-medium ${
-                    infoSistema.statusServico?.ativo
-                      ? "text-green-600"
-                      : "text-red-600"
-                  }`}>
-                  {infoSistema.statusServico?.ativo ? "Ativo" : "Inativo"}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Fila de Processamento:</span>
-              <div className="flex items-center">
-                <span className="text-sm font-medium">
-                  {infoSistema.statusServico?.queueSize || 0}
-                </span>
-                {(infoSistema.statusServico?.queueSize || 0) > 0 && (
-                  <span className="ml-1 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                    aguardando
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">
-                Processando Atualmente:
-              </span>
-              <div className="flex items-center">
-                <span className="text-sm font-medium">
-                  {infoSistema.statusServico?.processandoAtualmente || 0}
-                </span>
-                {(infoSistema.statusServico?.processandoAtualmente || 0) > 0 && (
-                  <div className="ml-2 flex items-center">
-                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-green-600"></div>
-                    <span className="ml-1 text-xs text-green-600">em execução</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Versão:</span>
-              <span className="text-sm font-mono bg-gray-100 px-2 py-1 rounded">
-                {infoSistema.versaoSistema || "N/A"}
-              </span>
-            </div>
-
-            {/* Informações de memória se disponíveis */}
-            {info"use client";
-
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import {
-  FichaPdfConfiguracaoDto,
-  ConvenioDto,
-} from "@/types/fichaPdf";
+import { FichaPdfConfiguracaoDto, ConvenioDto } from "@/types/fichaPdf";
 import fichaPdfService from "@/services/ficha-pdf";
 import { toast } from "react-hot-toast";
 import {
@@ -94,6 +30,7 @@ export default function ConfiguracoesPage() {
   const [loading, setLoading] = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [limpandoCache, setLimpandoCache] = useState(false);
+  const [infoSistema, setInfoSistema] = useState<any>(null);
 
   useEffect(() => {
     carregarDados();
@@ -102,16 +39,27 @@ export default function ConfiguracoesPage() {
   const carregarDados = async () => {
     try {
       setLoading(true);
-      
       // Carregar apenas as configurações (que já contêm todas as informações necessárias)
       const configData = await fichaPdfService.getConfiguracoes();
       console.log("Configurações carregadas:", configData);
       setConfiguracoes(configData);
 
+      // Adicionar informações do sistema
+      setInfoSistema({
+        statusServico: {
+          ativo: true,
+          queueSize: 0,
+          processandoAtualmente: 0,
+        },
+        versaoSistema: "1.0.0",
+        limitesOperacionais: configData.limitesOperacionais,
+        configuracaoGlobal: configData.configuracaoGlobal,
+      });
+      setConfiguracoes(configData);
     } catch (error) {
       console.error("Erro ao carregar configurações:", error);
       toast.error("Erro ao carregar configurações");
-      
+
       // Fallback com dados padrão em caso de erro
       setConfiguracoes({
         conveniosHabilitados: [],
@@ -121,17 +69,17 @@ export default function ConfiguracoesPage() {
           timeoutMinutos: 30,
           formatoPadrao: "A4",
           compressao: true,
-          qualidade: "ALTA"
+          qualidade: "ALTA",
         },
         limitesOperacionais: {
           maxJobsSimultaneos: 5,
           maxFichasPorJob: 1000,
-          tempoRetencaoArquivos: "7 dias"
+          tempoRetencaoArquivos: "7 dias",
         },
         estatisticas: {
           conveniosAtivos: 0,
-          ultimaAtualizacao: Date.now()
-        }
+          ultimaAtualizacao: Date.now(),
+        },
       });
     } finally {
       setLoading(false);
@@ -234,7 +182,9 @@ export default function ConfiguracoesPage() {
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Fila de Processamento:</span>
+              <span className="text-sm text-gray-600">
+                Fila de Processamento:
+              </span>
               <span className="text-sm font-medium">
                 {infoSistema.statusServico?.queueSize || 0}
               </span>
@@ -274,7 +224,8 @@ export default function ConfiguracoesPage() {
                     Fichas por Job (Máx):
                   </span>
                   <span className="text-sm font-medium">
-                    {infoSistema.limitesOperacionais.maxFichasPorJob?.toLocaleString() || "N/A"}
+                    {infoSistema.limitesOperacionais.maxFichasPorJob?.toLocaleString() ||
+                      "N/A"}
                   </span>
                 </div>
 
@@ -283,7 +234,8 @@ export default function ConfiguracoesPage() {
                     Retenção de Arquivos:
                   </span>
                   <span className="text-sm font-medium">
-                    {infoSistema.limitesOperacionais.tempoRetencaoArquivos || "N/A"}
+                    {infoSistema.limitesOperacionais.tempoRetencaoArquivos ||
+                      "N/A"}
                   </span>
                 </div>
               </>
