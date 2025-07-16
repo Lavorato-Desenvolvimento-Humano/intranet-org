@@ -1,6 +1,5 @@
 package com.intranet.backend.controllers;
 
-import com.intranet.backend.config.FichaPdfProperties;
 import com.intranet.backend.dto.*;
 import com.intranet.backend.model.Ficha;
 import com.intranet.backend.model.Paciente;
@@ -14,7 +13,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -41,9 +39,6 @@ public class FichaPdfController {
     private final FichaPdfTemplateService templateService;
     private final FichaRepository fichaRepository;
     private final PacienteRepository pacienteRepository;
-
-    @Autowired
-    private FichaPdfProperties fichaPdfProperties;
 
     /**
      * Gera fichas PDF para um paciente específico
@@ -670,7 +665,6 @@ public class FichaPdfController {
 
                 logger.debug("Jobs encontrados: total={}, processando={}, queue={}",
                         jobs.size(), processandoAtualmente, queueSize);
-
             } catch (Exception e) {
                 logger.warn("Erro ao obter status dos jobs: {}", e.getMessage());
                 servicoAtivo = false;
@@ -678,48 +672,27 @@ public class FichaPdfController {
 
             // Verificar saúde do sistema
             try {
-                // Teste básico de conectividade
+                // Teste básico de conectividade com o banco
                 fichaPdfService.getConveniosHabilitados();
             } catch (Exception e) {
                 logger.warn("Erro ao verificar saúde do sistema: {}", e.getMessage());
                 servicoAtivo = false;
             }
 
-            // Configurações dinâmicas (ou valores padrão se não tiver as propriedades)
-            Map<String, Object> limitesOperacionais;
-            Map<String, Object> configuracaoGlobal;
+            // Obter configurações das propriedades da aplicação
+            Map<String, Object> limitesOperacionais = Map.of(
+                    "maxJobsSimultaneos", 5, // Pode vir de @Value ou configuração
+                    "maxFichasPorJob", 1000,
+                    "tempoRetencaoArquivos", "7 dias"
+            );
 
-            if (fichaPdfProperties != null) {
-                // Usar configurações das propriedades
-                limitesOperacionais = Map.of(
-                        "maxJobsSimultaneos", fichaPdfProperties.getProcessing().getMaxConcurrentJobs(),
-                        "maxFichasPorJob", fichaPdfProperties.getPdf().getMaxFichasPorJob(),
-                        "tempoRetencaoArquivos", fichaPdfProperties.getStorage().getRetentionDays() + " dias"
-                );
-
-                configuracaoGlobal = Map.of(
-                        "batchSize", fichaPdfProperties.getProcessing().getBatchSize(),
-                        "timeoutMinutos", fichaPdfProperties.getProcessing().getTimeoutMinutes(),
-                        "formatoPadrao", fichaPdfProperties.getPdf().getFormatoPadrao(),
-                        "compressao", fichaPdfProperties.getPdf().isCompressao(),
-                        "qualidade", fichaPdfProperties.getPdf().getQualidade()
-                );
-            } else {
-                // Valores padrão se não tiver as propriedades configuradas
-                limitesOperacionais = Map.of(
-                        "maxJobsSimultaneos", 5,
-                        "maxFichasPorJob", 1000,
-                        "tempoRetencaoArquivos", "7 dias"
-                );
-
-                configuracaoGlobal = Map.of(
-                        "batchSize", 50,
-                        "timeoutMinutos", 30,
-                        "formatoPadrao", "A4",
-                        "compressao", true,
-                        "qualidade", "ALTA"
-                );
-            }
+            Map<String, Object> configuracaoGlobal = Map.of(
+                    "batchSize", 50, // Pode vir de propriedades da aplicação
+                    "timeoutMinutos", 30,
+                    "formatoPadrao", "A4",
+                    "compressao", true,
+                    "qualidade", "ALTA"
+            );
 
             Map<String, Object> statusServico = Map.of(
                     "ativo", servicoAtivo,
