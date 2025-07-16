@@ -26,6 +26,7 @@ import {
   CheckCircle,
   HardDrive,
   Zap,
+  FileText,
 } from "lucide-react";
 
 export default function ConfiguracoesPage() {
@@ -398,14 +399,16 @@ export default function ConfiguracoesPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="container mx-auto p-6">
+        <div className="flex items-center justify-center min-h-96">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="container mx-auto p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center">
@@ -415,7 +418,10 @@ export default function ConfiguracoesPage() {
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Configurações</h1>
+            <h1 className="text-2xl font-bold text-gray-900 flex items-center">
+              <FileText className="mr-2 h-6 w-6" />
+              Configurações
+            </h1>
             <p className="text-gray-600">
               Gerencie configurações do sistema de fichas PDF
             </p>
