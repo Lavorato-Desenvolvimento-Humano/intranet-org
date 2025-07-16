@@ -1,11 +1,69 @@
-"use client";
+<div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Status do Serviço:</span>
+              <div className="flex items-center">
+                {infoSistema.statusServico?.ativo ? (
+                  <CheckCircle className="h-4 w-4 text-green-600 mr-1" />
+                ) : (
+                  <AlertTriangle className="h-4 w-4 text-red-600 mr-1" />
+                )}
+                <span
+                  className={`text-sm font-medium ${
+                    infoSistema.statusServico?.ativo
+                      ? "text-green-600"
+                      : "text-red-600"
+                  }`}>
+                  {infoSistema.statusServico?.ativo ? "Ativo" : "Inativo"}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Fila de Processamento:</span>
+              <div className="flex items-center">
+                <span className="text-sm font-medium">
+                  {infoSistema.statusServico?.queueSize || 0}
+                </span>
+                {(infoSistema.statusServico?.queueSize || 0) > 0 && (
+                  <span className="ml-1 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                    aguardando
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">
+                Processando Atualmente:
+              </span>
+              <div className="flex items-center">
+                <span className="text-sm font-medium">
+                  {infoSistema.statusServico?.processandoAtualmente || 0}
+                </span>
+                {(infoSistema.statusServico?.processandoAtualmente || 0) > 0 && (
+                  <div className="ml-2 flex items-center">
+                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-green-600"></div>
+                    <span className="ml-1 text-xs text-green-600">em execução</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Versão:</span>
+              <span className="text-sm font-mono bg-gray-100 px-2 py-1 rounded">
+                {infoSistema.versaoSistema || "N/A"}
+              </span>
+            </div>
+
+            {/* Informações de memória se disponíveis */}
+            {info"use client";
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   FichaPdfConfiguracaoDto,
   ConvenioDto,
-  FichaPdfInfoDto,
 } from "@/types/fichaPdf";
 import fichaPdfService from "@/services/ficha-pdf";
 import { toast } from "react-hot-toast";
@@ -33,7 +91,6 @@ export default function ConfiguracoesPage() {
   const router = useRouter();
   const [configuracoes, setConfiguracoes] =
     useState<FichaPdfConfiguracaoDto | null>(null);
-  const [infoSistema, setInfoSistema] = useState<FichaPdfInfoDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [limpandoCache, setLimpandoCache] = useState(false);
@@ -45,72 +102,37 @@ export default function ConfiguracoesPage() {
   const carregarDados = async () => {
     try {
       setLoading(true);
-
-      // Tentar carregar configurações
-      let configData = null;
-      try {
-        configData = await fichaPdfService.getConfiguracoes();
-        console.log("Configurações carregadas:", configData);
-      } catch (error) {
-        console.error("Erro ao carregar configurações:", error);
-        // Configurações padrão se não conseguir carregar
-        configData = {
-          conveniosHabilitados: [],
-          totalConvenios: 0,
-          configuracaoGlobal: {
-            batchSize: 50,
-            timeoutMinutos: 30,
-            formatoPadrao: "A4",
-            compressao: true,
-            qualidade: "ALTA",
-          },
-          limitesOperacionais: {
-            maxJobsSimultaneos: 5,
-            maxFichasPorJob: 1000,
-            tempoRetencaoArquivos: "7 dias",
-          },
-          estatisticas: {
-            conveniosAtivos: 0,
-            ultimaAtualizacao: Date.now(),
-          },
-        };
-      }
-
-      // Tentar carregar informações do sistema
-      let infoData = null;
-      try {
-        infoData = await fichaPdfService.getInfo();
-        console.log("Info sistema carregada:", infoData);
-      } catch (error) {
-        console.error("Erro ao carregar info do sistema:", error);
-        // Informações padrão se não conseguir carregar
-        infoData = {
-          versaoSistema: "2.0.0",
-          limitesOperacionais: {
-            maxJobSimultaneos: 5,
-            maxFichasPorJob: 1000,
-            tempoRetencaoArquivos: "7 dias",
-          },
-          configuracaoGlobal: {
-            batchSize: 50,
-            timeoutMinutos: 30,
-            formatoPadrao: "A4",
-            compressao: true,
-            qualidade: "ALTA",
-          },
-          statusServico: {
-            ativo: false,
-            queueSize: 0,
-            processandoAtualmente: 0,
-          },
-        };
-      }
-
+      
+      // Carregar apenas as configurações (que já contêm todas as informações necessárias)
+      const configData = await fichaPdfService.getConfiguracoes();
+      console.log("Configurações carregadas:", configData);
       setConfiguracoes(configData);
-      setInfoSistema(infoData);
+
     } catch (error) {
-      console.error("Erro ao carregar dados:", error);
+      console.error("Erro ao carregar configurações:", error);
       toast.error("Erro ao carregar configurações");
+      
+      // Fallback com dados padrão em caso de erro
+      setConfiguracoes({
+        conveniosHabilitados: [],
+        totalConvenios: 0,
+        configuracaoGlobal: {
+          batchSize: 50,
+          timeoutMinutos: 30,
+          formatoPadrao: "A4",
+          compressao: true,
+          qualidade: "ALTA"
+        },
+        limitesOperacionais: {
+          maxJobsSimultaneos: 5,
+          maxFichasPorJob: 1000,
+          tempoRetencaoArquivos: "7 dias"
+        },
+        estatisticas: {
+          conveniosAtivos: 0,
+          ultimaAtualizacao: Date.now()
+        }
+      });
     } finally {
       setLoading(false);
     }
@@ -155,12 +177,8 @@ export default function ConfiguracoesPage() {
       await fichaPdfService.limparCache();
       toast.success("Cache limpo com sucesso");
 
-      // Recarregar informações do sistema
-      const infoData = await fichaPdfService.getInfo().catch((error) => {
-        console.error("Erro ao recarregar info:", error);
-        return null;
-      });
-      setInfoSistema(infoData);
+      // Recarregar apenas as configurações
+      await carregarDados();
     } catch (error) {
       console.error("Erro ao limpar cache:", error);
       toast.error("Erro ao limpar cache");
@@ -216,9 +234,7 @@ export default function ConfiguracoesPage() {
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">
-                Fila de Processamento:
-              </span>
+              <span className="text-sm text-gray-600">Fila de Processamento:</span>
               <span className="text-sm font-medium">
                 {infoSistema.statusServico?.queueSize || 0}
               </span>
@@ -258,8 +274,7 @@ export default function ConfiguracoesPage() {
                     Fichas por Job (Máx):
                   </span>
                   <span className="text-sm font-medium">
-                    {infoSistema.limitesOperacionais.maxFichasPorJob?.toLocaleString() ||
-                      "N/A"}
+                    {infoSistema.limitesOperacionais.maxFichasPorJob?.toLocaleString() || "N/A"}
                   </span>
                 </div>
 
@@ -268,8 +283,7 @@ export default function ConfiguracoesPage() {
                     Retenção de Arquivos:
                   </span>
                   <span className="text-sm font-medium">
-                    {infoSistema.limitesOperacionais.tempoRetencaoArquivos ||
-                      "N/A"}
+                    {infoSistema.limitesOperacionais.tempoRetencaoArquivos || "N/A"}
                   </span>
                 </div>
               </>
