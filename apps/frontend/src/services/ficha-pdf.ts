@@ -17,6 +17,7 @@ import {
   PacienteVerificacaoDto,
   FichaPdfConfiguracaoDto,
   FichaPdfPageResponse,
+  FichaPdfItemDto, // Importar o tipo que faltava
 } from "@/types/fichaPdf";
 
 const fichaPdfService = {
@@ -196,9 +197,11 @@ const fichaPdfService = {
     habilitado: boolean
   ): Promise<{ success: boolean; message: string }> => {
     try {
+      // CORREÇÃO: URL para "convenios" (plural) e "habilitado" como query param
       const response = await api.put<{ success: boolean; message: string }>(
-        `/api/fichas-pdf/convenio/${convenioId}/toggle`,
-        { habilitado }
+        `/api/fichas-pdf/convenios/${convenioId}/toggle`,
+        {}, // Corpo vazio
+        { params: { habilitado } } // Parâmetro na query string
       );
       return response.data;
     } catch (error) {
@@ -214,11 +217,15 @@ const fichaPdfService = {
    * Obtém as estatísticas de um convênio específico
    */
   getEstatisticasConvenio: async (
-    convenioId: string
+    convenioId: string,
+    mes: number,
+    ano: number
   ): Promise<ConvenioEstatisticasDto> => {
     try {
+      // CORREÇÃO: Adicionar mes e ano como query params
       const response = await api.get<ConvenioEstatisticasDto>(
-        `/api/fichas-pdf/convenio/${convenioId}/estatisticas-fichas`
+        `/api/fichas-pdf/convenio/${convenioId}/estatisticas-fichas`,
+        { params: { mes, ano } }
       );
       return response.data;
     } catch (error) {
@@ -236,7 +243,7 @@ const fichaPdfService = {
    * Gera prévia de convênio (estimativa de fichas)
    */
   gerarPreviaConvenio: async (
-    request: FichaPdfPreviaRequest
+    request: FichaPdfConvenioRequest // CORREÇÃO: O endpoint de prévia espera o mesmo request da geração por convênio
   ): Promise<FichaPdfPreviaDto> => {
     try {
       const response = await api.post<FichaPdfPreviaDto>(
@@ -254,11 +261,16 @@ const fichaPdfService = {
    * Verifica fichas existentes para um paciente
    */
   verificarFichasPaciente: async (
-    pacienteId: string
+    pacienteId: string,
+    mes: number,
+    ano: number,
+    especialidades?: string[]
   ): Promise<PacienteVerificacaoDto> => {
     try {
+      // CORREÇÃO: Adicionar mes, ano e especialidades como query params
       const response = await api.get<PacienteVerificacaoDto>(
-        `/api/fichas-pdf/paciente/${pacienteId}/verificar-fichas`
+        `/api/fichas-pdf/paciente/${pacienteId}/verificar-fichas`,
+        { params: { mes, ano, especialidades } }
       );
       return response.data;
     } catch (error) {
@@ -271,19 +283,20 @@ const fichaPdfService = {
   },
 
   /**
-   * Gerar prévia geral (qualquer tipo)
+   * Gera preview de uma ficha (apenas HTML, sem PDF)
    */
-  gerarPrevia: async (
-    request: FichaPdfPreviaRequest
-  ): Promise<FichaPdfPreviaDto> => {
+  gerarPreviewFicha: async (
+    item: FichaPdfItemDto
+  ): Promise<{ html: string }> => {
     try {
-      const response = await api.post<FichaPdfPreviaDto>(
+      // CORREÇÃO: Renomeado, tipo de request corrigido e tipo de response ajustado
+      const response = await api.post<{ html: string }>(
         "/api/fichas-pdf/preview",
-        request
+        item
       );
       return response.data;
     } catch (error) {
-      console.error("Erro ao gerar prévia:", error);
+      console.error("Erro ao gerar preview da ficha:", error);
       throw error;
     }
   },
