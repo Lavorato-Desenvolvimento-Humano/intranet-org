@@ -12,8 +12,6 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -54,11 +52,10 @@ public class FichaPdfServiceImpl implements FichaPdfService {
     @Override
     @Transactional
     public FichaPdfResponseDto gerarFichasPaciente(FichaPdfPacienteRequest request) {
-        logger.info("=== IMPLEMENTAÇÃO GRADUAL: Gerando fichas PDF ===");
         logger.info("Paciente: {}, Período: {}/{}", request.getPacienteId(), request.getMes(), request.getAno());
 
         try {
-            // PASSO 1: Buscar itens (já confirmado que funciona)
+            // PASSO 1: Buscar itens
             List<FichaPdfItemDto> itens = buscarItensParaPaciente(request);
             logger.info("✅ PASSO 1: {} itens encontrados", itens.size());
 
@@ -325,7 +322,7 @@ public class FichaPdfServiceImpl implements FichaPdfService {
                 return CompletableFuture.completedFuture(buildResponse(job, "Nenhuma guia encontrada"));
             }
 
-            // NOVA FUNCIONALIDADE: Filtrar pacientes que já possuem fichas
+            //Filtrar pacientes que já possuem fichas
             List<UUID> pacientesOriginais = todosItens.stream()
                     .map(FichaPdfItemDto::getPacienteId)
                     .distinct()
@@ -363,7 +360,7 @@ public class FichaPdfServiceImpl implements FichaPdfService {
             byte[] pdfBytes = pdfGeneratorService.gerarPdfCompletoAsync(
                     itensFinais, request.getMes(), request.getAno(),
                     progresso -> {
-                        // Callback de progresso pode ser implementado aqui
+                        // Callback se necessário será implementado
                         logger.debug("Progresso da geração: {}%", progresso);
                     }
             );
@@ -564,7 +561,6 @@ public class FichaPdfServiceImpl implements FichaPdfService {
                 paciente.getNome(),
                 paciente.getConvenio() != null ? paciente.getConvenio().getName() : "Não informado");
 
-        // USAR A BUSCA CORRIGIDA (não o método original que está falhando)
         List<Guia> guias = buscarGuiasCorrigidas(request.getPacienteId(), request.getMes(), request.getAno(),
                 request.getEspecialidades(), request.getIncluirInativos());
 
@@ -693,27 +689,6 @@ public class FichaPdfServiceImpl implements FichaPdfService {
                             return d2 != null && d1 != null ? d2.compareTo(d1) : 0;
                         })
                         .collect(Collectors.toList());
-
-                logger.info("Após filtros ultra-flexíveis: {} guias", guiasFiltradas.size());
-            }
-
-            // Log final detalhado
-            if (!guiasFiltradas.isEmpty()) {
-                logger.info("=== GUIAS APROVADAS ===");
-                for (Guia guia : guiasFiltradas) {
-                    logger.info("Guia APROVADA: ID={}, Status={}, Especialidades={}, Validade={}, Atualizada={}",
-                            guia.getId(), guia.getStatus(), guia.getEspecialidades(),
-                            guia.getValidade(), guia.getUpdatedAt());
-                }
-                logger.info("=== FIM GUIAS APROVADAS ===");
-            } else {
-                logger.warn("=== NENHUMA GUIA APROVADA ===");
-                logger.warn("Detalhes das guias originais:");
-                for (Guia guia : todasGuias) {
-                    logger.warn("Guia REJEITADA: ID={}, Status={}, Especialidades={}, Validade={}, Criada={}, Atualizada={}",
-                            guia.getId(), guia.getStatus(), guia.getEspecialidades(),
-                            guia.getValidade(), guia.getCreatedAt(), guia.getUpdatedAt());
-                }
             }
 
             return guiasFiltradas;
@@ -765,7 +740,7 @@ public class FichaPdfServiceImpl implements FichaPdfService {
     private List<Guia> buscarGuiasParaAntecipacao(UUID pacienteId, Integer mes, Integer ano, List<String> especialidades) {
         // Status mais permissivos para antecipação
         List<String> statusAntecipacao = Arrays.asList(
-                "EMITIDO", "SUBIU", "ANALISE", "ASSINADO", "FATURADO"
+                "EMITIDO", "SUBIU", "ANALISE", "ASSINADO", "FATURADO", "ENVIADO A BM"
         );
 
         List<Guia> guias = guiaRepository.findGuiasAtivasParaFichas(pacienteId, statusAntecipacao, especialidades);
@@ -797,94 +772,6 @@ public class FichaPdfServiceImpl implements FichaPdfService {
         return guia.getCreatedAt() != null && guia.getCreatedAt().isAfter(tresMesesAtras);
     }
 
-    private boolean isGuiaValidaBasica(Guia guia) {
-        // Verificar se guia não está expirada há muito tempo
-        if (guia.getValidade() != null) {
-            LocalDate dataLimite = LocalDate.now().minusMonths(12); // 12 meses de tolerância
-            if (guia.getValidade().isBefore(dataLimite)) {
-                return false;
-            }
-        }
-
-        // Verificar quantidade (mais flexível)
-        if (guia.getQuantidadeRestante() != null && guia.getQuantidadeRestante() < -10) {
-            // Permitir até -10 de quantidade (tolerância para casos especiais)
-            return false;
-        }
-
-        return true;
-    }
-
-    private boolean isGuiaValidaParaPeriodo(Guia guia, Integer mes, Integer ano) {
-        // Caso 1: Guia específica para o mês/ano
-        if (guia.getMes() != null && guia.getAno() != null) {
-            return guia.getMes().equals(mes) && guia.getAno().equals(ano);
-        }
-
-        // Caso 2: Guia válida por validade
-        LocalDate dataRequerida = LocalDate.of(ano, mes, 1);
-        LocalDate fimMes = dataRequerida.withDayOfMonth(dataRequerida.lengthOfMonth());
-
-        if (guia.getValidade() != null) {
-            // Guia deve estar válida durante todo o mês solicitado
-            return !guia.getValidade().isBefore(dataRequerida);
-        }
-
-        // Caso 3: Para guias sem validade específica, verificar se é do período recente
-        if (guia.getCreatedAt() != null) {
-            LocalDate dataCriacao = guia.getCreatedAt().toLocalDate();
-            LocalDate limitePosterior = dataRequerida.plusMonths(3); // Permitir 3 meses para frente
-            LocalDate limiteAnterior = dataRequerida.minusMonths(6);  // Permitir 6 meses para trás
-
-            return !dataCriacao.isBefore(limiteAnterior) && !dataCriacao.isAfter(limitePosterior);
-        }
-
-        return true; // Se não há critérios específicos, aceitar
-    }
-
-    private boolean temAtividadeRecenteFlexivel(Guia guia, LocalDateTime dataLimite) {
-        // Verificar criação OU atualização
-        boolean atividadeRecente = false;
-
-        if (guia.getCreatedAt() != null && guia.getCreatedAt().isAfter(dataLimite)) {
-            atividadeRecente = true;
-        }
-
-        if (guia.getUpdatedAt() != null && guia.getUpdatedAt().isAfter(dataLimite)) {
-            atividadeRecente = true;
-        }
-
-        // Se não tem atividade recente, mas foi criada recentemente, aceitar
-        if (!atividadeRecente && guia.getCreatedAt() != null) {
-            LocalDateTime umAnoAtras = LocalDateTime.now().minusYears(1);
-            atividadeRecente = guia.getCreatedAt().isAfter(umAnoAtras);
-        }
-
-        return atividadeRecente;
-    }
-
-    private void logDetalhesGuiasPaciente(UUID pacienteId, List<Guia> guiasEncontradas) {
-        logger.info("=== DEBUGGING: Detalhes das guias encontradas para paciente {} ===", pacienteId);
-
-        for (Guia guia : guiasEncontradas) {
-            logger.info("Guia ID: {} | Status: {} | Validade: {} | Criada: {} | Atualizada: {} | Qtd Restante: {}",
-                    guia.getId(),
-                    guia.getStatus(),
-                    guia.getValidade(),
-                    guia.getCreatedAt(),
-                    guia.getUpdatedAt(),
-                    guia.getQuantidadeRestante()
-            );
-
-            if (guia.getEspecialidades() != null) {
-                logger.info("  Especialidades: {}", String.join(", ", guia.getEspecialidades()));
-            }
-        }
-
-        logger.info("=== FIM DEBUGGING ===");
-    }
-
-
     private List<FichaPdfItemDto> processarGuiasParaFichas(List<Guia> guias, Integer mes, Integer ano) {
         List<FichaPdfItemDto> itens = new ArrayList<>();
 
@@ -903,14 +790,6 @@ public class FichaPdfServiceImpl implements FichaPdfService {
         }
 
         return itens;
-    }
-
-    private boolean temAtividadeRecente(Guia guia, LocalDateTime dataLimite) {
-        return temAtividadeRecenteFlexivel(guia, dataLimite);
-    }
-
-    private boolean isGuiaValidaParaMes(Guia guia, Integer mes, Integer ano) {
-        return isGuiaValidaParaPeriodo(guia, mes, ano);
     }
 
     private FichaPdfItemDto criarItemFicha(Guia guia, String especialidade, Integer mes, Integer ano) {
@@ -1164,7 +1043,7 @@ public class FichaPdfServiceImpl implements FichaPdfService {
         return configRepository.findByConvenioId(convenioId)
                 .map(ConvenioFichaPdfConfig::getPrefixoIdentificacao)
                 .filter(prefixo -> prefixo != null && !prefixo.trim().isEmpty())
-                .orElse("PNE");
+                .orElse("");
     }
 
     private String gerarNumeroUnico() {
