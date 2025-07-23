@@ -500,90 +500,171 @@ public class FichaPdfServiceImpl implements FichaPdfService {
     private List<Guia> buscarGuiasAtivasParaFichas(UUID pacienteId, Integer mes, Integer ano,
                                                    List<String> especialidades, Boolean incluirInativos) {
 
-        logger.debug("Buscando guias ativas - Paciente: {}, Especialidades: {}", pacienteId, especialidades);
+        logger.info("Iniciando busca de guias para paciente: {} - {}/{}", pacienteId, mes, ano);
+        logger.info("Especialidades solicitadas: {}", especialidades);
+        logger.info("Incluir inativos: {}", incluirInativos);
 
-        List<String> statusPermitidos = incluirInativos != null && incluirInativos ?
-                Arrays.asList("EMITIDO", "SUBIU", "ANALISE", "CANCELADO", "RETORNOU", "ASSINADO", "FATURADO", "ENVIADO A BM", "DEVOLVIDO A BM") :
-                Arrays.asList("EMITIDO", "SUBIU", "ANALISE", "ASSINADO", "FATURADO");
+        // CORREÇÃO 1: Status mais flexíveis
+        // Expandir lista de status aceitos para incluir mais estados válidos
+        List<String> statusPermitidos;
 
-        List<Guia> guias;
-
-        try {
-            // USAR A QUERY SIMPLES PRIMEIRO
-            logger.debug("Executando query básica para paciente {}", pacienteId);
-            guias = guiaRepository.findGuiasAtivasParaFichas(pacienteId, statusPermitidos, especialidades);
-            logger.debug("Query executada com sucesso - {} guias encontradas", guias.size());
-
-        } catch (Exception e) {
-            logger.warn("Query JPQL falhou: {}, tentando método derivado", e.getMessage());
-
-            try {
-                // FALLBACK PARA MÉTODO DERIVADO
-                guias = guiaRepository.findByPacienteIdAndStatusInOrderByUpdatedAtDesc(pacienteId, statusPermitidos);
-                logger.debug("Método derivado funcionou - {} guias encontradas", guias.size());
-
-            } catch (Exception e2) {
-                logger.error("Método derivado também falhou: {}, usando busca básica", e2.getMessage());
-
-                // ÚLTIMO RECURSO: BUSCA BÁSICA
-                Page<Guia> page = guiaRepository.findByPacienteId(pacienteId, Pageable.unpaged());
-                guias = page.getContent().stream()
-                        .filter(guia -> statusPermitidos.contains(guia.getStatus()))
-                        .sorted((g1, g2) -> {
-                            LocalDateTime date1 = g1.getUpdatedAt() != null ? g1.getUpdatedAt() : g1.getCreatedAt();
-                            LocalDateTime date2 = g2.getUpdatedAt() != null ? g2.getUpdatedAt() : g2.getCreatedAt();
-                            return date2.compareTo(date1);
-                        })
-                        .collect(Collectors.toList());
-
-                logger.debug("Busca básica funcionou - {} guias encontradas", guias.size());
-            }
+        if (incluirInativos != null && incluirInativos) {
+            // Incluir praticamente todos os status quando incluirInativos = true
+            statusPermitidos = Arrays.asList(
+                    "EMITIDO", "SUBIU", "ANALISE", "CANCELADO", "RETORNOU",
+                    "ASSINADO", "FATURADO", "ENVIADO A BM", "DEVOLVIDO A BM",
+                    "PENDENTE", "EM_ANALISE", "APROVADO", "REJEITADO", "SUSPENSO"
+            );
+        } else {
+            // Status mais permissivos mesmo para guias "ativas"
+            statusPermitidos = Arrays.asList(
+                    "EMITIDO", "SUBIU", "ANALISE", "ASSINADO", "FATURADO",
+                    "ENVIADO A BM", "DEVOLVIDO A BM", "APROVADO"
+            );
         }
 
-        // FILTRAR ESPECIALIDADES EM JAVA (sempre)
-        if (especialidades != null && !especialidades.isEmpty()) {
-            logger.debug("Filtrando {} guias por especialidades: {}", guias.size(), especialidades);
+        // Buscar guias do paciente no período
+        List<Guia> guias = guiaRepository.findGuiasAtivasParaFichas(
+                pacienteId,
+                statusPermitidos,
+                especialidades
+        );
 
-            guias = guias.stream()
-                    .filter(guia -> {
-                        if (guia.getEspecialidades() == null || guia.getEspecialidades().isEmpty()) {
-                            return false;
-                        }
+        logger.info("Guias encontradas na consulta inicial: {}", guias.size());
 
-                        boolean temEspecialidadeComum = guia.getEspecialidades().stream()
-                                .anyMatch(especialidades::contains);
+        // CORREÇÃO 2: Filtro de atividade mais flexível
+        // Em vez de 30 dias fixos, usar critério mais amplo
+        LocalDateTime dataLimiteAtividade = LocalDateTime.now().minusMonths(6); // 6 meses ao invés de 30 dias
 
-                        if (temEspecialidadeComum) {
-                            logger.debug("Guia {} contém especialidade solicitada", guia.getId());
-                        }
-
-                        return temEspecialidadeComum;
-                    })
-                    .collect(Collectors.toList());
-
-            logger.debug("Após filtro de especialidades: {} guias", guias.size());
-        }
-
-        // FILTRAR POR VALIDADE E ATIVIDADE
-        LocalDateTime dataLimite = LocalDateTime.now().minusDays(30);
-
+        // CORREÇÃO 3: Validação de período mais tolerante
         List<Guia> guiasFiltradas = guias.stream()
                 .filter(guia -> {
-                    try {
-                        return isGuiaValidaParaMes(guia, mes, ano) &&
-                                temAtividadeRecente(guia, dataLimite);
-                    } catch (Exception e) {
-                        logger.warn("Erro ao filtrar guia {}: {}", guia.getId(), e.getMessage());
-                        return true; // Em caso de erro, incluir para não perder dados
+                    // Log para debugging
+                    logger.debug("Avaliando guia ID: {} - Status: {} - Criada em: {} - Atualizada em: {}",
+                            guia.getId(), guia.getStatus(), guia.getCreatedAt(), guia.getUpdatedAt());
+
+                    // 1. Verificar validade básica da guia
+                    if (!isGuiaValidaBasica(guia)) {
+                        logger.debug("Guia {} rejeitada: não passou na validação básica", guia.getId());
+                        return false;
                     }
+
+                    // 2. Verificar se está dentro do período solicitado OU é válida para antecipação
+                    if (!isGuiaValidaParaPeriodo(guia, mes, ano)) {
+                        logger.debug("Guia {} rejeitada: não é válida para o período {}/{}", guia.getId(), mes, ano);
+                        return false;
+                    }
+
+                    // 3. Verificar atividade recente (critério mais flexível)
+                    if (!temAtividadeRecenteFlexivel(guia, dataLimiteAtividade)) {
+                        logger.debug("Guia {} rejeitada: sem atividade recente", guia.getId());
+                        return false;
+                    }
+
+                    logger.debug("Guia {} APROVADA para geração de ficha", guia.getId());
+                    return true;
                 })
                 .collect(Collectors.toList());
 
-        logger.info("Resultado final: {} guias válidas de {} guias iniciais",
-                guiasFiltradas.size(), guias.size());
+        logger.info("Guias após filtragem: {}", guiasFiltradas.size());
+
+        if (guiasFiltradas.isEmpty()) {
+            logger.warn("NENHUMA GUIA ENCONTRADA após filtragem para paciente {} no período {}/{}",
+                    pacienteId, mes, ano);
+
+            logDetalhesGuiasPaciente(pacienteId, guias);
+        }
 
         return guiasFiltradas;
     }
+
+    private boolean isGuiaValidaBasica(Guia guia) {
+        // Verificar se guia não está expirada há muito tempo
+        if (guia.getValidade() != null) {
+            LocalDate dataLimite = LocalDate.now().minusMonths(12); // 12 meses de tolerância
+            if (guia.getValidade().isBefore(dataLimite)) {
+                return false;
+            }
+        }
+
+        // Verificar quantidade (mais flexível)
+        if (guia.getQuantidadeRestante() != null && guia.getQuantidadeRestante() < -10) {
+            // Permitir até -10 de quantidade (tolerância para casos especiais)
+            return false;
+        }
+
+        return true;
+    }
+
+    private boolean isGuiaValidaParaPeriodo(Guia guia, Integer mes, Integer ano) {
+        // Caso 1: Guia específica para o mês/ano
+        if (guia.getMes() != null && guia.getAno() != null) {
+            return guia.getMes().equals(mes) && guia.getAno().equals(ano);
+        }
+
+        // Caso 2: Guia válida por validade
+        LocalDate dataRequerida = LocalDate.of(ano, mes, 1);
+        LocalDate fimMes = dataRequerida.withDayOfMonth(dataRequerida.lengthOfMonth());
+
+        if (guia.getValidade() != null) {
+            // Guia deve estar válida durante todo o mês solicitado
+            return !guia.getValidade().isBefore(dataRequerida);
+        }
+
+        // Caso 3: Para guias sem validade específica, verificar se é do período recente
+        if (guia.getCreatedAt() != null) {
+            LocalDate dataCriacao = guia.getCreatedAt().toLocalDate();
+            LocalDate limitePosterior = dataRequerida.plusMonths(3); // Permitir 3 meses para frente
+            LocalDate limiteAnterior = dataRequerida.minusMonths(6);  // Permitir 6 meses para trás
+
+            return !dataCriacao.isBefore(limiteAnterior) && !dataCriacao.isAfter(limitePosterior);
+        }
+
+        return true; // Se não há critérios específicos, aceitar
+    }
+
+    private boolean temAtividadeRecenteFlexivel(Guia guia, LocalDateTime dataLimite) {
+        // Verificar criação OU atualização
+        boolean atividadeRecente = false;
+
+        if (guia.getCreatedAt() != null && guia.getCreatedAt().isAfter(dataLimite)) {
+            atividadeRecente = true;
+        }
+
+        if (guia.getUpdatedAt() != null && guia.getUpdatedAt().isAfter(dataLimite)) {
+            atividadeRecente = true;
+        }
+
+        // Se não tem atividade recente, mas foi criada recentemente, aceitar
+        if (!atividadeRecente && guia.getCreatedAt() != null) {
+            LocalDateTime umAnoAtras = LocalDateTime.now().minusYears(1);
+            atividadeRecente = guia.getCreatedAt().isAfter(umAnoAtras);
+        }
+
+        return atividadeRecente;
+    }
+
+    private void logDetalhesGuiasPaciente(UUID pacienteId, List<Guia> guiasEncontradas) {
+        logger.info("=== DEBUGGING: Detalhes das guias encontradas para paciente {} ===", pacienteId);
+
+        for (Guia guia : guiasEncontradas) {
+            logger.info("Guia ID: {} | Status: {} | Validade: {} | Criada: {} | Atualizada: {} | Qtd Restante: {}",
+                    guia.getId(),
+                    guia.getStatus(),
+                    guia.getValidade(),
+                    guia.getCreatedAt(),
+                    guia.getUpdatedAt(),
+                    guia.getQuantidadeRestante()
+            );
+
+            if (guia.getEspecialidades() != null) {
+                logger.info("  Especialidades: {}", String.join(", ", guia.getEspecialidades()));
+            }
+        }
+
+        logger.info("=== FIM DEBUGGING ===");
+    }
+
 
     private List<FichaPdfItemDto> processarGuiasParaFichas(List<Guia> guias, Integer mes, Integer ano) {
         List<FichaPdfItemDto> itens = new ArrayList<>();
@@ -606,33 +687,11 @@ public class FichaPdfServiceImpl implements FichaPdfService {
     }
 
     private boolean temAtividadeRecente(Guia guia, LocalDateTime dataLimite) {
-        try {
-            return (guia.getCreatedAt() != null && guia.getCreatedAt().isAfter(dataLimite)) ||
-                    (guia.getUpdatedAt() != null && guia.getUpdatedAt().isAfter(dataLimite));
-        } catch (Exception e) {
-            logger.warn("Erro ao verificar atividade da guia {}: {}", guia.getId(), e.getMessage());
-            return true; // Em caso de erro, incluir a guia para não perder dados
-        }
+        return temAtividadeRecenteFlexivel(guia, dataLimite);
     }
 
     private boolean isGuiaValidaParaMes(Guia guia, Integer mes, Integer ano) {
-        try {
-            // Verificar se a guia não está vencida para o período solicitado
-            LocalDate primeiroDiaDoMes = LocalDate.of(ano, mes, 1);
-            LocalDate ultimoDiaDoMes = primeiroDiaDoMes.withDayOfMonth(primeiroDiaDoMes.lengthOfMonth());
-
-            // Se a guia tem validade definida, verificar se não vence antes do final do mês
-            if (guia.getValidade() != null) {
-                return !guia.getValidade().isBefore(ultimoDiaDoMes);
-            }
-
-            // Se não tem validade definida, considerar válida
-            return true;
-
-        } catch (Exception e) {
-            logger.warn("Erro ao validar período da guia {}: {}", guia.getId(), e.getMessage());
-            return false;
-        }
+        return isGuiaValidaParaPeriodo(guia, mes, ano);
     }
 
     private FichaPdfItemDto criarItemFicha(Guia guia, String especialidade, Integer mes, Integer ano) {
