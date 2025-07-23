@@ -78,10 +78,14 @@ export default function NovaGeracaoPage() {
   ];
 
   useEffect(() => {
-    if (formData.tipo === "paciente") {
+    carregarConvenios();
+  }, []);
+
+  useEffect(() => {
+    if (formData.tipo === "paciente" && formData.pacienteId) {
       verificarPaciente();
     }
-  }, [formData.pacienteId]);
+  }, [formData.pacienteId, formData.mes, formData.ano]);
 
   const carregarConvenios = async () => {
     try {
