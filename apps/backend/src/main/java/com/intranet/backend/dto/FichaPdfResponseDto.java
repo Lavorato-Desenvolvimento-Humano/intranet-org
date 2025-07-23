@@ -16,6 +16,7 @@ public class FichaPdfResponseDto {
     private Integer fichasProcessadas;
     private Boolean podeDownload;
     private String downloadUrl;
+    private String arquivo;
 
     // NOVOS CAMPOS para compatibilidade
     private Integer totalFichasGeradas;
