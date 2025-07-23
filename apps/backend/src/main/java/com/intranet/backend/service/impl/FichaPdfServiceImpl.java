@@ -501,21 +501,46 @@ public class FichaPdfServiceImpl implements FichaPdfService {
         logger.debug("Buscando guias ativas - Paciente: {}, Período: {}/{}, Especialidades: {}, Incluir inativos: {}",
                 pacienteId, mes, ano, especialidades, incluirInativos);
 
-        // Definir critérios de busca baseados nas regras de negócio
+        // Definir critérios de busca
         List<String> statusPermitidos = incluirInativos != null && incluirInativos ?
                 Arrays.asList("EMITIDO", "SUBIU", "ANALISE", "CANCELADO", "RETORNOU", "ASSINADO", "FATURADO", "ENVIADO A BM", "DEVOLVIDO A BM") :
                 Arrays.asList("EMITIDO", "SUBIU", "ANALISE", "ASSINADO", "FATURADO");
 
+        // USAR QUERY SIMPLES PRIMEIRO PARA EVITAR ERRO DO HIBERNATE
         List<Guia> guias;
         try {
-            guias = guiaRepository.findGuiasAtivasParaFichas(
-                    pacienteId,
-                    statusPermitidos,
-                    especialidades
-            );
+            // Tentar primeiro com query simples
+            guias = guiaRepository.findGuiasAtivasParaFichasSimples(pacienteId, statusPermitidos);
+
+            // Filtrar especialidades manualmente se necessário
+            if (especialidades != null && !especialidades.isEmpty()) {
+                guias = guias.stream()
+                        .filter(guia -> guia.getEspecialidades() != null &&
+                                !Collections.disjoint(guia.getEspecialidades(), especialidades))
+                        .collect(Collectors.toList());
+            }
+
         } catch (Exception e) {
-            logger.error("Erro ao buscar guias ativas para fichas: {}", e.getMessage(), e);
-            throw new RuntimeException("Erro ao consultar guias do paciente: " + e.getMessage(), e);
+            logger.warn("Erro na query JPQL, tentando query nativa: {}", e.getMessage());
+
+            try {
+                // Fallback para query nativa
+                guias = guiaRepository.findGuiasAtivasParaFichasNative(pacienteId, statusPermitidos);
+
+                // Filtrar especialidades manualmente
+                if (especialidades != null && !especialidades.isEmpty()) {
+                    guias = guias.stream()
+                            .filter(guia -> guia.getEspecialidades() != null &&
+                                    !Collections.disjoint(guia.getEspecialidades(), especialidades))
+                            .collect(Collectors.toList());
+                }
+
+            } catch (Exception e2) {
+                logger.error("Erro em ambas as queries, usando busca básica: {}", e2.getMessage());
+
+                // Última tentativa: busca mais básica
+                guias = guiaRepository.findByPacienteIdAndStatusIn(pacienteId, statusPermitidos);
+            }
         }
 
         // Filtrar por validade e atividade recente

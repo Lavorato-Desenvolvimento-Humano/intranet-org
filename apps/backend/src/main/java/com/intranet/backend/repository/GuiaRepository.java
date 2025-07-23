@@ -90,15 +90,43 @@ public interface GuiaRepository extends JpaRepository<Guia, UUID> {
     /**
      * Busca guias ativas para geração de fichas
      */
-    @Query("SELECT g FROM Guia g JOIN FETCH g.paciente p JOIN FETCH g.convenio c " +
+    @Query("SELECT DISTINCT g FROM Guia g " +
+            "JOIN FETCH g.paciente p " +
+            "JOIN FETCH g.convenio c " +
             "WHERE g.paciente.id = :pacienteId " +
             "AND g.status IN :statusPermitidos " +
-            "AND (:especialidades IS NULL OR EXISTS (SELECT 1 FROM g.especialidades e WHERE e IN :especialidades)) " +
+            "AND (:especialidades IS NULL OR :especialidades IS EMPTY OR " +
+            "     EXISTS (SELECT 1 FROM g.especialidades e WHERE e IN :especialidades)) " +
             "ORDER BY g.updatedAt DESC")
     List<Guia> findGuiasAtivasParaFichas(
             @Param("pacienteId") UUID pacienteId,
             @Param("statusPermitidos") List<String> statusPermitidos,
             @Param("especialidades") List<String> especialidades
+    );
+
+    @Query("SELECT g FROM Guia g " +
+            "WHERE g.paciente.id = :pacienteId " +
+            "AND g.status IN :statusPermitidos " +
+            "ORDER BY g.updatedAt DESC")
+    List<Guia> findGuiasAtivasParaFichasSimples(
+            @Param("pacienteId") UUID pacienteId,
+            @Param("statusPermitidos") List<String> statusPermitidos
+    );
+
+    @Query(value = "SELECT g.* FROM guia g " +
+            "WHERE g.paciente_id = :pacienteId " +
+            "AND g.status IN (:statusPermitidos) " +
+            "ORDER BY g.updated_at DESC",
+            nativeQuery = true)
+    List<Guia> findGuiasAtivasParaFichasNative(
+            @Param("pacienteId") UUID pacienteId,
+            @Param("statusPermitidos") List<String> statusPermitidos
+    );
+
+    @Query("SELECT g FROM Guia g WHERE g.paciente.id = :pacienteId AND g.status IN :status")
+    List<Guia> findByPacienteIdAndStatusIn(
+            @Param("pacienteId") UUID pacienteId,
+            @Param("status") List<String> status
     );
 
     /**
