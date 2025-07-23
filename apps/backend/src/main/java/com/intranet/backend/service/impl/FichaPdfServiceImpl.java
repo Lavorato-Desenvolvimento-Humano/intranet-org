@@ -12,8 +12,6 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -54,60 +52,96 @@ public class FichaPdfServiceImpl implements FichaPdfService {
     @Override
     @Transactional
     public FichaPdfResponseDto gerarFichasPaciente(FichaPdfPacienteRequest request) {
-        logger.info("Gerando fichas PDF para paciente: {} - {}/{}",
-                request.getPacienteId(), request.getMes(), request.getAno());
+        logger.info("Paciente: {}, Período: {}/{}", request.getPacienteId(), request.getMes(), request.getAno());
 
         try {
-            if (request == null) {
-                throw new IllegalArgumentException("Request não pode ser nulo");
-            }
-
-            if (request.getPacienteId() == null) {
-                throw new IllegalArgumentException("ID do paciente é obrigatório");
-            }
-
-            if (request.getMes() == null || request.getAno() == null) {
-                throw new IllegalArgumentException("Mês e ano são obrigatórios");
-            }
-
-            // Buscar itens com validação aprimorada
+            // PASSO 1: Buscar itens
             List<FichaPdfItemDto> itens = buscarItensParaPaciente(request);
+            logger.info("✅ PASSO 1: {} itens encontrados", itens.size());
 
             if (itens.isEmpty()) {
-                logger.warn("Nenhuma guia ativa encontrada para paciente {} no período {}/{}",
-                        request.getPacienteId(), request.getMes(), request.getAno());
-
                 return FichaPdfResponseDto.builder()
                         .sucesso(false)
-                        .mensagem("Nenhuma guia ativa encontrada para o paciente no período informado. " +
-                                "Verifique se o paciente possui guias válidas e ativas.")
-                        .jobId(null)
+                        .mensagem("Nenhuma guia ativa encontrada para o paciente no período informado")
                         .build();
             }
 
+            // PASSO 2: Processar duplicatas (simplificado por enquanto)
+            logger.info("🔄 PASSO 2: Processando duplicatas...");
             List<FichaPdfItemDto> itensCorrigidos;
             try {
-                itensCorrigidos = fichaVerificationService.verificarECorrigirDuplicatas(itens);
+                // Tentar usar o serviço de verificação, mas com fallback
+                if (fichaVerificationService != null) {
+                    itensCorrigidos = fichaVerificationService.verificarECorrigirDuplicatas(itens);
+                    logger.info("✅ PASSO 2: Verificação de duplicatas concluída - {} itens corrigidos", itensCorrigidos.size());
+                } else {
+                    logger.warn("⚠️ PASSO 2: Serviço de verificação não disponível, usando itens originais");
+                    itensCorrigidos = itens;
+                }
             } catch (Exception e) {
-                logger.warn("Erro na verificação de duplicatas, prosseguindo com itens originais: {}", e.getMessage());
+                logger.warn("⚠️ PASSO 2: Erro na verificação de duplicatas, usando itens originais: {}", e.getMessage());
                 itensCorrigidos = itens;
             }
 
-            // Gerar PDF com dados corrigidos
+            // PASSO 3: Gerar PDF
+            logger.info("🔄 PASSO 3: Iniciando geração de PDF...");
             byte[] pdfBytes;
             try {
                 pdfBytes = pdfGeneratorService.gerarPdfCompleto(itensCorrigidos, request.getMes(), request.getAno());
+                logger.info("✅ PASSO 3: PDF gerado com sucesso - {} bytes", pdfBytes.length);
             } catch (Exception e) {
-                logger.error("Erro na geração do PDF: {}", e.getMessage(), e);
-                throw new RuntimeException("Erro na geração do arquivo PDF: " + e.getMessage(), e);
+                logger.error("❌ PASSO 3: Erro na geração do PDF: {}", e.getMessage(), e);
+
+                // Retornar erro específico da geração de PDF
+                return FichaPdfResponseDto.builder()
+                        .sucesso(false)
+                        .mensagem("Erro na geração do PDF: " + e.getMessage())
+                        .totalFichas(itensCorrigidos.size())
+                        .build();
             }
 
-            // Criar job e salvar arquivo
+            // PASSO 4: Criar job
+            logger.info("🔄 PASSO 4: Criando job...");
             String jobId = UUID.randomUUID().toString();
-            FichaPdfJob job = criarJob(jobId, FichaPdfJob.TipoGeracao.PACIENTE, getCurrentUser());
-
+            FichaPdfJob job;
             try {
-                String fileName = salvarArquivoPdf(pdfBytes, jobId);
+                job = criarJobSeguro(jobId, FichaPdfJob.TipoGeracao.PACIENTE);
+                logger.info("✅ PASSO 4: Job criado - ID: {}", jobId);
+            } catch (Exception e) {
+                logger.error("❌ PASSO 4: Erro ao criar job: {}", e.getMessage(), e);
+
+                return FichaPdfResponseDto.builder()
+                        .sucesso(false)
+                        .mensagem("Erro ao criar job: " + e.getMessage())
+                        .totalFichas(itensCorrigidos.size())
+                        .build();
+            }
+
+            // PASSO 5: Salvar arquivo
+            logger.info("🔄 PASSO 5: Salvando arquivo PDF...");
+            String fileName;
+            try {
+                fileName = salvarArquivoPdfSeguro(pdfBytes, jobId);
+                logger.info("✅ PASSO 5: Arquivo salvo - {}", fileName);
+            } catch (Exception e) {
+                logger.error("❌ PASSO 5: Erro ao salvar arquivo: {}", e.getMessage(), e);
+
+                // Marcar job como erro
+                job.setStatus(FichaPdfJob.StatusJob.ERRO);
+                job.setObservacoes("Erro ao salvar arquivo: " + e.getMessage());
+                jobRepository.save(job);
+
+                return FichaPdfResponseDto.builder()
+                        .sucesso(false)
+                        .mensagem("Erro ao salvar arquivo: " + e.getMessage())
+                        .jobId(jobId)
+                        .totalFichas(itensCorrigidos.size())
+                        .build();
+            }
+
+            // PASSO 6: Finalizar job
+            logger.info("🔄 PASSO 6: Finalizando job...");
+            try {
                 job.setArquivoPath(fileName);
                 job.setPodeDownload(true);
                 job.setStatus(FichaPdfJob.StatusJob.CONCLUIDO);
@@ -116,33 +150,158 @@ public class FichaPdfServiceImpl implements FichaPdfService {
                 job.setFichasProcessadas(itensCorrigidos.size());
 
                 jobRepository.save(job);
-
-                // Registrar logs das fichas processadas
-                registrarLogsFichas(job, itensCorrigidos);
-
-                logger.info("Fichas PDF geradas com sucesso - JobId: {}, Fichas: {}", jobId, itensCorrigidos.size());
-                return buildResponse(job, "Fichas PDF geradas com sucesso");
-
+                logger.info("✅ PASSO 6: Job finalizado com sucesso");
             } catch (Exception e) {
-                logger.error("Erro ao salvar arquivo PDF: {}", e.getMessage(), e);
-                // Atualizar job com erro
-                job.setStatus(FichaPdfJob.StatusJob.ERRO);
-                job.setObservacoes("Erro ao salvar arquivo: " + e.getMessage());
-                jobRepository.save(job);
-                throw new RuntimeException("Erro ao salvar arquivo PDF: " + e.getMessage(), e);
+                logger.error("❌ PASSO 6: Erro ao finalizar job: {}", e.getMessage(), e);
+
+                return FichaPdfResponseDto.builder()
+                        .sucesso(false)
+                        .mensagem("Erro ao finalizar job: " + e.getMessage())
+                        .jobId(jobId)
+                        .totalFichas(itensCorrigidos.size())
+                        .build();
             }
 
-        } catch (ResourceNotFoundException e) {
-            logger.error("Recurso não encontrado: {}", e.getMessage());
-            throw e; // Re-throw para ser tratado pelo controller
-        } catch (IllegalArgumentException e) {
-            logger.error("Parâmetros inválidos: {}", e.getMessage());
-            throw e; // Re-throw para ser tratado pelo controller
+            // PASSO 7: Registrar logs (opcional)
+            logger.info("🔄 PASSO 7: Registrando logs...");
+            try {
+                registrarLogsFichasSeguro(job, itensCorrigidos);
+                logger.info("✅ PASSO 7: Logs registrados");
+            } catch (Exception e) {
+                logger.warn("⚠️ PASSO 7: Erro ao registrar logs (não crítico): {}", e.getMessage());
+                // Não interromper o processo por causa dos logs
+            }
+
+            // SUCESSO TOTAL!
+            logger.info("🎉 SUCESSO TOTAL: Fichas PDF geradas - JobId: {}, Fichas: {}", jobId, itensCorrigidos.size());
+
+            return FichaPdfResponseDto.builder()
+                    .sucesso(true)
+                    .mensagem("Fichas PDF geradas com sucesso!")
+                    .jobId(jobId)
+                    .arquivo(fileName)
+                    .totalFichas(itensCorrigidos.size())
+                    .build();
+
         } catch (Exception e) {
-            logger.error("Erro na geração de fichas para paciente: {}", e.getMessage(), e);
-            throw new RuntimeException("Erro na geração das fichas: " + e.getMessage(), e);
+            logger.error("❌ ERRO GERAL na geração de fichas: {}", e.getMessage(), e);
+
+            return FichaPdfResponseDto.builder()
+                    .sucesso(false)
+                    .mensagem("Erro interno geral: " + e.getMessage())
+                    .build();
         }
     }
+
+    /**
+     * Método seguro para criar job
+     */
+    private FichaPdfJob criarJobSeguro(String jobId, FichaPdfJob.TipoGeracao tipo) {
+        try {
+            FichaPdfJob job = new FichaPdfJob();
+            job.setJobId(jobId);
+            job.setTipo(tipo);
+            job.setStatus(FichaPdfJob.StatusJob.INICIADO);
+            job.setIniciado(LocalDateTime.now());
+            job.setTotalFichas(0);
+            job.setFichasProcessadas(0);
+
+            // Tentar obter usuário atual
+            try {
+                User usuario = getCurrentUser();
+                job.setUsuario(usuario);
+                logger.debug("Usuário definido para o job: {}", usuario.getEmail());
+            } catch (Exception e) {
+                logger.warn("Não foi possível obter usuário atual para o job: {}", e.getMessage());
+                // Continuar sem usuário
+            }
+
+            return jobRepository.save(job);
+
+        } catch (Exception e) {
+            logger.error("Erro crítico ao criar job: {}", e.getMessage(), e);
+            throw new RuntimeException("Erro ao criar job: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Método seguro para salvar arquivo PDF
+     */
+    private String salvarArquivoPdfSeguro(byte[] pdfBytes, String jobId) {
+        try {
+            if (pdfBytes == null || pdfBytes.length == 0) {
+                throw new IllegalArgumentException("PDF bytes não podem estar vazios");
+            }
+
+            // Gerar nome do arquivo
+            String nomeArquivo = String.format("fichas_paciente_%s_%s.pdf",
+                    jobId, System.currentTimeMillis());
+
+            // Criar caminho completo
+            String caminhoCompleto = pdfStoragePath + java.io.File.separator + nomeArquivo;
+
+            // Criar diretórios se não existirem
+            java.nio.file.Path diretorio = java.nio.file.Paths.get(pdfStoragePath);
+            if (!java.nio.file.Files.exists(diretorio)) {
+                java.nio.file.Files.createDirectories(diretorio);
+                logger.info("Diretório criado: {}", pdfStoragePath);
+            }
+
+            // Salvar arquivo
+            java.nio.file.Files.write(java.nio.file.Paths.get(caminhoCompleto), pdfBytes);
+            logger.info("PDF salvo: {} ({} bytes)", caminhoCompleto, pdfBytes.length);
+
+            return caminhoCompleto;
+
+        } catch (Exception e) {
+            logger.error("Erro crítico ao salvar PDF: {}", e.getMessage(), e);
+            throw new RuntimeException("Erro ao salvar arquivo PDF: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Método seguro para registrar logs
+     */
+    private void registrarLogsFichasSeguro(FichaPdfJob job, List<FichaPdfItemDto> itens) {
+        try {
+            if (logRepository == null) {
+                logger.warn("Repository de logs não disponível");
+                return;
+            }
+
+            for (FichaPdfItemDto item : itens) {
+                try {
+                    FichaPdfLog log = new FichaPdfLog();
+                    log.setJob(job);
+
+                    // Buscar paciente
+                    Optional<Paciente> pacienteOpt = pacienteRepository.findById(item.getPacienteId());
+                    if (pacienteOpt.isPresent()) {
+                        log.setPaciente(pacienteOpt.get());
+                    }
+
+                    log.setEspecialidade(item.getEspecialidade());
+                    log.setNumeroIdentificacao(item.getNumeroIdentificacao());
+                    log.setMes(item.getMes());
+                    log.setAno(item.getAno());
+                    log.setQuantidadeAutorizada(item.getQuantidadeAutorizada());
+                    log.setProcessadoComSucesso(true);
+
+                    logRepository.save(log);
+
+                } catch (Exception e) {
+                    logger.warn("Erro ao registrar log para item {}: {}",
+                            item.getNumeroIdentificacao(), e.getMessage());
+                    // Continuar com próximo item
+                }
+            }
+
+        } catch (Exception e) {
+            logger.error("Erro geral ao registrar logs: {}", e.getMessage(), e);
+            // Não interromper o processo principal
+        }
+    }
+
 
     @Override
     @Async
@@ -163,7 +322,7 @@ public class FichaPdfServiceImpl implements FichaPdfService {
                 return CompletableFuture.completedFuture(buildResponse(job, "Nenhuma guia encontrada"));
             }
 
-            // NOVA FUNCIONALIDADE: Filtrar pacientes que já possuem fichas
+            //Filtrar pacientes que já possuem fichas
             List<UUID> pacientesOriginais = todosItens.stream()
                     .map(FichaPdfItemDto::getPacienteId)
                     .distinct()
@@ -201,7 +360,7 @@ public class FichaPdfServiceImpl implements FichaPdfService {
             byte[] pdfBytes = pdfGeneratorService.gerarPdfCompletoAsync(
                     itensFinais, request.getMes(), request.getAno(),
                     progresso -> {
-                        // Callback de progresso pode ser implementado aqui
+                        // Callback se necessário será implementado
                         logger.debug("Progresso da geração: {}%", progresso);
                     }
             );
@@ -391,37 +550,153 @@ public class FichaPdfServiceImpl implements FichaPdfService {
     }
 
     private List<FichaPdfItemDto> buscarItensParaPaciente(FichaPdfPacienteRequest request) {
-        logger.info("Buscando itens para paciente: {}", request.getPacienteId());
+        logger.info("=== BUSCA CORRIGIDA DE ITENS ===");
+        logger.info("Paciente: {}, Período: {}/{}", request.getPacienteId(), request.getMes(), request.getAno());
 
+        // Verificar se paciente existe
         Paciente paciente = pacienteRepository.findById(request.getPacienteId())
-                .orElseThrow(() -> new ResourceNotFoundException("Paciente não encontrado com ID: " + request.getPacienteId()));
+                .orElseThrow(() -> new ResourceNotFoundException("Paciente não encontrado"));
 
-        if (request.getMes() == null || request.getAno() == null) {
-            throw new IllegalArgumentException("Mês e ano são obrigatórios");
+        logger.info("Paciente encontrado: {} (Convênio: {})",
+                paciente.getNome(),
+                paciente.getConvenio() != null ? paciente.getConvenio().getName() : "Não informado");
+
+        List<Guia> guias = buscarGuiasCorrigidas(request.getPacienteId(), request.getMes(), request.getAno(),
+                request.getEspecialidades(), request.getIncluirInativos());
+
+        logger.info("Guias encontradas após busca corrigida: {}", guias.size());
+
+        if (guias.isEmpty()) {
+            logger.warn("Nenhuma guia encontrada com busca corrigida");
+            return new ArrayList<>();
         }
 
-        if (request.getMes() < 1 || request.getMes() > 12) {
-            throw new IllegalArgumentException("Mês deve estar entre 1 e 12");
+        // Processar guias para fichas
+        return processarGuiasParaFichas(guias, request.getMes(), request.getAno());
+    }
+
+    private List<Guia> buscarGuiasCorrigidas(UUID pacienteId, Integer mes, Integer ano,
+                                             List<String> especialidades, Boolean incluirInativos) {
+
+        logger.info("=== BUSCA CORRIGIDA DE GUIAS ===");
+        logger.info("Paciente: {}, Período: {}/{}, Especialidades: {}, Incluir Inativos: {}",
+                pacienteId, mes, ano, especialidades, incluirInativos);
+
+        try {
+            // PASSO 1: Buscar TODAS as guias do paciente primeiro
+            List<Guia> todasGuias = guiaRepository.findAll().stream()
+                    .filter(g -> g.getPaciente() != null && g.getPaciente().getId().equals(pacienteId))
+                    .collect(Collectors.toList());
+
+            logger.info("Total de guias do paciente: {}", todasGuias.size());
+
+            if (todasGuias.isEmpty()) {
+                logger.warn("Paciente não possui nenhuma guia cadastrada");
+                return new ArrayList<>();
+            }
+
+            // PASSO 2: Aplicar filtros progressivamente com logs
+            List<Guia> guiasFiltradas = todasGuias;
+
+            // Filtro 1: Status (mais permissivo)
+            List<String> statusPermitidos = Arrays.asList(
+                    "EMITIDO", "SUBIU", "ANALISE", "ASSINADO", "FATURADO",
+                    "ENVIADO A BM", "DEVOLVIDO A BM", "APROVADO", "PENDENTE"
+            );
+
+            if (incluirInativos != null && incluirInativos) {
+                statusPermitidos = Arrays.asList(
+                        "EMITIDO", "SUBIU", "ANALISE", "CANCELADO", "RETORNOU",
+                        "ASSINADO", "FATURADO", "ENVIADO A BM", "DEVOLVIDO A BM",
+                        "APROVADO", "PENDENTE", "REJEITADO", "SUSPENSO"
+                );
+            }
+            final List<String> statusFinais = statusPermitidos;
+
+            guiasFiltradas = guiasFiltradas.stream()
+                    .filter(g -> statusFinais.contains(g.getStatus()))
+                    .collect(Collectors.toList());
+
+            logger.info("Após filtro de status: {} guias (status permitidos: {})",
+                    guiasFiltradas.size(), statusPermitidos);
+
+            // Filtro 2: Especialidades (mais flexível)
+            if (especialidades != null && !especialidades.isEmpty()) {
+                List<Guia> guiasAntes = new ArrayList<>(guiasFiltradas);
+
+                guiasFiltradas = guiasFiltradas.stream()
+                        .filter(g -> {
+                            // Se guia não tem especialidades definidas, aceitar
+                            if (g.getEspecialidades() == null || g.getEspecialidades().isEmpty()) {
+                                logger.debug("Guia {} aceita: sem especialidades definidas", g.getId());
+                                return true;
+                            }
+
+                            // Verificar se alguma especialidade da guia corresponde ao solicitado
+                            boolean match = g.getEspecialidades().stream()
+                                    .anyMatch(esp -> especialidades.stream()
+                                            .anyMatch(solicitada ->
+                                                    esp.toLowerCase().contains(solicitada.toLowerCase()) ||
+                                                            solicitada.toLowerCase().contains(esp.toLowerCase())));
+
+                            logger.debug("Guia {} especialidades {} vs solicitadas {} = {}",
+                                    g.getId(), g.getEspecialidades(), especialidades, match);
+
+                            return match;
+                        })
+                        .collect(Collectors.toList());
+
+                logger.info("Após filtro de especialidades: {} guias (de {} antes do filtro)",
+                        guiasFiltradas.size(), guiasAntes.size());
+            }
+
+            // Filtro 3: Atividade (MUITO flexível - últimos 12 meses)
+            LocalDateTime dataLimite = LocalDateTime.now().minusMonths(12);
+
+            List<Guia> guiasAntes = new ArrayList<>(guiasFiltradas);
+            guiasFiltradas = guiasFiltradas.stream()
+                    .filter(g -> {
+                        boolean temAtividade = (g.getCreatedAt() != null && g.getCreatedAt().isAfter(dataLimite)) ||
+                                (g.getUpdatedAt() != null && g.getUpdatedAt().isAfter(dataLimite));
+
+                        if (!temAtividade) {
+                            logger.debug("Guia {} rejeitada por falta de atividade (última atividade: {})",
+                                    g.getId(), g.getUpdatedAt() != null ? g.getUpdatedAt() : g.getCreatedAt());
+                        }
+
+                        return temAtividade;
+                    })
+                    .collect(Collectors.toList());
+
+            logger.info("Após filtro de atividade (12 meses): {} guias (de {} antes do filtro)",
+                    guiasFiltradas.size(), guiasAntes.size());
+
+            // Se ainda não temos guias, ser AINDA MAIS flexível
+            if (guiasFiltradas.isEmpty() && !todasGuias.isEmpty()) {
+                logger.warn("Filtros normais não retornaram guias. Aplicando filtros ultra-flexíveis...");
+
+                // Filtro ultra-flexível: apenas status não-excluído e atividade nos últimos 2 anos
+                LocalDateTime doisAnosAtras = LocalDateTime.now().minusYears(2);
+
+                guiasFiltradas = todasGuias.stream()
+                        .filter(g -> !Arrays.asList("EXCLUIDO", "CANCELADO_DEFINITIVO").contains(g.getStatus()))
+                        .filter(g -> (g.getCreatedAt() != null && g.getCreatedAt().isAfter(doisAnosAtras)) ||
+                                (g.getUpdatedAt() != null && g.getUpdatedAt().isAfter(doisAnosAtras)))
+                        .sorted((g1, g2) -> {
+                            // Ordenar por data de atualização mais recente
+                            LocalDateTime d1 = g1.getUpdatedAt() != null ? g1.getUpdatedAt() : g1.getCreatedAt();
+                            LocalDateTime d2 = g2.getUpdatedAt() != null ? g2.getUpdatedAt() : g2.getCreatedAt();
+                            return d2 != null && d1 != null ? d2.compareTo(d1) : 0;
+                        })
+                        .collect(Collectors.toList());
+            }
+
+            return guiasFiltradas;
+
+        } catch (Exception e) {
+            logger.error("Erro na busca corrigida de guias: {}", e.getMessage(), e);
+            return new ArrayList<>();
         }
-
-        if (request.getAno() < 2024) {
-            throw new IllegalArgumentException("Ano deve ser maior ou igual a 2024");
-        }
-
-        List<Guia> guiasAtivas = buscarGuiasAtivasParaFichas(
-                request.getPacienteId(),
-                request.getMes(),
-                request.getAno(),
-                request.getEspecialidades(),
-                request.getIncluirInativos()
-        );
-
-        logger.info("Encontradas {} guias ativas para o paciente", guiasAtivas.size());
-
-        List<FichaPdfItemDto> itens = processarGuiasParaFichas(guiasAtivas, request.getMes(), request.getAno());
-
-        logger.info("Processados {} itens de fichas para o paciente", itens.size());
-        return itens;
     }
 
     /**
@@ -465,7 +740,7 @@ public class FichaPdfServiceImpl implements FichaPdfService {
     private List<Guia> buscarGuiasParaAntecipacao(UUID pacienteId, Integer mes, Integer ano, List<String> especialidades) {
         // Status mais permissivos para antecipação
         List<String> statusAntecipacao = Arrays.asList(
-                "EMITIDO", "SUBIU", "ANALISE", "ASSINADO", "FATURADO"
+                "EMITIDO", "SUBIU", "ANALISE", "ASSINADO", "FATURADO", "ENVIADO A BM"
         );
 
         List<Guia> guias = guiaRepository.findGuiasAtivasParaFichas(pacienteId, statusAntecipacao, especialidades);
@@ -497,94 +772,6 @@ public class FichaPdfServiceImpl implements FichaPdfService {
         return guia.getCreatedAt() != null && guia.getCreatedAt().isAfter(tresMesesAtras);
     }
 
-    private List<Guia> buscarGuiasAtivasParaFichas(UUID pacienteId, Integer mes, Integer ano,
-                                                   List<String> especialidades, Boolean incluirInativos) {
-
-        logger.debug("Buscando guias ativas - Paciente: {}, Especialidades: {}", pacienteId, especialidades);
-
-        List<String> statusPermitidos = incluirInativos != null && incluirInativos ?
-                Arrays.asList("EMITIDO", "SUBIU", "ANALISE", "CANCELADO", "RETORNOU", "ASSINADO", "FATURADO", "ENVIADO A BM", "DEVOLVIDO A BM") :
-                Arrays.asList("EMITIDO", "SUBIU", "ANALISE", "ASSINADO", "FATURADO");
-
-        List<Guia> guias;
-
-        try {
-            // USAR A QUERY SIMPLES PRIMEIRO
-            logger.debug("Executando query básica para paciente {}", pacienteId);
-            guias = guiaRepository.findGuiasAtivasParaFichas(pacienteId, statusPermitidos, especialidades);
-            logger.debug("Query executada com sucesso - {} guias encontradas", guias.size());
-
-        } catch (Exception e) {
-            logger.warn("Query JPQL falhou: {}, tentando método derivado", e.getMessage());
-
-            try {
-                // FALLBACK PARA MÉTODO DERIVADO
-                guias = guiaRepository.findByPacienteIdAndStatusInOrderByUpdatedAtDesc(pacienteId, statusPermitidos);
-                logger.debug("Método derivado funcionou - {} guias encontradas", guias.size());
-
-            } catch (Exception e2) {
-                logger.error("Método derivado também falhou: {}, usando busca básica", e2.getMessage());
-
-                // ÚLTIMO RECURSO: BUSCA BÁSICA
-                Page<Guia> page = guiaRepository.findByPacienteId(pacienteId, Pageable.unpaged());
-                guias = page.getContent().stream()
-                        .filter(guia -> statusPermitidos.contains(guia.getStatus()))
-                        .sorted((g1, g2) -> {
-                            LocalDateTime date1 = g1.getUpdatedAt() != null ? g1.getUpdatedAt() : g1.getCreatedAt();
-                            LocalDateTime date2 = g2.getUpdatedAt() != null ? g2.getUpdatedAt() : g2.getCreatedAt();
-                            return date2.compareTo(date1);
-                        })
-                        .collect(Collectors.toList());
-
-                logger.debug("Busca básica funcionou - {} guias encontradas", guias.size());
-            }
-        }
-
-        // FILTRAR ESPECIALIDADES EM JAVA (sempre)
-        if (especialidades != null && !especialidades.isEmpty()) {
-            logger.debug("Filtrando {} guias por especialidades: {}", guias.size(), especialidades);
-
-            guias = guias.stream()
-                    .filter(guia -> {
-                        if (guia.getEspecialidades() == null || guia.getEspecialidades().isEmpty()) {
-                            return false;
-                        }
-
-                        boolean temEspecialidadeComum = guia.getEspecialidades().stream()
-                                .anyMatch(especialidades::contains);
-
-                        if (temEspecialidadeComum) {
-                            logger.debug("Guia {} contém especialidade solicitada", guia.getId());
-                        }
-
-                        return temEspecialidadeComum;
-                    })
-                    .collect(Collectors.toList());
-
-            logger.debug("Após filtro de especialidades: {} guias", guias.size());
-        }
-
-        // FILTRAR POR VALIDADE E ATIVIDADE
-        LocalDateTime dataLimite = LocalDateTime.now().minusDays(30);
-
-        List<Guia> guiasFiltradas = guias.stream()
-                .filter(guia -> {
-                    try {
-                        return isGuiaValidaParaMes(guia, mes, ano) &&
-                                temAtividadeRecente(guia, dataLimite);
-                    } catch (Exception e) {
-                        logger.warn("Erro ao filtrar guia {}: {}", guia.getId(), e.getMessage());
-                        return true; // Em caso de erro, incluir para não perder dados
-                    }
-                })
-                .collect(Collectors.toList());
-
-        logger.info("Resultado final: {} guias válidas de {} guias iniciais",
-                guiasFiltradas.size(), guias.size());
-
-        return guiasFiltradas;
-    }
-
     private List<FichaPdfItemDto> processarGuiasParaFichas(List<Guia> guias, Integer mes, Integer ano) {
         List<FichaPdfItemDto> itens = new ArrayList<>();
 
@@ -603,36 +790,6 @@ public class FichaPdfServiceImpl implements FichaPdfService {
         }
 
         return itens;
-    }
-
-    private boolean temAtividadeRecente(Guia guia, LocalDateTime dataLimite) {
-        try {
-            return (guia.getCreatedAt() != null && guia.getCreatedAt().isAfter(dataLimite)) ||
-                    (guia.getUpdatedAt() != null && guia.getUpdatedAt().isAfter(dataLimite));
-        } catch (Exception e) {
-            logger.warn("Erro ao verificar atividade da guia {}: {}", guia.getId(), e.getMessage());
-            return true; // Em caso de erro, incluir a guia para não perder dados
-        }
-    }
-
-    private boolean isGuiaValidaParaMes(Guia guia, Integer mes, Integer ano) {
-        try {
-            // Verificar se a guia não está vencida para o período solicitado
-            LocalDate primeiroDiaDoMes = LocalDate.of(ano, mes, 1);
-            LocalDate ultimoDiaDoMes = primeiroDiaDoMes.withDayOfMonth(primeiroDiaDoMes.lengthOfMonth());
-
-            // Se a guia tem validade definida, verificar se não vence antes do final do mês
-            if (guia.getValidade() != null) {
-                return !guia.getValidade().isBefore(ultimoDiaDoMes);
-            }
-
-            // Se não tem validade definida, considerar válida
-            return true;
-
-        } catch (Exception e) {
-            logger.warn("Erro ao validar período da guia {}: {}", guia.getId(), e.getMessage());
-            return false;
-        }
     }
 
     private FichaPdfItemDto criarItemFicha(Guia guia, String especialidade, Integer mes, Integer ano) {
@@ -886,7 +1043,7 @@ public class FichaPdfServiceImpl implements FichaPdfService {
         return configRepository.findByConvenioId(convenioId)
                 .map(ConvenioFichaPdfConfig::getPrefixoIdentificacao)
                 .filter(prefixo -> prefixo != null && !prefixo.trim().isEmpty())
-                .orElse("PNE");
+                .orElse("");
     }
 
     private String gerarNumeroUnico() {
