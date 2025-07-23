@@ -72,7 +72,9 @@ export default function EstatisticasPage() {
     try {
       setLoadingConvenios(true);
       const estatisticasPromises = conveniosList.map((convenio) =>
-        fichaPdfService.getEstatisticasConvenio(convenio.id).catch(() => null)
+        fichaPdfService
+          .getEstatisticasConvenio(convenio.id, filtros.mes, filtros.ano)
+          .catch(() => null)
       );
 
       const resultados = await Promise.all(estatisticasPromises);
