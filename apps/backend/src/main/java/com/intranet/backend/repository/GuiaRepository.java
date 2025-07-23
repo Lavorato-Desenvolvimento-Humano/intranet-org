@@ -90,16 +90,17 @@ public interface GuiaRepository extends JpaRepository<Guia, UUID> {
     /**
      * Busca guias ativas para geração de fichas
      */
-    @Query("SELECT g FROM Guia g JOIN FETCH g.paciente p JOIN FETCH g.convenio c " +
+    @Query("SELECT DISTINCT g FROM Guia g " +
             "WHERE g.paciente.id = :pacienteId " +
             "AND g.status IN :statusPermitidos " +
-            "AND (:especialidades IS NULL OR EXISTS (SELECT 1 FROM g.especialidades e WHERE e IN :especialidades)) " +
             "ORDER BY g.updatedAt DESC")
     List<Guia> findGuiasAtivasParaFichas(
             @Param("pacienteId") UUID pacienteId,
             @Param("statusPermitidos") List<String> statusPermitidos,
             @Param("especialidades") List<String> especialidades
     );
+
+    List<Guia> findByPacienteIdAndStatusInOrderByUpdatedAtDesc(UUID pacienteId, List<String> status);
 
     /**
      * Conta guias ativas por paciente
