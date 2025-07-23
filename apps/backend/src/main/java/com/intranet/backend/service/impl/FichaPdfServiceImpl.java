@@ -56,42 +56,86 @@ public class FichaPdfServiceImpl implements FichaPdfService {
                 request.getPacienteId(), request.getMes(), request.getAno());
 
         try {
-            // Buscar itens normalmente
+            if (request == null) {
+                throw new IllegalArgumentException("Request não pode ser nulo");
+            }
+
+            if (request.getPacienteId() == null) {
+                throw new IllegalArgumentException("ID do paciente é obrigatório");
+            }
+
+            if (request.getMes() == null || request.getAno() == null) {
+                throw new IllegalArgumentException("Mês e ano são obrigatórios");
+            }
+
+            // Buscar itens com validação aprimorada
             List<FichaPdfItemDto> itens = buscarItensParaPaciente(request);
 
             if (itens.isEmpty()) {
+                logger.warn("Nenhuma guia ativa encontrada para paciente {} no período {}/{}",
+                        request.getPacienteId(), request.getMes(), request.getAno());
+
                 return FichaPdfResponseDto.builder()
                         .sucesso(false)
-                        .mensagem("Nenhuma guia ativa encontrada para o paciente no período informado")
+                        .mensagem("Nenhuma guia ativa encontrada para o paciente no período informado. " +
+                                "Verifique se o paciente possui guias válidas e ativas.")
+                        .jobId(null)
                         .build();
             }
 
-            // NOVA FUNCIONALIDADE: Verificar e corrigir duplicatas
-            List<FichaPdfItemDto> itensCorrigidos = fichaVerificationService.verificarECorrigirDuplicatas(itens);
+            List<FichaPdfItemDto> itensCorrigidos;
+            try {
+                itensCorrigidos = fichaVerificationService.verificarECorrigirDuplicatas(itens);
+            } catch (Exception e) {
+                logger.warn("Erro na verificação de duplicatas, prosseguindo com itens originais: {}", e.getMessage());
+                itensCorrigidos = itens;
+            }
 
             // Gerar PDF com dados corrigidos
-            byte[] pdfBytes = pdfGeneratorService.gerarPdfCompleto(itensCorrigidos, request.getMes(), request.getAno());
+            byte[] pdfBytes;
+            try {
+                pdfBytes = pdfGeneratorService.gerarPdfCompleto(itensCorrigidos, request.getMes(), request.getAno());
+            } catch (Exception e) {
+                logger.error("Erro na geração do PDF: {}", e.getMessage(), e);
+                throw new RuntimeException("Erro na geração do arquivo PDF: " + e.getMessage(), e);
+            }
 
             // Criar job e salvar arquivo
             String jobId = UUID.randomUUID().toString();
             FichaPdfJob job = criarJob(jobId, FichaPdfJob.TipoGeracao.PACIENTE, getCurrentUser());
 
-            String fileName = salvarArquivoPdf(pdfBytes, jobId);
-            job.setArquivoPath(fileName);
-            job.setPodeDownload(true);
-            job.setStatus(FichaPdfJob.StatusJob.CONCLUIDO);
-            job.setConcluido(LocalDateTime.now());
-            job.setTotalFichas(itensCorrigidos.size());
-            job.setFichasProcessadas(itensCorrigidos.size());
+            try {
+                String fileName = salvarArquivoPdf(pdfBytes, jobId);
+                job.setArquivoPath(fileName);
+                job.setPodeDownload(true);
+                job.setStatus(FichaPdfJob.StatusJob.CONCLUIDO);
+                job.setConcluido(LocalDateTime.now());
+                job.setTotalFichas(itensCorrigidos.size());
+                job.setFichasProcessadas(itensCorrigidos.size());
 
-            jobRepository.save(job);
+                jobRepository.save(job);
 
-            // Registrar logs das fichas processadas
-            registrarLogsFichas(job, itensCorrigidos);
+                // Registrar logs das fichas processadas
+                registrarLogsFichas(job, itensCorrigidos);
 
-            logger.info("Fichas PDF geradas com sucesso - JobId: {}, Fichas: {}", jobId, itensCorrigidos.size());
-            return buildResponse(job, "Fichas PDF geradas com sucesso");
+                logger.info("Fichas PDF geradas com sucesso - JobId: {}, Fichas: {}", jobId, itensCorrigidos.size());
+                return buildResponse(job, "Fichas PDF geradas com sucesso");
 
+            } catch (Exception e) {
+                logger.error("Erro ao salvar arquivo PDF: {}", e.getMessage(), e);
+                // Atualizar job com erro
+                job.setStatus(FichaPdfJob.StatusJob.ERRO);
+                job.setObservacoes("Erro ao salvar arquivo: " + e.getMessage());
+                jobRepository.save(job);
+                throw new RuntimeException("Erro ao salvar arquivo PDF: " + e.getMessage(), e);
+            }
+
+        } catch (ResourceNotFoundException e) {
+            logger.error("Recurso não encontrado: {}", e.getMessage());
+            throw e; // Re-throw para ser tratado pelo controller
+        } catch (IllegalArgumentException e) {
+            logger.error("Parâmetros inválidos: {}", e.getMessage());
+            throw e; // Re-throw para ser tratado pelo controller
         } catch (Exception e) {
             logger.error("Erro na geração de fichas para paciente: {}", e.getMessage(), e);
             throw new RuntimeException("Erro na geração das fichas: " + e.getMessage(), e);
@@ -348,9 +392,20 @@ public class FichaPdfServiceImpl implements FichaPdfService {
         logger.info("Buscando itens para paciente: {}", request.getPacienteId());
 
         Paciente paciente = pacienteRepository.findById(request.getPacienteId())
-                .orElseThrow(() -> new ResourceNotFoundException("Paciente não encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Paciente não encontrado com ID: " + request.getPacienteId()));
 
-        // Buscar guias ativas do paciente
+        if (request.getMes() == null || request.getAno() == null) {
+            throw new IllegalArgumentException("Mês e ano são obrigatórios");
+        }
+
+        if (request.getMes() < 1 || request.getMes() > 12) {
+            throw new IllegalArgumentException("Mês deve estar entre 1 e 12");
+        }
+
+        if (request.getAno() < 2024) {
+            throw new IllegalArgumentException("Ano deve ser maior ou igual a 2024");
+        }
+
         List<Guia> guiasAtivas = buscarGuiasAtivasParaFichas(
                 request.getPacienteId(),
                 request.getMes(),
@@ -359,7 +414,12 @@ public class FichaPdfServiceImpl implements FichaPdfService {
                 request.getIncluirInativos()
         );
 
-        return processarGuiasParaFichas(guiasAtivas, request.getMes(), request.getAno());
+        logger.info("Encontradas {} guias ativas para o paciente", guiasAtivas.size());
+
+        List<FichaPdfItemDto> itens = processarGuiasParaFichas(guiasAtivas, request.getMes(), request.getAno());
+
+        logger.info("Processados {} itens de fichas para o paciente", itens.size());
+        return itens;
     }
 
     /**
@@ -438,32 +498,54 @@ public class FichaPdfServiceImpl implements FichaPdfService {
     private List<Guia> buscarGuiasAtivasParaFichas(UUID pacienteId, Integer mes, Integer ano,
                                                    List<String> especialidades, Boolean incluirInativos) {
 
-        // Critérios de busca baseados nas regras de negócio
+        logger.debug("Buscando guias ativas - Paciente: {}, Período: {}/{}, Especialidades: {}, Incluir inativos: {}",
+                pacienteId, mes, ano, especialidades, incluirInativos);
+
+        // Definir critérios de busca baseados nas regras de negócio
         List<String> statusPermitidos = incluirInativos != null && incluirInativos ?
                 Arrays.asList("EMITIDO", "SUBIU", "ANALISE", "CANCELADO", "RETORNOU", "ASSINADO", "FATURADO", "ENVIADO A BM", "DEVOLVIDO A BM") :
-                Arrays.asList("EMITIDO", "SUBIU", "ANALISE", "CANCELADO", "RETORNOU", "ASSINADO", "FATURADO", "ENVIADO A BM", "DEVOLVIDO A BM");
+                Arrays.asList("EMITIDO", "SUBIU", "ANALISE", "ASSINADO", "FATURADO");
 
-        // Buscar guias do paciente no período
-        List<Guia> guias = guiaRepository.findGuiasAtivasParaFichas(
-                pacienteId,
-                statusPermitidos,
-                especialidades
-        );
+        List<Guia> guias;
+        try {
+            guias = guiaRepository.findGuiasAtivasParaFichas(
+                    pacienteId,
+                    statusPermitidos,
+                    especialidades
+            );
+        } catch (Exception e) {
+            logger.error("Erro ao buscar guias ativas para fichas: {}", e.getMessage(), e);
+            throw new RuntimeException("Erro ao consultar guias do paciente: " + e.getMessage(), e);
+        }
 
-        // Filtrar por atividade recente (últimos 30 dias por padrão)
+        // Filtrar por validade e atividade recente
         LocalDateTime dataLimite = LocalDateTime.now().minusDays(30);
 
-        return guias.stream()
+        List<Guia> guiasFiltradas = guias.stream()
                 .filter(guia -> {
-                    // Verificar se a guia está dentro da validade
-                    if (!isGuiaValidaParaMes(guia, mes, ano)) {
+                    try {
+                        // Verificar se a guia está válida para o mês/ano solicitado
+                        if (!isGuiaValidaParaMes(guia, mes, ano)) {
+                            logger.debug("Guia {} não é válida para o período {}/{}", guia.getId(), mes, ano);
+                            return false;
+                        }
+
+                        // Verificar se teve atividade recente
+                        if (!temAtividadeRecente(guia, dataLimite)) {
+                            logger.debug("Guia {} não tem atividade recente", guia.getId());
+                            return false;
+                        }
+
+                        return true;
+                    } catch (Exception e) {
+                        logger.warn("Erro ao filtrar guia {}: {}", guia.getId(), e.getMessage());
                         return false;
                     }
-
-                    // Verificar se teve atividade recente
-                    return temAtividadeRecente(guia, dataLimite);
                 })
                 .collect(Collectors.toList());
+
+        logger.info("Filtradas {} guias válidas de {} guias encontradas", guiasFiltradas.size(), guias.size());
+        return guiasFiltradas;
     }
 
     private List<FichaPdfItemDto> processarGuiasParaFichas(List<Guia> guias, Integer mes, Integer ano) {
@@ -487,25 +569,33 @@ public class FichaPdfServiceImpl implements FichaPdfService {
     }
 
     private boolean temAtividadeRecente(Guia guia, LocalDateTime dataLimite) {
-        return guia.getCreatedAt() != null && guia.getCreatedAt().isAfter(dataLimite) ||
-                guia.getUpdatedAt() != null && guia.getUpdatedAt().isAfter(dataLimite);
+        try {
+            return (guia.getCreatedAt() != null && guia.getCreatedAt().isAfter(dataLimite)) ||
+                    (guia.getUpdatedAt() != null && guia.getUpdatedAt().isAfter(dataLimite));
+        } catch (Exception e) {
+            logger.warn("Erro ao verificar atividade da guia {}: {}", guia.getId(), e.getMessage());
+            return true; // Em caso de erro, incluir a guia para não perder dados
+        }
     }
 
     private boolean isGuiaValidaParaMes(Guia guia, Integer mes, Integer ano) {
-        if (guia.getMes() != null && guia.getAno() != null) {
-            return guia.getMes().equals(mes) && guia.getAno().equals(ano);
-        }
+        try {
+            // Verificar se a guia não está vencida para o período solicitado
+            LocalDate primeiroDiaDoMes = LocalDate.of(ano, mes, 1);
+            LocalDate ultimoDiaDoMes = primeiroDiaDoMes.withDayOfMonth(primeiroDiaDoMes.lengthOfMonth());
 
-        LocalDate dataGuia = LocalDate.of(ano, mes, 1);
-        if (guia.getValidade() != null && guia.getValidade().isBefore(dataGuia)) {
+            // Se a guia tem validade definida, verificar se não vence antes do final do mês
+            if (guia.getValidade() != null) {
+                return !guia.getValidade().isBefore(ultimoDiaDoMes);
+            }
+
+            // Se não tem validade definida, considerar válida
+            return true;
+
+        } catch (Exception e) {
+            logger.warn("Erro ao validar período da guia {}: {}", guia.getId(), e.getMessage());
             return false;
         }
-
-        if (guia.getQuantidadeRestante() != null && guia.getQuantidadeRestante() <= 0) {
-            return false;
-        }
-
-        return true;
     }
 
     private FichaPdfItemDto criarItemFicha(Guia guia, String especialidade, Integer mes, Integer ano) {
