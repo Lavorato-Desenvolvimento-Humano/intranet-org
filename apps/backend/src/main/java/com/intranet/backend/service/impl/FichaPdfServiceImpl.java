@@ -500,30 +500,90 @@ public class FichaPdfServiceImpl implements FichaPdfService {
     private List<Guia> buscarGuiasAtivasParaFichas(UUID pacienteId, Integer mes, Integer ano,
                                                    List<String> especialidades, Boolean incluirInativos) {
 
-        logger.info("Iniciando busca de guias para paciente: {} - {}/{}", pacienteId, mes, ano);
-        logger.info("Especialidades solicitadas: {}", especialidades);
-        logger.info("Incluir inativos: {}", incluirInativos);
+//        logger.info("Iniciando busca de guias para paciente: {} - {}/{}", pacienteId, mes, ano);
+//        logger.info("Especialidades solicitadas: {}", especialidades);
+//        logger.info("Incluir inativos: {}", incluirInativos);
+//
+//        // CORREÇÃO 1: Status mais flexíveis
+//        // Expandir lista de status aceitos para incluir mais estados válidos
+//        List<String> statusPermitidos;
+//
+//        if (incluirInativos != null && incluirInativos) {
+//            // Incluir praticamente todos os status quando incluirInativos = true
+//            statusPermitidos = Arrays.asList(
+//                    "EMITIDO", "SUBIU", "ANALISE", "CANCELADO", "RETORNOU",
+//                    "ASSINADO", "FATURADO", "ENVIADO A BM", "DEVOLVIDO A BM",
+//                    "PENDENTE", "EM_ANALISE", "APROVADO", "REJEITADO", "SUSPENSO"
+//            );
+//        } else {
+//            // Status mais permissivos mesmo para guias "ativas"
+//            statusPermitidos = Arrays.asList(
+//                    "EMITIDO", "SUBIU", "ANALISE", "ASSINADO", "FATURADO",
+//                    "ENVIADO A BM", "DEVOLVIDO A BM", "APROVADO"
+//            );
+//        }
+//
+//        // Buscar guias do paciente no período
+//        List<Guia> guias = guiaRepository.findGuiasAtivasParaFichas(
+//                pacienteId,
+//                statusPermitidos,
+//                especialidades
+//        );
+//
+//        logger.info("Guias encontradas na consulta inicial: {}", guias.size());
+//
+//        // CORREÇÃO 2: Filtro de atividade mais flexível
+//        // Em vez de 30 dias fixos, usar critério mais amplo
+//        LocalDateTime dataLimiteAtividade = LocalDateTime.now().minusMonths(6); // 6 meses ao invés de 30 dias
+//
+//        // CORREÇÃO 3: Validação de período mais tolerante
+//        List<Guia> guiasFiltradas = guias.stream()
+//                .filter(guia -> {
+//                    // Log para debugging
+//                    logger.debug("Avaliando guia ID: {} - Status: {} - Criada em: {} - Atualizada em: {}",
+//                            guia.getId(), guia.getStatus(), guia.getCreatedAt(), guia.getUpdatedAt());
+//
+//                    // 1. Verificar validade básica da guia
+//                    if (!isGuiaValidaBasica(guia)) {
+//                        logger.debug("Guia {} rejeitada: não passou na validação básica", guia.getId());
+//                        return false;
+//                    }
+//
+//                    // 2. Verificar se está dentro do período solicitado OU é válida para antecipação
+//                    if (!isGuiaValidaParaPeriodo(guia, mes, ano)) {
+//                        logger.debug("Guia {} rejeitada: não é válida para o período {}/{}", guia.getId(), mes, ano);
+//                        return false;
+//                    }
+//
+//                    // 3. Verificar atividade recente (critério mais flexível)
+//                    if (!temAtividadeRecenteFlexivel(guia, dataLimiteAtividade)) {
+//                        logger.debug("Guia {} rejeitada: sem atividade recente", guia.getId());
+//                        return false;
+//                    }
+//
+//                    logger.debug("Guia {} APROVADA para geração de ficha", guia.getId());
+//                    return true;
+//                })
+//                .collect(Collectors.toList());
+//
+//        logger.info("Guias após filtragem: {}", guiasFiltradas.size());
+//
+//        if (guiasFiltradas.isEmpty()) {
+//            logger.warn("NENHUMA GUIA ENCONTRADA após filtragem para paciente {} no período {}/{}",
+//                    pacienteId, mes, ano);
+//
+//            logDetalhesGuiasPaciente(pacienteId, guias);
+//        }
+//
+//        return guiasFiltradas;
 
-        // CORREÇÃO 1: Status mais flexíveis
-        // Expandir lista de status aceitos para incluir mais estados válidos
-        List<String> statusPermitidos;
+        // === CORREÇÃO TEMPORÁRIA - INICIO ===
+        logger.info("CORREÇÃO TEMPORÁRIA ATIVA - Usando filtros mais flexíveis");
 
-        if (incluirInativos != null && incluirInativos) {
-            // Incluir praticamente todos os status quando incluirInativos = true
-            statusPermitidos = Arrays.asList(
-                    "EMITIDO", "SUBIU", "ANALISE", "CANCELADO", "RETORNOU",
-                    "ASSINADO", "FATURADO", "ENVIADO A BM", "DEVOLVIDO A BM",
-                    "PENDENTE", "EM_ANALISE", "APROVADO", "REJEITADO", "SUSPENSO"
-            );
-        } else {
-            // Status mais permissivos mesmo para guias "ativas"
-            statusPermitidos = Arrays.asList(
-                    "EMITIDO", "SUBIU", "ANALISE", "ASSINADO", "FATURADO",
-                    "ENVIADO A BM", "DEVOLVIDO A BM", "APROVADO"
-            );
-        }
+        List<String> statusPermitidos = incluirInativos != null && incluirInativos ?
+                Arrays.asList("EMITIDO", "SUBIU", "ANALISE", "CANCELADO", "RETORNOU", "ASSINADO", "FATURADO", "ENVIADO A BM", "DEVOLVIDO A BM") :
+                Arrays.asList("EMITIDO", "SUBIU", "ANALISE", "CANCELADO", "RETORNOU", "ASSINADO", "FATURADO", "ENVIADO A BM", "DEVOLVIDO A BM");
 
-        // Buscar guias do paciente no período
         List<Guia> guias = guiaRepository.findGuiasAtivasParaFichas(
                 pacienteId,
                 statusPermitidos,
@@ -532,46 +592,28 @@ public class FichaPdfServiceImpl implements FichaPdfService {
 
         logger.info("Guias encontradas na consulta inicial: {}", guias.size());
 
-        // CORREÇÃO 2: Filtro de atividade mais flexível
-        // Em vez de 30 dias fixos, usar critério mais amplo
-        LocalDateTime dataLimiteAtividade = LocalDateTime.now().minusMonths(6); // 6 meses ao invés de 30 dias
+        // FILTRO SIMPLIFICADO - apenas remover guias muito antigas ou com problemas óbvios
+        LocalDateTime seisesesAtras = LocalDateTime.now().minusMonths(6);
 
-        // CORREÇÃO 3: Validação de período mais tolerante
         List<Guia> guiasFiltradas = guias.stream()
                 .filter(guia -> {
-                    // Log para debugging
-                    logger.debug("Avaliando guia ID: {} - Status: {} - Criada em: {} - Atualizada em: {}",
-                            guia.getId(), guia.getStatus(), guia.getCreatedAt(), guia.getUpdatedAt());
+                    // Verificar apenas se tem atividade nos últimos 6 meses
+                    boolean temAtividade = (guia.getCreatedAt() != null && guia.getCreatedAt().isAfter(seisesesAtras)) ||
+                            (guia.getUpdatedAt() != null && guia.getUpdatedAt().isAfter(seisesesAtras));
 
-                    // 1. Verificar validade básica da guia
-                    if (!isGuiaValidaBasica(guia)) {
-                        logger.debug("Guia {} rejeitada: não passou na validação básica", guia.getId());
-                        return false;
+                    if (!temAtividade) {
+                        logger.debug("Guia {} filtrada por falta de atividade nos últimos 6 meses", guia.getId());
                     }
 
-                    // 2. Verificar se está dentro do período solicitado OU é válida para antecipação
-                    if (!isGuiaValidaParaPeriodo(guia, mes, ano)) {
-                        logger.debug("Guia {} rejeitada: não é válida para o período {}/{}", guia.getId(), mes, ano);
-                        return false;
-                    }
-
-                    // 3. Verificar atividade recente (critério mais flexível)
-                    if (!temAtividadeRecenteFlexivel(guia, dataLimiteAtividade)) {
-                        logger.debug("Guia {} rejeitada: sem atividade recente", guia.getId());
-                        return false;
-                    }
-
-                    logger.debug("Guia {} APROVADA para geração de ficha", guia.getId());
-                    return true;
+                    return temAtividade;
                 })
                 .collect(Collectors.toList());
 
-        logger.info("Guias após filtragem: {}", guiasFiltradas.size());
+        logger.info("Guias após filtragem simplificada: {}", guiasFiltradas.size());
 
         if (guiasFiltradas.isEmpty()) {
             logger.warn("NENHUMA GUIA ENCONTRADA após filtragem para paciente {} no período {}/{}",
                     pacienteId, mes, ano);
-
             logDetalhesGuiasPaciente(pacienteId, guias);
         }
 
