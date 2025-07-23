@@ -12,6 +12,8 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -498,78 +500,88 @@ public class FichaPdfServiceImpl implements FichaPdfService {
     private List<Guia> buscarGuiasAtivasParaFichas(UUID pacienteId, Integer mes, Integer ano,
                                                    List<String> especialidades, Boolean incluirInativos) {
 
-        logger.debug("Buscando guias ativas - Paciente: {}, Período: {}/{}, Especialidades: {}, Incluir inativos: {}",
-                pacienteId, mes, ano, especialidades, incluirInativos);
+        logger.debug("Buscando guias ativas - Paciente: {}, Especialidades: {}", pacienteId, especialidades);
 
-        // Definir critérios de busca
         List<String> statusPermitidos = incluirInativos != null && incluirInativos ?
                 Arrays.asList("EMITIDO", "SUBIU", "ANALISE", "CANCELADO", "RETORNOU", "ASSINADO", "FATURADO", "ENVIADO A BM", "DEVOLVIDO A BM") :
                 Arrays.asList("EMITIDO", "SUBIU", "ANALISE", "ASSINADO", "FATURADO");
 
-        // USAR QUERY SIMPLES PRIMEIRO PARA EVITAR ERRO DO HIBERNATE
         List<Guia> guias;
-        try {
-            // Tentar primeiro com query simples
-            guias = guiaRepository.findGuiasAtivasParaFichasSimples(pacienteId, statusPermitidos);
 
-            // Filtrar especialidades manualmente se necessário
-            if (especialidades != null && !especialidades.isEmpty()) {
-                guias = guias.stream()
-                        .filter(guia -> guia.getEspecialidades() != null &&
-                                !Collections.disjoint(guia.getEspecialidades(), especialidades))
-                        .collect(Collectors.toList());
-            }
+        try {
+            // USAR A QUERY SIMPLES PRIMEIRO
+            logger.debug("Executando query básica para paciente {}", pacienteId);
+            guias = guiaRepository.findGuiasAtivasParaFichas(pacienteId, statusPermitidos, especialidades);
+            logger.debug("Query executada com sucesso - {} guias encontradas", guias.size());
 
         } catch (Exception e) {
-            logger.warn("Erro na query JPQL, tentando query nativa: {}", e.getMessage());
+            logger.warn("Query JPQL falhou: {}, tentando método derivado", e.getMessage());
 
             try {
-                // Fallback para query nativa
-                guias = guiaRepository.findGuiasAtivasParaFichasNative(pacienteId, statusPermitidos);
-
-                // Filtrar especialidades manualmente
-                if (especialidades != null && !especialidades.isEmpty()) {
-                    guias = guias.stream()
-                            .filter(guia -> guia.getEspecialidades() != null &&
-                                    !Collections.disjoint(guia.getEspecialidades(), especialidades))
-                            .collect(Collectors.toList());
-                }
+                // FALLBACK PARA MÉTODO DERIVADO
+                guias = guiaRepository.findByPacienteIdAndStatusInOrderByUpdatedAtDesc(pacienteId, statusPermitidos);
+                logger.debug("Método derivado funcionou - {} guias encontradas", guias.size());
 
             } catch (Exception e2) {
-                logger.error("Erro em ambas as queries, usando busca básica: {}", e2.getMessage());
+                logger.error("Método derivado também falhou: {}, usando busca básica", e2.getMessage());
 
-                // Última tentativa: busca mais básica
-                guias = guiaRepository.findByPacienteIdAndStatusIn(pacienteId, statusPermitidos);
+                // ÚLTIMO RECURSO: BUSCA BÁSICA
+                Page<Guia> page = guiaRepository.findByPacienteId(pacienteId, Pageable.unpaged());
+                guias = page.getContent().stream()
+                        .filter(guia -> statusPermitidos.contains(guia.getStatus()))
+                        .sorted((g1, g2) -> {
+                            LocalDateTime date1 = g1.getUpdatedAt() != null ? g1.getUpdatedAt() : g1.getCreatedAt();
+                            LocalDateTime date2 = g2.getUpdatedAt() != null ? g2.getUpdatedAt() : g2.getCreatedAt();
+                            return date2.compareTo(date1);
+                        })
+                        .collect(Collectors.toList());
+
+                logger.debug("Busca básica funcionou - {} guias encontradas", guias.size());
             }
         }
 
-        // Filtrar por validade e atividade recente
+        // FILTRAR ESPECIALIDADES EM JAVA (sempre)
+        if (especialidades != null && !especialidades.isEmpty()) {
+            logger.debug("Filtrando {} guias por especialidades: {}", guias.size(), especialidades);
+
+            guias = guias.stream()
+                    .filter(guia -> {
+                        if (guia.getEspecialidades() == null || guia.getEspecialidades().isEmpty()) {
+                            return false;
+                        }
+
+                        boolean temEspecialidadeComum = guia.getEspecialidades().stream()
+                                .anyMatch(especialidades::contains);
+
+                        if (temEspecialidadeComum) {
+                            logger.debug("Guia {} contém especialidade solicitada", guia.getId());
+                        }
+
+                        return temEspecialidadeComum;
+                    })
+                    .collect(Collectors.toList());
+
+            logger.debug("Após filtro de especialidades: {} guias", guias.size());
+        }
+
+        // FILTRAR POR VALIDADE E ATIVIDADE
         LocalDateTime dataLimite = LocalDateTime.now().minusDays(30);
 
         List<Guia> guiasFiltradas = guias.stream()
                 .filter(guia -> {
                     try {
-                        // Verificar se a guia está válida para o mês/ano solicitado
-                        if (!isGuiaValidaParaMes(guia, mes, ano)) {
-                            logger.debug("Guia {} não é válida para o período {}/{}", guia.getId(), mes, ano);
-                            return false;
-                        }
-
-                        // Verificar se teve atividade recente
-                        if (!temAtividadeRecente(guia, dataLimite)) {
-                            logger.debug("Guia {} não tem atividade recente", guia.getId());
-                            return false;
-                        }
-
-                        return true;
+                        return isGuiaValidaParaMes(guia, mes, ano) &&
+                                temAtividadeRecente(guia, dataLimite);
                     } catch (Exception e) {
                         logger.warn("Erro ao filtrar guia {}: {}", guia.getId(), e.getMessage());
-                        return false;
+                        return true; // Em caso de erro, incluir para não perder dados
                     }
                 })
                 .collect(Collectors.toList());
 
-        logger.info("Filtradas {} guias válidas de {} guias encontradas", guiasFiltradas.size(), guias.size());
+        logger.info("Resultado final: {} guias válidas de {} guias iniciais",
+                guiasFiltradas.size(), guias.size());
+
         return guiasFiltradas;
     }
 
