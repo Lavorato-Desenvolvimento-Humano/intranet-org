@@ -94,12 +94,14 @@ export default function NovaGeracaoPage() {
   };
 
   const verificarPaciente = async () => {
-    if (!formData.pacienteId) return;
+    if (!formData.pacienteId || !formData.mes || !formData.ano) return;
 
     try {
       setVerificandoPaciente(true);
       const verificacao = await fichaPdfService.verificarFichasPaciente(
-        formData.pacienteId
+        formData.pacienteId,
+        formData.mes,
+        formData.ano
       );
       setPacienteVerificacao(verificacao);
     } catch (error) {
@@ -111,10 +113,16 @@ export default function NovaGeracaoPage() {
   };
 
   const gerarPrevia = async () => {
+    if (formData.tipo !== "convenio" || !formData.convenioId) {
+      toast.error("A prévia só está disponível para a geração por convênio.");
+      return;
+    }
+
     try {
       setGerandoPrevia(true);
 
-      const request = {
+      const request: FichaPdfConvenioRequest = {
+        convenioId: formData.convenioId,
         mes: formData.mes,
         ano: formData.ano,
         especialidades:
@@ -122,19 +130,9 @@ export default function NovaGeracaoPage() {
             ? formData.especialidades
             : undefined,
         incluirInativos: formData.incluirInativos,
-        tipoGeracao:
-          formData.tipo === "paciente"
-            ? ("PACIENTE" as const)
-            : ("CONVENIO" as const),
-        ...(formData.tipo === "paciente" && {
-          pacienteId: formData.pacienteId,
-        }),
-        ...(formData.tipo !== "paciente" && {
-          convenioId: formData.convenioId,
-        }),
       };
 
-      const previaData = await fichaPdfService.gerarPrevia(request);
+      const previaData = await fichaPdfService.gerarPreviaConvenio(request);
       setPrevia(previaData);
     } catch (error) {
       console.error("Erro ao gerar prévia:", error);
