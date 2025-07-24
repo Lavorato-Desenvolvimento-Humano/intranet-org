@@ -8,6 +8,7 @@ export interface ConvenioDto {
   createdAt: string;
   updatedAt: string;
   postagemCount: number;
+  pdfHabilitado: boolean;
 }
 
 export interface ConvenioCreateDto {
