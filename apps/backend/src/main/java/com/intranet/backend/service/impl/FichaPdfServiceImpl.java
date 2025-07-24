@@ -302,6 +302,98 @@ public class FichaPdfServiceImpl implements FichaPdfService {
         }
     }
 
+    /**
+     * NOVO MÉTODO: Gera fichas PDF para um convênio específico com jobId fornecido
+     *
+     */
+    @Override
+    @Async
+    @Transactional
+    public CompletableFuture<FichaPdfResponseDto> gerarFichasConvenioComJobId(FichaPdfConvenioRequest request, String jobId) {
+        logger.info("Iniciando geração assíncrona de fichas por convênio com jobId fornecido: {} - {}/{} - JobId: {}",
+                request.getConvenioId(), request.getMes(), request.getAno(), jobId);
+
+        FichaPdfJob job = criarJob(jobId, FichaPdfJob.TipoGeracao.CONVENIO, getCurrentUser());
+
+        try {
+            // Buscar todos os itens do convênio
+            List<FichaPdfItemDto> todosItens = buscarItensParaConvenio(request);
+
+            if (todosItens.isEmpty()) {
+                finalizarJobComErro(job, new RuntimeException("Nenhuma guia ativa encontrada para o convênio"));
+                return CompletableFuture.completedFuture(buildResponse(job, "Nenhuma guia encontrada"));
+            }
+
+            // Filtrar pacientes que já possuem fichas
+            List<UUID> pacientesOriginais = todosItens.stream()
+                    .map(FichaPdfItemDto::getPacienteId)
+                    .distinct()
+                    .collect(Collectors.toList());
+
+            List<UUID> pacientesSemFichas = fichaVerificationService.filtrarPacientesSemFichas(
+                    request.getConvenioId(), request.getMes(), request.getAno(), pacientesOriginais);
+
+            // Filtrar itens apenas para pacientes sem fichas
+            List<FichaPdfItemDto> itensFiltrados = todosItens.stream()
+                    .filter(item -> pacientesSemFichas.contains(item.getPacienteId()))
+                    .collect(Collectors.toList());
+
+            if (itensFiltrados.isEmpty()) {
+                job.setStatus(FichaPdfJob.StatusJob.CONCLUIDO);
+                job.setObservacoes("Todos os pacientes já possuem fichas para o período informado");
+                job.setConcluido(LocalDateTime.now());
+                job.setTotalFichas(0);
+                job.setFichasProcessadas(0);
+                jobRepository.save(job);
+
+                logger.info("Geração por convênio finalizada - todos os pacientes já possuem fichas: JobId: {}", jobId);
+                return CompletableFuture.completedFuture(buildResponse(job, "Todos os pacientes já possuem fichas"));
+            }
+
+            // Verificar e corrigir duplicatas nos itens filtrados
+            List<FichaPdfItemDto> itensFinais = fichaVerificationService.verificarECorrigirDuplicatas(itensFiltrados);
+
+            // Atualizar job com totais corretos
+            job.setTotalFichas(itensFinais.size());
+            job.setStatus(FichaPdfJob.StatusJob.PROCESSANDO);
+            jobRepository.save(job);
+
+            // Gerar PDF
+            byte[] pdfBytes = pdfGeneratorService.gerarPdfCompletoAsync(
+                    itensFinais, request.getMes(), request.getAno(),
+                    progresso -> {
+                        // Callback se necessário será implementado
+                        logger.debug("Progresso da geração: {}%", progresso);
+                    }
+            );
+
+            // Salvar arquivo e finalizar job
+            String fileName = salvarArquivoPdf(pdfBytes, jobId);
+            job.setArquivoPath(fileName);
+            job.setPodeDownload(true);
+            job.setStatus(FichaPdfJob.StatusJob.CONCLUIDO);
+            job.setConcluido(LocalDateTime.now());
+            job.setFichasProcessadas(itensFinais.size());
+            job.setObservacoes(String.format("Geradas %d fichas para %d pacientes. %d pacientes já possuíam fichas.",
+                    itensFinais.size(), pacientesSemFichas.size(), pacientesOriginais.size() - pacientesSemFichas.size()));
+
+            jobRepository.save(job);
+
+            // Registrar logs
+            registrarLogsFichas(job, itensFinais);
+
+            logger.info("Fichas por convênio geradas com sucesso - JobId: {}, Fichas: {}, Pacientes novos: {}, Pacientes com fichas: {}",
+                    jobId, itensFinais.size(), pacientesSemFichas.size(), pacientesOriginais.size() - pacientesSemFichas.size());
+
+            return CompletableFuture.completedFuture(buildResponse(job, "Fichas geradas com sucesso"));
+
+        } catch (Exception e) {
+            logger.error("Erro na geração por convênio: {}", e.getMessage(), e);
+            finalizarJobComErro(job, e);
+            return CompletableFuture.completedFuture(buildResponse(job, "Erro na geração: " + e.getMessage()));
+        }
+    }
+
 
     @Override
     @Async
@@ -387,6 +479,87 @@ public class FichaPdfServiceImpl implements FichaPdfService {
 
         } catch (Exception e) {
             logger.error("Erro na geração por convênio: {}", e.getMessage(), e);
+            finalizarJobComErro(job, e);
+            return CompletableFuture.completedFuture(buildResponse(job, "Erro na geração: " + e.getMessage()));
+        }
+    }
+
+    @Override
+    @Async
+    @Transactional
+    public CompletableFuture<FichaPdfResponseDto> gerarFichasLoteComJobId(FichaPdfLoteRequest request, String jobId) {
+        logger.info("Iniciando geração em lote para {} convênios com jobId fornecido: {}", request.getConvenioIds().size(), jobId);
+
+        User currentUser = getCurrentUser();
+        FichaPdfJob job = criarJob(jobId, FichaPdfJob.TipoGeracao.LOTE, currentUser);
+
+        try {
+            List<FichaPdfItemDto> todosItens = new ArrayList<>();
+
+            // Processar cada convênio
+            for (UUID convenioId : request.getConvenioIds()) {
+                FichaPdfConvenioRequest convenioRequest = new FichaPdfConvenioRequest();
+                convenioRequest.setConvenioId(convenioId);
+                convenioRequest.setMes(request.getMes());
+                convenioRequest.setAno(request.getAno());
+
+                List<FichaPdfItemDto> itensConvenio = buscarItensParaConvenio(convenioRequest);
+
+                // Filtrar pacientes que já possuem fichas
+                List<UUID> pacientesOriginais = itensConvenio.stream()
+                        .map(FichaPdfItemDto::getPacienteId)
+                        .distinct()
+                        .collect(Collectors.toList());
+
+                List<UUID> pacientesSemFichas = fichaVerificationService.filtrarPacientesSemFichas(
+                        convenioId, request.getMes(), request.getAno(), pacientesOriginais);
+
+                List<FichaPdfItemDto> itensFiltrados = itensConvenio.stream()
+                        .filter(item -> pacientesSemFichas.contains(item.getPacienteId()))
+                        .collect(Collectors.toList());
+
+                // Verificar e corrigir duplicatas
+                List<FichaPdfItemDto> itensCorrigidos = fichaVerificationService.verificarECorrigirDuplicatas(itensFiltrados);
+                todosItens.addAll(itensCorrigidos);
+            }
+
+            if (todosItens.isEmpty()) {
+                job.setStatus(FichaPdfJob.StatusJob.CONCLUIDO);
+                job.setObservacoes("Nenhuma ficha nova encontrada para os convênios especificados");
+                job.setTotalFichas(0);
+                job.setFichasProcessadas(0);
+                job.setConcluido(LocalDateTime.now());
+                jobRepository.save(job);
+                return CompletableFuture.completedFuture(buildResponse(job, "Nenhuma ficha nova encontrada"));
+            }
+
+            job.setTotalFichas(todosItens.size());
+            job.setStatus(FichaPdfJob.StatusJob.PROCESSANDO);
+            jobRepository.save(job);
+
+            // Gerar PDF
+            byte[] pdfBytes = pdfGeneratorService.gerarPdfCompletoAsync(todosItens, request.getMes(), request.getAno(),
+                    (processadas) -> atualizarProgressoJob(jobId, processadas));
+
+            // Salvar arquivo
+            String fileName = salvarArquivoPdf(pdfBytes, jobId);
+
+            // Finalizar job
+            job.setStatus(FichaPdfJob.StatusJob.CONCLUIDO);
+            job.setFichasProcessadas(todosItens.size());
+            job.setConcluido(LocalDateTime.now());
+            job.setArquivoPath(fileName);
+            job.setPodeDownload(true);
+            jobRepository.save(job);
+
+            // Registrar logs
+            registrarLogsFichas(job, todosItens);
+
+            logger.info("Geração em lote concluída. JobId: {}, Fichas: {}", jobId, todosItens.size());
+            return CompletableFuture.completedFuture(buildResponse(job, "PDF de lote gerado com sucesso"));
+
+        } catch (Exception e) {
+            logger.error("Erro na geração em lote: {}", e.getMessage(), e);
             finalizarJobComErro(job, e);
             return CompletableFuture.completedFuture(buildResponse(job, "Erro na geração: " + e.getMessage()));
         }
@@ -822,6 +995,7 @@ public class FichaPdfServiceImpl implements FichaPdfService {
     }
 
     private FichaPdfJob criarJob(String jobId, FichaPdfJob.TipoGeracao tipo, User usuario) {
+
         FichaPdfJob job = new FichaPdfJob();
         job.setJobId(jobId);
         job.setTipo(tipo);
@@ -831,7 +1005,9 @@ public class FichaPdfServiceImpl implements FichaPdfService {
         job.setTotalFichas(0);
         job.setFichasProcessadas(0);
 
-        return jobRepository.save(job);
+        FichaPdfJob jobSalvo = jobRepository.save(job);
+
+        return jobSalvo;
     }
 
     private void atualizarProgressoJob(String jobId, int processadas) {

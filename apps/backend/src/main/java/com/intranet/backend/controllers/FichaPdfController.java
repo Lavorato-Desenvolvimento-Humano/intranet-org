@@ -72,21 +72,24 @@ public class FichaPdfController {
         logger.info("Requisição para gerar fichas do convênio: {}", request.getConvenioId());
 
         try {
-            CompletableFuture<FichaPdfResponseDto> futureResponse = fichaPdfService.gerarFichasConvenio(request);
+            String jobId = UUID.randomUUID().toString();
+            logger.info("JobId gerado para convênio: {}", jobId);
 
-            // Extrair jobId do future (assumindo que está disponível imediatamente)
-            String jobId = extractJobIdFromFuture(futureResponse);
+            // Iniciar processamento assíncrono passando o jobId
+            CompletableFuture<FichaPdfResponseDto> futureResponse = fichaPdfService.gerarFichasConvenioComJobId(request, jobId);
 
             Map<String, Object> response = Map.of(
                     "message", "Processamento iniciado com sucesso",
-                    "jobId", jobId != null ? jobId : "job-" + System.currentTimeMillis(),
+                    "jobId", jobId,
                     "async", true,
-                    "statusUrl", "/api/fichas-pdf/status/" + (jobId != null ? jobId : ""),
+                    "statusUrl", "/api/fichas-pdf/status/" + jobId,
                     "convenioId", request.getConvenioId(),
                     "periodo", request.getMes() + "/" + request.getAno()
             );
 
+            logger.info("Resposta enviada com jobId: {}", jobId);
             return ResponseUtil.success(response);
+
         } catch (Exception e) {
             logger.error("Erro ao iniciar geração de fichas do convênio: {}", e.getMessage(), e);
 
@@ -109,27 +112,29 @@ public class FichaPdfController {
         logger.info("Requisição para gerar fichas em lote para {} convênios", request.getConvenioIds().size());
 
         try {
-            CompletableFuture<FichaPdfResponseDto> futureResponse = fichaPdfService.gerarFichasLote(request);
+            String jobId = UUID.randomUUID().toString();
+            logger.info("JobId gerado para lote: {}", jobId);
 
-            String jobId = extractJobIdFromFuture(futureResponse);
+            CompletableFuture<FichaPdfResponseDto> futureResponse = fichaPdfService.gerarFichasLoteComJobId(request, jobId);
 
             Map<String, Object> response = Map.of(
                     "message", "Processamento em lote iniciado com sucesso",
-                    "jobId", jobId != null ? jobId : "lote-" + System.currentTimeMillis(),
+                    "jobId", jobId,
                     "convenios", request.getConvenioIds().size(),
                     "async", true,
-                    "statusUrl", "/api/fichas-pdf/status/" + (jobId != null ? jobId : ""),
+                    "statusUrl", "/api/fichas-pdf/status/" + jobId,
                     "periodo", request.getMes() + "/" + request.getAno()
             );
 
             return ResponseUtil.success(response);
+
         } catch (Exception e) {
             logger.error("Erro ao iniciar geração em lote: {}", e.getMessage(), e);
 
             Map<String, Object> errorResponse = Map.of(
-                    "message", "Erro ao iniciar processamento em lote: " + e.getMessage(),
+                    "message", "Erro ao iniciar processamento: " + e.getMessage(),
                     "error", true,
-                    "conveniosCount", request.getConvenioIds().size()
+                    "convenios", request.getConvenioIds().size()
             );
 
             return ResponseEntity.badRequest().body(errorResponse);
