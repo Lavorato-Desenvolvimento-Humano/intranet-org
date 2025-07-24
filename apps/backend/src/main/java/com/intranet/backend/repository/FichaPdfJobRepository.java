@@ -33,4 +33,5 @@ public interface FichaPdfJobRepository extends JpaRepository<FichaPdfJob, UUID> 
      */
     @Query("SELECT j FROM FichaPdfJob j WHERE j.status = 'CONCLUIDO' AND j.concluido >= :dataLimite ORDER BY j.concluido DESC")
     List<FichaPdfJob> findJobsConcluidosRecentes(@Param("dataLimite") LocalDateTime dataLimite);
+
 }
