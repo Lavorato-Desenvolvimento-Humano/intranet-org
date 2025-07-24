@@ -16,13 +16,25 @@ public interface FichaPdfService {
 
     /*
      *  Gera fichas PDF para um convênio específico, agrupando por mês e ano. (assíncrono)
+     *  @deprecated Use gerarFichasConvenioComJobId em vez disso
      */
     CompletableFuture<FichaPdfResponseDto> gerarFichasConvenio(FichaPdfConvenioRequest request);
 
+    /**
+     * NOVO: Gera fichas PDF para um convênio específico com jobId fornecido (assíncrono)
+     */
+    CompletableFuture<FichaPdfResponseDto> gerarFichasConvenioComJobId(FichaPdfConvenioRequest request, String jobId);
+
     /*
      * Gera fichas PDF em lote para múltiplos convênios (batch assíncrono).
+     * @deprecated Use gerarFichasLoteComJobId em vez disso
      */
     CompletableFuture<FichaPdfResponseDto> gerarFichasLote(FichaPdfLoteRequest request);
+
+    /**
+     * NOVO: Gera fichas PDF em lote com jobId fornecido (batch assíncrono).
+     */
+    CompletableFuture<FichaPdfResponseDto> gerarFichasLoteComJobId(FichaPdfLoteRequest request, String jobId);
 
     /*
      * Busca status de uma geração assíncrona
