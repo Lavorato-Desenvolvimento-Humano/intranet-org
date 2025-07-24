@@ -11,6 +11,8 @@ import {
   FilePlus,
   Table,
   ArrowLeft,
+  ToggleRight,
+  ToggleLeft,
 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Breadcrumb from "@/components/ui/breadcrumb";
@@ -24,10 +26,13 @@ import convenioService, {
 import tabelaValoresService, {
   TabelaValoresDto,
 } from "@/services/tabelaValores";
+import fichaPdfService from "@/services/ficha-pdf";
 import ContentViewer from "@/components/ui/content-viewer";
 import toastUtil from "@/utils/toast";
 import { CustomButton } from "@/components/ui/custom-button";
 import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
+import { Switch } from "@/components/ui/switch";
+import toast from "react-hot-toast";
 
 export default function ConvenioViewPage() {
   const router = useRouter();
@@ -41,6 +46,7 @@ export default function ConvenioViewPage() {
   const [activeTab, setActiveTab] = useState<"postagens" | "tabelas">(
     "postagens"
   );
+  const [isSaving, setIsSaving] = useState(false);
 
   const convenioId = params?.id as string;
 
@@ -54,6 +60,7 @@ export default function ConvenioViewPage() {
   const canEdit = isAdmin || isEditor;
   const canCreatePostagem = isAdmin || isEditor;
   const canCreateTabela = isAdmin || isEditor;
+  const canManagePdf = isAdmin;
 
   // Buscar dados do convênio
   useEffect(() => {
@@ -85,6 +92,26 @@ export default function ConvenioViewPage() {
       fetchData();
     }
   }, [convenioId]);
+
+  const handlePdfHabilitadoChange = async (habilitado: boolean) => {
+    if (!convenio) return;
+
+    setIsSaving(true);
+    try {
+      await fichaPdfService.toggleConvenioHabilitado(convenio.id, habilitado);
+      setConvenio((prev) => (prev ? { ...prev, pdfHabilitado: habilitado } : null));
+      toast.success(
+        `Geração de PDF ${habilitado ? "habilitada" : "desabilitada"} com sucesso!`
+      );
+    } catch (error) {
+      console.error("Erro ao alterar status de geração de PDF:", error);
+      toast.error("Falha ao alterar status. Tente novamente.");
+      // Reverter a mudança no estado em caso de erro
+      setConvenio((prev) => (prev ? { ...prev, pdfHabilitado: !habilitado } : null));
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   // Função para formatar data
   const formatDate = (dateString: string) => {
@@ -194,7 +221,8 @@ export default function ConvenioViewPage() {
           </div>
           <button
             onClick={() => router.push("/convenios")}
-            className="flex items-center text-primary hover:text-primary-dark">
+            className="flex items-center text-primary hover:text-primary-dark"
+          >
             <ArrowLeft size={16} className="mr-1" />
             Voltar para a lista de convênios
           </button>
@@ -224,7 +252,8 @@ export default function ConvenioViewPage() {
               <CustomButton
                 variant="primary"
                 icon={Edit}
-                onClick={() => router.push(`/convenios/${convenioId}/editar`)}>
+                onClick={() => router.push(`/convenios/${convenioId}/editar`)}
+              >
                 Editar
               </CustomButton>
             )}
@@ -259,6 +288,31 @@ export default function ConvenioViewPage() {
                 />
               </div>
             )}
+
+            {canManagePdf && (
+              <div className="mt-6 pt-4 border-t border-gray-200">
+                <h3 className="text-md font-semibold text-gray-800 mb-2">
+                  Configurações de Ficha PDF
+                </h3>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">
+                      Habilitar Geração de Ficha PDF
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Permite que este convênio seja usado para gerar fichas em
+                      PDF.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={convenio.pdfHabilitado}
+                    onCheckedChange={handlePdfHabilitadoChange}
+                    disabled={isSaving}
+                    aria-label="Habilitar Geração de Ficha PDF"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Abas para Postagens e Tabelas de Valores */}
@@ -271,7 +325,8 @@ export default function ConvenioViewPage() {
                     activeTab === "postagens"
                       ? "border-primary text-primary"
                       : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                  }`}>
+                  }`}
+                >
                   <div className="flex items-center">
                     <FileText size={16} className="mr-2" />
                     Postagens ({postagens.length})
@@ -283,7 +338,8 @@ export default function ConvenioViewPage() {
                     activeTab === "tabelas"
                       ? "border-primary text-primary"
                       : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                  }`}>
+                  }`}
+                >
                   <div className="flex items-center">
                     <Table size={16} className="mr-2" />
                     Tabelas de Valores ({tabelas.length})
@@ -307,7 +363,8 @@ export default function ConvenioViewPage() {
                           )
                         }
                         variant="primary"
-                        icon={FilePlus}>
+                        icon={FilePlus}
+                      >
                         Nova Postagem
                       </CustomButton>
                     )}
@@ -329,7 +386,8 @@ export default function ConvenioViewPage() {
                             )
                           }
                           variant="primary"
-                          icon={FilePlus}>
+                          icon={FilePlus}
+                        >
                           Criar Primeira Postagem
                         </CustomButton>
                       )}
@@ -365,7 +423,8 @@ export default function ConvenioViewPage() {
                           )
                         }
                         variant="primary"
-                        icon={FilePlus}>
+                        icon={FilePlus}
+                      >
                         Nova Tabela
                       </CustomButton>
                     )}
@@ -384,7 +443,8 @@ export default function ConvenioViewPage() {
                             )
                           }
                           variant="primary"
-                          icon={FilePlus}>
+                          icon={FilePlus}
+                        >
                           Criar Primeira Tabela
                         </CustomButton>
                       )}
@@ -412,3 +472,4 @@ export default function ConvenioViewPage() {
     </ProtectedRoute>
   );
 }
+
