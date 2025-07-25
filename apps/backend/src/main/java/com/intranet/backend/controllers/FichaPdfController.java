@@ -3,8 +3,10 @@ package com.intranet.backend.controllers;
 import com.intranet.backend.dto.*;
 import com.intranet.backend.model.Ficha;
 import com.intranet.backend.model.Paciente;
+import com.intranet.backend.model.User;
 import com.intranet.backend.repository.FichaRepository;
 import com.intranet.backend.repository.PacienteRepository;
+import com.intranet.backend.repository.UserRepository;
 import com.intranet.backend.service.FichaPdfService;
 import com.intranet.backend.service.FichaPdfTemplateService;
 import com.intranet.backend.service.FichaVerificationService;
@@ -18,6 +20,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -26,6 +31,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
+
+import static org.springframework.security.core.context.SecurityContextHolder.*;
 
 @RestController
 @RequestMapping("/api/fichas-pdf")
@@ -39,6 +46,7 @@ public class FichaPdfController {
     private final FichaPdfTemplateService templateService;
     private final FichaRepository fichaRepository;
     private final PacienteRepository pacienteRepository;
+    private final UserRepository userRepository;
 
     /**
      * Gera fichas PDF para um paciente específico
@@ -72,11 +80,20 @@ public class FichaPdfController {
         logger.info("Requisição para gerar fichas do convênio: {}", request.getConvenioId());
 
         try {
-            String jobId = UUID.randomUUID().toString();
-            logger.info("JobId gerado para convênio: {}", jobId);
+            // PRIMEIRO: Obter o usuário atual na thread principal (onde SecurityContext está disponível)
+            User usuarioAtual = getCurrentUserSafely();
+            if (usuarioAtual == null) {
+                logger.error("Não foi possível obter o usuário atual");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("message", "Usuário não autenticado", "error", true));
+            }
 
-            // Iniciar processamento assíncrono passando o jobId
-            CompletableFuture<FichaPdfResponseDto> futureResponse = fichaPdfService.gerarFichasConvenioComJobId(request, jobId);
+            String jobId = UUID.randomUUID().toString();
+            logger.info("JobId gerado para convênio: {} - Usuário: {}", jobId, usuarioAtual.getEmail());
+
+            // SEGUNDO: Usar o método que recebe o usuário explicitamente
+            CompletableFuture<FichaPdfResponseDto> futureResponse =
+                    fichaPdfService.gerarFichasConvenioComJobIdEUsuario(request, jobId, usuarioAtual);
 
             Map<String, Object> response = Map.of(
                     "message", "Processamento iniciado com sucesso",
@@ -924,16 +941,26 @@ public class FichaPdfController {
         }
     }
 
-    /**
-     * Extrai jobId de um CompletableFuture (implementação simplificada)
-     */
-    private String extractJobIdFromFuture(CompletableFuture<FichaPdfResponseDto> future) {
+    private User getCurrentUserSafely() {
         try {
-            // Em uma implementação real, o jobId seria retornado imediatamente
-            // Por enquanto, gerar um ID baseado no timestamp
-            return "job-" + System.currentTimeMillis();
+            Authentication authentication = getContext().getAuthentication();
+            if (authentication == null || !authentication.isAuthenticated()) {
+                logger.warn("Não há autenticação disponível");
+                return null;
+            }
+
+            Object principal = authentication.getPrincipal();
+            if (principal instanceof UserDetails) {
+                UserDetails userDetails = (UserDetails) principal;
+                return userRepository.findByEmail(userDetails.getUsername())
+                        .orElse(null);
+            }
+
+            logger.warn("Principal não é uma instância de UserDetails: {}", principal.getClass());
+            return null;
+
         } catch (Exception e) {
-            logger.warn("Erro ao extrair jobId do future: {}", e.getMessage());
+            logger.error("Erro ao obter usuário atual: {}", e.getMessage());
             return null;
         }
     }
