@@ -114,59 +114,53 @@ public class FichaPdfGeneratorServiceImpl implements FichaPdfGeneratorService {
                 item.getNumeroIdentificacao(), item.getPacienteNome());
 
         try {
-            if (item == null) {
-                throw new IllegalArgumentException("Item não pode ser nulo");
-            }
-
-            String html = templateService.gerarHtmlFicha(item);
-            return converterHtmlParaPdf(html);
+            String templateHtml = templateService.gerarHtmlFicha(item);
+            return converterHtmlParaPdf(templateHtml);
 
         } catch (Exception e) {
-            logger.error("Erro ao gerar PDF da ficha única: {}", e.getMessage(), e);
-            throw new RuntimeException("Erro na geração da ficha: " + e.getMessage(), e);
+            logger.error("Erro ao gerar ficha única para {}: {}",
+                    item.getNumeroIdentificacao(), e.getMessage(), e);
+            throw new RuntimeException("Erro ao gerar ficha única: " + e.getMessage(), e);
         }
     }
 
     @Override
     public byte[] lerArquivoPdf(String caminhoArquivo) {
+        logger.debug("Lendo arquivo PDF: {}", caminhoArquivo);
+
         try {
             if (caminhoArquivo == null || caminhoArquivo.trim().isEmpty()) {
                 throw new IllegalArgumentException("Caminho do arquivo não pode estar vazio");
             }
 
-            logger.debug("Lendo arquivo PDF: {}", caminhoArquivo);
+            java.nio.file.Path path = Paths.get(caminhoArquivo);
 
-            if (!Files.exists(Paths.get(caminhoArquivo))) {
-                throw new RuntimeException("Arquivo PDF não encontrado: " + caminhoArquivo);
+            if (!Files.exists(path)) {
+                throw new RuntimeException("Arquivo não encontrado: " + caminhoArquivo);
             }
 
-            return Files.readAllBytes(Paths.get(caminhoArquivo));
+            byte[] pdfBytes = Files.readAllBytes(path);
+            logger.debug("Arquivo PDF lido: {} bytes", pdfBytes.length);
+
+            return pdfBytes;
 
         } catch (Exception e) {
-            logger.error("Erro ao ler arquivo PDF {}: {}", caminhoArquivo, e.getMessage());
+            logger.error("Erro ao ler arquivo PDF {}: {}", caminhoArquivo, e.getMessage(), e);
             throw new RuntimeException("Erro ao ler arquivo PDF: " + e.getMessage(), e);
         }
     }
 
     @Override
     public boolean validarTemplate(String templateHtml) {
+        logger.debug("Validando template HTML");
+
         try {
-            // Validação básica do HTML
             if (templateHtml == null || templateHtml.trim().isEmpty()) {
+                logger.warn("Template HTML está vazio");
                 return false;
             }
 
-            // Verificar se contém tags básicas necessárias
-            boolean temHtml = templateHtml.contains("<html") || templateHtml.contains("<HTML");
-            boolean temBody = templateHtml.contains("<body") || templateHtml.contains("<BODY");
-            boolean temFechamento = templateHtml.contains("</html>") || templateHtml.contains("</HTML>");
-
-            if (!temHtml || !temBody || !temFechamento) {
-                logger.warn("Template HTML não possui estrutura básica necessária");
-                return false;
-            }
-
-            // Validar se consegue converter para PDF (teste básico)
+            // Tentar converter o template para PDF como teste
             try {
                 byte[] testePdf = converterHtmlParaPdf(templateHtml);
                 return testePdf != null && testePdf.length > 0;
@@ -181,6 +175,9 @@ public class FichaPdfGeneratorServiceImpl implements FichaPdfGeneratorService {
         }
     }
 
+    /**
+     * Gera PDF diretamente sem lotes
+     */
     private byte[] gerarPdfDireto(List<FichaPdfItemDto> itens) throws Exception {
         logger.debug("Gerando PDF direto para {} itens", itens.size());
 
@@ -209,6 +206,9 @@ public class FichaPdfGeneratorServiceImpl implements FichaPdfGeneratorService {
         return mesclarPdfs(fichasPdf);
     }
 
+    /**
+     * Gera PDF em lotes menores
+     */
     private byte[] gerarPdfEmLotes(List<FichaPdfItemDto> itens) throws Exception {
         logger.debug("Gerando PDF em lotes para {} itens", itens.size());
 
@@ -242,23 +242,21 @@ public class FichaPdfGeneratorServiceImpl implements FichaPdfGeneratorService {
         return mesclarPdfs(lotesPdf);
     }
 
+    /**
+     * Converte HTML para PDF usando iText
+     */
     private byte[] converterHtmlParaPdf(String html) throws Exception {
-        if (html == null || html.trim().isEmpty()) {
-            throw new IllegalArgumentException("HTML não pode estar vazio");
-        }
+        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
 
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-
-        try {
             // Configurar propriedades do conversor
-            ConverterProperties properties = new ConverterProperties();
-            properties.setBaseUri(""); // URI base vazia para recursos locais
+            ConverterProperties converterProperties = new ConverterProperties();
+            converterProperties.setCharset("UTF-8");
 
-            // Configurações para melhor renderização
-            properties.setCharset("UTF-8");
+            // Configurar base URI se necessário (para recursos como imagens)
+            // converterProperties.setBaseUri(baseUri);
 
             // Converter HTML para PDF
-            HtmlConverter.convertToPdf(html, outputStream, properties);
+            HtmlConverter.convertToPdf(html, outputStream, converterProperties);
 
             byte[] pdfBytes = outputStream.toByteArray();
 
@@ -266,105 +264,70 @@ public class FichaPdfGeneratorServiceImpl implements FichaPdfGeneratorService {
                 throw new RuntimeException("PDF gerado está vazio");
             }
 
+            logger.debug("HTML convertido para PDF: {} bytes", pdfBytes.length);
             return pdfBytes;
 
         } catch (Exception e) {
-            logger.error("Erro na conversão HTML para PDF: {}", e.getMessage());
+            logger.error("Erro na conversão HTML para PDF: {}", e.getMessage(), e);
             throw new RuntimeException("Erro na conversão HTML para PDF", e);
-        } finally {
-            try {
-                outputStream.close();
-            } catch (Exception e) {
-                logger.warn("Erro ao fechar OutputStream: {}", e.getMessage());
-            }
         }
     }
 
-    private byte[] mesclarPdfs(List<byte[]> pdfBytes) throws Exception {
-        if (pdfBytes == null || pdfBytes.isEmpty()) {
-            throw new IllegalArgumentException("Lista de PDFs para mesclar não pode estar vazia");
+    /**
+     * Mescla múltiplos PDFs em um único arquivo
+     */
+    private byte[] mesclarPdfs(List<byte[]> pdfsList) throws Exception {
+        if (pdfsList == null || pdfsList.isEmpty()) {
+            throw new IllegalArgumentException("Lista de PDFs não pode estar vazia");
         }
 
-        if (pdfBytes.size() == 1) {
-            return pdfBytes.get(0);
+        if (pdfsList.size() == 1) {
+            return pdfsList.get(0);
         }
 
-        logger.debug("Mesclando {} PDFs", pdfBytes.size());
+        logger.debug("Mesclando {} PDFs", pdfsList.size());
 
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        PdfDocument pdfDestino = null;
-        PdfMerger merger = null;
+        try (ByteArrayOutputStream mergedOutputStream = new ByteArrayOutputStream()) {
 
-        List<PdfDocument> pdfsAbertos = new ArrayList<>();
+            // Criar documento PDF de destino
+            PdfWriter writer = new PdfWriter(mergedOutputStream);
+            PdfDocument mergedDoc = new PdfDocument(writer);
+            PdfMerger merger = new PdfMerger(mergedDoc);
 
-        try {
-            pdfDestino = new PdfDocument(new PdfWriter(outputStream));
-            merger = new PdfMerger(pdfDestino);
+            // Mesclar cada PDF
+            for (int i = 0; i < pdfsList.size(); i++) {
+                byte[] pdfBytes = pdfsList.get(i);
 
-            for (int i = 0; i < pdfBytes.size(); i++) {
-                byte[] pdfData = pdfBytes.get(i);
+                try (ByteArrayInputStream inputStream = new ByteArrayInputStream(pdfBytes)) {
+                    PdfReader reader = new PdfReader(inputStream);
+                    PdfDocument sourceDoc = new PdfDocument(reader);
 
-                if (pdfData == null || pdfData.length == 0) {
-                    logger.warn("PDF {} está vazio, pulando...", i + 1);
-                    continue;
-                }
+                    // Mesclar todas as páginas do documento
+                    merger.merge(sourceDoc, 1, sourceDoc.getNumberOfPages());
 
-                try {
-                    ByteArrayInputStream inputStream = new ByteArrayInputStream(pdfData);
-                    PdfDocument pdfOrigem = new PdfDocument(new PdfReader(inputStream));
-                    pdfsAbertos.add(pdfOrigem);
+                    sourceDoc.close();
 
-                    // Verificar se o PDF tem páginas
-                    int numeroPaginas = pdfOrigem.getNumberOfPages();
-                    if (numeroPaginas > 0) {
-                        merger.merge(pdfOrigem, 1, numeroPaginas);
-                        logger.debug("PDF {} mesclado: {} páginas", i + 1, numeroPaginas);
-                    } else {
-                        logger.warn("PDF {} não possui páginas, pulando...", i + 1);
-                    }
-
-                } catch (Exception e) {
-                    logger.error("Erro ao mesclar PDF {}: {}", i + 1, e.getMessage());
-                    // Continuar com próximo PDF
+                    logger.debug("PDF {} de {} mesclado", i + 1, pdfsList.size());
                 }
             }
 
-            return outputStream.toByteArray();
+            mergedDoc.close();
+
+            byte[] mergedBytes = mergedOutputStream.toByteArray();
+            logger.debug("Mesclagem concluída: {} bytes", mergedBytes.length);
+
+            return mergedBytes;
 
         } catch (Exception e) {
-            logger.error("Erro na mesclagem de PDFs: {}", e.getMessage());
+            logger.error("Erro ao mesclar PDFs: {}", e.getMessage(), e);
             throw new RuntimeException("Erro na mesclagem de PDFs", e);
-        } finally {
-            // Fechar todos os PDFs abertos
-            for (PdfDocument pdf : pdfsAbertos) {
-                try {
-                    if (pdf != null) {
-                        pdf.close();
-                    }
-                } catch (Exception e) {
-                    logger.warn("Erro ao fechar PDF: {}", e.getMessage());
-                }
-            }
-
-            // Fechar documento destino
-            try {
-                if (pdfDestino != null) {
-                    pdfDestino.close();
-                }
-            } catch (Exception e) {
-                logger.warn("Erro ao fechar PDF destino: {}", e.getMessage());
-            }
-
-            // Fechar output stream
-            try {
-                outputStream.close();
-            } catch (Exception e) {
-                logger.warn("Erro ao fechar OutputStream: {}", e.getMessage());
-            }
         }
     }
 
-    private void criarDiretorioTemp() {
+    /**
+     * Inicializa diretórios temporários se necessário
+     */
+    private void inicializarDiretoriosTemp() {
         try {
             java.nio.file.Path tempDir = Paths.get(tempPath);
             if (!Files.exists(tempDir)) {
@@ -372,10 +335,13 @@ public class FichaPdfGeneratorServiceImpl implements FichaPdfGeneratorService {
                 logger.debug("Diretório temporário criado: {}", tempPath);
             }
         } catch (Exception e) {
-            logger.warn("Erro ao criar diretório temporário: {}", e.getMessage());
+            logger.warn("Erro ao criar diretório temporário {}: {}", tempPath, e.getMessage());
         }
     }
 
+    /**
+     * Limpa arquivos temporários antigos (se necessário)
+     */
     private void limparArquivosTemporarios() {
         try {
             java.nio.file.Path tempDir = Paths.get(tempPath);
@@ -384,9 +350,9 @@ public class FichaPdfGeneratorServiceImpl implements FichaPdfGeneratorService {
                         .filter(Files::isRegularFile)
                         .filter(path -> {
                             try {
-                                // Remover arquivos mais antigos que 1 hora
-                                long ageCutoff = System.currentTimeMillis() - (60 * 60 * 1000);
-                                return Files.getLastModifiedTime(path).toMillis() < ageCutoff;
+                                // Arquivos mais antigos que 1 hora
+                                long idade = System.currentTimeMillis() - Files.getLastModifiedTime(path).toMillis();
+                                return idade > (60 * 60 * 1000); // 1 hora
                             } catch (Exception e) {
                                 return false;
                             }
@@ -394,13 +360,14 @@ public class FichaPdfGeneratorServiceImpl implements FichaPdfGeneratorService {
                         .forEach(path -> {
                             try {
                                 Files.delete(path);
+                                logger.debug("Arquivo temporário removido: {}", path);
                             } catch (Exception e) {
-                                logger.debug("Erro ao remover arquivo temporário: {}", e.getMessage());
+                                logger.warn("Erro ao remover arquivo temporário {}: {}", path, e.getMessage());
                             }
                         });
             }
         } catch (Exception e) {
-            logger.debug("Erro na limpeza de arquivos temporários: {}", e.getMessage());
+            logger.warn("Erro na limpeza de arquivos temporários: {}", e.getMessage());
         }
     }
 }

@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.security.task.DelegatingSecurityContextAsyncTaskExecutor;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -31,15 +32,15 @@ public class FichaPdfConfig {
      */
     @Bean(name = "fichaPdfTaskExecutor")
     public Executor fichaPdfTaskExecutor() {
-        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(corePoolSize);
-        executor.setMaxPoolSize(maxPoolSize);
-        executor.setQueueCapacity(queueCapacity);
-        executor.setThreadNamePrefix("FichaPdf-");
-        executor.setWaitForTasksToCompleteOnShutdown(true);
-        executor.setAwaitTerminationSeconds(60);
-        executor.initialize();
-        return executor;
+        ThreadPoolTaskExecutor delegate = new ThreadPoolTaskExecutor();
+        delegate.setCorePoolSize(corePoolSize);
+        delegate.setMaxPoolSize(maxPoolSize);
+        delegate.setQueueCapacity(queueCapacity);
+        delegate.setThreadNamePrefix("FichaPdf-");
+        delegate.setWaitForTasksToCompleteOnShutdown(true);
+        delegate.setAwaitTerminationSeconds(60);
+        delegate.initialize();
+        return new DelegatingSecurityContextAsyncTaskExecutor(delegate);
     }
 
     /**
