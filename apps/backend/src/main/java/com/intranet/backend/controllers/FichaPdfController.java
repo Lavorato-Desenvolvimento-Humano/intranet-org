@@ -568,8 +568,11 @@ public class FichaPdfController {
         logger.info("Requisição para estatísticas de fichas PDF - mes: {}, ano: {}", mes, ano);
 
         try {
-            // Obter jobs do usuário para estatísticas
+            // Obter jobs do usuário para estatísticas (garantir que não é null)
             List<FichaPdfJobDto> jobs = fichaPdfService.getJobsUsuario();
+            if (jobs == null) {
+                jobs = new ArrayList<>();
+            }
 
             long jobsConcluidos = jobs.stream().filter(j -> "CONCLUIDO".equals(j.getStatus())).count();
             long jobsEmAndamento = jobs.stream().filter(j -> "PROCESSANDO".equals(j.getStatus()) || "INICIADO".equals(j.getStatus())).count();
@@ -577,99 +580,107 @@ public class FichaPdfController {
 
             int totalFichasGeradas = jobs.stream()
                     .filter(j -> "CONCLUIDO".equals(j.getStatus()))
-                    .mapToInt(j -> j.getFichasProcessadas() != null ? j.getFichasProcessadas() : 0)
+                    .mapToInt(j -> {
+                        Integer fichas = j.getFichasProcessadas();
+                        return fichas != null ? fichas : 0;
+                    })
                     .sum();
 
+            // Taxa de sucesso como decimal (0.0 a 1.0)
             double taxaSucesso = jobs.isEmpty() ? 0.0 : (double) jobsConcluidos / jobs.size();
 
             Map<String, Integer> fichasPorMes = new HashMap<>();
-
-            // Se período específico foi solicitado, calcular para esse período
             if (mes != null && ano != null) {
-                String chaveperiodo = String.format("%02d/%04d", mes, ano);
-
-                // Buscar fichas específicas do período solicitado
+                String chavePeriodo = String.format("%02d/%04d", mes, ano);
                 int fichasPeriodo = jobs.stream()
                         .filter(j -> "CONCLUIDO".equals(j.getStatus()))
                         .filter(j -> j.getIniciado() != null)
                         .filter(j -> j.getIniciado().getMonthValue() == mes && j.getIniciado().getYear() == ano)
-                        .mapToInt(j -> j.getFichasProcessadas() != null ? j.getFichasProcessadas() : 0)
+                        .mapToInt(j -> {
+                            Integer fichas = j.getFichasProcessadas();
+                            return fichas != null ? fichas : 0;
+                        })
                         .sum();
 
-                fichasPorMes.put(chaveperiodo, fichasPeriodo);
+                fichasPorMes.put(chavePeriodo, fichasPeriodo);
             } else {
-                // Agrupar por mês/ano baseado na data de início dos jobs
-                fichasPorMes = jobs.stream()
+                // Agrupar por mês/ano com valores seguros
+                Map<String, Integer> tempMap = jobs.stream()
                         .filter(j -> "CONCLUIDO".equals(j.getStatus()))
                         .filter(j -> j.getIniciado() != null)
                         .collect(Collectors.groupingBy(
-                                j -> String.format("%02d/%04d",
-                                        j.getIniciado().getMonthValue(),
-                                        j.getIniciado().getYear()),
-                                Collectors.summingInt(j -> j.getFichasProcessadas() != null ? j.getFichasProcessadas() : 0)
+                                j -> String.format("%02d/%04d", j.getIniciado().getMonthValue(), j.getIniciado().getYear()),
+                                Collectors.summingInt(j -> {
+                                    Integer fichas = j.getFichasProcessadas();
+                                    return fichas != null ? fichas : 0;
+                                })
                         ));
+
+                tempMap.forEach((chave, valor) -> {
+                    fichasPorMes.put(chave, valor != null ? valor : 0);
+                });
             }
 
             List<Map<String, Object>> conveniosMaisUtilizados = new ArrayList<>();
-
             try {
                 List<ConvenioDto> conveniosHabilitados = fichaPdfService.getConveniosHabilitados();
+                if (conveniosHabilitados != null) {
+                    for (ConvenioDto convenio : conveniosHabilitados) {
+                        try {
+                            Map<String, Object> statsConvenio = fichaVerificationService
+                                    .getEstatisticasFichasConvenio(convenio.getId(), mes, ano);
 
-                // Para cada convênio, buscar estatísticas
-                for (ConvenioDto convenio : conveniosHabilitados) {
-                    try {
-                        // Buscar estatísticas do convênio no período
-                        Map<String, Object> statsConvenio = fichaVerificationService
-                                .getEstatisticasFichasConvenio(convenio.getId(), mes, ano);
-
-                        int totalFichasConvenio = 0;
-                        if (statsConvenio.containsKey("totalFichas")) {
-                            Object totalObj = statsConvenio.get("totalFichas");
-                            if (totalObj instanceof Number) {
-                                totalFichasConvenio = ((Number) totalObj).intValue();
+                            int totalFichasConvenio = 0;
+                            if (statsConvenio != null && statsConvenio.containsKey("totalFichas")) {
+                                Object totalObj = statsConvenio.get("totalFichas");
+                                if (totalObj instanceof Number) {
+                                    totalFichasConvenio = ((Number) totalObj).intValue();
+                                }
                             }
-                        }
 
-                        if (totalFichasConvenio > 0) {
-                            Map<String, Object> convenioStat = new HashMap<>();
-                            convenioStat.put("convenioId", convenio.getId().toString());
-                            convenioStat.put("convenioNome", convenio.getName());
-                            convenioStat.put("totalFichas", totalFichasConvenio);
-                            conveniosMaisUtilizados.add(convenioStat);
+                            if (totalFichasConvenio > 0) {
+                                Map<String, Object> convenioStat = new HashMap<>();
+                                convenioStat.put("convenioId", convenio.getId() != null ? convenio.getId().toString() : "");
+                                convenioStat.put("convenioNome", convenio.getName() != null ? convenio.getName() : "Sem Nome");
+                                convenioStat.put("totalFichas", totalFichasConvenio); // Já garantido > 0
+                                conveniosMaisUtilizados.add(convenioStat);
+                            }
+                        } catch (Exception e) {
+                            logger.warn("Erro ao obter estatísticas do convênio {}: {}",
+                                    convenio.getId(), e.getMessage());
                         }
-                    } catch (Exception e) {
-                        logger.warn("Erro ao obter estatísticas do convênio {}: {}", convenio.getId(), e.getMessage());
                     }
+
+                    // Ordenar e limitar aos 10 primeiros
+                    conveniosMaisUtilizados = conveniosMaisUtilizados.stream()
+                            .sorted((a, b) -> {
+                                Integer totalA = (Integer) a.get("totalFichas");
+                                Integer totalB = (Integer) b.get("totalFichas");
+                                return Integer.compare(totalB != null ? totalB : 0, totalA != null ? totalA : 0);
+                            })
+                            .limit(10)
+                            .collect(Collectors.toList());
                 }
-
-                // Ordenar por total de fichas (decrescente) e limitar aos 10 primeiros
-                conveniosMaisUtilizados = conveniosMaisUtilizados.stream()
-                        .sorted((a, b) -> Integer.compare(
-                                (Integer) b.get("totalFichas"),
-                                (Integer) a.get("totalFichas")))
-                        .limit(10)
-                        .collect(Collectors.toList());
-
             } catch (Exception e) {
                 logger.warn("Erro ao calcular convênios mais utilizados: {}", e.getMessage());
-                // Manter lista vazia em caso de erro
+                // conveniosMaisUtilizados já é uma lista vazia
             }
 
             Map<String, Object> estatisticas = new HashMap<>();
             estatisticas.put("totalFichasGeradas", totalFichasGeradas);
-            estatisticas.put("conveniosAtivos", fichaPdfService.getConveniosHabilitados().size());
+            estatisticas.put("conveniosAtivos", getConveniosAtivosSeguro());
             estatisticas.put("jobsConcluidos", jobsConcluidos);
             estatisticas.put("jobsEmAndamento", jobsEmAndamento);
             estatisticas.put("jobsComErro", jobsComErro);
             estatisticas.put("totalJobs", (long) jobs.size());
             estatisticas.put("periodo", (mes != null && ano != null) ? mes + "/" + ano : "todos");
-            estatisticas.put("taxaSucesso", taxaSucesso);  // Valor entre 0.0 e 1.0
-            estatisticas.put("fichasPorMes", fichasPorMes);  // ADICIONADO
-            estatisticas.put("conveniosMaisUtilizados", conveniosMaisUtilizados);  // ADICIONADO
+            estatisticas.put("taxaSucesso", taxaSucesso);
+            estatisticas.put("fichasPorMes", fichasPorMes);
+            estatisticas.put("conveniosMaisUtilizados", conveniosMaisUtilizados);
             estatisticas.put("ultimaAtualizacao", System.currentTimeMillis());
 
-            logger.info("Estatísticas calculadas: {} fichas, {} jobs, taxa sucesso: {}%, {} convênios",
-                    totalFichasGeradas, jobs.size(), (taxaSucesso * 100), conveniosMaisUtilizados.size());
+            logger.info("Estatísticas calculadas com segurança: {} fichas, {} jobs, {} convênios",
+                    totalFichasGeradas, jobs.size(), conveniosMaisUtilizados.size());
 
             return ResponseUtil.success(estatisticas);
 
@@ -677,8 +688,6 @@ public class FichaPdfController {
             logger.error("Erro ao obter estatísticas: {}", e.getMessage(), e);
 
             Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("error", "Erro ao obter estatísticas: " + e.getMessage());
-            errorResponse.put("timestamp", System.currentTimeMillis());
             errorResponse.put("totalFichasGeradas", 0);
             errorResponse.put("conveniosAtivos", 0);
             errorResponse.put("jobsConcluidos", 0L);
@@ -687,8 +696,10 @@ public class FichaPdfController {
             errorResponse.put("totalJobs", 0L);
             errorResponse.put("periodo", (mes != null && ano != null) ? mes + "/" + ano : "todos");
             errorResponse.put("taxaSucesso", 0.0);
-            errorResponse.put("fichasPorMes", new HashMap<>());
-            errorResponse.put("conveniosMaisUtilizados", new ArrayList<>());
+            errorResponse.put("fichasPorMes", new HashMap<String, Integer>());
+            errorResponse.put("conveniosMaisUtilizados", new ArrayList<Map<String, Object>>());
+            errorResponse.put("error", "Erro ao obter estatísticas: " + e.getMessage());
+            errorResponse.put("timestamp", System.currentTimeMillis());
 
             return ResponseEntity.badRequest().body(errorResponse);
         }
@@ -1062,6 +1073,16 @@ public class FichaPdfController {
         } catch (Exception e) {
             logger.warn("Erro ao verificar saúde do storage: {}", e.getMessage());
             return false;
+        }
+    }
+
+    private int getConveniosAtivosSeguro() {
+        try {
+            List<ConvenioDto> convenios = fichaPdfService.getConveniosHabilitados();
+            return convenios != null ? convenios.size() : 0;
+        } catch (Exception e) {
+            logger.warn("Erro ao obter convênios habilitados: {}", e.getMessage());
+            return 0;
         }
     }
 }
