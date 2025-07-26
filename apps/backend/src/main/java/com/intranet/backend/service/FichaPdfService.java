@@ -1,6 +1,7 @@
 package com.intranet.backend.service;
 
 import com.intranet.backend.dto.*;
+import com.intranet.backend.model.User;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -60,4 +61,14 @@ public interface FichaPdfService {
      * Lista jobs de geração do usuário
      */
     List<FichaPdfJobDto> getJobsUsuario();
+
+    /**
+     * Gera fichas PDF para um convênio específico com jobId e usuário fornecidos (assíncrono)
+     * Esta versão recebe o usuário como parâmetro para evitar problemas com SecurityContext
+     */
+    CompletableFuture<FichaPdfResponseDto> gerarFichasConvenioComJobIdEUsuario(
+            FichaPdfConvenioRequest request,
+            String jobId,
+            User usuario
+    );
 }
