@@ -16,12 +16,12 @@ public interface FichaPdfLogRepository extends JpaRepository<FichaPdfLog, UUID> 
     /**
      * Lista logs por job
      */
-    List<FichaPdfLog> findByJobIdOrderByCreatedAtAsc(UUID jobId);
+    @Query("SELECT l FROM FichaPdfLog l WHERE l.job.id = :jobId ORDER BY l.createdAt ASC")
+    List<FichaPdfLog> findByJobIdOrderByCreatedAtAsc(@Param("jobId") UUID jobId);
 
     /**
      * Remove logs antigos para limpeza
      */
     @Query("DELETE FROM FichaPdfLog l WHERE l.createdAt < :dataLimite")
     void deleteLogsAntigos(@Param("dataLimite") LocalDateTime dataLimite);
-
 }
