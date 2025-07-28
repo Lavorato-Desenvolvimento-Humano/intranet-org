@@ -404,43 +404,49 @@ export default function EstatisticasPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {estatisticasConvenio.map((stats) => (
-                  <tr key={stats.convenioId} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {stats.convenioNome}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatarNumeroSeguro(stats.fichasGeradasMes)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatarNumeroSeguro(stats.fichasGeradasAno)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatarNumeroSeguro(stats.pacientesAtivos)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {stats.mediaFichasPorPaciente.toFixed(1)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <div className="flex flex-wrap gap-1">
-                        {stats.especialidadesCobertas.slice(0, 3).map((esp) => (
-                          <span
-                            key={esp}
-                            className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                            {esp}
-                          </span>
-                        ))}
-                        {stats.especialidadesCobertas.length > 3 && (
-                          <span className="text-xs text-gray-500">
-                            +{stats.especialidadesCobertas.length - 3}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {estatisticasConvenio.map((stats) => {
+                  // CORREÇÃO: Garantir que especialidadesCobertas seja um array válido
+                  const especialidades = stats.especialidadesCobertas || [];
+                  const mediaFichas = stats.mediaFichasPorPaciente || 0;
+
+                  return (
+                    <tr key={stats.convenioId} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">
+                          {stats.convenioNome || "Nome não disponível"}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {formatarNumeroSeguro(stats.fichasGeradasMes)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {formatarNumeroSeguro(stats.fichasGeradasAno)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {formatarNumeroSeguro(stats.pacientesAtivos)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {mediaFichas.toFixed(1)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <div className="flex flex-wrap gap-1">
+                          {especialidades.slice(0, 3).map((esp, index) => (
+                            <span
+                              key={`${stats.convenioId}-esp-${index}`}
+                              className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                              {esp}
+                            </span>
+                          ))}
+                          {especialidades.length > 3 && (
+                            <span className="text-xs text-gray-500">
+                              +{especialidades.length - 3}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -553,42 +559,42 @@ export default function EstatisticasPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="text-center">
                 <div className="text-3xl font-bold text-green-600 mb-2">
-                  {estatisticas.jobsConcluidos}
+                  {formatarNumeroSeguro(estatisticas.jobsConcluidos)}
                 </div>
                 <div className="text-sm text-gray-600">Jobs Concluídos</div>
                 <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
                   <div
                     className="bg-green-500 h-2 rounded-full"
                     style={{
-                      width: `${(estatisticas.jobsConcluidos / estatisticas.totalJobs) * 100}%`,
+                      width: `${estatisticas.totalJobs > 0 ? (Number(estatisticas.jobsConcluidos) / Number(estatisticas.totalJobs)) * 100 : 0}%`,
                     }}></div>
                 </div>
               </div>
 
               <div className="text-center">
                 <div className="text-3xl font-bold text-blue-600 mb-2">
-                  {estatisticas.jobsEmAndamento}
+                  {formatarNumeroSeguro(estatisticas.jobsEmAndamento)}
                 </div>
                 <div className="text-sm text-gray-600">Em Andamento</div>
                 <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
                   <div
                     className="bg-blue-500 h-2 rounded-full"
                     style={{
-                      width: `${(estatisticas.jobsEmAndamento / estatisticas.totalJobs) * 100}%`,
+                      width: `${estatisticas.totalJobs > 0 ? (Number(estatisticas.jobsEmAndamento) / Number(estatisticas.totalJobs)) * 100 : 0}%`,
                     }}></div>
                 </div>
               </div>
 
               <div className="text-center">
                 <div className="text-3xl font-bold text-red-600 mb-2">
-                  {estatisticas.jobsComErro}
+                  {formatarNumeroSeguro(estatisticas.jobsComErro)}
                 </div>
                 <div className="text-sm text-gray-600">Com Erro</div>
                 <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
                   <div
                     className="bg-red-500 h-2 rounded-full"
                     style={{
-                      width: `${(estatisticas.jobsComErro / estatisticas.totalJobs) * 100}%`,
+                      width: `${estatisticas.totalJobs > 0 ? (Number(estatisticas.jobsComErro) / Number(estatisticas.totalJobs)) * 100 : 0}%`,
                     }}></div>
                 </div>
               </div>
@@ -597,17 +603,21 @@ export default function EstatisticasPage() {
             <div className="mt-6 pt-6 border-t border-gray-200">
               <div className="flex justify-between items-center text-sm">
                 <span className="text-gray-600">Total de Jobs:</span>
-                <span className="font-medium">{estatisticas.totalJobs}</span>
+                <span className="font-medium">
+                  {formatarNumeroSeguro(estatisticas.totalJobs)}
+                </span>
               </div>
               <div className="flex justify-between items-center text-sm mt-2">
                 <span className="text-gray-600">Taxa de Sucesso:</span>
                 <span className="font-medium text-green-600">
-                  {(estatisticas.taxaSucesso * 100).toFixed(1)}%
+                  {((estatisticas.taxaSucesso || 0) * 100).toFixed(1)}%
                 </span>
               </div>
               <div className="flex justify-between items-center text-sm mt-2">
                 <span className="text-gray-600">Período Analisado:</span>
-                <span className="font-medium">{estatisticas.periodo}</span>
+                <span className="font-medium">
+                  {estatisticas.periodo || "todos"}
+                </span>
               </div>
             </div>
           </div>
@@ -623,7 +633,7 @@ export default function EstatisticasPage() {
           <div className="space-y-3 text-sm text-blue-800">
             {estatisticas && (
               <>
-                {estatisticas.taxaSucesso >= 0.95 && (
+                {(estatisticas.taxaSucesso || 0) >= 0.95 && (
                   <div className="flex items-start">
                     <CheckCircle className="h-4 w-4 text-green-600 mr-2 mt-0.5" />
                     <span>
@@ -633,7 +643,7 @@ export default function EstatisticasPage() {
                   </div>
                 )}
 
-                {estatisticas.jobsEmAndamento > 5 && (
+                {(estatisticas.jobsEmAndamento || 0) > 5 && (
                   <div className="flex items-start">
                     <Clock className="h-4 w-4 text-yellow-600 mr-2 mt-0.5" />
                     <span>
@@ -643,8 +653,8 @@ export default function EstatisticasPage() {
                   </div>
                 )}
 
-                {estatisticas.jobsComErro >
-                  estatisticas.jobsConcluidos * 0.1 && (
+                {(estatisticas.jobsComErro || 0) >
+                  (estatisticas.jobsConcluidos || 0) * 0.1 && (
                   <div className="flex items-start">
                     <XCircle className="h-4 w-4 text-red-600 mr-2 mt-0.5" />
                     <span>
@@ -654,23 +664,27 @@ export default function EstatisticasPage() {
                   </div>
                 )}
 
-                {estatisticas.conveniosMaisUtilizados.length > 0 && (
-                  <div className="flex items-start">
-                    <TrendingUp className="h-4 w-4 text-purple-600 mr-2 mt-0.5" />
-                    <span>
-                      O convênio "
-                      {estatisticas.conveniosMaisUtilizados[0]?.convenioNome}" é
-                      o mais utilizado com{" "}
-                      {estatisticas.conveniosMaisUtilizados[0]?.totalFichas}{" "}
-                      fichas geradas.
-                    </span>
-                  </div>
-                )}
+                {estatisticas.conveniosMaisUtilizados &&
+                  estatisticas.conveniosMaisUtilizados.length > 0 && (
+                    <div className="flex items-start">
+                      <TrendingUp className="h-4 w-4 text-purple-600 mr-2 mt-0.5" />
+                      <span>
+                        O convênio "
+                        {estatisticas.conveniosMaisUtilizados[0]
+                          ?.convenioNome || "N/A"}
+                        " é o mais utilizado com{" "}
+                        {formatarNumeroSeguro(
+                          estatisticas.conveniosMaisUtilizados[0]?.totalFichas
+                        )}{" "}
+                        fichas geradas.
+                      </span>
+                    </div>
+                  )}
 
                 <div className="flex items-start">
                   <PieChart className="h-4 w-4 text-indigo-600 mr-2 mt-0.5" />
                   <span>
-                    {estatisticas.totalFichasGeradas > 1000
+                    {(estatisticas.totalFichasGeradas || 0) > 1000
                       ? "Volume alto de fichas geradas indica uso intensivo do sistema."
                       : "Volume moderado de fichas. Sistema com capacidade para crescimento."}
                   </span>
