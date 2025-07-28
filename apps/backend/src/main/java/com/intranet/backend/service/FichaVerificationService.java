@@ -1,9 +1,11 @@
 package com.intranet.backend.service;
 
 import com.intranet.backend.dto.FichaPdfItemDto;
+import com.intranet.backend.exception.ResourceNotFoundException;
+import com.intranet.backend.model.Convenio;
 import com.intranet.backend.model.Ficha;
+import com.intranet.backend.repository.ConvenioRepository;
 import com.intranet.backend.repository.FichaRepository;
-import com.intranet.backend.service.FichaVerificationService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,7 +26,8 @@ public class FichaVerificationService {
     private static final Logger logger = LoggerFactory.getLogger(FichaVerificationService.class);
 
     private final FichaRepository fichaRepository;
-
+    private final ConvenioRepository convenioRepository;
+    
     // Cache local para otimizar verificações repetidas na mesma sessão
     private final Map<String, Boolean> verificacaoCache = new ConcurrentHashMap<>();
 
@@ -107,6 +110,9 @@ public class FichaVerificationService {
         logger.info("Gerando estatísticas de fichas - convênio: {}, período: {}/{}", convenioId, mes, ano);
 
         try {
+            Convenio convenio = convenioRepository.findById(convenioId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Convênio não encontrado: " + convenioId));
+
             List<Ficha> fichasExistentes = fichaRepository.findFichasExistentesPorConvenioMesAno(convenioId, mes, ano);
 
             // Estatísticas por especialidade
@@ -141,37 +147,67 @@ public class FichaVerificationService {
                     .max(LocalDateTime::compareTo)
                     .orElse(null);
 
+            // Especialidades cobertas (lista de strings)
+            List<String> especialidadesCobertas = fichasPorEspecialidade.keySet()
+                    .stream()
+                    .filter(Objects::nonNull)
+                    .sorted()
+                    .collect(Collectors.toList());
+
             Map<String, Object> estatisticas = new HashMap<>();
+
+            estatisticas.put("convenioId", convenioId.toString());
+            estatisticas.put("convenioNome", convenio.getName() != null ? convenio.getName() : "Nome não disponível");
+
+            // Estatísticas das fichas
             estatisticas.put("totalFichas", fichasExistentes.size());
             estatisticas.put("totalPacientes", pacientesUnicos.size());
+            estatisticas.put("fichasGeradasMes", fichasExistentes.size()); // Para compatibilidade com frontend
+            estatisticas.put("fichasGeradasAno", fichasExistentes.size()); // Para compatibilidade com frontend
+            estatisticas.put("pacientesAtivos", pacientesUnicos.size());
+            estatisticas.put("especialidadesCobertas", especialidadesCobertas);
             estatisticas.put("fichasPorEspecialidade", fichasPorEspecialidade);
             estatisticas.put("fichasPorStatus", fichasPorStatus);
             estatisticas.put("primeiraFicha", primeiraFicha);
             estatisticas.put("ultimaFicha", ultimaFicha);
-            estatisticas.put("convenioId", convenioId);
             estatisticas.put("mes", mes);
             estatisticas.put("ano", ano);
             estatisticas.put("geradoEm", LocalDateTime.now());
 
             // Métricas adicionais
-            double mediaFichasPorPaciente = pacientesUnicos.isEmpty() ? 0.0 :
-                    (double) fichasExistentes.size() / pacientesUnicos.size();
+            double mediaFichasPorPaciente = pacientesUnicos.isEmpty() ?
+                    0.0 : (double) fichasExistentes.size() / pacientesUnicos.size();
             estatisticas.put("mediaFichasPorPaciente", Math.round(mediaFichasPorPaciente * 100.0) / 100.0);
 
-            logger.info("Estatísticas geradas - convênio: {}, fichas: {}, pacientes: {}",
-                    convenioId, fichasExistentes.size(), pacientesUnicos.size());
+            logger.info("Estatísticas geradas - convênio: {} ({}), fichas: {}, pacientes: {}",
+                    convenioId, convenio.getName(), fichasExistentes.size(), pacientesUnicos.size());
 
             return estatisticas;
 
         } catch (Exception e) {
             logger.error("Erro ao gerar estatísticas para convênio {}: {}", convenioId, e.getMessage(), e);
 
-            // Retornar estatísticas básicas em caso de erro
+            String convenioNome = "Nome não disponível";
+            try {
+                Convenio convenio = convenioRepository.findById(convenioId).orElse(null);
+                if (convenio != null && convenio.getName() != null) {
+                    convenioNome = convenio.getName();
+                }
+            } catch (Exception ex) {
+                logger.warn("Erro ao buscar nome do convênio para resposta de erro: {}", ex.getMessage());
+            }
+
             Map<String, Object> estatisticasErro = new HashMap<>();
             estatisticasErro.put("erro", "Erro ao calcular estatísticas: " + e.getMessage());
+            estatisticasErro.put("convenioId", convenioId.toString());
+            estatisticasErro.put("convenioNome", convenioNome);
             estatisticasErro.put("totalFichas", 0);
             estatisticasErro.put("totalPacientes", 0);
-            estatisticasErro.put("convenioId", convenioId);
+            estatisticasErro.put("fichasGeradasMes", 0);
+            estatisticasErro.put("fichasGeradasAno", 0);
+            estatisticasErro.put("pacientesAtivos", 0);
+            estatisticasErro.put("especialidadesCobertas", new ArrayList<String>());
+            estatisticasErro.put("mediaFichasPorPaciente", 0.0);
             estatisticasErro.put("mes", mes);
             estatisticasErro.put("ano", ano);
             estatisticasErro.put("geradoEm", LocalDateTime.now());
