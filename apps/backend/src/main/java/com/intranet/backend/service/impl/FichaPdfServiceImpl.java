@@ -1309,11 +1309,17 @@ public class FichaPdfServiceImpl implements FichaPdfService {
         FichaPdfStatusDto status = new FichaPdfStatusDto();
         status.setJobId(job.getJobId());
         status.setStatus(job.getStatus());
+        status.setTipo(job.getTipo());
         status.setTotalItens(job.getTotalFichas());
         status.setItensProcessados(job.getFichasProcessadas());
         status.setIniciadoEm(job.getIniciado());
         status.setAtualizadoEm(job.getUpdatedAt());
         status.setPodeDownload(job.isPodeDownload());
+
+        if (job.getUsuario() != null) {
+            status.setUsuarioNome(job.getUsuario().getFullName());
+            status.setUsuarioEmail(job.getUsuario().getEmail());
+        }
 
         // Calcular progresso
         if (job.getTotalFichas() != null && job.getTotalFichas() > 0) {
@@ -1342,8 +1348,87 @@ public class FichaPdfServiceImpl implements FichaPdfService {
                 status.setMensagem("Status desconhecido");
         }
 
+        status.setDadosJob(buscarDadosContextuaisJob(job));
+
         status.setObservacoes(job.getObservacoes());
         return status;
+    }
+
+    private FichaPdfStatusDto.DadosJobDto buscarDadosContextuaisJob(FichaPdfJob job) {
+        FichaPdfStatusDto.DadosJobDto dadosJob = new FichaPdfStatusDto.DadosJobDto();
+
+        try {
+            // Buscar logs do job para extrair informações contextuais
+            List<FichaPdfLog> logs = logRepository.findByJobIdOrderByCreatedAtAsc(job.getId());
+
+            if (!logs.isEmpty()) {
+                FichaPdfLog primeiroLog = logs.get(0);
+
+                // Dados do período
+                if (primeiroLog.getMes() != null && primeiroLog.getAno() != null) {
+                    dadosJob.setMes(primeiroLog.getMes());
+                    dadosJob.setAno(primeiroLog.getAno());
+                    dadosJob.setMesExtenso(getMesExtenso(primeiroLog.getMes()));
+                    dadosJob.setPeriodo(dadosJob.getMesExtenso() + "/" + primeiroLog.getAno());
+                }
+
+                // Dados específicos por tipo de job
+                switch (job.getTipo()) {
+                    case PACIENTE:
+                        // Para job de paciente, pegar dados do primeiro log
+                        if (primeiroLog.getPaciente() != null) {
+                            dadosJob.setPacienteNome(primeiroLog.getPaciente().getNome());
+                            dadosJob.setPacienteId(primeiroLog.getPaciente().getId().toString());
+
+                            // Pegar convênio do paciente
+                            if (primeiroLog.getPaciente().getConvenio() != null) {
+                                dadosJob.setConvenioNome(primeiroLog.getPaciente().getConvenio().getName());
+                                dadosJob.setConvenioId(primeiroLog.getPaciente().getConvenio().getId().toString());
+                            }
+                        }
+                        break;
+
+                    case CONVENIO:
+                        // Para job de convênio, buscar dados do convênio dos logs
+                        buscarDadosConvenioDoJob(logs, dadosJob);
+                        break;
+
+                    case LOTE:
+                        // Para job de lote, contar convênios únicos
+                        Set<String> conveniosUnicos = logs.stream()
+                                .filter(log -> log.getPaciente() != null &&
+                                        log.getPaciente().getConvenio() != null)
+                                .map(log -> log.getPaciente().getConvenio().getId().toString())
+                                .collect(Collectors.toSet());
+
+                        dadosJob.setTotalConvenios(conveniosUnicos.size());
+
+                        // Se for apenas um convênio, mostrar o nome
+                        if (conveniosUnicos.size() == 1) {
+                            Optional<FichaPdfLog> logConvenio = logs.stream()
+                                    .filter(log -> log.getPaciente() != null &&
+                                            log.getPaciente().getConvenio() != null)
+                                    .findFirst();
+
+                            if (logConvenio.isPresent()) {
+                                dadosJob.setConvenioNome(logConvenio.get().getPaciente().getConvenio().getName());
+                                dadosJob.setConvenioId(logConvenio.get().getPaciente().getConvenio().getId().toString());
+                            }
+                        }
+                        break;
+                }
+            }
+
+        } catch (Exception e) {
+            logger.warn("Erro ao buscar dados contextuais do job {}: {}", job.getJobId(), e.getMessage());
+            // Em caso de erro, definir valores padrão se possível
+            dadosJob.setMes(LocalDateTime.now().getMonthValue());
+            dadosJob.setAno(LocalDateTime.now().getYear());
+            dadosJob.setMesExtenso(getMesExtenso(dadosJob.getMes()));
+            dadosJob.setPeriodo(dadosJob.getMesExtenso() + "/" + dadosJob.getAno());
+        }
+
+        return dadosJob;
     }
 
     private FichaPdfJobDto mapJobToDto(FichaPdfJob job) {
@@ -1358,7 +1443,6 @@ public class FichaPdfServiceImpl implements FichaPdfService {
         dto.setPodeDownload(job.isPodeDownload());
         dto.setObservacoes(job.getObservacoes());
 
-        // ✅ CORREÇÃO: Calcular progresso da mesma forma que no mapJobToStatus
         if (job.getTotalFichas() != null && job.getTotalFichas() > 0 && job.getFichasProcessadas() != null) {
             int progresso = (int) ((double) job.getFichasProcessadas() / job.getTotalFichas() * 100);
             dto.setProgresso(progresso);
@@ -1429,6 +1513,38 @@ public class FichaPdfServiceImpl implements FichaPdfService {
         long timestamp = System.currentTimeMillis();
         int random = new Random().nextInt(1000);
         return String.format("%d%03d", timestamp % 10000, random);
+    }
+
+    private void buscarDadosConvenioDoJob(List<FichaPdfLog> logs, FichaPdfStatusDto.DadosJobDto dadosJob) {
+        // Buscar o convênio mais comum nos logs (caso haja dados de múltiplos convênios)
+        Map<String, Long> conveniosPorFrequencia = logs.stream()
+                .filter(log -> log.getPaciente() != null &&
+                        log.getPaciente().getConvenio() != null)
+                .collect(Collectors.groupingBy(
+                        log -> log.getPaciente().getConvenio().getId().toString(),
+                        Collectors.counting()
+                ));
+
+        if (!conveniosPorFrequencia.isEmpty()) {
+            // Pegar o convênio com mais logs (mais comum)
+            String convenioIdMaisComum = conveniosPorFrequencia.entrySet().stream()
+                    .max(Map.Entry.comparingByValue())
+                    .map(Map.Entry::getKey)
+                    .orElse(null);
+
+            if (convenioIdMaisComum != null) {
+                Optional<FichaPdfLog> logConvenio = logs.stream()
+                        .filter(log -> log.getPaciente() != null &&
+                                log.getPaciente().getConvenio() != null &&
+                                log.getPaciente().getConvenio().getId().toString().equals(convenioIdMaisComum))
+                        .findFirst();
+
+                if (logConvenio.isPresent()) {
+                    dadosJob.setConvenioNome(logConvenio.get().getPaciente().getConvenio().getName());
+                    dadosJob.setConvenioId(convenioIdMaisComum);
+                }
+            }
+        }
     }
 
     private String getMesExtenso(Integer mes) {
