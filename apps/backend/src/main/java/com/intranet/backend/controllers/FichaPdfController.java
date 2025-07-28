@@ -574,9 +574,18 @@ public class FichaPdfController {
                 jobs = new ArrayList<>();
             }
 
-            long jobsConcluidos = jobs.stream().filter(j -> "CONCLUIDO".equals(j.getStatus())).count();
-            long jobsEmAndamento = jobs.stream().filter(j -> "PROCESSANDO".equals(j.getStatus()) || "INICIADO".equals(j.getStatus())).count();
-            long jobsComErro = jobs.stream().filter(j -> "ERRO".equals(j.getStatus())).count();
+            // CORREÇÃO: Usar métodos auxiliares para garantir valores não-nulos
+            long jobsConcluidos = garantirLongNaoNulo(jobs.stream()
+                    .filter(j -> "CONCLUIDO".equals(j.getStatus()))
+                    .count());
+
+            long jobsEmAndamento = garantirLongNaoNulo(jobs.stream()
+                    .filter(j -> "PROCESSANDO".equals(j.getStatus()) || "INICIADO".equals(j.getStatus()))
+                    .count());
+
+            long jobsComErro = garantirLongNaoNulo(jobs.stream()
+                    .filter(j -> "ERRO".equals(j.getStatus()))
+                    .count());
 
             int totalFichasGeradas = jobs.stream()
                     .filter(j -> "CONCLUIDO".equals(j.getStatus()))
@@ -589,6 +598,7 @@ public class FichaPdfController {
             // Taxa de sucesso como decimal (0.0 a 1.0)
             double taxaSucesso = jobs.isEmpty() ? 0.0 : (double) jobsConcluidos / jobs.size();
 
+            // CORREÇÃO: Garantir que fichasPorMes tenha valores não-nulos
             Map<String, Integer> fichasPorMes = new HashMap<>();
             if (mes != null && ano != null) {
                 String chavePeriodo = String.format("%02d/%04d", mes, ano);
@@ -602,7 +612,7 @@ public class FichaPdfController {
                         })
                         .sum();
 
-                fichasPorMes.put(chavePeriodo, fichasPeriodo);
+                fichasPorMes.put(chavePeriodo, garantirIntegerNaoNulo(fichasPeriodo));
             } else {
                 // Agrupar por mês/ano com valores seguros
                 Map<String, Integer> tempMap = jobs.stream()
@@ -616,11 +626,13 @@ public class FichaPdfController {
                                 })
                         ));
 
+                // CORREÇÃO: Garantir que todos os valores no mapa sejam não-nulos
                 tempMap.forEach((chave, valor) -> {
-                    fichasPorMes.put(chave, valor != null ? valor : 0);
+                    fichasPorMes.put(chave, garantirIntegerNaoNulo(valor));
                 });
             }
 
+            // CORREÇÃO: Processar conveniosMaisUtilizados com proteções
             List<Map<String, Object>> conveniosMaisUtilizados = new ArrayList<>();
             try {
                 List<ConvenioDto> conveniosHabilitados = fichaPdfService.getConveniosHabilitados();
@@ -640,9 +652,11 @@ public class FichaPdfController {
 
                             if (totalFichasConvenio > 0) {
                                 Map<String, Object> convenioStat = new HashMap<>();
-                                convenioStat.put("convenioId", convenio.getId() != null ? convenio.getId().toString() : "");
-                                convenioStat.put("convenioNome", convenio.getName() != null ? convenio.getName() : "Sem Nome");
-                                convenioStat.put("totalFichas", totalFichasConvenio); // Já garantido > 0
+                                convenioStat.put("convenioId",
+                                        convenio.getId() != null ? convenio.getId().toString() : "");
+                                convenioStat.put("convenioNome",
+                                        convenio.getName() != null ? convenio.getName() : "Sem Nome");
+                                convenioStat.put("totalFichas", garantirIntegerNaoNulo(totalFichasConvenio));
                                 conveniosMaisUtilizados.add(convenioStat);
                             }
                         } catch (Exception e) {
@@ -654,9 +668,9 @@ public class FichaPdfController {
                     // Ordenar e limitar aos 10 primeiros
                     conveniosMaisUtilizados = conveniosMaisUtilizados.stream()
                             .sorted((a, b) -> {
-                                Integer totalA = (Integer) a.get("totalFichas");
-                                Integer totalB = (Integer) b.get("totalFichas");
-                                return Integer.compare(totalB != null ? totalB : 0, totalA != null ? totalA : 0);
+                                Integer totalA = garantirIntegerNaoNulo((Integer) a.get("totalFichas"));
+                                Integer totalB = garantirIntegerNaoNulo((Integer) b.get("totalFichas"));
+                                return Integer.compare(totalB, totalA);
                             })
                             .limit(10)
                             .collect(Collectors.toList());
@@ -666,15 +680,16 @@ public class FichaPdfController {
                 // conveniosMaisUtilizados já é uma lista vazia
             }
 
+            // CORREÇÃO: Construir resposta com todos os valores garantidamente não-nulos
             Map<String, Object> estatisticas = new HashMap<>();
-            estatisticas.put("totalFichasGeradas", totalFichasGeradas);
-            estatisticas.put("conveniosAtivos", getConveniosAtivosSeguro());
+            estatisticas.put("totalFichasGeradas", garantirIntegerNaoNulo(totalFichasGeradas));
+            estatisticas.put("conveniosAtivos", garantirIntegerNaoNulo(getConveniosAtivosSeguro()));
             estatisticas.put("jobsConcluidos", jobsConcluidos);
             estatisticas.put("jobsEmAndamento", jobsEmAndamento);
             estatisticas.put("jobsComErro", jobsComErro);
-            estatisticas.put("totalJobs", (long) jobs.size());
+            estatisticas.put("totalJobs", garantirLongNaoNulo((long) jobs.size()));
             estatisticas.put("periodo", (mes != null && ano != null) ? mes + "/" + ano : "todos");
-            estatisticas.put("taxaSucesso", taxaSucesso);
+            estatisticas.put("taxaSucesso", garantirDoubleNaoNulo(taxaSucesso));
             estatisticas.put("fichasPorMes", fichasPorMes);
             estatisticas.put("conveniosMaisUtilizados", conveniosMaisUtilizados);
             estatisticas.put("ultimaAtualizacao", System.currentTimeMillis());
@@ -687,6 +702,7 @@ public class FichaPdfController {
         } catch (Exception e) {
             logger.error("Erro ao obter estatísticas: {}", e.getMessage(), e);
 
+            // CORREÇÃO: Response de erro com valores garantidamente não-nulos
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("totalFichasGeradas", 0);
             errorResponse.put("conveniosAtivos", 0);
@@ -1074,6 +1090,21 @@ public class FichaPdfController {
             logger.warn("Erro ao verificar saúde do storage: {}", e.getMessage());
             return false;
         }
+    }
+
+    /**
+     * MÉTODOS AUXILIARES PARA GARANTIR VALORES NÃO-NULOS
+     */
+    private Integer garantirIntegerNaoNulo(Integer valor) {
+        return valor != null ? valor : 0;
+    }
+
+    private Long garantirLongNaoNulo(Long valor) {
+        return valor != null ? valor : 0L;
+    }
+
+    private Double garantirDoubleNaoNulo(Double valor) {
+        return valor != null ? valor : 0.0;
     }
 
     private int getConveniosAtivosSeguro() {
