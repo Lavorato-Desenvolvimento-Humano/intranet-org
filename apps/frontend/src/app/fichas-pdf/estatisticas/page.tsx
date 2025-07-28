@@ -26,6 +26,47 @@ import {
   PieChart,
 } from "lucide-react";
 
+const formatarNumeroSeguro = (valor: any): string => {
+  if (valor === null || valor === undefined || isNaN(Number(valor))) {
+    return "0";
+  }
+
+  const numero = Number(valor);
+  if (!isFinite(numero)) {
+    return "0";
+  }
+
+  return numero.toLocaleString();
+};
+
+const obterDadosSegurosDasEstatisticas = (estatisticas: any) => {
+  if (!estatisticas) {
+    return {
+      totalFichasGeradas: 0,
+      conveniosAtivos: 0,
+      jobsConcluidos: 0,
+      jobsEmAndamento: 0,
+      jobsComErro: 0,
+      taxaSucesso: 0,
+      periodo: "todos",
+      fichasPorMes: {},
+      conveniosMaisUtilizados: [],
+    };
+  }
+
+  return {
+    totalFichasGeradas: estatisticas.totalFichasGeradas ?? 0,
+    conveniosAtivos: estatisticas.conveniosAtivos ?? 0,
+    jobsConcluidos: estatisticas.jobsConcluidos ?? 0,
+    jobsEmAndamento: estatisticas.jobsEmAndamento ?? 0,
+    jobsComErro: estatisticas.jobsComErro ?? 0,
+    taxaSucesso: estatisticas.taxaSucesso ?? 0,
+    periodo: estatisticas.periodo ?? "todos",
+    fichasPorMes: estatisticas.fichasPorMes ?? {},
+    conveniosMaisUtilizados: estatisticas.conveniosMaisUtilizados ?? [],
+  };
+};
+
 export default function EstatisticasPage() {
   const router = useRouter();
   const [estatisticas, setEstatisticas] =
@@ -123,14 +164,8 @@ export default function EstatisticasPage() {
   const renderEstatisticasGerais = () => {
     if (!estatisticas) return null;
 
-    // PROTEÇÃO: Garantir que os valores existem antes de usar
-    const totalFichas = estatisticas.totalFichasGeradas ?? 0;
-    const conveniosAtivos = estatisticas.conveniosAtivos ?? 0;
-    const jobsConcluidos = estatisticas.jobsConcluidos ?? 0;
-    const jobsEmAndamento = estatisticas.jobsEmAndamento ?? 0;
-    const jobsComErro = estatisticas.jobsComErro ?? 0;
-    const taxaSucesso = estatisticas.taxaSucesso ?? 0;
-    const periodo = estatisticas.periodo ?? "todos";
+    // CORREÇÃO: Usar função auxiliar para dados seguros
+    const dados = obterDadosSegurosDasEstatisticas(estatisticas);
 
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -141,9 +176,11 @@ export default function EstatisticasPage() {
                 Total de Fichas
               </p>
               <p className="text-3xl font-bold text-gray-900">
-                {totalFichas.toLocaleString()}
+                {formatarNumeroSeguro(dados.totalFichasGeradas)}
               </p>
-              <p className="text-xs text-gray-500 mt-1">Período: {periodo}</p>
+              <p className="text-xs text-gray-500 mt-1">
+                Período: {dados.periodo}
+              </p>
             </div>
             <FileText className="h-10 w-10 text-blue-600" />
           </div>
@@ -156,10 +193,10 @@ export default function EstatisticasPage() {
                 Jobs Concluídos
               </p>
               <p className="text-3xl font-bold text-green-600">
-                {jobsConcluidos.toLocaleString()}
+                {formatarNumeroSeguro(dados.jobsConcluidos)}
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                {jobsEmAndamento.toLocaleString()} em andamento
+                {formatarNumeroSeguro(dados.jobsEmAndamento)} em andamento
               </p>
             </div>
             <CheckCircle className="h-10 w-10 text-green-600" />
@@ -173,10 +210,10 @@ export default function EstatisticasPage() {
                 Taxa de Sucesso
               </p>
               <p className="text-3xl font-bold text-purple-600">
-                {(taxaSucesso * 100).toFixed(1)}%
+                {(dados.taxaSucesso * 100).toFixed(1)}%
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                {jobsComErro.toLocaleString()} jobs com erro
+                {formatarNumeroSeguro(dados.jobsComErro)} jobs com erro
               </p>
             </div>
             <TrendingUp className="h-10 w-10 text-purple-600" />
@@ -190,7 +227,7 @@ export default function EstatisticasPage() {
                 Convênios Ativos
               </p>
               <p className="text-3xl font-bold text-orange-600">
-                {conveniosAtivos.toLocaleString()}
+                {formatarNumeroSeguro(dados.conveniosAtivos)}
               </p>
               <p className="text-xs text-gray-500 mt-1">Habilitados para PDF</p>
             </div>
@@ -202,11 +239,10 @@ export default function EstatisticasPage() {
   };
 
   const renderGraficoFichasPorMes = () => {
+    const dados = obterDadosSegurosDasEstatisticas(estatisticas);
+
     // PROTEÇÃO: Verificar se fichasPorMes existe e não é vazio
-    if (
-      !estatisticas?.fichasPorMes ||
-      Object.keys(estatisticas.fichasPorMes).length === 0
-    ) {
+    if (!dados.fichasPorMes || Object.keys(dados.fichasPorMes).length === 0) {
       return (
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <h3 className="text-lg font-medium text-gray-900 mb-4">
@@ -219,12 +255,13 @@ export default function EstatisticasPage() {
       );
     }
 
-    const meses = Object.keys(estatisticas.fichasPorMes).sort();
+    const meses = Object.keys(dados.fichasPorMes).sort();
 
     // PROTEÇÃO: Verificar se Object.values retorna valores válidos
-    const valores = Object.values(estatisticas.fichasPorMes).filter(
-      (v) => v != null && !isNaN(v)
-    );
+    const valores = Object.values(dados.fichasPorMes)
+      .map((v) => Number(v) || 0)
+      .filter((v) => !isNaN(v) && isFinite(v));
+
     const maxValue = valores.length > 0 ? Math.max(...valores) : 1;
 
     return (
@@ -236,29 +273,25 @@ export default function EstatisticasPage() {
         <div className="space-y-3">
           {meses.map((mes) => {
             // PROTEÇÃO: Garantir que quantidade é um número válido
-            const quantidade = estatisticas.fichasPorMes[mes] ?? 0;
-            const quantidadeSegura = isNaN(quantidade) ? 0 : quantidade;
+            const quantidade = Number(dados.fichasPorMes[mes]) || 0;
             const porcentagem =
-              maxValue > 0 ? (quantidadeSegura / maxValue) * 100 : 0;
+              maxValue > 0 ? (quantidade / maxValue) * 100 : 0;
 
             return (
               <div key={mes} className="flex items-center">
-                <div className="w-16 text-sm text-gray-600">{mes}</div>
+                <div className="w-16 text-sm font-medium text-gray-600">
+                  {mes}
+                </div>
                 <div className="flex-1 mx-3">
-                  <div className="w-full bg-gray-200 rounded-full h-6">
+                  <div className="bg-gray-200 rounded-full h-2">
                     <div
-                      className="bg-blue-600 h-6 rounded-full flex items-center justify-end pr-2"
-                      style={{ width: `${porcentagem}%` }}>
-                      {porcentagem > 15 && (
-                        <span className="text-white text-xs font-medium">
-                          {quantidadeSegura}
-                        </span>
-                      )}
-                    </div>
+                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${Math.max(porcentagem, 2)}%` }}
+                    />
                   </div>
                 </div>
-                <div className="w-16 text-right text-sm font-medium text-gray-900">
-                  {quantidadeSegura.toLocaleString()}
+                <div className="w-20 text-right text-sm font-medium text-gray-900">
+                  {formatarNumeroSeguro(quantidade)}
                 </div>
               </div>
             );
@@ -269,10 +302,11 @@ export default function EstatisticasPage() {
   };
 
   const renderConveniosMaisUtilizados = () => {
-    // PROTEÇÃO: Verificar se conveniosMaisUtilizados existe e não é vazio
+    const dados = obterDadosSegurosDasEstatisticas(estatisticas);
+
     if (
-      !estatisticas?.conveniosMaisUtilizados ||
-      estatisticas.conveniosMaisUtilizados.length === 0
+      !dados.conveniosMaisUtilizados ||
+      dados.conveniosMaisUtilizados.length === 0
     ) {
       return (
         <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -292,49 +326,35 @@ export default function EstatisticasPage() {
           Convênios Mais Utilizados
         </h3>
 
-        <div className="space-y-3">
-          {estatisticas.conveniosMaisUtilizados
-            .slice(0, 10)
-            .map((convenio, index) => {
-              // PROTEÇÃO: Garantir que os valores existem
-              const convenioId = convenio.convenioId ?? `convenio-${index}`;
-              const convenioNome =
-                convenio.convenioNome ?? "Nome não disponível";
-              const totalFichas = convenio.totalFichas ?? 0;
-              const totalFichasSeguro = isNaN(totalFichas) ? 0 : totalFichas;
-
-              return (
-                <div
-                  key={convenioId}
-                  className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div
-                      className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white mr-3 ${
-                        index === 0
-                          ? "bg-yellow-500"
-                          : index === 1
-                            ? "bg-gray-400"
-                            : index === 2
-                              ? "bg-orange-500"
-                              : "bg-blue-500"
-                      }`}>
-                      {index + 1}
-                    </div>
-                    <div>
-                      <span className="text-sm font-medium text-gray-900">
-                        {convenioNome}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-sm font-bold text-gray-900">
-                      {totalFichasSeguro.toLocaleString()}
-                    </span>
-                    <span className="text-xs text-gray-500 ml-1">fichas</span>
-                  </div>
-                </div>
-              );
-            })}
+        <div className="overflow-x-auto">
+          <table className="min-w-full">
+            <thead>
+              <tr className="border-b border-gray-200">
+                <th className="text-left py-3 px-2 text-sm font-medium text-gray-600">
+                  Convênio
+                </th>
+                <th className="text-right py-3 px-2 text-sm font-medium text-gray-600">
+                  Total de Fichas
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {dados.conveniosMaisUtilizados.map(
+                (convenio: any, index: number) => (
+                  <tr
+                    key={convenio.convenioId || index}
+                    className="border-b border-gray-100">
+                    <td className="py-3 px-2 text-sm text-gray-900">
+                      {convenio.convenioNome || "Nome não disponível"}
+                    </td>
+                    <td className="py-3 px-2 text-sm font-medium text-gray-900 text-right">
+                      {formatarNumeroSeguro(convenio.totalFichas)}
+                    </td>
+                  </tr>
+                )
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     );
@@ -392,13 +412,13 @@ export default function EstatisticasPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {stats.fichasGeradasMes.toLocaleString()}
+                      {formatarNumeroSeguro(stats.fichasGeradasMes)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {stats.fichasGeradasAno.toLocaleString()}
+                      {formatarNumeroSeguro(stats.fichasGeradasAno)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {stats.pacientesAtivos.toLocaleString()}
+                      {formatarNumeroSeguro(stats.pacientesAtivos)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {stats.mediaFichasPorPaciente.toFixed(1)}
