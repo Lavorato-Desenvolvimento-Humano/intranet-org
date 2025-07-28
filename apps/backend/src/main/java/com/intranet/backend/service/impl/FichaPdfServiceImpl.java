@@ -1358,6 +1358,14 @@ public class FichaPdfServiceImpl implements FichaPdfService {
         dto.setPodeDownload(job.isPodeDownload());
         dto.setObservacoes(job.getObservacoes());
 
+        // ✅ CORREÇÃO: Calcular progresso da mesma forma que no mapJobToStatus
+        if (job.getTotalFichas() != null && job.getTotalFichas() > 0 && job.getFichasProcessadas() != null) {
+            int progresso = (int) ((double) job.getFichasProcessadas() / job.getTotalFichas() * 100);
+            dto.setProgresso(progresso);
+        } else {
+            dto.setProgresso(0);
+        }
+
         if (job.isPodeDownload()) {
             dto.setDownloadUrl("/api/fichas-pdf/download/" + job.getJobId());
         }
