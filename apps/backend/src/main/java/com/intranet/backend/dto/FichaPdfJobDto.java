@@ -11,6 +11,7 @@ public class FichaPdfJobDto {
     private String status;
     private Integer totalFichas;
     private Integer fichasProcessadas;
+    private Integer progresso;
     private LocalDateTime iniciado;
     private LocalDateTime concluido;
     private Boolean podeDownload;
