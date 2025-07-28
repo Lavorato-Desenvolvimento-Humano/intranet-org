@@ -27,7 +27,7 @@ public class FichaVerificationService {
 
     private final FichaRepository fichaRepository;
     private final ConvenioRepository convenioRepository;
-    
+
     // Cache local para otimizar verificações repetidas na mesma sessão
     private final Map<String, Boolean> verificacaoCache = new ConcurrentHashMap<>();
 
