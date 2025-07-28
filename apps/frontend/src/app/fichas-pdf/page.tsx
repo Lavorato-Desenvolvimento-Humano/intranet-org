@@ -122,6 +122,13 @@ export default function FichasPdfPage() {
   const renderEstatisticas = () => {
     if (!estatisticas) return null;
 
+    const totalFichas = estatisticas.totalFichasGeradas ?? 0;
+    const conveniosAtivos = estatisticas.conveniosAtivos ?? 0;
+    const jobsConcluidos = estatisticas.jobsConcluidos ?? 0;
+    const jobsEmAndamento = estatisticas.jobsEmAndamento ?? 0;
+    const jobsComErro = estatisticas.jobsComErro ?? 0;
+    const taxaSucesso = estatisticas.taxaSucesso ?? 0;
+
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -131,7 +138,7 @@ export default function FichasPdfPage() {
                 Total de Fichas
               </p>
               <p className="text-2xl font-bold text-gray-900">
-                {estatisticas.totalFichasGeradas.toLocaleString()}
+                {totalFichas.toLocaleString()}
               </p>
             </div>
             <FileText className="h-8 w-8 text-blue-600" />
@@ -145,7 +152,7 @@ export default function FichasPdfPage() {
                 Convênios Ativos
               </p>
               <p className="text-2xl font-bold text-gray-900">
-                {estatisticas.conveniosAtivos}
+                {conveniosAtivos.toLocaleString()}
               </p>
             </div>
             <Users className="h-8 w-8 text-green-600" />
@@ -159,10 +166,10 @@ export default function FichasPdfPage() {
                 Jobs Concluídos
               </p>
               <p className="text-2xl font-bold text-gray-900">
-                {estatisticas.jobsConcluidos}
+                {jobsConcluidos.toLocaleString()}
               </p>
             </div>
-            <CheckCircle className="h-8 w-8 text-green-600" />
+            <CheckCircle className="h-8 w-8 text-blue-600" />
           </div>
         </div>
 
@@ -173,7 +180,11 @@ export default function FichasPdfPage() {
                 Taxa de Sucesso
               </p>
               <p className="text-2xl font-bold text-gray-900">
-                {(estatisticas.taxaSucesso * 100).toFixed(1)}%
+                {(taxaSucesso * 100).toFixed(1)}%
+              </p>
+              <p className="text-xs text-gray-500">
+                {jobsEmAndamento.toLocaleString()} processando,{" "}
+                {jobsComErro.toLocaleString()} com erro
               </p>
             </div>
             <BarChart3 className="h-8 w-8 text-purple-600" />

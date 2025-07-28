@@ -123,6 +123,15 @@ export default function EstatisticasPage() {
   const renderEstatisticasGerais = () => {
     if (!estatisticas) return null;
 
+    // PROTEÇÃO: Garantir que os valores existem antes de usar
+    const totalFichas = estatisticas.totalFichasGeradas ?? 0;
+    const conveniosAtivos = estatisticas.conveniosAtivos ?? 0;
+    const jobsConcluidos = estatisticas.jobsConcluidos ?? 0;
+    const jobsEmAndamento = estatisticas.jobsEmAndamento ?? 0;
+    const jobsComErro = estatisticas.jobsComErro ?? 0;
+    const taxaSucesso = estatisticas.taxaSucesso ?? 0;
+    const periodo = estatisticas.periodo ?? "todos";
+
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -132,11 +141,9 @@ export default function EstatisticasPage() {
                 Total de Fichas
               </p>
               <p className="text-3xl font-bold text-gray-900">
-                {estatisticas.totalFichasGeradas.toLocaleString()}
+                {totalFichas.toLocaleString()}
               </p>
-              <p className="text-xs text-gray-500 mt-1">
-                Período: {estatisticas.periodo}
-              </p>
+              <p className="text-xs text-gray-500 mt-1">Período: {periodo}</p>
             </div>
             <FileText className="h-10 w-10 text-blue-600" />
           </div>
@@ -149,10 +156,10 @@ export default function EstatisticasPage() {
                 Jobs Concluídos
               </p>
               <p className="text-3xl font-bold text-green-600">
-                {estatisticas.jobsConcluidos}
+                {jobsConcluidos.toLocaleString()}
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                {estatisticas.jobsEmAndamento} em andamento
+                {jobsEmAndamento.toLocaleString()} em andamento
               </p>
             </div>
             <CheckCircle className="h-10 w-10 text-green-600" />
@@ -166,10 +173,10 @@ export default function EstatisticasPage() {
                 Taxa de Sucesso
               </p>
               <p className="text-3xl font-bold text-purple-600">
-                {(estatisticas.taxaSucesso * 100).toFixed(1)}%
+                {(taxaSucesso * 100).toFixed(1)}%
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                {estatisticas.jobsComErro} jobs com erro
+                {jobsComErro.toLocaleString()} jobs com erro
               </p>
             </div>
             <TrendingUp className="h-10 w-10 text-purple-600" />
@@ -183,7 +190,7 @@ export default function EstatisticasPage() {
                 Convênios Ativos
               </p>
               <p className="text-3xl font-bold text-orange-600">
-                {estatisticas.conveniosAtivos}
+                {conveniosAtivos.toLocaleString()}
               </p>
               <p className="text-xs text-gray-500 mt-1">Habilitados para PDF</p>
             </div>
@@ -195,10 +202,30 @@ export default function EstatisticasPage() {
   };
 
   const renderGraficoFichasPorMes = () => {
-    if (!estatisticas?.fichasPorMes) return null;
+    // PROTEÇÃO: Verificar se fichasPorMes existe e não é vazio
+    if (
+      !estatisticas?.fichasPorMes ||
+      Object.keys(estatisticas.fichasPorMes).length === 0
+    ) {
+      return (
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">
+            Fichas Geradas por Mês
+          </h3>
+          <p className="text-gray-500 text-center py-8">
+            Nenhum dado disponível para o período selecionado
+          </p>
+        </div>
+      );
+    }
 
     const meses = Object.keys(estatisticas.fichasPorMes).sort();
-    const maxValue = Math.max(...Object.values(estatisticas.fichasPorMes));
+
+    // PROTEÇÃO: Verificar se Object.values retorna valores válidos
+    const valores = Object.values(estatisticas.fichasPorMes).filter(
+      (v) => v != null && !isNaN(v)
+    );
+    const maxValue = valores.length > 0 ? Math.max(...valores) : 1;
 
     return (
       <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -208,9 +235,11 @@ export default function EstatisticasPage() {
 
         <div className="space-y-3">
           {meses.map((mes) => {
-            const quantidade = estatisticas.fichasPorMes[mes];
+            // PROTEÇÃO: Garantir que quantidade é um número válido
+            const quantidade = estatisticas.fichasPorMes[mes] ?? 0;
+            const quantidadeSegura = isNaN(quantidade) ? 0 : quantidade;
             const porcentagem =
-              maxValue > 0 ? (quantidade / maxValue) * 100 : 0;
+              maxValue > 0 ? (quantidadeSegura / maxValue) * 100 : 0;
 
             return (
               <div key={mes} className="flex items-center">
@@ -222,14 +251,14 @@ export default function EstatisticasPage() {
                       style={{ width: `${porcentagem}%` }}>
                       {porcentagem > 15 && (
                         <span className="text-white text-xs font-medium">
-                          {quantidade}
+                          {quantidadeSegura}
                         </span>
                       )}
                     </div>
                   </div>
                 </div>
                 <div className="w-16 text-right text-sm font-medium text-gray-900">
-                  {quantidade.toLocaleString()}
+                  {quantidadeSegura.toLocaleString()}
                 </div>
               </div>
             );
@@ -240,7 +269,22 @@ export default function EstatisticasPage() {
   };
 
   const renderConveniosMaisUtilizados = () => {
-    if (!estatisticas?.conveniosMaisUtilizados) return null;
+    // PROTEÇÃO: Verificar se conveniosMaisUtilizados existe e não é vazio
+    if (
+      !estatisticas?.conveniosMaisUtilizados ||
+      estatisticas.conveniosMaisUtilizados.length === 0
+    ) {
+      return (
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">
+            Convênios Mais Utilizados
+          </h3>
+          <p className="text-gray-500 text-center py-8">
+            Nenhum convênio com fichas geradas no período
+          </p>
+        </div>
+      );
+    }
 
     return (
       <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -251,37 +295,46 @@ export default function EstatisticasPage() {
         <div className="space-y-3">
           {estatisticas.conveniosMaisUtilizados
             .slice(0, 10)
-            .map((convenio, index) => (
-              <div
-                key={convenio.convenioId}
-                className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div
-                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white mr-3 ${
-                      index === 0
-                        ? "bg-yellow-500"
-                        : index === 1
-                          ? "bg-gray-400"
-                          : index === 2
-                            ? "bg-orange-500"
-                            : "bg-blue-500"
-                    }`}>
-                    {index + 1}
+            .map((convenio, index) => {
+              // PROTEÇÃO: Garantir que os valores existem
+              const convenioId = convenio.convenioId ?? `convenio-${index}`;
+              const convenioNome =
+                convenio.convenioNome ?? "Nome não disponível";
+              const totalFichas = convenio.totalFichas ?? 0;
+              const totalFichasSeguro = isNaN(totalFichas) ? 0 : totalFichas;
+
+              return (
+                <div
+                  key={convenioId}
+                  className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <div
+                      className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white mr-3 ${
+                        index === 0
+                          ? "bg-yellow-500"
+                          : index === 1
+                            ? "bg-gray-400"
+                            : index === 2
+                              ? "bg-orange-500"
+                              : "bg-blue-500"
+                      }`}>
+                      {index + 1}
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium text-gray-900">
+                        {convenioNome}
+                      </span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-sm font-medium text-gray-900">
-                      {convenio.convenioNome}
+                  <div className="text-right">
+                    <span className="text-sm font-bold text-gray-900">
+                      {totalFichasSeguro.toLocaleString()}
                     </span>
+                    <span className="text-xs text-gray-500 ml-1">fichas</span>
                   </div>
                 </div>
-                <div className="text-right">
-                  <span className="text-sm font-bold text-gray-900">
-                    {convenio.totalFichas.toLocaleString()}
-                  </span>
-                  <span className="text-xs text-gray-500 ml-1">fichas</span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
         </div>
       </div>
     );
