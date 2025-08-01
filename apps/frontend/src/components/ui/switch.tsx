@@ -11,14 +11,26 @@ const Switch = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SwitchPrimitives.Root
     className={cn(
-      "peer inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=unchecked]:bg-input",
+      "peer inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-all duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50",
+      // Estado desabilitado - cinza suave
+      "data-[state=unchecked]:bg-gray-200 data-[state=unchecked]:shadow-inner",
+      // Estado habilitado - gradiente sutil com a cor primária
+      "data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-primary data-[state=checked]:to-primary-light data-[state=checked]:shadow-sm",
+      // Hover states para melhor feedback
+      "hover:data-[state=unchecked]:bg-gray-300 hover:data-[state=checked]:from-primary-light hover:data-[state=checked]:to-primary",
       className
     )}
     {...props}
     ref={ref}>
     <SwitchPrimitives.Thumb
       className={cn(
-        "pointer-events-none block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform data-[state=checked]:translate-x-5 data-[state=unchecked]:translate-x-0"
+        "pointer-events-none block h-5 w-5 rounded-full bg-white shadow-lg ring-0 transition-all duration-200 ease-in-out",
+        // Posição do thumb
+        "data-[state=checked]:translate-x-5 data-[state=unchecked]:translate-x-0",
+        // Efeitos visuais aprimorados
+        "data-[state=checked]:shadow-md data-[state=unchecked]:shadow-sm",
+        // Efeito de borda sutil quando ativo
+        "data-[state=checked]:ring-2 data-[state=checked]:ring-white data-[state=checked]:ring-opacity-20"
       )}
     />
   </SwitchPrimitives.Root>
