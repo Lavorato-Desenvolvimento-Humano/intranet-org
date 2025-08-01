@@ -189,6 +189,26 @@ const fichaPdfService = {
     }
   },
 
+  /**
+   * Obtém configuração específica de um convênio para geração de PDF
+   */
+  getConvenioConfig: async (
+    convenioId: string
+  ): Promise<ConvenioFichaPdfConfigDto> => {
+    try {
+      const response = await api.get<ConvenioFichaPdfConfigDto>(
+        `/api/fichas-pdf/convenios/${convenioId}/config`
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Erro ao obter configuração do convênio ${convenioId}:`,
+        error
+      );
+      throw error;
+    }
+  },
+
   /*
    * Habilita/desabilita convênio para geração de PDF
    */
