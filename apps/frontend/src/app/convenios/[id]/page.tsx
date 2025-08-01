@@ -28,6 +28,7 @@ import tabelaValoresService, {
 } from "@/services/tabelaValores";
 import fichaPdfService from "@/services/ficha-pdf";
 import ContentViewer from "@/components/ui/content-viewer";
+import { ConvenioFichaPdfConfigDto } from "@/types/fichaPdf";
 import toastUtil from "@/utils/toast";
 import { CustomButton } from "@/components/ui/custom-button";
 import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
@@ -47,6 +48,9 @@ export default function ConvenioViewPage() {
     "postagens"
   );
   const [isSaving, setIsSaving] = useState(false);
+  const [pdfConfig, setPdfConfig] = useState<ConvenioFichaPdfConfigDto | null>(
+    null
+  );
 
   const convenioId = params?.id as string;
 
@@ -69,15 +73,18 @@ export default function ConvenioViewPage() {
       setError(null);
       try {
         // Buscar convênio, postagens e tabelas em paralelo
-        const [convenioData, postagensData, tabelasData] = await Promise.all([
-          convenioService.getConvenioById(convenioId),
-          convenioService.getPostagens(convenioId),
-          tabelaValoresService.getTabelasByConvenio(convenioId),
-        ]);
+        const [convenioData, postagensData, tabelasData, configData] =
+          await Promise.all([
+            convenioService.getConvenioById(convenioId),
+            convenioService.getPostagens(convenioId),
+            tabelaValoresService.getTabelasByConvenio(convenioId),
+            fichaPdfService.getConvenioConfig(convenioId),
+          ]);
 
         setConvenio(convenioData);
         setPostagens(postagensData);
         setTabelas(tabelasData);
+        setPdfConfig(configData);
       } catch (err) {
         console.error("Erro ao buscar dados do convênio:", err);
         setError(
@@ -99,15 +106,29 @@ export default function ConvenioViewPage() {
     setIsSaving(true);
     try {
       await fichaPdfService.toggleConvenioHabilitado(convenio.id, habilitado);
-      setConvenio((prev) => (prev ? { ...prev, pdfHabilitado: habilitado } : null));
+
+      // Atualizar ambos os estados
+      setConvenio((prev) =>
+        prev ? { ...prev, pdfHabilitado: habilitado } : null
+      );
+
+      // Atualizar também o estado da configuração detalhada
+      setPdfConfig((prev) => (prev ? { ...prev, habilitado } : null));
+
       toast.success(
         `Geração de PDF ${habilitado ? "habilitada" : "desabilitada"} com sucesso!`
       );
     } catch (error) {
       console.error("Erro ao alterar status de geração de PDF:", error);
       toast.error("Falha ao alterar status. Tente novamente.");
-      // Reverter a mudança no estado em caso de erro
-      setConvenio((prev) => (prev ? { ...prev, pdfHabilitado: !habilitado } : null));
+
+      // Reverter ambos os estados em caso de erro
+      setConvenio((prev) =>
+        prev ? { ...prev, pdfHabilitado: !habilitado } : null
+      );
+      setPdfConfig((prev) =>
+        prev ? { ...prev, habilitado: !habilitado } : null
+      );
     } finally {
       setIsSaving(false);
     }
@@ -221,8 +242,7 @@ export default function ConvenioViewPage() {
           </div>
           <button
             onClick={() => router.push("/convenios")}
-            className="flex items-center text-primary hover:text-primary-dark"
-          >
+            className="flex items-center text-primary hover:text-primary-dark">
             <ArrowLeft size={16} className="mr-1" />
             Voltar para a lista de convênios
           </button>
@@ -252,8 +272,7 @@ export default function ConvenioViewPage() {
               <CustomButton
                 variant="primary"
                 icon={Edit}
-                onClick={() => router.push(`/convenios/${convenioId}/editar`)}
-              >
+                onClick={() => router.push(`/convenios/${convenioId}/editar`)}>
                 Editar
               </CustomButton>
             )}
@@ -291,10 +310,12 @@ export default function ConvenioViewPage() {
 
             {canManagePdf && (
               <div className="mt-6 pt-4 border-t border-gray-200">
-                <h3 className="text-md font-semibold text-gray-800 mb-2">
+                <h3 className="text-md font-semibold text-gray-800 mb-4">
                   Configurações de Ficha PDF
                 </h3>
-                <div className="flex items-center justify-between">
+
+                {/* Switch principal */}
+                <div className="flex items-center justify-between mb-4">
                   <div>
                     <p className="text-sm font-medium text-gray-700">
                       Habilitar Geração de Ficha PDF
@@ -311,6 +332,84 @@ export default function ConvenioViewPage() {
                     aria-label="Habilitar Geração de Ficha PDF"
                   />
                 </div>
+
+                {/* Informações detalhadas da configuração */}
+                {pdfConfig && convenio.pdfHabilitado && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div className="flex items-center mb-2">
+                      <div className="h-2 w-2 bg-green-500 rounded-full mr-2" />
+                      <span className="text-sm font-medium text-green-800">
+                        PDF Habilitado
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-green-700 font-medium">
+                          Dias de Atividade:
+                        </span>
+                        <span className="text-green-600 ml-2">
+                          {pdfConfig.diasAtividade || 30} dias
+                        </span>
+                      </div>
+
+                      {pdfConfig.observacoes && (
+                        <div className="md:col-span-2">
+                          <span className="text-green-700 font-medium">
+                            Observações:
+                          </span>
+                          <p className="text-green-600 mt-1">
+                            {pdfConfig.observacoes}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Ações rápidas */}
+                    <div className="mt-3 pt-3 border-t border-green-300">
+                      <div className="flex items-center space-x-2">
+                        <CustomButton
+                          variant="primary"
+                          size="small"
+                          onClick={() =>
+                            router.push(
+                              `/fichas-pdf/novo?convenio=${convenioId}`
+                            )
+                          }
+                          className="text-green-700 border-green-300 hover:bg-green-100">
+                          <FileText size={16} className="mr-1" />
+                          Gerar Fichas PDF
+                        </CustomButton>
+
+                        <CustomButton
+                          variant="primary"
+                          size="small"
+                          onClick={() =>
+                            router.push("/fichas-pdf/configuracoes")
+                          }
+                          className="text-green-700 border-green-300 hover:bg-green-100">
+                          Ver Todas Configurações
+                        </CustomButton>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Estado desabilitado */}
+                {!convenio.pdfHabilitado && (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center mb-2">
+                      <div className="h-2 w-2 bg-gray-400 rounded-full mr-2" />
+                      <span className="text-sm font-medium text-gray-600">
+                        PDF Desabilitado
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-500">
+                      Este convênio não pode gerar fichas PDF. Ative a opção
+                      acima para habilitar.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -325,8 +424,7 @@ export default function ConvenioViewPage() {
                     activeTab === "postagens"
                       ? "border-primary text-primary"
                       : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                  }`}
-                >
+                  }`}>
                   <div className="flex items-center">
                     <FileText size={16} className="mr-2" />
                     Postagens ({postagens.length})
@@ -338,8 +436,7 @@ export default function ConvenioViewPage() {
                     activeTab === "tabelas"
                       ? "border-primary text-primary"
                       : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                  }`}
-                >
+                  }`}>
                   <div className="flex items-center">
                     <Table size={16} className="mr-2" />
                     Tabelas de Valores ({tabelas.length})
@@ -363,8 +460,7 @@ export default function ConvenioViewPage() {
                           )
                         }
                         variant="primary"
-                        icon={FilePlus}
-                      >
+                        icon={FilePlus}>
                         Nova Postagem
                       </CustomButton>
                     )}
@@ -386,8 +482,7 @@ export default function ConvenioViewPage() {
                             )
                           }
                           variant="primary"
-                          icon={FilePlus}
-                        >
+                          icon={FilePlus}>
                           Criar Primeira Postagem
                         </CustomButton>
                       )}
@@ -423,8 +518,7 @@ export default function ConvenioViewPage() {
                           )
                         }
                         variant="primary"
-                        icon={FilePlus}
-                      >
+                        icon={FilePlus}>
                         Nova Tabela
                       </CustomButton>
                     )}
@@ -443,8 +537,7 @@ export default function ConvenioViewPage() {
                             )
                           }
                           variant="primary"
-                          icon={FilePlus}
-                        >
+                          icon={FilePlus}>
                           Criar Primeira Tabela
                         </CustomButton>
                       )}
@@ -472,4 +565,3 @@ export default function ConvenioViewPage() {
     </ProtectedRoute>
   );
 }
-

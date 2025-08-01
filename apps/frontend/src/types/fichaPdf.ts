@@ -120,10 +120,25 @@ export interface FichaPdfItemDto {
 export interface ConvenioDto {
   id: string;
   name: string;
-  code: string;
-  active: boolean;
-  description?: string;
-  type: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+  postagemCount: number;
+  pdfHabilitado: boolean;
+}
+
+export interface ConvenioFichaPdfConfigDto {
+  id: string;
+  convenioId: string;
+  convenioNome: string;
+  habilitado: boolean;
+  diasAtividade: number;
+  formatoPadrao: string;
+  incluirLogo: boolean;
+  incluirCarimbo: boolean;
+  observacoes: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ConvenioFichaPdfConfigDto {
