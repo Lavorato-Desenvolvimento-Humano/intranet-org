@@ -412,14 +412,14 @@ export default function ConfiguracoesPage() {
                       <div className="flex items-center">
                         <div className="h-2 w-2 bg-green-500 rounded-full mr-2" />
                         <span className="text-sm font-medium text-green-600">
-                          Habilitado{" "}
+                          Habilitado
                         </span>
                       </div>
                     </div>
                   </div>
 
                   <div className="flex items-center space-x-2">
-                    {/* Botão para configuração individual */}
+                    {/* Botão para configuração individual
                     <CustomButton
                       variant="primary"
                       size="small"
@@ -427,7 +427,7 @@ export default function ConfiguracoesPage() {
                       className="text-blue-600 border-blue-200 hover:bg-blue-50">
                       <Settings className="h-4 w-4 mr-1" />
                       Configurar
-                    </CustomButton>
+                    </CustomButton> */}
 
                     {/* Toggle para desabilitar */}
                     <button
