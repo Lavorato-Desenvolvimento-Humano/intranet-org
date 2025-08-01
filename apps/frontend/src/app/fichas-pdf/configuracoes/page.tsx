@@ -412,7 +412,7 @@ export default function ConfiguracoesPage() {
                       <div className="flex items-center">
                         <div className="h-2 w-2 bg-green-500 rounded-full mr-2" />
                         <span className="text-sm font-medium text-green-600">
-                          Habilitado
+                          Habilitado{" "}
                         </span>
                       </div>
                     </div>
