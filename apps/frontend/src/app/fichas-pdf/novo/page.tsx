@@ -398,7 +398,7 @@ export default function NovaGeracaoPage() {
             <option value="">Selecione um convênio</option>
             {convenios.map((convenio) => (
               <option key={convenio.id} value={convenio.id}>
-                {convenio.name} ({convenio.code})
+                {convenio.name}
               </option>
             ))}
           </select>
@@ -447,9 +447,6 @@ export default function NovaGeracaoPage() {
                 <div className="ml-3 flex-1">
                   <span className="text-sm font-medium text-gray-900">
                     {convenio.name}
-                  </span>
-                  <span className="text-xs text-gray-500 ml-2">
-                    ({convenio.code})
                   </span>
                 </div>
               </label>
