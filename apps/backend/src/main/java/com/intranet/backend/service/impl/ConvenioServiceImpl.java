@@ -5,7 +5,9 @@ import com.intranet.backend.dto.ConvenioDto;
 import com.intranet.backend.dto.PostagemSummaryDto;
 import com.intranet.backend.exception.ResourceNotFoundException;
 import com.intranet.backend.model.Convenio;
+import com.intranet.backend.model.ConvenioFichaPdfConfig;
 import com.intranet.backend.model.Postagem;
+import com.intranet.backend.repository.ConvenioFichaPdfConfigRepository;
 import com.intranet.backend.repository.ConvenioRepository;
 import com.intranet.backend.repository.PostagemRepository;
 import com.intranet.backend.service.ConvenioService;
@@ -28,6 +30,7 @@ public class ConvenioServiceImpl implements ConvenioService {
 
     private final ConvenioRepository convenioRepository;
     private final PostagemRepository postagemRepository;
+    private final ConvenioFichaPdfConfigRepository fichaPdfConfigRepository;
 
     @Override
     public List<ConvenioDto> getAllConvenios() {
@@ -167,6 +170,13 @@ public class ConvenioServiceImpl implements ConvenioService {
         dto.setCreatedAt(convenio.getCreatedAt());
         dto.setUpdatedAt(convenio.getUpdatedAt());
         dto.setPostagemCount(postagemCount);
+
+        // Verificar se o convênio está habilitado para PDF
+        boolean pdfHabilitado = fichaPdfConfigRepository.findByConvenioId(convenio.getId())
+                .map(ConvenioFichaPdfConfig::getHabilitado)
+                .orElse(false);
+        dto.setPdfHabilitado(pdfHabilitado);
+
         return dto;
     }
 }

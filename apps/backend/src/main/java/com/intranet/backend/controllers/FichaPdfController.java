@@ -242,6 +242,23 @@ public class FichaPdfController {
     }
 
     /**
+     * Obtém configuração de PDF de um convênio específico
+     */
+    @GetMapping("/convenios/{convenioId}/config")
+    @PreAuthorize("hasAnyAuthority('ficha:read') or hasAnyRole('USER', 'ADMIN', 'SUPERVISOR')")
+    public ResponseEntity<ConvenioFichaPdfConfigDto> getConvenioConfig(@PathVariable UUID convenioId) {
+        logger.info("Requisição para obter configuração PDF do convênio: {}", convenioId);
+
+        try {
+            ConvenioFichaPdfConfigDto config = fichaPdfService.getConvenioConfig(convenioId);
+            return ResponseUtil.success(config);
+        } catch (Exception e) {
+            logger.error("Erro ao obter configuração do convênio {}: {}", convenioId, e.getMessage());
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    /**
      * Habilita/desabilita convênio para geração de PDF (apenas admins)
      */
     @PutMapping("/convenios/{convenioId}/toggle")

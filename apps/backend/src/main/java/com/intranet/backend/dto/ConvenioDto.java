@@ -17,4 +17,5 @@ public class ConvenioDto {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private long postagemCount; // Para mostrar quantas postagens estão associadas a este convênio
+    private boolean pdfHabilitado = false;
 }
