@@ -14,6 +14,7 @@ import {
   FichaPdfEstatisticasDto,
   FichaPdfInfoDto,
   ConvenioEstatisticasDto,
+  ConvenioFichaPdfConfigDto,
   PacienteVerificacaoDto,
   FichaPdfConfiguracaoDto,
   FichaPdfPageResponse,
