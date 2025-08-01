@@ -71,4 +71,9 @@ public interface FichaPdfService {
             String jobId,
             User usuario
     );
+
+    /**
+     * Obtém configuração de PDF de um convênio específico
+     */
+    ConvenioFichaPdfConfigDto getConvenioConfig(UUID convenioId);
 }

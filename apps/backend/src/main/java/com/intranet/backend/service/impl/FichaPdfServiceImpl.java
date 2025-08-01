@@ -1152,6 +1152,33 @@ public class FichaPdfServiceImpl implements FichaPdfService {
         return item;
     }
 
+    @Override
+    public ConvenioFichaPdfConfigDto getConvenioConfig(UUID convenioId) {
+        logger.info("Obtendo configuração PDF do convênio: {}", convenioId);
+
+        Convenio convenio = convenioRepository.findById(convenioId)
+                .orElseThrow(() -> new ResourceNotFoundException("Convênio não encontrado: " + convenioId));
+
+        Optional<ConvenioFichaPdfConfig> configOpt = configRepository.findByConvenioId(convenioId);
+
+        if (configOpt.isPresent()) {
+            ConvenioFichaPdfConfig config = configOpt.get();
+            return mapConfigToDto(config);
+        } else {
+            // Retornar configuração padrão para convênio não configurado ainda
+            ConvenioFichaPdfConfigDto defaultConfig = new ConvenioFichaPdfConfigDto();
+            defaultConfig.setConvenioId(convenioId.toString());
+            defaultConfig.setConvenioNome(convenio.getName());
+            defaultConfig.setHabilitado(false);
+            defaultConfig.setDiasAtividade(30);
+            defaultConfig.setFormatoPadrao("A4");
+            defaultConfig.setIncluirLogo(true);
+            defaultConfig.setIncluirCarimbo(true);
+            defaultConfig.setObservacoes("");
+            return defaultConfig;
+        }
+    }
+
     private FichaPdfJob criarJob(String jobId, FichaPdfJob.TipoGeracao tipo, User usuario) {
 
         FichaPdfJob job = new FichaPdfJob();
@@ -1461,6 +1488,22 @@ public class FichaPdfServiceImpl implements FichaPdfService {
         ConvenioDto dto = new ConvenioDto();
         dto.setId(convenio.getId());
         dto.setName(convenio.getName());
+        return dto;
+    }
+
+    private ConvenioFichaPdfConfigDto mapConfigToDto(ConvenioFichaPdfConfig config) {
+        ConvenioFichaPdfConfigDto dto = new ConvenioFichaPdfConfigDto();
+        dto.setId(config.getId().toString());
+        dto.setConvenioId(config.getConvenio().getId().toString());
+        dto.setConvenioNome(config.getConvenio().getName());
+        dto.setHabilitado(config.getHabilitado());
+        dto.setDiasAtividade(config.getDiasAtividade());
+        dto.setFormatoPadrao("A4"); // Por enquanto fixo
+        dto.setIncluirLogo(true); // Por enquanto fixo
+        dto.setIncluirCarimbo(true); // Por enquanto fixo
+        dto.setObservacoes(config.getObservacoes() != null ? config.getObservacoes() : "");
+        dto.setCreatedAt(config.getCreatedAt().toString());
+        dto.setUpdatedAt(config.getUpdatedAt().toString());
         return dto;
     }
 

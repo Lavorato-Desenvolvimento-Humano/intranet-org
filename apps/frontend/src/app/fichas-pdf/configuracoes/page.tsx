@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { FichaPdfConfiguracaoDto, ConvenioDto } from "@/types/fichaPdf";
+import { CustomButton } from "@/components/ui/custom-button";
 import fichaPdfService from "@/services/ficha-pdf";
 import { toast } from "react-hot-toast";
 import {
@@ -355,15 +356,23 @@ export default function ConfiguracoesPage() {
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-medium text-gray-900 flex items-center">
               <Users className="h-5 w-5 mr-2" />
-              Convênios Habilitados ({configuracoes.totalConvenios || 0})
+              Convênios Habilitados (
+              {configuracoes.conveniosHabilitados?.length || 0})
             </h3>
-            <span className="text-sm text-gray-500">
-              {
-                configuracoes.conveniosHabilitados.filter((c) => c.active)
-                  .length
-              }{" "}
-              ativos
-            </span>
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-500">
+                {configuracoes.conveniosHabilitados?.length || 0} habilitados
+              </span>
+
+              {/* Botão para ver todos os convênios */}
+              <CustomButton
+                variant="primary"
+                size="small"
+                onClick={() => router.push("/convenios")}
+                className="text-blue-600 border-blue-200 hover:bg-blue-50">
+                Ver Todos
+              </CustomButton>
+            </div>
           </div>
         </div>
 
@@ -371,43 +380,62 @@ export default function ConfiguracoesPage() {
           {configuracoes.conveniosHabilitados.length === 0 ? (
             <div className="px-6 py-8 text-center">
               <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600">Nenhum convênio encontrado</p>
+              <p className="text-gray-600 mb-2">Nenhum convênio habilitado</p>
+              <p className="text-sm text-gray-500 mb-4">
+                Configure convênios individuais para habilitar a geração de
+                fichas PDF
+              </p>
+              <CustomButton
+                onClick={() => router.push("/convenios")}
+                variant="primary"
+                size="small">
+                Ir para Convênios
+              </CustomButton>
             </div>
           ) : (
             configuracoes.conveniosHabilitados.map((convenio) => (
               <div key={convenio.id} className="px-6 py-4 hover:bg-gray-50">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
-                    <h4 className="text-sm font-medium text-gray-900">
-                      {convenio.name || "Nome não disponível"}
-                    </h4>
-                    <p className="text-sm text-gray-500">
-                      Código: {convenio.code || "N/A"}
-                      {convenio.description && ` • ${convenio.description}`}
-                    </p>
+                    <div className="flex items-center space-x-3">
+                      <div className="flex-1">
+                        <h4 className="text-sm font-medium text-gray-900">
+                          {convenio.name || "Nome não disponível"}
+                        </h4>
+                        <p className="text-sm text-gray-500">
+                          ID: {convenio.id}
+                          {convenio.description &&
+                            ` • ${convenio.description.substring(0, 50)}...`}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center">
+                        <div className="h-2 w-2 bg-green-500 rounded-full mr-2" />
+                        <span className="text-sm font-medium text-green-600">
+                          Habilitado
+                        </span>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="flex items-center space-x-3">
-                    <span
-                      className={`text-xs px-2 py-1 rounded-full ${
-                        convenio.active
-                          ? "bg-green-100 text-green-800"
-                          : "bg-gray-100 text-gray-800"
-                      }`}>
-                      {convenio.active ? "Habilitado" : "Desabilitado"}
-                    </span>
+                  <div className="flex items-center space-x-2">
+                    {/* Botão para configuração individual
+                    <CustomButton
+                      variant="primary"
+                      size="small"
+                      onClick={() => router.push(`/convenios/${convenio.id}`)}
+                      className="text-blue-600 border-blue-200 hover:bg-blue-50">
+                      <Settings className="h-4 w-4 mr-1" />
+                      Configurar
+                    </CustomButton> */}
 
+                    {/* Toggle para desabilitar */}
                     <button
-                      onClick={() =>
-                        toggleConvenio(convenio.id, !convenio.active)
-                      }
+                      onClick={() => toggleConvenio(convenio.id, false)}
                       disabled={salvando}
-                      className="transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                      {convenio.active ? (
-                        <ToggleRight className="h-6 w-6 text-green-600" />
-                      ) : (
-                        <ToggleLeft className="h-6 w-6 text-gray-400" />
-                      )}
+                      className="transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-green-600 hover:text-green-700"
+                      title="Desabilitar convênio">
+                      <ToggleRight className="h-6 w-6" />
                     </button>
                   </div>
                 </div>
@@ -415,6 +443,24 @@ export default function ConfiguracoesPage() {
             ))
           )}
         </div>
+
+        {/* Informações sobre como habilitar mais convênios */}
+        {configuracoes.conveniosHabilitados.length > 0 && (
+          <div className="px-6 py-4 bg-blue-50 border-t border-blue-200">
+            <div className="flex items-start">
+              <Info className="h-4 w-4 text-blue-600 mr-2 mt-0.5" />
+              <div className="text-sm text-blue-800">
+                <p className="font-medium mb-1">
+                  Como habilitar mais convênios:
+                </p>
+                <p>
+                  Acesse a página individual de cada convênio para ativar ou
+                  desativar a geração de fichas PDF.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
