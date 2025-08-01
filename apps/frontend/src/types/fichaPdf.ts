@@ -141,20 +141,6 @@ export interface ConvenioFichaPdfConfigDto {
   updatedAt: string;
 }
 
-export interface ConvenioFichaPdfConfigDto {
-  id: string;
-  convenioId: string;
-  convenioNome: string;
-  habilitado: boolean;
-  diasAtividade: number;
-  formatoPadrao: string;
-  incluirLogo: boolean;
-  incluirCarimbo: boolean;
-  observacoes: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
 /*
  * DTOS Prévia e Validação
  */
