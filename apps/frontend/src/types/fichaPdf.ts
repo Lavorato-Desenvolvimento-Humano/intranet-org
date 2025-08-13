@@ -4,7 +4,6 @@ import { PageResponse } from "./clinical";
 /*
  * Enums
  */
-
 export enum StatusJobEnum {
   INICIADO = "INICIADO",
   PROCESSANDO = "PROCESSANDO",
@@ -253,6 +252,7 @@ export interface PacienteVerificacaoDto {
     ano: number;
     especialidades: string[];
   }[];
+  mensagem?: string;
 }
 
 /*

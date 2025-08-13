@@ -1,12 +1,9 @@
 package com.intranet.backend.controllers;
 
 import com.intranet.backend.dto.*;
-import com.intranet.backend.exception.ResourceNotFoundException;
 import com.intranet.backend.model.Ficha;
-import com.intranet.backend.model.FichaPdfJob;
 import com.intranet.backend.model.Paciente;
 import com.intranet.backend.model.User;
-import com.intranet.backend.repository.FichaPdfJobRepository;
 import com.intranet.backend.repository.FichaRepository;
 import com.intranet.backend.repository.PacienteRepository;
 import com.intranet.backend.repository.UserRepository;
@@ -18,6 +15,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -27,10 +28,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -50,7 +47,6 @@ public class FichaPdfController {
     private final FichaRepository fichaRepository;
     private final PacienteRepository pacienteRepository;
     private final UserRepository userRepository;
-    private final FichaPdfJobRepository jobRepository;
 
     /**
      * Gera fichas PDF para um paciente específico
@@ -443,6 +439,32 @@ public class FichaPdfController {
             );
 
             return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+
+    /**
+     * Busca pacientes por nome para seleção em geração de fichas PDF
+     */
+    @GetMapping
+    @PreAuthorize("hasAnyAuthority('ficha:read') or hasAnyRole('USER', 'ADMIN', 'SUPERVISOR')")
+    public ResponseEntity<List<PacienteSummaryDto>> buscarPacientesParaFichaPdf(
+            @RequestParam String nome,
+            @RequestParam(defaultValue = "10") int limit
+    ) {
+        logger.info("Buscando pacientes por nome para geração de ficha PDF: {}", nome);
+
+        try {
+            if (nome.trim().length() < 2) {
+                return ResponseUtil.success(List.of());
+            }
+
+            Pageable pageable = PageRequest.of(0, limit, Sort.by("nome"));
+            Page<PacienteSummaryDto> pacientes = pacienteRepository.findByNomeContainingIgnoreCase(nome.trim(), pageable).map(this::mapToPacienteSummaryDto);
+
+            return ResponseUtil.success(pacientes.getContent());
+        } catch (Exception e) {
+            logger.error("Error ao buscar pacientes: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(List.of());
         }
     }
 
@@ -1139,5 +1161,24 @@ public class FichaPdfController {
             logger.warn("Erro ao obter convênios habilitados: {}", e.getMessage());
             return 0;
         }
+    }
+
+    //Método auxiliar para mapear paciente
+    private PacienteSummaryDto mapToPacienteSummaryDto(Paciente paciente) {
+        long totalGuias = pacienteRepository.countGuiasByPacienteId(paciente.getId());
+        boolean hasGuiasVencidas = pacienteRepository.hasGuiasVencidas(paciente.getId());
+
+        return new PacienteSummaryDto(
+                paciente.getId(),
+                paciente.getNome(),
+                paciente.getResponsavel(),
+                paciente.getDataNascimento(),
+                paciente.getConvenio().getName(),
+                paciente.getConvenio().getId(),
+                paciente.getUnidade(),
+                totalGuias,
+                hasGuiasVencidas,
+                paciente.getCreatedAt()
+        );
     }
 }
