@@ -8,6 +8,8 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -104,8 +106,32 @@ public class FichaPdfJob {
     }
 
     public boolean isPodeDownload() {
+        // Verificações básicas
+        if (podeDownload == null || !podeDownload) {
+            return false;
+        }
+
+        if (status != StatusJob.CONCLUIDO) {
+            return false;
+        }
+
+        if (arquivoPath == null || arquivoPath.trim().isEmpty()) {
+            return false;
+        }
+
+        try {
+            return Files.exists(Paths.get(arquivoPath));
+        } catch (Exception e) {
+            // Se houver erro ao verificar o arquivo, considerar como não disponível
+            return false;
+        }
+    }
+
+    public boolean isPodeDownloadLogico() {
         return podeDownload != null && podeDownload &&
                 status == StatusJob.CONCLUIDO &&
                 arquivoPath != null && !arquivoPath.trim().isEmpty();
     }
+
+
 }

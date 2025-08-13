@@ -18,6 +18,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.TextStyle;
@@ -857,7 +859,9 @@ public class FichaPdfServiceImpl implements FichaPdfService {
         FichaPdfJob job = jobRepository.findByJobId(jobId)
                 .orElseThrow(() -> new ResourceNotFoundException("Job não encontrado: " + jobId));
 
-        if (!job.isPodeDownload()) {
+        if (!job.isPodeDownloadLogico()) {
+            logger.warn("Job {} não está disponível para download - Status: {}, podeDownload: {}, arquivo: {}",
+                    jobId, job.getStatus(), job.getPodeDownload(), job.getArquivoPath());
             throw new IllegalStateException("PDF não está disponível para download");
         }
 
@@ -867,7 +871,54 @@ public class FichaPdfServiceImpl implements FichaPdfService {
             throw new IllegalStateException("Sem permissão para baixar este arquivo");
         }
 
-        return pdfGeneratorService.lerArquivoPdf(job.getArquivoPath());
+        if (!Files.exists(Paths.get(job.getArquivoPath()))) {
+            logger.error("Arquivo físico não encontrado para job {}: {}", jobId, job.getArquivoPath());
+
+            // CORREÇÃO AUTOMÁTICA: Marcar o job como sem download disponível
+            job.setPodeDownload(false);
+            job.setObservacoes("Arquivo físico não encontrado - removido automaticamente");
+            jobRepository.save(job);
+
+            throw new IllegalStateException("Arquivo PDF não encontrado no sistema");
+        }
+
+        try {
+            return pdfGeneratorService.lerArquivoPdf(job.getArquivoPath());
+        } catch (Exception e) {
+            logger.error("Erro ao ler arquivo PDF {}: {}", job.getArquivoPath(), e.getMessage(), e);
+
+            // Se houve erro ao ler, também marcar como indisponível
+            job.setPodeDownload(false);
+            job.setObservacoes("Erro ao ler arquivo: " + e.getMessage());
+            jobRepository.save(job);
+
+            throw new RuntimeException("Erro ao ler arquivo PDF: " + e.getMessage(), e);
+        }
+    }
+
+    @Transactional
+    public void verificarIntegridadeJobs() {
+        logger.info("Iniciando verificação de integridade dos jobs PDF");
+
+        List<FichaPdfJob> jobsComDownload = jobRepository.findAll().stream()
+                .filter(job -> job.getPodeDownload() != null && job.getPodeDownload())
+                .collect(Collectors.toList());
+
+        int jobsCorrigidos = 0;
+
+        for (FichaPdfJob job : jobsComDownload) {
+            if (job.getArquivoPath() != null && !Files.exists(Paths.get(job.getArquivoPath()))) {
+                logger.warn("Arquivo não encontrado para job {}: {}", job.getJobId(), job.getArquivoPath());
+
+                job.setPodeDownload(false);
+                job.setObservacoes("Arquivo removido automaticamente - integridade verificada em " + LocalDateTime.now());
+                jobRepository.save(job);
+
+                jobsCorrigidos++;
+            }
+        }
+
+        logger.info("Verificação de integridade concluída - {} jobs corrigidos", jobsCorrigidos);
     }
 
     @Override
@@ -1467,7 +1518,9 @@ public class FichaPdfServiceImpl implements FichaPdfService {
         dto.setFichasProcessadas(job.getFichasProcessadas());
         dto.setIniciado(job.getIniciado());
         dto.setConcluido(job.getConcluido());
-        dto.setPodeDownload(job.isPodeDownload());
+
+        // Usar verificação mais robusta
+        dto.setPodeDownload(job.isPodeDownload()); // Agora inclui verificação de arquivo físico
         dto.setObservacoes(job.getObservacoes());
 
         if (job.getTotalFichas() != null && job.getTotalFichas() > 0 && job.getFichasProcessadas() != null) {
@@ -1477,7 +1530,8 @@ public class FichaPdfServiceImpl implements FichaPdfService {
             dto.setProgresso(0);
         }
 
-        if (job.isPodeDownload()) {
+        // Só definir URL de download se realmente pode baixar
+        if (dto.getPodeDownload()) {
             dto.setDownloadUrl("/api/fichas-pdf/download/" + job.getJobId());
         }
 

@@ -452,6 +452,96 @@ const fichaPdfService = {
   },
 
   /**
+   * Verifica se um job ainda existe no sistema
+   */
+  verificarExistenciaJob: async (jobId: string): Promise<boolean> => {
+    try {
+      const response = await api.get(`/api/fichas-pdf/jobs/${jobId}/exists`);
+      return response.data.existe;
+    } catch (error: any) {
+      // Se retornar 404, o job foi removido pela limpeza
+      if (error.response?.status === 404) {
+        return false;
+      }
+      console.warn(`Erro ao verificar existência do job ${jobId}:`, error);
+      return false;
+    }
+  },
+
+  /**
+   * Lista jobs do usuário atual (apenas os que existem no sistema)
+   */
+  getMeusJobs: async (): Promise<FichaPdfJobDto[]> => {
+    try {
+      const response = await api.get<FichaPdfJobDto[]>(
+        "/api/fichas-pdf/meus-jobs"
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Erro ao listar meus jobs:", error);
+      return [];
+    }
+  },
+
+  /**
+   * Monitora um job com verificação automática de existência
+   */
+  monitorarJobComLimpeza: async (
+    jobId: string,
+    onUpdate: (status: FichaPdfStatusDto | null) => void,
+    onJobRemovido?: () => void,
+    intervalMs: number = 2000
+  ): Promise<void> => {
+    const checkStatus = async () => {
+      try {
+        // Primeiro verificar se o job ainda existe
+        const existe = await fichaPdfService.verificarExistenciaJob(jobId);
+
+        if (!existe) {
+          console.info(`Job ${jobId} foi removido pela limpeza automática`);
+          onUpdate(null);
+          if (onJobRemovido) {
+            onJobRemovido();
+          }
+          return;
+        }
+
+        // Se existe, buscar o status
+        const status = await fichaPdfService.getStatusGeracao(jobId);
+        onUpdate(status);
+
+        // Continuar monitorando se ainda estiver em processamento
+        if (status.status === "INICIADO" || status.status === "PROCESSANDO") {
+          setTimeout(checkStatus, intervalMs);
+        }
+      } catch (error) {
+        console.error(`Erro ao monitorar job ${jobId}:`, error);
+
+        // Tentar novamente após um intervalo maior em caso de erro
+        setTimeout(checkStatus, intervalMs * 2);
+      }
+    };
+
+    await checkStatus();
+  },
+
+  /**
+   * Limpa jobs removidos de uma lista local
+   */
+  filtrarJobsExistentes: async (jobIds: string[]): Promise<string[]> => {
+    const jobsExistentes: string[] = [];
+
+    for (const jobId of jobIds) {
+      const existe = await fichaPdfService.verificarExistenciaJob(jobId);
+      if (existe) {
+        jobsExistentes.push(jobId);
+      }
+    }
+
+    return jobsExistentes;
+  },
+
+  /**
    * Verifica se o job pode ser cancelado
    */
   podeSerCancelado: (status: FichaPdfStatusDto): boolean => {
