@@ -1,9 +1,12 @@
 package com.intranet.backend.controllers;
 
 import com.intranet.backend.dto.*;
+import com.intranet.backend.exception.ResourceNotFoundException;
 import com.intranet.backend.model.Ficha;
+import com.intranet.backend.model.FichaPdfJob;
 import com.intranet.backend.model.Paciente;
 import com.intranet.backend.model.User;
+import com.intranet.backend.repository.FichaPdfJobRepository;
 import com.intranet.backend.repository.FichaRepository;
 import com.intranet.backend.repository.PacienteRepository;
 import com.intranet.backend.repository.UserRepository;
@@ -21,10 +24,13 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -44,6 +50,7 @@ public class FichaPdfController {
     private final FichaRepository fichaRepository;
     private final PacienteRepository pacienteRepository;
     private final UserRepository userRepository;
+    private final FichaPdfJobRepository jobRepository;
 
     /**
      * Gera fichas PDF para um paciente específico
