@@ -82,7 +82,7 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
 
         try {
             // Verificar se é FUSEX
-            if ("FUSEX".equalsIgnoreCase(convenioNome)) {
+            if ("Fusex".equalsIgnoreCase(convenioNome)) {
                 String templateFusex = obterTemplateFusex();
                 return preencherTemplate(templateFusex, item);
             }
