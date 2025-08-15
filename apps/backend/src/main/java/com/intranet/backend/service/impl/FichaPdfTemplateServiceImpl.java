@@ -81,14 +81,14 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
                 convenioNome, item.getNumeroIdentificacao());
 
         try {
-            // Verificar se é FUSEX
-            if ("Fusex".equalsIgnoreCase(convenioNome)) {
+            if (isFusexConvenio(convenioNome)) {
+                logger.info("✅ FUSEX identificado! Convênio: '{}' - Usando template específico", convenioNome);
                 String templateFusex = obterTemplateFusex();
                 return preencherTemplate(templateFusex, item);
             }
 
             // Para outros convênios, usar template padrão
-            logger.debug("Convênio {} não tem template específico, usando padrão", convenioNome);
+            logger.debug("Convênio '{}' não é FUSEX, usando template padrão", convenioNome);
             return gerarHtmlFicha(item);
 
         } catch (Exception e) {
@@ -98,6 +98,36 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
             return gerarHtmlFicha(item);
         }
     }
+
+    private boolean isFusexConvenio(String convenioNome) {
+        if (convenioNome == null || convenioNome.trim().isEmpty()) {
+            logger.debug("Nome do convênio é nulo ou vazio");
+            return false;
+        }
+
+        String nomeNormalizado = convenioNome.trim().toUpperCase();
+
+        // Lista de padrões que identificam o FUSEX
+        String[] padroesFusex = {
+                "FUSEX",
+                "FUNDO DE SAÚDE DO EXÉRCITO",
+                "FUNDO DE SAUDE DO EXERCITO",
+                "EXERCITO",
+                "EXÉRCITO"
+        };
+
+        // Verificar se o nome contém algum dos padrões
+        for (String padrao : padroesFusex) {
+            if (nomeNormalizado.contains(padrao)) {
+                logger.debug("✅ FUSEX identificado pelo padrão: '{}' em '{}'", padrao, convenioNome);
+                return true;
+            }
+        }
+
+        logger.debug("❌ Convênio '{}' não é FUSEX", convenioNome);
+        return false;
+    }
+
 
     @Override
     public String getTemplatePadrao() {
@@ -115,12 +145,11 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
         });
     }
 
-    @Override
     public boolean temTemplateEspecifico(String convenioNome) {
         if (convenioNome == null) return false;
 
-        // Apenas FUSEX tem template específico
-        return "FUSEX".equalsIgnoreCase(convenioNome.trim());
+        // CORREÇÃO: Usar a mesma lógica robusta de identificação
+        return isFusexConvenio(convenioNome);
     }
 
     @Override
