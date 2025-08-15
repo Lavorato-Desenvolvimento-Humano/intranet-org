@@ -17,6 +17,7 @@ import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
 import com.itextpdf.kernel.pdf.PdfReader;
 import com.itextpdf.kernel.utils.PdfMerger;
+import org.springframework.util.StringUtils;
 
 import java.io.ByteArrayInputStream;
 import java.nio.file.Files;
@@ -190,7 +191,19 @@ public class FichaPdfGeneratorServiceImpl implements FichaPdfGeneratorService {
 
         for (FichaPdfItemDto item : itens) {
             try {
-                String html = templateService.gerarHtmlFicha(item);
+                // CORREÇÃO: Usar o HTML já gerado (com template específico) se disponível
+                String html;
+                if (StringUtils.hasText(item.getHtmlGerado())) {
+                    // HTML já foi gerado com template específico do convênio (FUSEX, etc)
+                    html = item.getHtmlGerado();
+                    logger.debug("Usando HTML pré-gerado com template específico para ficha: {}",
+                            item.getNumeroIdentificacao());
+                } else {
+                    // Fallback para geração padrão se HTML não foi pré-gerado
+                    html = templateService.gerarHtmlFicha(item);
+                    logger.debug("Gerando HTML padrão para ficha: {}", item.getNumeroIdentificacao());
+                }
+
                 byte[] fichaPdf = converterHtmlParaPdf(html);
                 fichasPdf.add(fichaPdf);
             } catch (Exception e) {
