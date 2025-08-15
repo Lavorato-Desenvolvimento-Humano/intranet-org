@@ -113,7 +113,8 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
                 "FUNDO DE SAÚDE DO EXÉRCITO",
                 "FUNDO DE SAUDE DO EXERCITO",
                 "EXERCITO",
-                "EXÉRCITO"
+                "EXÉRCITO",
+                "Fusex"
         };
 
         // Verificar se o nome contém algum dos padrões
