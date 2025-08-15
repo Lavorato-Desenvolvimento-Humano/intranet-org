@@ -12,7 +12,7 @@ import {
   fichaPdfHelpers,
 } from "@/types/fichaPdf";
 import fichaPdfService from "@/services/ficha-pdf";
-import { toast } from "react-hot-toast";
+import PacienteSearchSelect from "@/components/fichas-pdf/PacienteSearchSelect";
 import {
   ArrowLeft,
   Users,
@@ -27,7 +27,9 @@ import {
   Search,
   X,
   FileText,
+  User,
 } from "lucide-react";
+import toast from "@/utils/toast";
 
 type TipoGeracao = "paciente" | "convenio" | "lote";
 
@@ -63,6 +65,7 @@ export default function NovaGeracaoPage() {
   const [validando, setValidando] = useState(false);
   const [gerandoPrevia, setGerandoPrevia] = useState(false);
   const [verificandoPaciente, setVerificandoPaciente] = useState(false);
+  const [pacienteNomeSelecionado, setPacienteNomeSelecionado] = useState("");
 
   const especialidadesDisponiveis = [
     "Fisioterapia",
@@ -82,8 +85,18 @@ export default function NovaGeracaoPage() {
   }, []);
 
   useEffect(() => {
-    if (formData.tipo === "paciente" && formData.pacienteId) {
-      verificarPaciente();
+    if (
+      formData.tipo === "paciente" &&
+      formData.pacienteId &&
+      formData.mes &&
+      formData.ano
+    ) {
+      // Adicionar um delay para evitar muitas chamadas
+      const timer = setTimeout(() => {
+        verificarPaciente();
+      }, 1000); // 1 segundo de delay
+
+      return () => clearTimeout(timer);
     }
   }, [formData.pacienteId, formData.mes, formData.ano]);
 
@@ -98,18 +111,33 @@ export default function NovaGeracaoPage() {
   };
 
   const verificarPaciente = async () => {
-    if (!formData.pacienteId || !formData.mes || !formData.ano) return;
+    if (!formData.pacienteId || !formData.mes || !formData.ano) {
+      toast.error("Dados incompletos para verificação");
+      return;
+    }
 
     try {
       setVerificandoPaciente(true);
+
       const verificacao = await fichaPdfService.verificarFichasPaciente(
         formData.pacienteId,
         formData.mes,
         formData.ano
       );
+
       setPacienteVerificacao(verificacao);
+
+      // Feedback para o usuário
+      if (verificacao.temFichasDisponiveis) {
+        toast.success(`Fichas disponíveis para ${verificacao.pacienteNome}`);
+      } else {
+        toast.warning(
+          `Nenhuma ficha pendente para ${verificacao.pacienteNome} no período ${formData.mes}/${formData.ano}`
+        );
+      }
     } catch (error) {
       console.error("Erro ao verificar paciente:", error);
+      toast.error("Erro ao verificar dados do paciente");
       setPacienteVerificacao(null);
     } finally {
       setVerificandoPaciente(false);
@@ -299,79 +327,156 @@ export default function NovaGeracaoPage() {
 
   const renderFormularioPaciente = () => (
     <div className="bg-white rounded-lg border border-gray-200 p-6">
-      <h3 className="text-lg font-medium text-gray-900 mb-4">
-        Dados do Paciente
-      </h3>
+      <div className="flex items-center mb-4">
+        <Users className="h-5 w-5 text-blue-600 mr-2" />
+        <h3 className="text-lg font-medium text-gray-900">Dados do Paciente</h3>
+      </div>
 
       <div className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Paciente *
           </label>
-          <div className="flex space-x-2">
-            <input
-              type="text"
-              value={formData.pacienteId}
-              onChange={(e) =>
-                setFormData({ ...formData, pacienteId: e.target.value })
-              }
-              placeholder="ID do paciente"
-              className="flex-1 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <button
-              onClick={verificarPaciente}
-              disabled={verificandoPaciente || !formData.pacienteId}
-              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-              {verificandoPaciente ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              ) : (
-                <Search className="h-4 w-4" />
-              )}
-            </button>
-          </div>
 
+          {/* Novo componente de busca integrado */}
+          <PacienteSearchSelect
+            value={formData.pacienteId}
+            onChange={(pacienteId, pacienteNome) => {
+              setFormData((prev) => ({ ...prev, pacienteId }));
+              setPacienteNomeSelecionado(pacienteNome || "");
+
+              // Limpar verificação anterior quando trocar de paciente
+              if (pacienteVerificacao?.pacienteId !== pacienteId) {
+                setPacienteVerificacao(null);
+              }
+            }}
+            placeholder="Digite o nome do paciente para buscar..."
+            error={!formData.pacienteId}
+          />
+
+          {/* Botão de verificação manual - só aparece quando há paciente selecionado */}
+          {formData.pacienteId && (
+            <div className="mt-2 flex justify-end">
+              <button
+                onClick={() => verificarPaciente()}
+                disabled={verificandoPaciente}
+                className="inline-flex items-center px-3 py-1.5 text-sm bg-blue-50 text-blue-700 border border-blue-200 rounded-md hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                {verificandoPaciente ? (
+                  <>
+                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600 mr-2"></div>
+                    Verificando...
+                  </>
+                ) : (
+                  <>
+                    <Search className="h-3 w-3 mr-2" />
+                    Verificar Fichas
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* Informações de verificação do paciente */}
           {pacienteVerificacao && (
-            <div className="mt-3 p-3 bg-gray-50 rounded-md">
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-medium text-gray-900">
-                  {pacienteVerificacao.pacienteNome}
-                </span>
+            <div className="mt-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center">
+                  <User className="h-4 w-4 text-gray-600 mr-2" />
+                  <span className="font-medium text-gray-900">
+                    {pacienteVerificacao.pacienteNome}
+                  </span>
+                </div>
                 <span
-                  className={`text-sm px-2 py-1 rounded ${
+                  className={`inline-flex items-center text-xs px-2 py-1 rounded-full font-medium ${
                     pacienteVerificacao.temFichasDisponiveis
                       ? "bg-green-100 text-green-800"
                       : "bg-yellow-100 text-yellow-800"
                   }`}>
-                  {pacienteVerificacao.temFichasDisponiveis
-                    ? "Fichas disponíveis"
-                    : "Sem fichas pendentes"}
+                  {pacienteVerificacao.temFichasDisponiveis ? (
+                    <>
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Fichas disponíveis
+                    </>
+                  ) : (
+                    <>
+                      <AlertTriangle className="h-3 w-3 mr-1" />
+                      Sem fichas pendentes
+                    </>
+                  )}
                 </span>
               </div>
 
-              {pacienteVerificacao.fichasExistentes.length > 0 && (
-                <div className="text-sm text-gray-600">
-                  <strong>Fichas já geradas:</strong>
-                  <ul className="mt-1 space-y-1">
-                    {pacienteVerificacao.fichasExistentes.map(
-                      (ficha, index) => (
-                        <li key={index} className="flex justify-between">
-                          <span>
-                            {fichaPdfHelpers.formatarMesAno(
-                              ficha.mes,
-                              ficha.ano
-                            )}{" "}
-                            - {ficha.especialidade}
-                          </span>
-                          <span className="text-xs text-gray-500">
-                            {ficha.numeroIdentificacao}
-                          </span>
-                        </li>
-                      )
-                    )}
-                  </ul>
+              {/* Período atual */}
+              <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded-md">
+                <div className="flex items-center text-sm text-blue-800">
+                  <Calendar className="h-4 w-4 mr-2" />
+                  <span>
+                    Período selecionado:{" "}
+                    <strong>
+                      {formData.mes}/{formData.ano}
+                    </strong>
+                  </span>
+                </div>
+              </div>
+
+              {/* Fichas já existentes */}
+              {pacienteVerificacao.fichasExistentes &&
+                pacienteVerificacao.fichasExistentes.length > 0 && (
+                  <div className="bg-white border border-gray-200 rounded-md p-3">
+                    <div className="flex items-center mb-2">
+                      <FileText className="h-4 w-4 text-gray-600 mr-2" />
+                      <span className="text-sm font-medium text-gray-700">
+                        Fichas já geradas:
+                      </span>
+                    </div>
+                    <ul className="space-y-2">
+                      {pacienteVerificacao.fichasExistentes.map(
+                        (ficha, index) => (
+                          <li
+                            key={index}
+                            className="flex items-center justify-between py-1 px-2 bg-gray-50 rounded border border-gray-100">
+                            <div className="flex items-center text-sm">
+                              <span className="font-medium text-gray-900">
+                                {fichaPdfHelpers.formatarMesAno(
+                                  ficha.mes,
+                                  ficha.ano
+                                )}
+                              </span>
+                              <span className="text-gray-600 mx-2">•</span>
+                              <span className="text-gray-700">
+                                {ficha.especialidade}
+                              </span>
+                            </div>
+                            <span className="text-xs text-gray-500 font-mono">
+                              {ficha.numeroIdentificacao}
+                            </span>
+                          </li>
+                        )
+                      )}
+                    </ul>
+                  </div>
+                )}
+
+              {/* Avisos ou mensagens */}
+              {pacienteVerificacao.mensagem && (
+                <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded-md">
+                  <div className="flex items-start">
+                    <Info className="h-4 w-4 text-blue-600 mr-2 mt-0.5" />
+                    <span className="text-sm text-blue-800">
+                      {pacienteVerificacao.mensagem}
+                    </span>
+                  </div>
                 </div>
               )}
             </div>
+          )}
+
+          {/* Validação de erro */}
+          {!formData.pacienteId && (
+            <p className="mt-1 text-sm text-red-600 flex items-center">
+              <AlertTriangle className="h-3 w-3 mr-1" />
+              Selecione um paciente para continuar
+            </p>
           )}
         </div>
       </div>
