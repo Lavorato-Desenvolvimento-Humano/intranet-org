@@ -1,6 +1,7 @@
 package com.intranet.backend.service.impl;
 
 import com.intranet.backend.config.FichaPdfProperties;
+import com.intranet.backend.model.FichaPdfJob;
 import com.intranet.backend.repository.FichaPdfJobRepository;
 import com.intranet.backend.repository.FichaPdfLogRepository;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -58,25 +61,35 @@ public class FichaPdfCleanupService {
         LocalDateTime dataLimiteConcluido = LocalDateTime.now()
                 .minusDays(properties.getCleanup().getCompletedJobsRetentionDays());
 
+        logger.info("Iniciando limpeza de jobs - Data limite erro: {}, Data limite concluído: {}",
+                dataLimiteErro, dataLimiteConcluido);
+
         // Remover jobs com erro antigos
-        var jobsErro = jobRepository.findJobsConcluidosRecentes(dataLimiteErro);
-        for (var job : jobsErro) {
-            if ("ERRO".equals(job.getStatus().name())) {
-                removerArquivoJob(job.getArquivoPath());
-                jobRepository.delete(job);
-            }
+        List<FichaPdfJob> jobsErro = jobRepository.findAll().stream()
+                .filter(job -> job.getStatus() == FichaPdfJob.StatusJob.ERRO)
+                .filter(job -> job.getConcluido() != null && job.getConcluido().isBefore(dataLimiteErro))
+                .collect(Collectors.toList());
+
+        for (FichaPdfJob job : jobsErro) {
+            logger.debug("Removendo job com erro: {} (concluído em: {})", job.getJobId(), job.getConcluido());
+            removerArquivoJob(job.getArquivoPath());
+            jobRepository.delete(job);
         }
 
         // Remover jobs concluídos muito antigos
-        var jobsConcluidos = jobRepository.findJobsConcluidosRecentes(dataLimiteConcluido);
-        for (var job : jobsConcluidos) {
-            if ("CONCLUIDO".equals(job.getStatus().name())) {
-                removerArquivoJob(job.getArquivoPath());
-                jobRepository.delete(job);
-            }
+        List<FichaPdfJob> jobsConcluidos = jobRepository.findAll().stream()
+                .filter(job -> job.getStatus() == FichaPdfJob.StatusJob.CONCLUIDO)
+                .filter(job -> job.getConcluido() != null && job.getConcluido().isBefore(dataLimiteConcluido))
+                .collect(Collectors.toList());
+
+        for (FichaPdfJob job : jobsConcluidos) {
+            logger.debug("Removendo job concluído antigo: {} (concluído em: {})", job.getJobId(), job.getConcluido());
+            removerArquivoJob(job.getArquivoPath());
+            jobRepository.delete(job);
         }
 
-        logger.info("Limpeza de jobs antigos concluída");
+        logger.info("Limpeza de jobs antigos concluída - {} jobs com erro removidos, {} jobs concluídos removidos",
+                jobsErro.size(), jobsConcluidos.size());
     }
 
     /**
