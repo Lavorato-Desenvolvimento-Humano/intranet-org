@@ -17,6 +17,7 @@ public class FichaPdfItemDto {
     private UUID convenioId;
     private String convenioNome;
     private String unidade;
+    private String htmlGerado;
 
     // Dados da guia de origem
     private UUID guiaId;
