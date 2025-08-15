@@ -76,12 +76,51 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
     }
 
     @Override
+    public String gerarHtmlComTemplateConvenio(FichaPdfItemDto item, String convenioNome) {
+        logger.debug("Gerando HTML com template específico para convênio: {} - ficha: {}",
+                convenioNome, item.getNumeroIdentificacao());
+
+        try {
+            // Verificar se é FUSEX
+            if ("FUSEX".equalsIgnoreCase(convenioNome)) {
+                String templateFusex = obterTemplateFusex();
+                return preencherTemplate(templateFusex, item);
+            }
+
+            // Para outros convênios, usar template padrão
+            logger.debug("Convênio {} não tem template específico, usando padrão", convenioNome);
+            return gerarHtmlFicha(item);
+
+        } catch (Exception e) {
+            logger.error("Erro ao gerar HTML com template do convênio {}: {}", convenioNome, e.getMessage(), e);
+            // Fallback para template padrão
+            logger.warn("Usando template padrão como fallback para convênio: {}", convenioNome);
+            return gerarHtmlFicha(item);
+        }
+    }
+
+    @Override
     public String getTemplatePadrao() {
         // Cache do template padrão
         return templateCache.computeIfAbsent("default", k -> {
             logger.debug("Carregando template padrão");
             return criarTemplatePadrao();
         });
+    }
+
+    private String obterTemplateFusex() {
+        return templateCache.computeIfAbsent("template_fusex", k -> {
+            logger.debug("Carregando template do FUSEX");
+            return criarTemplateFusex();
+        });
+    }
+
+    @Override
+    public boolean temTemplateEspecifico(String convenioNome) {
+        if (convenioNome == null) return false;
+
+        // Apenas FUSEX tem template específico
+        return "FUSEX".equalsIgnoreCase(convenioNome.trim());
     }
 
     @Override
@@ -370,6 +409,146 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
     </body>
     </html>
      """;
+    }
+
+    /**
+     * Template específico para o Fusex
+     * Baseado no sistema legado em PHP
+     */
+    private String criarTemplateFusex() {
+        return """
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Ficha de Assinatura - {NUMERO_IDENTIFICACAO}</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                font-size: 12px;
+                margin: 5px;
+            }
+            
+            .header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 10px;
+            }
+            
+            .header img {
+                width: 150px;
+                height: auto;
+            }
+            
+            .header h1 {
+                font-size: 18px;
+                margin: 0;
+                text-align: center;
+                flex-grow: 1;
+            }
+            
+            .header .identificacao {
+                font-size: 14px;
+                font-weight: bold;
+            }
+            
+            .section {
+                margin-bottom: 5px;
+            }
+            
+            .section label {
+                display: inline-block;
+                width: 200px;
+                font-weight: bold;
+            }
+            
+            .table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 15px;
+            }
+            
+            .table th, .table td {
+                border: 1px solid #000;
+                padding: 5px;
+                text-align: center;
+            }
+            
+            .table th {
+                background-color: #f0f0f0;
+                font-weight: bold;
+            }
+            
+            .info-header {
+                text-align: left;
+                margin-bottom: 15px;
+            }
+            
+            /* Específico para Fusex */
+            .fusex-header {
+                border-bottom: 2px solid #000;
+                padding-bottom: 10px;
+            }
+            
+            .fusex-instructions {
+                margin-top: 20px;
+                font-size: 10px;
+                font-style: italic;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="header fusex-header">
+            <img src="{LOGO_BASE64}" alt="Logo">
+            <h1>FICHA DE ASSINATURA</h1>
+            <div class="identificacao">ID: {NUMERO_IDENTIFICACAO}</div>
+        </div>
+
+        <div class="info-header">
+            <div class="section">
+                <label>Nome do Paciente:</label> {PACIENTE_NOME}
+            </div>
+            <div class="section">
+                <label>Especialidade:</label> {ESPECIALIDADE}
+            </div>
+            <div class="section">
+                <label>Mês:</label> {MES_EXTENSO}
+            </div>
+            <div class="section">
+                <label>Convênio:</label> FUSEX
+            </div>
+        </div>
+
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Nº</th>
+                    <th>Data de Atendimento</th>
+                    <th>Assinatura do Responsável</th>
+                </tr>
+            </thead>
+            <tbody>
+                {LINHAS_TABELA}
+            </tbody>
+        </table>
+        
+        <div class="fusex-instructions">
+            <p><strong>Instruções FUSEX:</strong></p>
+            <p>1. Preencher a data e assinar a cada atendimento realizado.</p>
+            <p>2. Este documento é de uso obrigatório para faturamento junto ao FUSEX.</p>
+            <p>3. Manter o documento em local seguro e apresentar quando solicitado.</p>
+        </div>
+
+        <div class="metadata">
+            <span>Gerado em: {DATA_GERACAO}</span>
+            <span>Guia: {NUMERO_GUIA}</span>
+            <span>Sistema: Intranet v2.0</span>
+        </div>
+    </body>
+    </html>
+    """;
     }
 
     private String preencherTemplate(String template, FichaPdfItemDto item) {
