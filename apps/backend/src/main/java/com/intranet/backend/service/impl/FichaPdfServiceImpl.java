@@ -37,7 +37,6 @@ public class FichaPdfServiceImpl implements FichaPdfService {
     private final FichaPdfJobRepository jobRepository;
     private final ConvenioFichaPdfConfigRepository configRepository;
     private final FichaPdfLogRepository logRepository;
-    private final FichaRepository fichaRepository;
     private final UserRepository userRepository;
     private final PacienteRepository pacienteRepository;
     private final GuiaRepository guiaRepository;
@@ -1162,11 +1161,27 @@ public class FichaPdfServiceImpl implements FichaPdfService {
             if (guia.getEspecialidades() != null && !guia.getEspecialidades().isEmpty()) {
                 for (String especialidade : guia.getEspecialidades()) {
                     FichaPdfItemDto item = criarItemFicha(guia, especialidade, mes, ano);
+
+                    // NOVO: Gerar HTML usando template específico do convênio
+                    String convenioNome = guia.getConvenio() != null ? guia.getConvenio().getName() : null;
+                    String htmlGerado = templateService.gerarHtmlComTemplateConvenio(item, convenioNome);
+
+                    // Armazenar o HTML no item para uso posterior
+                    item.setHtmlGerado(htmlGerado);
+
                     itens.add(item);
                 }
             } else {
                 // Criar ficha sem especialidade específica
                 FichaPdfItemDto item = criarItemFicha(guia, "Não informado", mes, ano);
+
+                // NOVO: Gerar HTML usando template específico do convênio
+                String convenioNome = guia.getConvenio() != null ? guia.getConvenio().getName() : null;
+                String htmlGerado = templateService.gerarHtmlComTemplateConvenio(item, convenioNome);
+
+                // Armazenar o HTML no item para uso posterior
+                item.setHtmlGerado(htmlGerado);
+
                 itens.add(item);
             }
         }
