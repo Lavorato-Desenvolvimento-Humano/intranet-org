@@ -445,7 +445,7 @@ public class FichaPdfController {
     /**
      * Busca pacientes por nome para seleção em geração de fichas PDF
      */
-    @GetMapping
+    @GetMapping("/pacientes/buscar")
     @PreAuthorize("hasAnyAuthority('ficha:read') or hasAnyRole('USER', 'ADMIN', 'SUPERVISOR')")
     public ResponseEntity<List<PacienteSummaryDto>> buscarPacientesParaFichaPdf(
             @RequestParam String nome,
