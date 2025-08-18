@@ -152,17 +152,15 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
 
         String nomeNormalizado = convenioNome.trim().toUpperCase();
 
-        // Lista de padrões que identificam o FUSEX
+        // TODOS os padrões em UPPERCASE (removido "Fusex" da lista)
         String[] padroesFusex = {
                 "FUSEX",
                 "FUNDO DE SAÚDE DO EXÉRCITO",
                 "FUNDO DE SAUDE DO EXERCITO",
                 "EXERCITO",
-                "EXÉRCITO",
-                "Fusex"
+                "EXÉRCITO"
         };
 
-        // Verificar se o nome contém algum dos padrões
         for (String padrao : padroesFusex) {
             if (nomeNormalizado.contains(padrao)) {
                 logger.debug("✅ FUSEX identificado pelo padrão: '{}' em '{}'", padrao, convenioNome);
