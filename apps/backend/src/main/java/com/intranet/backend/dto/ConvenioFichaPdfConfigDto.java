@@ -8,6 +8,7 @@ public class ConvenioFichaPdfConfigDto {
     private String convenioId;
     private String convenioNome;
     private Boolean habilitado;
+    private String templatePersonalizado;
     private Integer diasAtividade;
     private String formatoPadrao;
     private Boolean incluirLogo;
