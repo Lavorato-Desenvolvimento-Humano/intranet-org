@@ -17,6 +17,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -931,7 +932,6 @@ public class FichaPdfServiceImpl implements FichaPdfService {
     }
 
     private List<FichaPdfItemDto> buscarItensParaPaciente(FichaPdfPacienteRequest request) {
-        logger.info("=== BUSCA CORRIGIDA DE ITENS ===");
         logger.info("Paciente: {}, Período: {}/{}", request.getPacienteId(), request.getMes(), request.getAno());
 
         // Verificar se paciente existe
@@ -952,14 +952,166 @@ public class FichaPdfServiceImpl implements FichaPdfService {
             return new ArrayList<>();
         }
 
-        // Processar guias para fichas
-        return processarGuiasParaFichas(guias, request.getMes(), request.getAno());
+        // Processar guias para fichas com configuração de template
+        return processarGuiasParaFichasComTemplate(guias, request.getMes(), request.getAno());
     }
+
+    private List<FichaPdfItemDto> buscarItensParaConvenio(FichaPdfConvenioRequest request) {
+        logger.info("=== BUSCAR ITENS PARA CONVÊNIO ===");
+        logger.info("Convênio: {}, Período: {}/{}", request.getConvenioId(), request.getMes(), request.getAno());
+
+        // Verificar se o convênio está habilitado
+        if (!isConvenioHabilitado(request.getConvenioId())) {
+            throw new IllegalArgumentException("Convênio não habilitado para geração de fichas PDF");
+        }
+
+        // NOVA LÓGICA: Obter configuração específica do convênio UMA VEZ
+        Optional<ConvenioFichaPdfConfig> configOpt = configRepository.findByConvenioId(request.getConvenioId());
+        ConvenioFichaPdfConfig config = configOpt.orElse(null);
+
+        List<FichaPdfItemDto> todosItens = new ArrayList<>();
+
+        // LÓGICA ORIGINAL: Buscar guias por convênio usando método existente
+        List<String> statusAtivos = Arrays.asList(
+                "EMITIDO", "SUBIU", "ANALISE", "ASSINADO", "FATURADO", "ENVIADO A BM"
+        );
+
+        List<Guia> guiasConvenio = guiaRepository.findByConvenioIdAndStatusIn(
+                request.getConvenioId(), statusAtivos);
+
+        logger.info("Guias ativas encontradas para o convênio: {}", guiasConvenio.size());
+
+        // Filtrar por período se especificado
+        Integer mes = request.getMes();
+        Integer ano = request.getAno();
+
+        if (mes != null && ano != null) {
+            guiasConvenio = guiasConvenio.stream()
+                    .filter(guia -> {
+                        // Verificar se a guia está no período correto
+                        return (guia.getMes() != null && guia.getMes().equals(mes) &&
+                                guia.getAno() != null && guia.getAno().equals(ano)) ||
+                                // OU se foi criada/atualizada no período
+                                isGuiaNoMesAno(guia, mes, ano);
+                    })
+                    .collect(Collectors.toList());
+        }
+
+        logger.info("Guias após filtro de período: {}", guiasConvenio.size());
+
+        // Processar cada guia para gerar itens (LÓGICA ORIGINAL)
+        for (Guia guia : guiasConvenio) {
+            if (guia.getEspecialidades() != null && !guia.getEspecialidades().isEmpty()) {
+                // Gerar uma ficha por especialidade
+                for (String especialidade : guia.getEspecialidades()) {
+                    FichaPdfItemDto item = criarItemFicha(guia, especialidade, mes, ano);
+
+                    // ÚNICA MUDANÇA: Usar configuração específica do convênio
+                    String htmlGerado = templateService.gerarHtmlComConfiguracaoConvenio(item, config);
+
+                    // Armazenar o HTML no item para uso posterior
+                    item.setHtmlGerado(htmlGerado);
+
+                    todosItens.add(item);
+                }
+            } else {
+                // Criar ficha sem especialidade específica
+                FichaPdfItemDto item = criarItemFicha(guia, "Não informado", mes, ano);
+
+                // ÚNICA MUDANÇA: Usar configuração específica do convênio
+                String htmlGerado = templateService.gerarHtmlComConfiguracaoConvenio(item, config);
+
+                // Armazenar o HTML no item para uso posterior
+                item.setHtmlGerado(htmlGerado);
+
+                todosItens.add(item);
+            }
+        }
+
+        logger.info("Total de itens gerados para o convênio: {}", todosItens.size());
+        return todosItens;
+    }
+
+    @Override
+    @Transactional
+    public void atualizarTemplateConvenio(UUID convenioId, String templatePersonalizado) {
+        logger.info("Atualizando template do convênio {} para: {}", convenioId, templatePersonalizado);
+
+        Convenio convenio = convenioRepository.findById(convenioId)
+                .orElseThrow(() -> new ResourceNotFoundException("Convênio não encontrado: " + convenioId));
+
+        // Buscar ou criar configuração
+        ConvenioFichaPdfConfig config = configRepository.findByConvenioId(convenioId)
+                .orElse(new ConvenioFichaPdfConfig());
+
+        // Se não existe, criar nova configuração
+        if (config.getId() == null) {
+            config.setConvenio(convenio);
+            config.setHabilitado(true); // Habilitar automaticamente quando configura template
+            config.setDiasAtividade(30);
+            config.setPrefixoIdentificacao("");
+        }
+
+        // Validar template se fornecido
+        if (StringUtils.hasText(templatePersonalizado)) {
+            boolean templateValido = templateService.temTemplateEspecificoPorConfig(config);
+            if (!templateValido) {
+                // Criar config temporária para teste
+                ConvenioFichaPdfConfig tempConfig = new ConvenioFichaPdfConfig();
+                tempConfig.setConvenio(convenio);
+                tempConfig.setTemplatePersonalizado(templatePersonalizado);
+
+                if (!templateService.temTemplateEspecificoPorConfig(tempConfig)) {
+                    logger.warn("Template '{}' não encontrado, mas será salvo na configuração", templatePersonalizado);
+                }
+            }
+        }
+
+        config.setTemplatePersonalizado(templatePersonalizado);
+        configRepository.save(config);
+
+        logger.info("✅ Template do convênio {} atualizado com sucesso", convenio.getName());
+    }
+
+    @Override
+    public List<Map<String, Object>> getTemplatesDisponiveis() {
+        logger.info("Listando templates disponíveis");
+
+        List<Map<String, Object>> templates = new ArrayList<>();
+
+        // Template padrão (sempre disponível)
+        templates.add(Map.of(
+                "nome", "padrao",
+                "descricao", "Template padrão do sistema",
+                "disponivel", true,
+                "tipo", "sistema"
+        ));
+
+        // Template FUSEX (hardcoded)
+        templates.add(Map.of(
+                "nome", "fusex",
+                "descricao", "Template específico para FUSEX",
+                "disponivel", true,
+                "tipo", "sistema"
+        ));
+
+        // Buscar templates personalizados em arquivos (se habilitado)
+        try {
+            // Aqui você pode implementar busca por templates em diretório
+            // Por exemplo: classpath:templates/fichas/*.html
+            logger.debug("Busca por templates personalizados não implementada ainda");
+        } catch (Exception e) {
+            logger.warn("Erro ao buscar templates personalizados: {}", e.getMessage());
+        }
+
+        logger.info("✅ {} templates encontrados", templates.size());
+        return templates;
+    }
+
 
     private List<Guia> buscarGuiasCorrigidas(UUID pacienteId, Integer mes, Integer ano,
                                              List<String> especialidades, Boolean incluirInativos) {
 
-        logger.info("=== BUSCA CORRIGIDA DE GUIAS ===");
         logger.info("Paciente: {}, Período: {}/{}, Especialidades: {}, Incluir Inativos: {}",
                 pacienteId, mes, ano, especialidades, incluirInativos);
 
@@ -1083,37 +1235,37 @@ public class FichaPdfServiceImpl implements FichaPdfService {
     /**
      * Busca itens para convênio (para antecipação de fichas)
      */
-    private List<FichaPdfItemDto> buscarItensParaConvenio(FichaPdfConvenioRequest request) {
-        logger.info("Buscando itens para convênio: {} - {}/{}", request.getConvenioId(), request.getMes(), request.getAno());
-
-        // Buscar pacientes do convênio
-        List<Paciente> pacientes = pacienteRepository.findByConvenioId(request.getConvenioId());
-
-        if (pacientes.isEmpty()) {
-            logger.warn("Nenhum paciente encontrado para o convênio: {}", request.getConvenioId());
-            return new ArrayList<>();
-        }
-
-        List<FichaPdfItemDto> todosItens = new ArrayList<>();
-
-        for (Paciente paciente : pacientes) {
-            // Para geração por convênio, considerar guias que podem ser antecipadas
-            List<Guia> guiasAntecipadas = buscarGuiasParaAntecipacao(
-                    paciente.getId(),
-                    request.getMes(),
-                    request.getAno(),
-                    request.getEspecialidades()
-            );
-
-            for (Guia guia : guiasAntecipadas) {
-                List<FichaPdfItemDto> itensGuia = processarGuiasParaFichas(Arrays.asList(guia), request.getMes(), request.getAno());
-                todosItens.addAll(itensGuia);
-            }
-        }
-
-        logger.info("Encontrados {} itens para antecipação no convênio", todosItens.size());
-        return todosItens;
-    }
+//    private List<FichaPdfItemDto> buscarItensParaConvenio(FichaPdfConvenioRequest request) {
+//        logger.info("Buscando itens para convênio: {} - {}/{}", request.getConvenioId(), request.getMes(), request.getAno());
+//
+//        // Buscar pacientes do convênio
+//        List<Paciente> pacientes = pacienteRepository.findByConvenioId(request.getConvenioId());
+//
+//        if (pacientes.isEmpty()) {
+//            logger.warn("Nenhum paciente encontrado para o convênio: {}", request.getConvenioId());
+//            return new ArrayList<>();
+//        }
+//
+//        List<FichaPdfItemDto> todosItens = new ArrayList<>();
+//
+//        for (Paciente paciente : pacientes) {
+//            // Para geração por convênio, considerar guias que podem ser antecipadas
+//            List<Guia> guiasAntecipadas = buscarGuiasParaAntecipacao(
+//                    paciente.getId(),
+//                    request.getMes(),
+//                    request.getAno(),
+//                    request.getEspecialidades()
+//            );
+//
+//            for (Guia guia : guiasAntecipadas) {
+//                List<FichaPdfItemDto> itensGuia = processarGuiasParaFichas(Arrays.asList(guia), request.getMes(), request.getAno());
+//                todosItens.addAll(itensGuia);
+//            }
+//        }
+//
+//        logger.info("Encontrados {} itens para antecipação no convênio", todosItens.size());
+//        return todosItens;
+//    }
 
     /**
      * Busca guias que podem ser antecipadas para o próximo mês
@@ -1131,6 +1283,7 @@ public class FichaPdfServiceImpl implements FichaPdfService {
                 .filter(guia -> isGuiaValidaParaAntecipacao(guia, mes, ano))
                 .collect(Collectors.toList());
     }
+
 
     /**
      * Verifica se guia é válida para antecipação
@@ -1187,6 +1340,58 @@ public class FichaPdfServiceImpl implements FichaPdfService {
         }
 
         return itens;
+    }
+
+    private List<FichaPdfItemDto> processarGuiasParaFichasComTemplate(List<Guia> guias, Integer mes, Integer ano) {
+        List<FichaPdfItemDto> itens = new ArrayList<>();
+
+        for (Guia guia : guias) {
+            Optional<ConvenioFichaPdfConfig> configOpt = configRepository.findByConvenioId(guia.getConvenio().getId());
+            ConvenioFichaPdfConfig config = configOpt.orElse(null);
+
+            // Processar cada especialidade da guia (LÓGICA ORIGINAL)
+            if (guia.getEspecialidades() != null && !guia.getEspecialidades().isEmpty()) {
+                for (String especialidade : guia.getEspecialidades()) {
+                    FichaPdfItemDto item = criarItemFicha(guia, especialidade, mes, ano);
+
+                    String htmlGerado = templateService.gerarHtmlComConfiguracaoConvenio(item, config);
+
+                    // Armazenar o HTML no item para uso posterior
+                    item.setHtmlGerado(htmlGerado);
+
+                    itens.add(item);
+                }
+            } else {
+                FichaPdfItemDto item = criarItemFicha(guia, "Não informado", mes, ano);
+
+                String htmlGerado = templateService.gerarHtmlComConfiguracaoConvenio(item, config);
+
+                // Armazenar o HTML no item para uso posterior
+                item.setHtmlGerado(htmlGerado);
+
+                itens.add(item);
+            }
+        }
+
+        return itens;
+    }
+
+    private boolean isGuiaNoMesAno(Guia guia, Integer mes, Integer ano) {
+        if (guia.getCreatedAt() != null) {
+            int mesGuia = guia.getCreatedAt().getMonthValue();
+            int anoGuia = guia.getCreatedAt().getYear();
+            if (mesGuia == mes && anoGuia == ano) {
+                return true;
+            }
+        }
+        if (guia.getUpdatedAt() != null) {
+            int mesGuia = guia.getUpdatedAt().getMonthValue();
+            int anoGuia = guia.getUpdatedAt().getYear();
+            if (mesGuia == mes && anoGuia == ano) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private FichaPdfItemDto criarItemFicha(Guia guia, String especialidade, Integer mes, Integer ano) {
@@ -1566,6 +1771,7 @@ public class FichaPdfServiceImpl implements FichaPdfService {
         dto.setConvenioId(config.getConvenio().getId().toString());
         dto.setConvenioNome(config.getConvenio().getName());
         dto.setHabilitado(config.getHabilitado());
+        dto.setTemplatePersonalizado(config.getTemplatePersonalizado());
         dto.setDiasAtividade(config.getDiasAtividade());
         dto.setFormatoPadrao("A4"); // Por enquanto fixo
         dto.setIncluirLogo(true); // Por enquanto fixo

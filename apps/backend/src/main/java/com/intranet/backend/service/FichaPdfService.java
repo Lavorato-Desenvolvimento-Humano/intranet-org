@@ -5,6 +5,7 @@ import com.intranet.backend.model.User;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -76,4 +77,18 @@ public interface FichaPdfService {
      * Obtém configuração de PDF de um convênio específico
      */
     ConvenioFichaPdfConfigDto getConvenioConfig(UUID convenioId);
+
+    /**
+     *
+     * @param convenioId ID do convênio
+     * @param templatePersonalizado Nome do template personalizado (null para padrão)
+     */
+    void atualizarTemplateConvenio(UUID convenioId, String templatePersonalizado);
+
+    /**
+     *
+     * @return Lista de templates com suas informações
+     */
+    List<Map<String, Object>> getTemplatesDisponiveis();
+
 }

@@ -10,6 +10,7 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import com.intranet.backend.model.ConvenioFichaPdfConfig;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -99,6 +100,50 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
         }
     }
 
+
+    @Override
+    public String gerarHtmlComConfiguracaoConvenio(FichaPdfItemDto item, ConvenioFichaPdfConfig config) {
+        logger.debug("Gerando HTML com configuração específica para convênio: {} - ficha: {}",
+                config != null ? config.getConvenio().getName() : "null", item.getNumeroIdentificacao());
+
+        try {
+            // PRIORIDADE 1: Usar template personalizado da configuração
+            if (config != null && StringUtils.hasText(config.getTemplatePersonalizado())) {
+                logger.info("✅ Usando template personalizado configurado: {} para convênio: {}",
+                        config.getTemplatePersonalizado(), config.getConvenio().getName());
+
+                String template = carregarTemplate(config.getTemplatePersonalizado());
+                if (template != null) {
+                    return preencherTemplate(template, item);
+                } else {
+                    logger.warn("❌ Template personalizado '{}' não encontrado, usando fallback",
+                            config.getTemplatePersonalizado());
+                }
+            }
+
+            // PRIORIDADE 2: Usar template específico baseado no nome (lógica atual - FUSEX)
+            if (config != null) {
+                String convenioNome = config.getConvenio().getName();
+                if (isFusexConvenio(convenioNome)) {
+                    logger.info("✅ FUSEX identificado! Convênio: '{}' - Usando template específico", convenioNome);
+                    String templateFusex = obterTemplateFusex();
+                    return preencherTemplate(templateFusex, item);
+                }
+            }
+
+            // PRIORIDADE 3: Template padrão
+            logger.debug("Usando template padrão para convênio: {}",
+                    config != null ? config.getConvenio().getName() : "não configurado");
+            return gerarHtmlFicha(item);
+
+        } catch (Exception e) {
+            logger.error("Erro ao gerar HTML com configuração do convênio: {}", e.getMessage(), e);
+            // Fallback para template padrão
+            logger.warn("Usando template padrão como fallback");
+            return gerarHtmlFicha(item);
+        }
+    }
+
     private boolean isFusexConvenio(String convenioNome) {
         if (convenioNome == null || convenioNome.trim().isEmpty()) {
             logger.debug("Nome do convênio é nulo ou vazio");
@@ -146,10 +191,31 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
         });
     }
 
+    @Override
+    public boolean temTemplateEspecificoPorConfig(ConvenioFichaPdfConfig config) {
+        if (config == null) return false;
+
+        // Verifica se tem template personalizado configurado
+        if (StringUtils.hasText(config.getTemplatePersonalizado())) {
+            // Verificar se o template existe fisicamente
+            String template = carregarTemplate(config.getTemplatePersonalizado());
+            if (template != null) {
+                logger.debug("✅ Template personalizado '{}' encontrado para convênio: {}",
+                        config.getTemplatePersonalizado(), config.getConvenio().getName());
+                return true;
+            } else {
+                logger.warn("❌ Template personalizado '{}' configurado mas não encontrado para convênio: {}",
+                        config.getTemplatePersonalizado(), config.getConvenio().getName());
+            }
+        }
+
+        // Fallback: usar a lógica atual baseada no nome
+        return isFusexConvenio(config.getConvenio().getName());
+    }
+
+    @Override
     public boolean temTemplateEspecifico(String convenioNome) {
         if (convenioNome == null) return false;
-
-        // CORREÇÃO: Usar a mesma lógica robusta de identificação
         return isFusexConvenio(convenioNome);
     }
 
