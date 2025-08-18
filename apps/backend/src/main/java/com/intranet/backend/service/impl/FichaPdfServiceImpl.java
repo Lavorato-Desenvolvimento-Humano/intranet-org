@@ -1306,42 +1306,6 @@ public class FichaPdfServiceImpl implements FichaPdfService {
         return guia.getCreatedAt() != null && guia.getCreatedAt().isAfter(tresMesesAtras);
     }
 
-    private List<FichaPdfItemDto> processarGuiasParaFichas(List<Guia> guias, Integer mes, Integer ano) {
-        List<FichaPdfItemDto> itens = new ArrayList<>();
-
-        for (Guia guia : guias) {
-            // Processar cada especialidade da guia
-            if (guia.getEspecialidades() != null && !guia.getEspecialidades().isEmpty()) {
-                for (String especialidade : guia.getEspecialidades()) {
-                    FichaPdfItemDto item = criarItemFicha(guia, especialidade, mes, ano);
-
-                    // NOVO: Gerar HTML usando template específico do convênio
-                    String convenioNome = guia.getConvenio() != null ? guia.getConvenio().getName() : null;
-                    String htmlGerado = templateService.gerarHtmlComTemplateConvenio(item, convenioNome);
-
-                    // Armazenar o HTML no item para uso posterior
-                    item.setHtmlGerado(htmlGerado);
-
-                    itens.add(item);
-                }
-            } else {
-                // Criar ficha sem especialidade específica
-                FichaPdfItemDto item = criarItemFicha(guia, "Não informado", mes, ano);
-
-                // NOVO: Gerar HTML usando template específico do convênio
-                String convenioNome = guia.getConvenio() != null ? guia.getConvenio().getName() : null;
-                String htmlGerado = templateService.gerarHtmlComTemplateConvenio(item, convenioNome);
-
-                // Armazenar o HTML no item para uso posterior
-                item.setHtmlGerado(htmlGerado);
-
-                itens.add(item);
-            }
-        }
-
-        return itens;
-    }
-
     private List<FichaPdfItemDto> processarGuiasParaFichasComTemplate(List<Guia> guias, Integer mes, Integer ano) {
         List<FichaPdfItemDto> itens = new ArrayList<>();
 
