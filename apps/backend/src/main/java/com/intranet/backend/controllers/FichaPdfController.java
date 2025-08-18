@@ -324,6 +324,56 @@ public class FichaPdfController {
     }
 
     /**
+     * Lista templates disponíveis (apenas admins)
+     */
+    @GetMapping("/templates-disponiveis")
+    @PreAuthorize("hasAnyAuthority('ficha:admin') or hasAnyRole('ADMIN')")
+    public ResponseEntity<List<Map<String, Object>>> getTemplatesDisponiveis() {
+        logger.info("Requisição para listar templates disponíveis");
+
+        try {
+            List<Map<String, Object>> templates = fichaPdfService.getTemplatesDisponiveis();
+            return ResponseUtil.success(templates);
+        } catch (Exception e) {
+            logger.error("Erro ao listar templates: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    /**
+     * Atualiza template personalizado de um convênio (apenas admins)
+     */
+    @PutMapping("/convenios/{convenioId}/template")
+    @PreAuthorize("hasAnyAuthority('ficha:admin') or hasAnyRole('ADMIN')")
+    public ResponseEntity<Map<String, Object>> atualizarTemplateConvenio(
+            @PathVariable UUID convenioId,
+            @RequestParam(required = false) String templatePersonalizado) {
+        logger.info("Requisição para atualizar template do convênio {} para: {}",
+                convenioId, templatePersonalizado);
+
+        try {
+            fichaPdfService.atualizarTemplateConvenio(convenioId, templatePersonalizado);
+
+            Map<String, Object> response = Map.of(
+                    "message", "Template do convênio atualizado com sucesso",
+                    "convenioId", convenioId.toString(),
+                    "templatePersonalizado", templatePersonalizado != null ? templatePersonalizado : "padrão"
+            );
+
+            return ResponseUtil.success(response);
+        } catch (Exception e) {
+            logger.error("Erro ao atualizar template do convênio {}: {}", convenioId, e.getMessage());
+
+            Map<String, Object> errorResponse = Map.of(
+                    "error", "Erro ao atualizar template",
+                    "message", e.getMessage()
+            );
+
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+
+    /**
      * Prévia de geração - mostra quantos pacientes serão incluídos
      */
     @PostMapping("/convenio/previa")

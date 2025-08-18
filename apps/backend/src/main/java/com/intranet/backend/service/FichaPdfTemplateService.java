@@ -1,6 +1,7 @@
 package com.intranet.backend.service;
 
 import com.intranet.backend.dto.FichaPdfItemDto;
+import com.intranet.backend.model.ConvenioFichaPdfConfig;
 import org.springframework.stereotype.Service;
 
 public interface FichaPdfTemplateService {
@@ -24,6 +25,14 @@ public interface FichaPdfTemplateService {
     String gerarHtmlComTemplateConvenio(FichaPdfItemDto item, String convenioNome);
 
     /**
+     *
+     * @param item Dados da ficha
+     * @param config Configuração especifica do convênio (pode ser null)
+     * @return HTML completo da ficha
+     */
+    String gerarHtmlComConfiguracaoConvenio(FichaPdfItemDto item, ConvenioFichaPdfConfig config);
+
+    /**
      * Obtém template padrão
      */
     String getTemplatePadrao();
@@ -39,4 +48,11 @@ public interface FichaPdfTemplateService {
      * @return true se existe template específico
      */
     boolean temTemplateEspecifico(String convenioNome);
+
+    /**
+     *
+     * @param config Configuração do convênio
+     * @return true se existe template específico configurado
+     */
+    boolean temTemplateEspecificoPorConfig(ConvenioFichaPdfConfig config);
 }
