@@ -525,10 +525,29 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
             }
             
             .header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
+                display: table; /* Changed from flex */
+                width: 100%;
                 margin-bottom: 10px;
+            }
+            
+            .header-cell { /* New class for table cells */
+                display: table-cell;
+                vertical-align: middle;
+            }
+
+            .header-left {
+                width: 150px; /* Adjust as needed for logo */
+                text-align: left;
+            }
+
+            .header-center {
+                text-align: center;
+                /* flex-grow: 1; */ /* Not needed with table-cell */
+            }
+
+            .header-right {
+                width: 150px; /* Adjust as needed for identificacao */
+                text-align: right;
             }
             
             .header img {
@@ -540,7 +559,7 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
                 font-size: 18px;
                 margin: 0;
                 text-align: center;
-                flex-grow: 1;
+                /* flex-grow: 1; */ /* Removed */
             }
             
             .header .identificacao {
@@ -595,9 +614,15 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
     </head>
     <body>
         <div class="header fusex-header">
-            <img src="{LOGO_BASE64}" alt="Logo">
-            <h1>FICHA DE ASSINATURA</h1>
-            <div class="identificacao">ID: {NUMERO_IDENTIFICACAO}</div>
+            <div class="header-cell header-left">
+                <img src="{LOGO_BASE64}" alt="Logo">
+            </div>
+            <div class="header-cell header-center">
+                <h1>FICHA DE ASSINATURA</h1>
+            </div>
+            <div class="header-cell header-right">
+                <div class="identificacao">ID: {NUMERO_IDENTIFICACAO}</div>
+            </div>
         </div>
 
         <div class="info-header">
