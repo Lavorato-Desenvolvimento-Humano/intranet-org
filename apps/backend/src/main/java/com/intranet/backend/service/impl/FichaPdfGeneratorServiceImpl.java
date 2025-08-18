@@ -115,7 +115,23 @@ public class FichaPdfGeneratorServiceImpl implements FichaPdfGeneratorService {
                 item.getNumeroIdentificacao(), item.getPacienteNome());
 
         try {
-            String templateHtml = templateService.gerarHtmlFicha(item);
+            // ======= DEBUG TEMPORÁRIO =======
+            logger.info("🔍 DEBUG FICHA ÚNICA - Item: {}", item.getNumeroIdentificacao());
+            logger.info("🔍 HTML Gerado está NULL? {}", item.getHtmlGerado() == null);
+            if (item.getHtmlGerado() != null) {
+                logger.info("🔍 HTML Gerado tamanho: {} caracteres", item.getHtmlGerado().length());
+            }
+            // ===============================
+
+            String templateHtml;
+            if (StringUtils.hasText(item.getHtmlGerado())) {
+                templateHtml = item.getHtmlGerado();
+                logger.info("✅ Usando HTML pré-gerado para ficha única");
+            } else {
+                templateHtml = templateService.gerarHtmlFicha(item);
+                logger.warn("❌ Gerando HTML padrão para ficha única");
+            }
+
             return converterHtmlParaPdf(templateHtml);
 
         } catch (Exception e) {
@@ -191,17 +207,27 @@ public class FichaPdfGeneratorServiceImpl implements FichaPdfGeneratorService {
 
         for (FichaPdfItemDto item : itens) {
             try {
-                // CORREÇÃO: Usar o HTML já gerado (com template específico) se disponível
+                // ======= DEBUG TEMPORÁRIO =======
+                logger.info("🔍 DEBUG HTML - Item: {}", item.getNumeroIdentificacao());
+                logger.info("🔍 HTML Gerado está NULL? {}", item.getHtmlGerado() == null);
+                logger.info("🔍 HTML Gerado está vazio? {}", !StringUtils.hasText(item.getHtmlGerado()));
+                if (item.getHtmlGerado() != null) {
+                    logger.info("🔍 HTML Gerado tamanho: {} caracteres", item.getHtmlGerado().length());
+                    logger.info("🔍 HTML contém 'FUSEX'? {}", item.getHtmlGerado().contains("FUSEX"));
+                    logger.info("🔍 HTML contém 'fusex-header'? {}", item.getHtmlGerado().contains("fusex-header"));
+                }
+                // ===============================
+
                 String html;
                 if (StringUtils.hasText(item.getHtmlGerado())) {
                     // HTML já foi gerado com template específico do convênio (FUSEX, etc)
                     html = item.getHtmlGerado();
-                    logger.debug("Usando HTML pré-gerado com template específico para ficha: {}",
+                    logger.info("✅ Usando HTML pré-gerado com template específico para ficha: {}",
                             item.getNumeroIdentificacao());
                 } else {
                     // Fallback para geração padrão se HTML não foi pré-gerado
                     html = templateService.gerarHtmlFicha(item);
-                    logger.debug("Gerando HTML padrão para ficha: {}", item.getNumeroIdentificacao());
+                    logger.warn("❌ Gerando HTML padrão para ficha: {}", item.getNumeroIdentificacao());
                 }
 
                 byte[] fichaPdf = converterHtmlParaPdf(html);
