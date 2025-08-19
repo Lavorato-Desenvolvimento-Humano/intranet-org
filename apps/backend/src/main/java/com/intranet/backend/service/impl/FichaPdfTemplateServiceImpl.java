@@ -616,6 +616,27 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
                 text-align: left;
                 margin-bottom: 5px;
             }
+            .footer {
+                 margin-top: 20px;
+                 padding: 10px;
+                 border-top: 1px solid #ccc;
+                 font-size: 11px;
+            }
+            .footer p {
+                 margin: 3px 0;
+            }
+            .metadata {
+                  margin-top: 15px;
+                  padding: 8px;
+                  background-color: #f9f9f9;
+                  border: 1px solid #ddd;
+                  font-size: 10px;
+                  text-align: center;
+            }
+            .metadata span {
+                   margin: 0 15px;
+                   color: #666;
+            }
         </style>
     </head>
     <body>
@@ -627,13 +648,19 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
 
         <div class="info-header">
             <div class="section">
-                <label>Nome do Paciente:</label> {PACIENTE_NOME}
+                <label>Paciente:</label> {PACIENTE_NOME}
             </div>
             <div class="section">
                 <label>Especialidade:</label> {ESPECIALIDADE}
             </div>
             <div class="section">
-                <label>Mês:</label> {MES_EXTENSO}
+                <label>Mês de referência:</label> {MES_EXTENSO}
+            </div>
+            <div class="section">
+                <label>Convênio:</label> {CONVENIO_NOME}
+            </div>
+            <div class="section">
+                <label>Quantidade Autorizada:</label> {QUANTIDADE_AUTORIZADA}
             </div>
         </div>
 
@@ -648,6 +675,16 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
             <tbody>
                 {LINHAS_TABELA}
             </tbody>
+            <div class="footer">
+                 <p><strong>Instruções:</strong></p>
+                 <p>1. Preencher a data e assinar a cada atendimento realizado.</p>
+                 <p>2. Este documento é de uso obrigatório para faturamento junto ao convênio.</p>
+                 <p>3. Manter o documento em local seguro e apresentar quando solicitado.</p>
+            </div>
+            <div class="metadata">
+                  <span>Gerado em: {DATA_GERACAO}</span>
+                  <span>Sistema: Intranet v2.0</span>
+            </div>
         </table>
     </body>
     </html>
