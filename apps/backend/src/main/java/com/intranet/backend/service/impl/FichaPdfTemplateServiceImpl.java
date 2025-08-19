@@ -660,7 +660,7 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
                 <label>Convênio:</label> {CONVENIO_NOME}
             </div>
             <div class="section">
-                <label>Quantidade Autorizada:</label> {QUANTIDADE_AUTORIZADA}
+                <label>Quantidade Autorizada:</label> {QUANTIDADE_AUTORIZADA} sessões
             </div>
         </div>
 
@@ -675,17 +675,17 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
             <tbody>
                 {LINHAS_TABELA}
             </tbody>
-            <div class="footer">
-                 <p><strong>Instruções:</strong></p>
-                 <p>1. Preencher a data e assinar a cada atendimento realizado.</p>
-                 <p>2. Este documento é de uso obrigatório para faturamento junto ao convênio.</p>
-                 <p>3. Manter o documento em local seguro e apresentar quando solicitado.</p>
-            </div>
-            <div class="metadata">
-                  <span>Gerado em: {DATA_GERACAO}</span>
-                  <span>Sistema: Intranet v2.0</span>
-            </div>
         </table>
+         <div class="footer">
+               <p><strong>Instruções:</strong></p>
+               <p>1. Preencher a data e assinar a cada atendimento realizado.</p>
+               <p>2. Este documento é de uso obrigatório para faturamento junto ao convênio.</p>
+               <p>3. Manter o documento em local seguro e apresentar quando solicitado.</p>
+         </div>
+         <div class="metadata">
+                <span>Gerado em: {DATA_GERACAO}</span>
+                <span>Sistema: Intranet v2.0</span>
+         </div>
     </body>
     </html>
     """;
