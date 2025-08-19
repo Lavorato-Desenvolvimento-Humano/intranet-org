@@ -257,6 +257,12 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
             html = html.replace("{NUMERO_GUIA}",
                     StringUtils.hasText(item.getNumeroGuia()) ? item.getNumeroGuia() : "N/A");
 
+            html = html.replace("{CONVENIO_NOME}",
+                    StringUtils.hasText(item.getConvenioNome()) ? item.getConvenioNome() : "Não informado");
+
+            html = html.replace("{QUANTIDADE_AUTORIZADA}",
+                    item.getQuantidadeAutorizada() != null ? item.getQuantidadeAutorizada().toString() : "30");
+            
             // Tabela de sessões
             String linhasTabela = gerarLinhasTabela(item.getQuantidadeAutorizada());
             html = html.replace("{LINHAS_TABELA}", linhasTabela);
