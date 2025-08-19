@@ -568,113 +568,61 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Ficha de Assinatura - {NUMERO_IDENTIFICACAO}</title>
+        <title>Ficha de Assinatura</title>
         <style>
             body {
                 font-family: Arial, sans-serif;
                 font-size: 12px;
                 margin: 5px;
             }
-            
             .header {
-                display: table; /* Changed from flex */
-                width: 100%;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
                 margin-bottom: 10px;
             }
-            
-            .header-cell { /* New class for table cells */
-                display: table-cell;
-                vertical-align: middle;
-            }
-
-            .header-left {
-                width: 150px; /* Adjust as needed for logo */
-                text-align: left;
-            }
-
-            .header-center {
-                text-align: center;
-                /* flex-grow: 1; */ /* Not needed with table-cell */
-            }
-
-            .header-right {
-                width: 150px; /* Adjust as needed for identificacao */
-                text-align: right;
-            }
-            
             .header img {
                 width: 150px;
                 height: auto;
             }
-            
             .header h1 {
                 font-size: 18px;
                 margin: 0;
                 text-align: center;
-                /* flex-grow: 1; */ /* Removed */
+                flex-grow: 1;
             }
-            
             .header .identificacao {
                 font-size: 14px;
                 font-weight: bold;
             }
-            
             .section {
                 margin-bottom: 5px;
             }
-            
             .section label {
                 display: inline-block;
                 width: 200px;
                 font-weight: bold;
             }
-            
             .table {
                 width: 100%;
                 border-collapse: collapse;
-                margin-top: 15px;
             }
-            
             .table th, .table td {
                 border: 1px solid #000;
                 padding: 5px;
                 text-align: center;
             }
-            
-            .table th {
-                background-color: #f0f0f0;
-                font-weight: bold;
-            }
-            
             .info-header {
                 text-align: left;
-                margin-bottom: 15px;
-            }
-            
-            /* Específico para Fusex */
-            .fusex-header {
-                border-bottom: 2px solid #000;
-                padding-bottom: 10px;
-            }
-            
-            .fusex-instructions {
-                margin-top: 20px;
-                font-size: 10px;
-                font-style: italic;
+                margin-bottom: 5px;
             }
         </style>
     </head>
     <body>
-        <div class="header fusex-header">
-            <div class="header-cell header-left">
-                <img src="{LOGO_BASE64}" alt="Logo">
-            </div>
-            <div class="header-cell header-center">
-                <h1>FICHA DE ASSINATURA</h1>
-            </div>
-            <div class="header-cell header-right">
-                <div class="identificacao">ID: {NUMERO_IDENTIFICACAO}</div>
-            </div>
+        <div class="header">
+            <img src="{LOGO_BASE64}" alt="Logo">
+            <h1>FICHA DE ASSINATURA</h1>
+            <div class="identificacao">ID: {NUMERO_IDENTIFICACAO}</div>
         </div>
 
         <div class="info-header">
@@ -686,9 +634,6 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
             </div>
             <div class="section">
                 <label>Mês:</label> {MES_EXTENSO}
-            </div>
-            <div class="section">
-                <label>Convênio:</label> FUSEX
             </div>
         </div>
 
@@ -704,19 +649,6 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
                 {LINHAS_TABELA}
             </tbody>
         </table>
-        
-        <div class="fusex-instructions">
-            <p><strong>Instruções FUSEX:</strong></p>
-            <p>1. Preencher a data e assinar a cada atendimento realizado.</p>
-            <p>2. Este documento é de uso obrigatório para faturamento junto ao FUSEX.</p>
-            <p>3. Manter o documento em local seguro e apresentar quando solicitado.</p>
-        </div>
-
-        <div class="metadata">
-            <span>Gerado em: {DATA_GERACAO}</span>
-            <span>Guia: {NUMERO_GUIA}</span>
-            <span>Sistema: Intranet v2.0</span>
-        </div>
     </body>
     </html>
     """;
@@ -779,15 +711,19 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
         }
     }
 
+    /**
+     * Gera as linhas da tabela para o template FUSEX
+     * Sempre gera 30 linhas conforme especificação
+     */
     private String gerarLinhasTabela(Integer quantidadeAutorizada) {
         StringBuilder linhas = new StringBuilder();
 
-        // Usar quantidade autorizada ou padrão de 30 linhas
-        int numeroLinhas = quantidadeAutorizada != null ? quantidadeAutorizada : 30;
+        // Usar quantidade autorizada ou padrão de 30 linhas se não informado
+        int numeroLinhas = quantidadeAutorizada != null && quantidadeAutorizada > 0
+                ? quantidadeAutorizada
+                : 30;
 
-        // Garantir pelo menos 10 linhas e no máximo 50
-        numeroLinhas = Math.max(10, Math.min(50, numeroLinhas));
-
+        // Estrutura simples e limpa para o template FUSEX
         for (int i = 1; i <= numeroLinhas; i++) {
             linhas.append(String.format(
                     "<tr class=\"sessao-linha\">" +
@@ -799,6 +735,7 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
         }
 
         return linhas.toString();
+
     }
 
     private String carregarTemplate(String templateNome) {
