@@ -16,6 +16,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
 import java.util.Base64;
 import java.util.HashMap;
@@ -114,7 +116,7 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
 
                 String template = carregarTemplate(config.getTemplatePersonalizado());
                 if (template != null) {
-                    return preencherTemplate(template, item);
+                    return preencherTemplateComConvenio(template, item, config);
                 } else {
                     logger.warn("❌ Template personalizado '{}' não encontrado, usando fallback",
                             config.getTemplatePersonalizado());
@@ -127,7 +129,7 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
                 if (isFusexConvenio(convenioNome)) {
                     logger.info("✅ FUSEX identificado! Convênio: '{}' - Usando template específico", convenioNome);
                     String templateFusex = obterTemplateFusex();
-                    return preencherTemplate(templateFusex, item);
+                    return preencherTemplateComConvenio(templateFusex, item, config);
                 }
             }
 
@@ -215,6 +217,56 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
     public boolean temTemplateEspecifico(String convenioNome) {
         if (convenioNome == null) return false;
         return isFusexConvenio(convenioNome);
+    }
+
+    /**
+     * Preenche template com logo específica do convênio
+     */
+    private String preencherTemplateComConvenio(String template, FichaPdfItemDto item, ConvenioFichaPdfConfig config) {
+        logger.debug("Preenchendo template com logo específica para: {}", item.getPacienteNome());
+
+        String html = template;
+
+        try {
+            // Logo específica baseada no convênio
+            String convenioNome = config != null ? config.getConvenio().getName() : null;
+            String logoBase64 = obterLogoBase64(convenioNome);
+            html = html.replace("{LOGO_BASE64}", logoBase64);
+
+            // Resto do preenchimento (copiar do método original)
+            html = html.replace("{NUMERO_IDENTIFICACAO}",
+                    StringUtils.hasText(item.getNumeroIdentificacao()) ? item.getNumeroIdentificacao() : "N/A");
+
+            html = html.replace("{PACIENTE_NOME}",
+                    StringUtils.hasText(item.getPacienteNome()) ? item.getPacienteNome() : "Paciente não informado");
+
+            html = html.replace("{ESPECIALIDADE}",
+                    StringUtils.hasText(item.getEspecialidade()) ? item.getEspecialidade() : "Não informado");
+
+            html = html.replace("{MES_EXTENSO}",
+                    StringUtils.hasText(item.getMesExtenso()) ? item.getMesExtenso() : obterMesExtenso(item.getMes()));
+
+            html = html.replace("{ANO}",
+                    item.getAno() != null ? item.getAno().toString() : "2025");
+
+            // Data de geração
+            String dataGeracao = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+            html = html.replace("{DATA_GERACAO}", dataGeracao);
+
+            // Número da guia
+            html = html.replace("{NUMERO_GUIA}",
+                    StringUtils.hasText(item.getNumeroGuia()) ? item.getNumeroGuia() : "N/A");
+
+            // Tabela de sessões
+            String linhasTabela = gerarLinhasTabela(item.getQuantidadeAutorizada());
+            html = html.replace("{LINHAS_TABELA}", linhasTabela);
+
+            return html;
+
+        } catch (Exception e) {
+            logger.error("Erro ao preencher template com convênio: {}", e.getMessage(), e);
+            throw new RuntimeException("Erro no preenchimento: " + e.getMessage(), e);
+        }
     }
 
     @Override
@@ -677,7 +729,8 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
 
         try {
             // Logo em base64
-            String logoBase64 = obterLogoBase64();
+            String convenioNome = detectarConvenioDoItem(item);
+            String logoBase64 = obterLogoBase64(convenioNome);
             html = html.replace("{LOGO_BASE64}", logoBase64);
 
             // Dados básicos
@@ -774,19 +827,37 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
     }
 
     private String obterLogoBase64() {
-        try {
-            return logoCache.computeIfAbsent("logo_principal", k -> {
+       return obterLogoBase64(null);
+    }
+
+    private String obterLogoBase64(String convenioNome) {
+        // Determinar qual logo usar
+        String caminhoLogo; // Padrão
+        String cacheKey = "logo_principal"; // Cache padrão
+
+        if ("Fusex".equalsIgnoreCase(convenioNome)) {
+            caminhoLogo = "classpath:static/images/logo-fusex.png";
+            cacheKey = "logo_fusex";
+            logger.debug("✅ Usando logo específica do FUSEX");
+        } else {
+            caminhoLogo = logoPath;
+            logger.debug("Usando logo padrão para convênio: {}", convenioNome);
+        }
+
+        return logoCache.computeIfAbsent(cacheKey, k -> {
+            try {
+                return converterImagemParaBase64(caminhoLogo);
+            } catch (Exception e) {
+                logger.warn("Erro ao carregar logo '{}', usando padrão: {}", caminhoLogo, e.getMessage());
+                // Fallback para logo padrão
                 try {
                     return converterImagemParaBase64(logoPath);
-                } catch (Exception e) {
-                    logger.warn("Erro ao carregar logo, usando placeholder: {}", e.getMessage());
+                } catch (Exception fallbackError) {
+                    logger.error("Erro até na logo padrão: {}", fallbackError.getMessage());
                     return criarImagemPlaceholder();
                 }
-            });
-        } catch (Exception e) {
-            logger.error("Erro ao obter logo base64: {}", e.getMessage());
-            return criarImagemPlaceholder();
-        }
+            }
+        });
     }
 
     private String converterImagemParaBase64(String caminhoImagem) throws IOException {
@@ -896,5 +967,15 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
             logger.warn("Erro ao obter mês por extenso para {}: {}", mes, e.getMessage());
             return "Mês " + mes;
         }
+    }
+
+    /**
+     * Detecta o nome do convênio a partir do item (se disponível)
+     */
+    private String detectarConvenioDoItem(FichaPdfItemDto item) {
+        if (item != null && StringUtils.hasText(item.getConvenioNome())) {
+            return item.getConvenioNome();
+        }
+        return null; // Usará logo padrão
     }
 }
