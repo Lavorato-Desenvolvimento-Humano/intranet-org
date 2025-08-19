@@ -836,7 +836,7 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
         String cacheKey = "logo_principal"; // Cache padrão
 
         if ("Fusex".equalsIgnoreCase(convenioNome)) {
-            caminhoLogo = "classpath:static/images/logo-fusex.png";
+            caminhoLogo = "classpath:static/images/logo-fusex.jpeg";
             cacheKey = "logo_fusex";
             logger.debug("✅ Usando logo específica do FUSEX");
         } else {
