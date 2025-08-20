@@ -616,139 +616,99 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Ficha de Assinatura - {NUMERO_IDENTIFICACAO}</title>
+        <title>Ficha de Assinatura</title>
         <style>
             body {
                 font-family: Arial, sans-serif;
                 font-size: 12px;
                 margin: 5px;
             }
-            
             .header {
-                display: table;
-                width: 100%;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
                 margin-bottom: 10px;
             }
-            
-            .header-cell {
-                display: table-cell;
-                vertical-align: middle;
-            }
-
-            .header-left {
-                width: 150px;
-                text-align: left;
-            }
-
-            .header-center {
-                text-align: center;
-            }
-
-            .header-right {
-                width: 150px;
-                text-align: right;
-            }
-            
             .header img {
                 width: 150px;
                 height: auto;
             }
-            
             .header h1 {
                 font-size: 18px;
                 margin: 0;
                 text-align: center;
+                flex-grow: 1;
             }
-            
             .header .identificacao {
                 font-size: 14px;
                 font-weight: bold;
             }
-            
             .section {
                 margin-bottom: 5px;
             }
-            
             .section label {
                 display: inline-block;
                 width: 200px;
                 font-weight: bold;
             }
-            
             .table {
                 width: 100%;
                 border-collapse: collapse;
-                margin-top: 15px;
             }
-            
             .table th, .table td {
                 border: 1px solid #000;
                 padding: 5px;
                 text-align: center;
             }
-            
-            .table th {
-                background-color: #f0f0f0;
-                font-weight: bold;
-            }
-            
             .info-header {
                 text-align: left;
-                margin-bottom: 15px;
+                margin-bottom: 5px;
             }
-            
-            /* Específico para CBMDF */
-            .cbmdf-header {
-                border-bottom: 2px solid #d32f2f; /* Cor vermelha dos bombeiros */
-                padding-bottom: 10px;
+            .footer {
+                 margin-top: 20px;
+                 padding: 10px;
+                 border-top: 1px solid #ccc;
+                 font-size: 11px;
             }
-            
-            .cbmdf-instructions {
-                background-color: #ffebee; /* Fundo levemente avermelhado */
-                border: 1px solid #d32f2f;
-                border-radius: 4px;
-                padding: 10px;
-                margin-top: 20px;
-                font-size: 10px;
-                font-style: italic;
+            .footer p {
+                 margin: 3px 0;
             }
-            
-            .cbmdf-header h1 {
-                color: #d32f2f; /* Título em vermelho */
-            }
-            
             .metadata {
-                margin-top: 20px;
-                font-size: 10px;
-                font-style: italic;
+                  margin-top: 15px;
+                  padding: 8px;
+                  background-color: #f9f9f9;
+                  border: 1px solid #ddd;
+                  font-size: 10px;
+                  text-align: center;
+            }
+            .metadata span {
+                   margin: 0 15px;
+                   color: #666;
             }
         </style>
     </head>
     <body>
-        <div class="header cbmdf-header">
-            <div class="header-cell header-left">
-                <img src="{LOGO_BASE64}" alt="Logo CBMDF">
-            </div>
-            <div class="header-cell header-center">
-                <h1>FICHA DE ASSINATURA</h1>
-            </div>
-            <div class="header-cell header-right">
-                <div class="identificacao">ID: {NUMERO_IDENTIFICACAO}</div>
-            </div>
+        <div class="header">
+            <img src="{LOGO_BASE64}" alt="Logo">
+            <h1>FICHA DE ASSINATURA</h1>
+            <div class="identificacao">ID: {NUMERO_IDENTIFICACAO}</div>
         </div>
 
         <div class="info-header">
             <div class="section">
-                <label>Nome do Paciente:</label> {PACIENTE_NOME}
+                <label>Paciente:</label> {PACIENTE_NOME}
             </div>
             <div class="section">
                 <label>Especialidade:</label> {ESPECIALIDADE}
             </div>
             <div class="section">
-                <label>Mês:</label> {MES_EXTENSO}
+                <label>Mês de referência:</label> {MES_EXTENSO}
             </div>
             <div class="section">
-                <label>Convênio:</label> CBMDF
+                <label>Convênio:</label> {CONVENIO_NOME}
+            </div>
+            <div class="section">
+                <label>Quantidade Autorizada:</label> {QUANTIDADE_AUTORIZADA} sessões
             </div>
         </div>
 
@@ -764,20 +724,16 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
                 {LINHAS_TABELA}
             </tbody>
         </table>
-        
-        <div class="cbmdf-instructions">
-            <p><strong>Instruções CBMDF:</strong></p>
-            <p>1. Preencher a data e assinar a cada atendimento realizado.</p>
-            <p>2. Este documento é de uso obrigatório para faturamento junto ao CBMDF.</p>
-            <p>3. Manter o documento em local seguro e apresentar quando solicitado.</p>
-            <p>4. Em caso de dúvidas, entrar em contato com o setor administrativo.</p>
-        </div>
-
-        <div class="metadata">
-            <span>Gerado em: {DATA_GERACAO}</span>
-            <span>Guia: {NUMERO_GUIA}</span>
-            <span>Sistema: Intranet v2.0</span>
-        </div>
+         <div class="footer">
+               <p><strong>Instruções:</strong></p>
+               <p>1. Preencher a data e assinar a cada atendimento realizado.</p>
+               <p>2. Este documento é de uso obrigatório para faturamento junto ao convênio.</p>
+               <p>3. Manter o documento em local seguro e apresentar quando solicitado.</p>
+         </div>
+         <div class="metadata">
+                <span>Gerado em: {DATA_GERACAO}</span>
+                <span>Sistema: Intranet v2.0</span>
+         </div>
     </body>
     </html>
     """;
