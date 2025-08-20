@@ -764,8 +764,9 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
                 margin-bottom: 10px;
             }
             .header img {
-                width: 150px;
+                width: 80px;
                 height: auto;
+                max-height: 50px;
             }
             .header h1 {
                 font-size: 18px;
