@@ -995,6 +995,10 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
             caminhoLogo = "classpath:static/images/logo-fusex.jpeg";
             cacheKey = "logo_fusex";
             logger.debug("✅ Usando logo específica do FUSEX");
+        }else if ("Cbmdf".equalsIgnoreCase(convenioNome)) {
+            caminhoLogo = "classpath:static/images/logo-cbmdf.jpg";
+            cacheKey = "logo_cbmdf";
+            logger.debug("✅ Usando logo específica do CBMDF");
         } else {
             caminhoLogo = logoPath;
             logger.debug("Usando logo padrão para convênio: {}", convenioNome);
