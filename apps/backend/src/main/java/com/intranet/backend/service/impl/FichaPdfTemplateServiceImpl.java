@@ -88,6 +88,9 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
                 logger.info("✅ FUSEX identificado! Convênio: '{}' - Usando template específico", convenioNome);
                 String templateFusex = obterTemplateFusex();
                 return preencherTemplate(templateFusex, item);
+            } else if (isCbmdfConvenio(convenioNome)) {
+                String templateCbmdf = obterTemplateCbmdf();
+                return preencherTemplate(templateCbmdf, item);
             }
 
             // Para outros convênios, usar template padrão
@@ -130,6 +133,10 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
                     logger.info("✅ FUSEX identificado! Convênio: '{}' - Usando template específico", convenioNome);
                     String templateFusex = obterTemplateFusex();
                     return preencherTemplateComConvenio(templateFusex, item, config);
+                } else if (isCbmdfConvenio(convenioNome)) {
+                    logger.info("✅ CBMDF identificado! Convênio: '{}' - Usando template específico", convenioNome);
+                    String templateCbmdf = obterTemplateCbmdf();
+                    return preencherTemplateComConvenio(templateCbmdf, item, config);
                 }
             }
 
@@ -144,6 +151,33 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
             logger.warn("Usando template padrão como fallback");
             return gerarHtmlFicha(item);
         }
+    }
+
+    private boolean isCbmdfConvenio(String convenioNome) {
+        if (convenioNome == null) return false;
+
+        String nome = convenioNome.toUpperCase().trim();
+
+        String[] variacoesCbmdf = {
+                "CBMDF",
+                "CORPO DE BOMBEIROS",
+                "CORPO DE BOMBEIROS MILITAR",
+                "CORPO DE BOMBEIROS DF",
+                "CORPO DE BOMBEIROS DISTRITO FEDERAL",
+                "CBMDF - CORPO DE BOMBEIROS",
+                "BOMBEIROS DF",
+                "BOMBEIROS MILITAR DF",
+        };
+
+        for (String variacao : variacoesCbmdf) {
+            if (nome.contains(variacao)) {
+                logger.debug("✅ Convênio '{}' identificado como CBMDF (variação '{}')", convenioNome, variacao);
+                return true;
+            }
+        }
+
+        logger.debug("❌ Convênio '{}' não é CBMDF", convenioNome);
+        return false;
     }
 
     private boolean isFusexConvenio(String convenioNome) {
@@ -184,6 +218,13 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
         });
     }
 
+    private String obterTemplateCbmdf() {
+        return templateCache.computeIfAbsent("template_cbmdf", k -> {
+            logger.debug("Carregando template do CBMDF");
+            return criarTemplateCbmdf();
+        });
+    }
+
     private String obterTemplateFusex() {
         return templateCache.computeIfAbsent("template_fusex", k -> {
             logger.debug("Carregando template do FUSEX");
@@ -210,13 +251,14 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
         }
 
         // Fallback: usar a lógica atual baseada no nome
-        return isFusexConvenio(config.getConvenio().getName());
+        String convenioNome = config.getConvenio().getName();
+        return isFusexConvenio(convenioNome) || isCbmdfConvenio(convenioNome);
     }
 
     @Override
     public boolean temTemplateEspecifico(String convenioNome) {
         if (convenioNome == null) return false;
-        return isFusexConvenio(convenioNome);
+        return isFusexConvenio(convenioNome) || isCbmdfConvenio(convenioNome);
     }
 
     /**
@@ -561,6 +603,140 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
     </body>
     </html>
      """;
+    }
+
+    /**
+     * Template específico para o Cbmdf
+     * Baseado no sistema legado em PHP
+     */
+    private String criarTemplateCbmdf() {
+        return """
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Ficha de Assinatura</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                font-size: 12px;
+                margin: 5px;
+            }
+            .header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 10px;
+            }
+            .header img {
+                width: 150px;
+                height: auto;
+            }
+            .header h1 {
+                font-size: 18px;
+                margin: 0;
+                text-align: center;
+                flex-grow: 1;
+            }
+            .header .identificacao {
+                font-size: 14px;
+                font-weight: bold;
+            }
+            .section {
+                margin-bottom: 5px;
+            }
+            .section label {
+                display: inline-block;
+                width: 200px;
+                font-weight: bold;
+            }
+            .table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+            .table th, .table td {
+                border: 1px solid #000;
+                padding: 5px;
+                text-align: center;
+            }
+            .info-header {
+                text-align: left;
+                margin-bottom: 5px;
+            }
+            .footer {
+                 margin-top: 20px;
+                 padding: 10px;
+                 border-top: 1px solid #ccc;
+                 font-size: 11px;
+            }
+            .footer p {
+                 margin: 3px 0;
+            }
+            .metadata {
+                  margin-top: 15px;
+                  padding: 8px;
+                  background-color: #f9f9f9;
+                  border: 1px solid #ddd;
+                  font-size: 10px;
+                  text-align: center;
+            }
+            .metadata span {
+                   margin: 0 15px;
+                   color: #666;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <img src="{LOGO_BASE64}" alt="logo-cbmdf">
+            <h1>FICHA DE ASSINATURA</h1>
+            <div class="identificacao">ID: {NUMERO_IDENTIFICACAO}</div>
+        </div>
+
+        <div class="info-header">
+            <div class="section">
+                <label>Paciente:</label> {PACIENTE_NOME}
+            </div>
+            <div class="section">
+                <label>Especialidade:</label> {ESPECIALIDADE}
+            </div>
+            <div class="section">
+                <label>Mês de referência:</label> {MES_EXTENSO}
+            </div>
+            <div class="section">
+                <label>Convênio:</label> {CONVENIO_NOME}
+            </div>
+            <div class="section">
+                <label>Quantidade Autorizada:</label> {QUANTIDADE_AUTORIZADA} sessões
+            </div>
+        </div>
+
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Nº</th>
+                    <th>Data de Atendimento</th>
+                    <th>Assinatura do Responsável</th>
+                </tr>
+            </thead>
+            <tbody>
+                {LINHAS_TABELA}
+            </tbody>
+        </table>
+         <div class="footer">
+               <p><strong>Instruções:</strong></p>
+               <p>1. Preencher a data e assinar a cada atendimento realizado.</p>
+               <p>2. Este documento é de uso obrigatório para faturamento junto ao convênio.</p>
+               <p>3. Manter o documento em local seguro e apresentar quando solicitado.</p>
+         </div>
+         <div class="metadata">
+                <span>Gerado em: {DATA_GERACAO}</span>
+                <span>Sistema: Intranet v2.0</span>
+         </div>
+    </body>
+    </html>
+    """;
     }
 
     /**
