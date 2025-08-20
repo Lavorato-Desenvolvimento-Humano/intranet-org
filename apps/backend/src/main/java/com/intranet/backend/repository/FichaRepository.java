@@ -204,9 +204,13 @@ public interface FichaRepository extends JpaRepository<Ficha, UUID> {
     /**
      * Lista fichas existentes por convênio/mês/ano
      */
-    @Query("SELECT f FROM Ficha f WHERE f.convenio.id = :convenioId " +
+    @Query("SELECT f FROM Ficha f " +
+            "LEFT JOIN f.paciente p " +
+            "LEFT JOIN f.guia g " +
+            "LEFT JOIN g.paciente gp " +
+            "WHERE f.convenio.id = :convenioId " +
             "AND f.mes = :mes AND f.ano = :ano " +
-            "ORDER BY f.paciente.nome, f.especialidade")
+            "ORDER BY COALESCE(p.nome, gp.nome), f.especialidade")
     List<Ficha> findFichasExistentesPorConvenioMesAno(
             @Param("convenioId") UUID convenioId,
             @Param("mes") Integer mes,
