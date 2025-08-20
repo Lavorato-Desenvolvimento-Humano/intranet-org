@@ -689,7 +689,7 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
     </head>
     <body>
         <div class="header">
-            <img src="{LOGO_BASE64}" alt="Logo">
+            <img src="{LOGO_BASE64}" alt="logo-cbmdf">
             <h1>FICHA DE ASSINATURA</h1>
             <div class="identificacao">ID: {NUMERO_IDENTIFICACAO}</div>
         </div>
