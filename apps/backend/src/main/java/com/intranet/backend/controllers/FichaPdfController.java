@@ -28,6 +28,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -383,18 +384,101 @@ public class FichaPdfController {
                 request.getConvenioId(), request.getMes(), request.getAno());
 
         try {
-            // Buscar todos os pacientes do convênio
+            // 1. BUSCAR TODOS OS PACIENTES DO CONVÊNIO
             List<Paciente> todosPacientes = pacienteRepository.findByConvenioId(request.getConvenioId());
             List<UUID> todosPacientesIds = todosPacientes.stream().map(Paciente::getId).collect(Collectors.toList());
 
-            // Filtrar pacientes sem fichas
+            logger.info("Pacientes encontrados no convênio {}: {}", request.getConvenioId(), todosPacientes.size());
+
+            if (todosPacientes.isEmpty()) {
+                // Resposta para convênio sem pacientes
+                Map<String, Object> previaVazia = criarPreviaVazia(request, "Nenhum paciente encontrado no convênio");
+                return ResponseUtil.success(previaVazia);
+            }
+
+            // 2. FILTRAR PACIENTES SEM FICHAS NO PERÍODO
             List<UUID> pacientesSemFichas = fichaVerificationService.filtrarPacientesSemFichas(
                     request.getConvenioId(), request.getMes(), request.getAno(), todosPacientesIds);
 
-            // Estatísticas existentes
-            Map<String, Object> estatisticasExistentes = fichaVerificationService
-                    .getEstatisticasFichasConvenio(request.getConvenioId(), request.getMes(), request.getAno());
+            logger.info("Pacientes sem fichas no período {}/{}: {}", request.getMes(), request.getAno(), pacientesSemFichas.size());
 
+            // 3. OBTER ESTATÍSTICAS DAS FICHAS EXISTENTES (independente do filtro)
+            Map<String, Object> estatisticasExistentes;
+            try {
+                estatisticasExistentes = fichaVerificationService
+                        .getEstatisticasFichasConvenio(request.getConvenioId(), request.getMes(), request.getAno());
+            } catch (Exception e) {
+                logger.warn("Erro ao obter estatísticas existentes, usando estrutura padrão: {}", e.getMessage());
+                estatisticasExistentes = criarEstatisticasPadrao(request.getConvenioId(), request.getMes(), request.getAno());
+            }
+
+            // 4. GARANTIR ESTRUTURA CONSISTENTE
+            estatisticasExistentes = garantirEstruturaPadrao(estatisticasExistentes, request.getConvenioId(), request.getMes(), request.getAno());
+
+            // 5. CALCULAR PACIENTES COM FICHAS (baseado na diferença)
+            int pacientesComFichas = todosPacientes.size() - pacientesSemFichas.size();
+
+            // 6. VERIFICAR CONSISTÊNCIA DOS DADOS
+            Integer totalFichasExistentes = (Integer) estatisticasExistentes.get("totalFichas");
+            Integer totalPacientesEstatisticas = (Integer) estatisticasExistentes.get("totalPacientes");
+
+            logger.info("=== VERIFICAÇÃO DE CONSISTÊNCIA ===");
+            logger.info("Total pacientes convênio: {}", todosPacientes.size());
+            logger.info("Pacientes com fichas (calculado): {}", pacientesComFichas);
+            logger.info("Pacientes sem fichas: {}", pacientesSemFichas.size());
+            logger.info("Total fichas existentes (estatísticas): {}", totalFichasExistentes);
+            logger.info("Total pacientes (estatísticas): {}", totalPacientesEstatisticas);
+
+            // 7. CORRIGIR INCONSISTÊNCIAS SE NECESSÁRIO
+            if (pacientesComFichas > 0 && totalFichasExistentes == 0) {
+                logger.warn("INCONSISTÊNCIA DETECTADA: {} pacientes com fichas mas 0 fichas nas estatísticas", pacientesComFichas);
+
+                // Se o filtro indica que há pacientes com fichas, mas as estatísticas mostram 0,
+                // provavelmente há um problema na consulta das estatísticas
+                // Vamos buscar as fichas diretamente para verificar
+                List<Ficha> fichasVerificacao = fichaRepository.findFichasExistentesPorConvenioMesAno(
+                        request.getConvenioId(), request.getMes(), request.getAno());
+
+                logger.info("Verificação direta: {} fichas encontradas no período", fichasVerificacao.size());
+
+                if (fichasVerificacao.size() > 0) {
+                    // Há fichas, mas as estatísticas estão erradas - vamos recalcular
+                    logger.info("Recalculando estatísticas devido à inconsistência...");
+
+                    // Recriar estatísticas com dados corretos
+                    Map<String, Long> fichasPorEspecialidade = fichasVerificacao.stream()
+                            .filter(f -> f.getEspecialidade() != null)
+                            .collect(Collectors.groupingBy(Ficha::getEspecialidade, Collectors.counting()));
+
+                    Map<String, Long> fichasPorStatus = fichasVerificacao.stream()
+                            .filter(f -> f.getStatus() != null)
+                            .collect(Collectors.groupingBy(Ficha::getStatus, Collectors.counting()));
+
+                    Set<UUID> pacientesUnicosFichas = fichasVerificacao.stream()
+                            .map(f -> f.getPaciente() != null ? f.getPaciente().getId() :
+                                    (f.getGuia() != null ? f.getGuia().getPaciente().getId() : null))
+                            .filter(Objects::nonNull)
+                            .collect(Collectors.toSet());
+
+                    // Atualizar estatísticas
+                    estatisticasExistentes.put("totalFichas", fichasVerificacao.size());
+                    estatisticasExistentes.put("totalPacientes", pacientesUnicosFichas.size());
+                    estatisticasExistentes.put("fichasPorEspecialidade", fichasPorEspecialidade);
+                    estatisticasExistentes.put("fichasPorStatus", fichasPorStatus);
+                    estatisticasExistentes.put("especialidadesCobertas", new ArrayList<>(fichasPorEspecialidade.keySet()));
+
+                    // Recalcular pacientes com fichas baseado nos dados corretos
+                    pacientesComFichas = pacientesUnicosFichas.size();
+                    pacientesSemFichas = todosPacientesIds.stream()
+                            .filter(pid -> !pacientesUnicosFichas.contains(pid))
+                            .collect(Collectors.toList());
+
+                    logger.info("Após recálculo: {} pacientes com fichas, {} sem fichas",
+                            pacientesComFichas, pacientesSemFichas.size());
+                }
+            }
+
+            // 8. GERAR RECOMENDAÇÃO BASEADA EM DADOS CORRETOS
             String recomendacao;
             if (pacientesSemFichas.isEmpty()) {
                 recomendacao = "Todos os pacientes já possuem fichas para este período";
@@ -402,32 +486,39 @@ public class FichaPdfController {
                 recomendacao = "Nenhum paciente possui fichas - geração completa recomendada";
             } else {
                 recomendacao = String.format("Geração recomendada para %d de %d pacientes (%d já possuem fichas)",
-                        pacientesSemFichas.size(), todosPacientes.size(), todosPacientes.size() - pacientesSemFichas.size());
+                        pacientesSemFichas.size(), todosPacientes.size(), pacientesComFichas);
             }
 
-            Map<String, Object> previa = Map.of(
-                    "totalPacientesConvenio", todosPacientes.size(),
-                    "pacientesComFichas", todosPacientes.size() - pacientesSemFichas.size(),
-                    "pacientesSemFichas", pacientesSemFichas.size(),
-                    "seraGeradoPara", pacientesSemFichas.size(),
-                    "fichasExistentes", estatisticasExistentes,
-                    "recomendacao", recomendacao,
-                    "eficiencia", pacientesSemFichas.size() > 0 ?
-                            String.format("%.1f%% de otimização",
-                                    (double)(todosPacientes.size() - pacientesSemFichas.size()) / todosPacientes.size() * 100) :
-                            "Nenhuma otimização"
-            );
+            // 9. CALCULAR EFICIÊNCIA
+            double eficiencia = 0.0;
+            if (todosPacientes.size() > 0 && pacientesSemFichas.size() > 0) {
+                eficiencia = Math.round(((double) pacientesSemFichas.size() / todosPacientes.size()) * 100.0 * 100.0) / 100.0;
+            }
+
+            // 10. CRIAR RESPOSTA FINAL CONSISTENTE
+            Map<String, Object> previa = new HashMap<>();
+            previa.put("totalPacientesConvenio", todosPacientes.size());
+            previa.put("pacientesComFichas", pacientesComFichas);
+            previa.put("pacientesSemFichas", pacientesSemFichas.size());
+            previa.put("seraGeradoPara", pacientesSemFichas.size());
+            previa.put("fichasExistentes", estatisticasExistentes);
+            previa.put("recomendacao", recomendacao);
+            previa.put("eficiencia", eficiencia);
+            previa.put("periodo", request.getMes() + "/" + request.getAno());
+            previa.put("convenioId", request.getConvenioId().toString());
+            previa.put("dataConsulta", LocalDateTime.now());
+
+            // Log final para auditoria
+            logger.info("Prévia gerada - Total: {}, Com fichas: {}, Sem fichas: {}, Serão geradas: {}, Eficiência: {}%",
+                    todosPacientes.size(), pacientesComFichas, pacientesSemFichas.size(),
+                    pacientesSemFichas.size(), eficiencia);
 
             return ResponseUtil.success(previa);
+
         } catch (Exception e) {
-            logger.error("Erro ao gerar prévia: {}", e.getMessage());
+            logger.error("Erro ao gerar prévia de geração do convênio {}: {}", request.getConvenioId(), e.getMessage(), e);
 
-            Map<String, Object> errorResponse = Map.of(
-                    "error", "Erro ao gerar prévia: " + e.getMessage(),
-                    "convenioId", request.getConvenioId(),
-                    "periodo", request.getMes() + "/" + request.getAno()
-            );
-
+            Map<String, Object> errorResponse = criarPreviaErro(request, e.getMessage());
             return ResponseEntity.badRequest().body(errorResponse);
         }
     }
@@ -1236,5 +1327,121 @@ public class FichaPdfController {
                 hasGuiasVencidas,
                 paciente.getCreatedAt()
         );
+    }
+
+    /**
+     * Cria uma estrutura padrão de estatísticas para evitar erros de null/undefined
+     */
+    private Map<String, Object> criarEstatisticasPadrao(UUID convenioId, Integer mes, Integer ano) {
+        Map<String, Object> estatisticas = new HashMap<>();
+
+        estatisticas.put("convenioId", convenioId.toString());
+        estatisticas.put("convenioNome", "Nome não disponível");
+        estatisticas.put("totalFichas", 0);
+        estatisticas.put("totalPacientes", 0);
+        estatisticas.put("fichasGeradasMes", 0);
+        estatisticas.put("fichasGeradasAno", 0);
+        estatisticas.put("pacientesAtivos", 0);
+        estatisticas.put("especialidadesCobertas", new ArrayList<String>());
+        estatisticas.put("fichasPorEspecialidade", new HashMap<String, Long>());
+        estatisticas.put("fichasPorStatus", new HashMap<String, Long>());
+        estatisticas.put("primeiraFicha", null);
+        estatisticas.put("ultimaFicha", null);
+        estatisticas.put("mediaFichasPorPaciente", 0.0);
+        estatisticas.put("mes", mes);
+        estatisticas.put("ano", ano);
+        estatisticas.put("geradoEm", LocalDateTime.now());
+
+        return estatisticas;
+    }
+
+    /**
+     * Garante que a estrutura de estatísticas tenha todos os campos necessários
+     */
+    private Map<String, Object> garantirEstruturaPadrao(Map<String, Object> estatisticas, UUID convenioId, Integer mes, Integer ano) {
+        if (estatisticas == null) {
+            return criarEstatisticasPadrao(convenioId, mes, ano);
+        }
+
+        Map<String, Object> estatisticasSeguras = new HashMap<>(estatisticas);
+
+        // Garantir que campos críticos não sejam null
+        if (estatisticasSeguras.get("fichasPorEspecialidade") == null) {
+            estatisticasSeguras.put("fichasPorEspecialidade", new HashMap<String, Long>());
+        }
+
+        if (estatisticasSeguras.get("fichasPorStatus") == null) {
+            estatisticasSeguras.put("fichasPorStatus", new HashMap<String, Long>());
+        }
+
+        if (estatisticasSeguras.get("especialidadesCobertas") == null) {
+            estatisticasSeguras.put("especialidadesCobertas", new ArrayList<String>());
+        }
+
+        if (estatisticasSeguras.get("totalFichas") == null) {
+            estatisticasSeguras.put("totalFichas", 0);
+        }
+
+        if (estatisticasSeguras.get("totalPacientes") == null) {
+            estatisticasSeguras.put("totalPacientes", 0);
+        }
+
+        if (estatisticasSeguras.get("mediaFichasPorPaciente") == null) {
+            estatisticasSeguras.put("mediaFichasPorPaciente", 0.0);
+        }
+
+        if (estatisticasSeguras.get("convenioId") == null) {
+            estatisticasSeguras.put("convenioId", convenioId.toString());
+        }
+
+        if (estatisticasSeguras.get("mes") == null) {
+            estatisticasSeguras.put("mes", mes);
+        }
+
+        if (estatisticasSeguras.get("ano") == null) {
+            estatisticasSeguras.put("ano", ano);
+        }
+
+        return estatisticasSeguras;
+    }
+
+    /**
+     * Cria uma prévia vazia para casos onde não há pacientes
+     */
+    private Map<String, Object> criarPreviaVazia(FichaPdfConvenioRequest request, String motivo) {
+        Map<String, Object> previa = new HashMap<>();
+        previa.put("totalPacientesConvenio", 0);
+        previa.put("pacientesComFichas", 0);
+        previa.put("pacientesSemFichas", 0);
+        previa.put("seraGeradoPara", 0);
+        previa.put("fichasExistentes", criarEstatisticasPadrao(request.getConvenioId(), request.getMes(), request.getAno()));
+        previa.put("recomendacao", motivo);
+        previa.put("eficiencia", 0.0);
+        previa.put("periodo", request.getMes() + "/" + request.getAno());
+        previa.put("convenioId", request.getConvenioId().toString());
+        previa.put("dataConsulta", LocalDateTime.now());
+
+        return previa;
+    }
+
+    /**
+     * Cria uma prévia de erro com estrutura consistente
+     */
+    private Map<String, Object> criarPreviaErro(FichaPdfConvenioRequest request, String mensagemErro) {
+        Map<String, Object> errorResponse = new HashMap<>();
+        errorResponse.put("erro", true);
+        errorResponse.put("mensagem", "Erro ao gerar prévia: " + mensagemErro);
+        errorResponse.put("convenioId", request.getConvenioId().toString());
+        errorResponse.put("periodo", request.getMes() + "/" + request.getAno());
+        errorResponse.put("totalPacientesConvenio", 0);
+        errorResponse.put("pacientesComFichas", 0);
+        errorResponse.put("pacientesSemFichas", 0);
+        errorResponse.put("seraGeradoPara", 0);
+        errorResponse.put("eficiencia", 0.0);
+        errorResponse.put("recomendacao", "Erro ao calcular prévia - tente novamente");
+        errorResponse.put("fichasExistentes", criarEstatisticasPadrao(request.getConvenioId(), request.getMes(), request.getAno()));
+        errorResponse.put("dataConsulta", LocalDateTime.now());
+
+        return errorResponse;
     }
 }

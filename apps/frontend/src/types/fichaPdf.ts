@@ -154,18 +154,38 @@ export interface FichaPdfPreviaRequest {
 }
 
 export interface FichaPdfPreviaDto {
-  totalFichasEstimadas: number;
-  fichasPorConvenio: Record<string, number>;
-  fichasPorEspecialidade: Record<string, number>;
-  fichasPorUnidade: Record<string, number>;
-  pacientesComFichas: {
-    pacienteId: string;
-    pacienteNome: string;
+  totalPacientesConvenio: number;
+  pacientesComFichas: number;
+  pacientesSemFichas: number;
+  seraGeradoPara: number;
+  eficiencia: number;
+  recomendacao: string;
+  periodo: string;
+  convenioId: string;
+  dataConsulta: string;
+  fichasExistentes: {
+    convenioId: string;
+    convenioNome: string;
     totalFichas: number;
-    especialidades: string[];
-  }[];
-  avisos: string[];
-  bloqueios: string[];
+    totalPacientes: number;
+    fichasGeradasMes: number;
+    fichasGeradasAno: number;
+    pacientesAtivos: number;
+    especialidadesCobertas: string[];
+    fichasPorEspecialidade: Record<string, number>;
+    fichasPorStatus: Record<string, number>;
+    primeiraFicha?: string;
+    ultimaFicha?: string;
+    mediaFichasPorPaciente: number;
+    mes: number;
+    ano: number;
+    geradoEm: string;
+  };
+  // Campos opcionais para compatibilidade
+  totalFichasEstimadas?: number;
+  avisos?: string[];
+  bloqueios?: string[];
+  fichasPorConvenio?: Record<string, number>;
 }
 
 export interface FichaPdfValidacaoRequest {
