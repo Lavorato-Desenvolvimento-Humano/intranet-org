@@ -144,36 +144,6 @@ export default function NovaGeracaoPage() {
     }
   };
 
-  const gerarPrevia = async () => {
-    if (formData.tipo !== "convenio" || !formData.convenioId) {
-      toast.error("A prévia só está disponível para a geração por convênio.");
-      return;
-    }
-
-    try {
-      setGerandoPrevia(true);
-
-      const request: FichaPdfConvenioRequest = {
-        convenioId: formData.convenioId,
-        mes: formData.mes,
-        ano: formData.ano,
-        especialidades:
-          formData.especialidades.length > 0
-            ? formData.especialidades
-            : undefined,
-        incluirInativos: formData.incluirInativos,
-      };
-
-      const previaData = await fichaPdfService.gerarPreviaConvenio(request);
-      setPrevia(previaData);
-    } catch (error) {
-      console.error("Erro ao gerar prévia:", error);
-      toast.error("Erro ao gerar prévia");
-    } finally {
-      setGerandoPrevia(false);
-    }
-  };
-
   const validarFormulario = (): boolean => {
     if (!formData.mes || !formData.ano) {
       toast.error("Mês e ano são obrigatórios");
@@ -713,105 +683,374 @@ export default function NovaGeracaoPage() {
     </div>
   );
 
+  const gerarPrevia = async () => {
+    if (formData.tipo !== "convenio") {
+      toast.error("Prévia disponível apenas para geração por convênio");
+      return;
+    }
+
+    if (!formData.convenioId) {
+      toast.error("Selecione um convênio para gerar a prévia");
+      return;
+    }
+
+    try {
+      setGerandoPrevia(true);
+
+      const request: FichaPdfConvenioRequest = {
+        convenioId: formData.convenioId,
+        mes: formData.mes,
+        ano: formData.ano,
+        especialidades:
+          formData.especialidades.length > 0
+            ? formData.especialidades
+            : undefined,
+        incluirInativos: formData.incluirInativos,
+      };
+
+      console.log("Enviando requisição de prévia:", request);
+
+      const response = await fichaPdfService.gerarPreviaConvenio(request);
+
+      console.log("Resposta da prévia recebida:", response);
+
+      // VALIDAÇÃO ROBUSTA: Verificar se a resposta tem a estrutura esperada
+      if (!response || typeof response !== "object") {
+        throw new Error("Resposta inválida da API");
+      }
+
+      // GARANTIR estrutura mínima obrigatória
+      const previaSegura: FichaPdfPreviaDto = {
+        totalPacientesConvenio: response.totalPacientesConvenio || 0,
+        pacientesComFichas: response.pacientesComFichas || 0,
+        pacientesSemFichas: response.pacientesSemFichas || 0,
+        seraGeradoPara: response.seraGeradoPara || 0,
+        eficiencia: response.eficiencia || 0,
+        recomendacao: response.recomendacao || "Sem recomendação disponível",
+        periodo: response.periodo || `${formData.mes}/${formData.ano}`,
+        convenioId: response.convenioId || formData.convenioId,
+        dataConsulta: response.dataConsulta || new Date().toISOString(),
+
+        // GARANTIR que fichasExistentes sempre exista com estrutura completa
+        fichasExistentes: {
+          convenioId:
+            response.fichasExistentes?.convenioId || formData.convenioId,
+          convenioNome:
+            response.fichasExistentes?.convenioNome || "Nome não disponível",
+          totalFichas: response.fichasExistentes?.totalFichas || 0,
+          totalPacientes: response.fichasExistentes?.totalPacientes || 0,
+          fichasGeradasMes: response.fichasExistentes?.fichasGeradasMes || 0,
+          fichasGeradasAno: response.fichasExistentes?.fichasGeradasAno || 0,
+          pacientesAtivos: response.fichasExistentes?.pacientesAtivos || 0,
+          especialidadesCobertas:
+            response.fichasExistentes?.especialidadesCobertas || [],
+          fichasPorEspecialidade:
+            response.fichasExistentes?.fichasPorEspecialidade || {},
+          fichasPorStatus: response.fichasExistentes?.fichasPorStatus || {},
+          primeiraFicha: response.fichasExistentes?.primeiraFicha,
+          ultimaFicha: response.fichasExistentes?.ultimaFicha,
+          mediaFichasPorPaciente:
+            response.fichasExistentes?.mediaFichasPorPaciente || 0,
+          mes: response.fichasExistentes?.mes || formData.mes,
+          ano: response.fichasExistentes?.ano || formData.ano,
+          geradoEm:
+            response.fichasExistentes?.geradoEm || new Date().toISOString(),
+        },
+
+        // Campos opcionais com valores padrão
+        totalFichasEstimadas:
+          response.totalFichasEstimadas || response.seraGeradoPara || 0,
+        avisos: Array.isArray(response.avisos) ? response.avisos : [],
+        bloqueios: Array.isArray(response.bloqueios) ? response.bloqueios : [],
+        fichasPorConvenio: response.fichasPorConvenio || {
+          [response.fichasExistentes?.convenioNome || "Convênio"]:
+            response.seraGeradoPara || 0,
+        },
+      };
+
+      setPrevia(previaSegura);
+
+      if (previaSegura.seraGeradoPara === 0) {
+        toast.info("Todos os pacientes já possuem fichas para este período");
+      } else {
+        toast.success(
+          `Prévia gerada: ${previaSegura.seraGeradoPara} fichas serão criadas`
+        );
+      }
+    } catch (error: any) {
+      console.error("Erro detalhado ao gerar prévia:", error);
+
+      let mensagemErro = "Erro ao gerar prévia";
+      if (error?.response?.data?.mensagem) {
+        mensagemErro = error.response.data.mensagem;
+      } else if (error?.response?.data?.message) {
+        mensagemErro = error.response.data.message;
+      } else if (error?.message) {
+        mensagemErro = error.message;
+      }
+
+      toast.error(mensagemErro);
+      setPrevia(null);
+    } finally {
+      setGerandoPrevia(false);
+    }
+  };
+
   const renderPrevia = () => {
     if (!previa) return null;
 
+    // FUNÇÃO HELPER: Processar dados com máxima segurança
+    const processarDadosPrevia = (previa: FichaPdfPreviaDto) => {
+      // Garantir que fichasExistentes nunca seja undefined/null
+      const fichasExistentes = previa.fichasExistentes || {
+        convenioId: "",
+        convenioNome: "Nome não disponível",
+        totalFichas: 0,
+        totalPacientes: 0,
+        fichasGeradasMes: 0,
+        fichasGeradasAno: 0,
+        pacientesAtivos: 0,
+        especialidadesCobertas: [],
+        fichasPorEspecialidade: {},
+        fichasPorStatus: {},
+        mediaFichasPorPaciente: 0.0,
+        mes: 0,
+        ano: 0,
+        geradoEm: "",
+      };
+
+      // Garantir que objetos sejam sempre objetos válidos
+      const fichasPorEspecialidadeSeguro =
+        fichasExistentes.fichasPorEspecialidade &&
+        typeof fichasExistentes.fichasPorEspecialidade === "object"
+          ? fichasExistentes.fichasPorEspecialidade
+          : {};
+
+      const fichasPorStatusSeguro =
+        fichasExistentes.fichasPorStatus &&
+        typeof fichasExistentes.fichasPorStatus === "object"
+          ? fichasExistentes.fichasPorStatus
+          : {};
+
+      const fichasPorConvenioSeguro =
+        previa.fichasPorConvenio && typeof previa.fichasPorConvenio === "object"
+          ? previa.fichasPorConvenio
+          : {
+              [fichasExistentes.convenioNome || "Convênio"]:
+                previa.seraGeradoPara || 0,
+            };
+
+      return {
+        // Dados principais (sempre números válidos)
+        totalFichasEstimadas:
+          Number(previa.totalFichasEstimadas || previa.seraGeradoPara) || 0,
+        totalPacientesConvenio: Number(previa.totalPacientesConvenio) || 0,
+        pacientesComFichas: Number(previa.pacientesComFichas) || 0,
+        pacientesSemFichas: Number(previa.pacientesSemFichas) || 0,
+        eficiencia: Number(previa.eficiencia) || 0,
+        recomendacao: String(
+          previa.recomendacao || "Sem recomendação disponível"
+        ),
+        periodo: String(previa.periodo || `${formData.mes}/${formData.ano}`),
+
+        // Dados das fichas existentes (sempre objetos/arrays válidos)
+        fichasPorEspecialidade: fichasPorEspecialidadeSeguro,
+        fichasPorStatus: fichasPorStatusSeguro,
+        totalFichasExistentes: Number(fichasExistentes.totalFichas) || 0,
+        especialidadesCobertas: Array.isArray(
+          fichasExistentes.especialidadesCobertas
+        )
+          ? fichasExistentes.especialidadesCobertas
+          : [],
+        convenioNome: String(
+          fichasExistentes.convenioNome || "Nome não disponível"
+        ),
+        mediaFichasPorPaciente:
+          Number(fichasExistentes.mediaFichasPorPaciente) || 0,
+
+        // Dados para compatibilidade
+        fichasPorConvenio: fichasPorConvenioSeguro,
+        avisos: Array.isArray(previa.avisos) ? previa.avisos : [],
+        bloqueios: Array.isArray(previa.bloqueios) ? previa.bloqueios : [],
+      };
+    };
+
+    const dados = processarDadosPrevia(previa);
+
     return (
       <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">
+        <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+          <Eye className="h-5 w-5 mr-2" />
           Prévia da Geração
         </h3>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        {/* Estatísticas principais */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-blue-50 rounded-lg p-4">
             <div className="text-2xl font-bold text-blue-600">
-              {previa.totalFichasEstimadas}
+              {dados.totalFichasEstimadas}
             </div>
-            <div className="text-sm text-blue-800">Fichas estimadas</div>
+            <div className="text-sm text-blue-800">Fichas a serem geradas</div>
           </div>
 
           <div className="bg-green-50 rounded-lg p-4">
             <div className="text-2xl font-bold text-green-600">
-              {previa.pacientesComFichas.length}
+              {dados.totalPacientesConvenio}
             </div>
-            <div className="text-sm text-green-800">Pacientes</div>
+            <div className="text-sm text-green-800">Total de pacientes</div>
+          </div>
+
+          <div className="bg-yellow-50 rounded-lg p-4">
+            <div className="text-2xl font-bold text-yellow-600">
+              {dados.pacientesComFichas}
+            </div>
+            <div className="text-sm text-yellow-800">Já possuem fichas</div>
           </div>
 
           <div className="bg-purple-50 rounded-lg p-4">
             <div className="text-2xl font-bold text-purple-600">
-              {Object.keys(previa.fichasPorEspecialidade).length}
+              {Object.keys(dados.fichasPorEspecialidade).length}
             </div>
-            <div className="text-sm text-purple-800">Especialidades</div>
+            <div className="text-sm text-purple-800">Especialidades ativas</div>
           </div>
         </div>
 
-        {previa.avisos.length > 0 && (
+        {/* Recomendação */}
+        <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+          <div className="flex items-center mb-2">
+            <Info className="h-4 w-4 text-blue-600 mr-2" />
+            <span className="text-sm font-medium text-gray-900">
+              Recomendação do Sistema
+            </span>
+          </div>
+          <p className="text-sm text-gray-700">{dados.recomendacao}</p>
+          {dados.eficiencia > 0 && (
+            <p className="text-xs text-gray-500 mt-1">
+              Eficiência de geração: {dados.eficiencia.toFixed(1)}%
+            </p>
+          )}
+          <p className="text-xs text-gray-500">
+            Período: {dados.periodo} • Convênio: {dados.convenioNome}
+          </p>
+        </div>
+
+        {/* Avisos (se existirem) */}
+        {dados.avisos.length > 0 && (
           <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
             <div className="flex items-center mb-2">
               <AlertTriangle className="h-4 w-4 text-yellow-600 mr-2" />
               <span className="text-sm font-medium text-yellow-800">
-                Avisos
+                Avisos Importantes
               </span>
             </div>
             <ul className="text-sm text-yellow-700 space-y-1">
-              {previa.avisos.map((aviso, index) => (
+              {dados.avisos.map((aviso, index) => (
                 <li key={index}>• {aviso}</li>
               ))}
             </ul>
           </div>
         )}
 
-        {previa.bloqueios.length > 0 && (
+        {/* Bloqueios (se existirem) */}
+        {dados.bloqueios.length > 0 && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
             <div className="flex items-center mb-2">
               <X className="h-4 w-4 text-red-600 mr-2" />
               <span className="text-sm font-medium text-red-800">
-                Bloqueios
+                Bloqueios Identificados
               </span>
             </div>
             <ul className="text-sm text-red-700 space-y-1">
-              {previa.bloqueios.map((bloqueio, index) => (
+              {dados.bloqueios.map((bloqueio, index) => (
                 <li key={index}>• {bloqueio}</li>
               ))}
             </ul>
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Distribuições lado a lado */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Distribuição por Convênio */}
           <div>
-            <h4 className="font-medium text-gray-900 mb-2">
+            <h4 className="font-medium text-gray-900 mb-3 flex items-center">
+              <Building2 className="h-4 w-4 mr-2" />
               Distribuição por Convênio
             </h4>
-            <div className="space-y-1">
-              {Object.entries(previa.fichasPorConvenio).map(
+            <div className="space-y-2">
+              {Object.entries(dados.fichasPorConvenio).map(
                 ([convenio, quantidade]) => (
-                  <div key={convenio} className="flex justify-between text-sm">
-                    <span className="text-gray-600">{convenio}</span>
-                    <span className="text-gray-900">{quantidade}</span>
+                  <div
+                    key={convenio}
+                    className="flex justify-between items-center text-sm bg-gray-50 p-2 rounded">
+                    <span className="text-gray-600 truncate">{convenio}</span>
+                    <span className="text-gray-900 font-medium">
+                      {quantidade}
+                    </span>
                   </div>
                 )
               )}
             </div>
           </div>
 
+          {/* Fichas Existentes por Especialidade */}
           <div>
-            <h4 className="font-medium text-gray-900 mb-2">
-              Distribuição por Especialidade
+            <h4 className="font-medium text-gray-900 mb-3 flex items-center">
+              <FileText className="h-4 w-4 mr-2" />
+              Fichas Existentes por Especialidade
             </h4>
-            <div className="space-y-1">
-              {Object.entries(previa.fichasPorEspecialidade).map(
-                ([especialidade, quantidade]) => (
-                  <div
-                    key={especialidade}
-                    className="flex justify-between text-sm">
-                    <span className="text-gray-600">{especialidade}</span>
-                    <span className="text-gray-900">{quantidade}</span>
-                  </div>
+            <div className="space-y-2">
+              {Object.keys(dados.fichasPorEspecialidade).length > 0 ? (
+                Object.entries(dados.fichasPorEspecialidade).map(
+                  ([especialidade, quantidade]) => (
+                    <div
+                      key={especialidade}
+                      className="flex justify-between items-center text-sm bg-blue-50 p-2 rounded">
+                      <span className="text-blue-700 truncate">
+                        {especialidade}
+                      </span>
+                      <span className="text-blue-900 font-medium">
+                        {quantidade}
+                      </span>
+                    </div>
+                  )
                 )
+              ) : (
+                <p className="text-sm text-gray-500 italic p-2 bg-gray-50 rounded">
+                  Nenhuma ficha existente no período selecionado
+                </p>
               )}
             </div>
           </div>
         </div>
+
+        {/* Estatísticas adicionais das fichas existentes */}
+        {dados.totalFichasExistentes > 0 && (
+          <div className="mt-6 pt-4 border-t border-gray-200">
+            <h4 className="font-medium text-gray-900 mb-3">
+              Estatísticas das Fichas Existentes
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div className="bg-gray-50 rounded-lg p-3 text-center">
+                <div className="text-lg font-bold text-gray-900">
+                  {dados.totalFichasExistentes}
+                </div>
+                <div className="text-gray-600">Total de fichas</div>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-3 text-center">
+                <div className="text-lg font-bold text-gray-900">
+                  {dados.especialidadesCobertas.length}
+                </div>
+                <div className="text-gray-600">Especialidades</div>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-3 text-center">
+                <div className="text-lg font-bold text-gray-900">
+                  {dados.mediaFichasPorPaciente.toFixed(1)}
+                </div>
+                <div className="text-gray-600">Média por paciente</div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -861,7 +1100,7 @@ export default function NovaGeracaoPage() {
                 <span>
                   Tempo estimado:{" "}
                   {fichaPdfHelpers.calcularTempoEstimado(
-                    previa.totalFichasEstimadas
+                    previa.totalFichasEstimadas || 0
                   )}
                 </span>
               )}
@@ -885,7 +1124,11 @@ export default function NovaGeracaoPage() {
                 disabled={
                   loading ||
                   !validarFormulario() ||
-                  (previa !== null && previa.bloqueios.length > 0)
+                  !!(
+                    previa &&
+                    Array.isArray(previa.bloqueios) &&
+                    previa.bloqueios.length > 0
+                  )
                 }
                 className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center">
                 {loading ? (

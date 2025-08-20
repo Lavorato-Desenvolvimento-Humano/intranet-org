@@ -28,6 +28,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -391,9 +392,18 @@ public class FichaPdfController {
             List<UUID> pacientesSemFichas = fichaVerificationService.filtrarPacientesSemFichas(
                     request.getConvenioId(), request.getMes(), request.getAno(), todosPacientesIds);
 
-            // Estatísticas existentes
-            Map<String, Object> estatisticasExistentes = fichaVerificationService
-                    .getEstatisticasFichasConvenio(request.getConvenioId(), request.getMes(), request.getAno());
+            // Estatísticas existentes - GARANTIR estrutura consistente
+            Map<String, Object> estatisticasExistentes;
+            try {
+                estatisticasExistentes = fichaVerificationService
+                        .getEstatisticasFichasConvenio(request.getConvenioId(), request.getMes(), request.getAno());
+            } catch (Exception e) {
+                logger.warn("Erro ao obter estatísticas existentes, usando estrutura padrão: {}", e.getMessage());
+                estatisticasExistentes = criarEstatisticasPadrao(request.getConvenioId(), request.getMes(), request.getAno());
+            }
+
+            // GARANTIR que estatisticasExistentes tenha todas as propriedades necessárias
+            estatisticasExistentes = garantirEstruturaPadrao(estatisticasExistentes, request.getConvenioId(), request.getMes(), request.getAno());
 
             String recomendacao;
             if (pacientesSemFichas.isEmpty()) {
@@ -405,32 +415,53 @@ public class FichaPdfController {
                         pacientesSemFichas.size(), todosPacientes.size(), todosPacientes.size() - pacientesSemFichas.size());
             }
 
-            Map<String, Object> previa = Map.of(
-                    "totalPacientesConvenio", todosPacientes.size(),
-                    "pacientesComFichas", todosPacientes.size() - pacientesSemFichas.size(),
-                    "pacientesSemFichas", pacientesSemFichas.size(),
-                    "seraGeradoPara", pacientesSemFichas.size(),
-                    "fichasExistentes", estatisticasExistentes,
-                    "recomendacao", recomendacao,
-                    "eficiencia", pacientesSemFichas.size() > 0 ?
-                            String.format("%.1f%% de otimização",
-                                    (double)(todosPacientes.size() - pacientesSemFichas.size()) / todosPacientes.size() * 100) :
-                            "Nenhuma otimização"
-            );
+            // Calcular eficiência
+            double eficiencia = 0.0;
+            if (pacientesSemFichas.size() > 0) {
+                eficiencia = Math.round(((double) pacientesSemFichas.size() / todosPacientes.size()) * 100.0 * 100.0) / 100.0;
+            }
+
+            // Criar resposta com estrutura completa e consistente
+            Map<String, Object> previa = new HashMap<>();
+            previa.put("totalPacientesConvenio", todosPacientes.size());
+            previa.put("pacientesComFichas", todosPacientes.size() - pacientesSemFichas.size());
+            previa.put("pacientesSemFichas", pacientesSemFichas.size());
+            previa.put("seraGeradoPara", pacientesSemFichas.size());
+            previa.put("fichasExistentes", estatisticasExistentes);
+            previa.put("recomendacao", recomendacao);
+            previa.put("eficiencia", eficiencia);
+            previa.put("periodo", request.getMes() + "/" + request.getAno());
+            previa.put("convenioId", request.getConvenioId().toString());
+            previa.put("dataConsulta", LocalDateTime.now());
+
+            logger.info("Prévia gerada com sucesso - Total: {}, Com fichas: {}, Sem fichas: {}, Eficiência: {}%",
+                    todosPacientes.size(), todosPacientes.size() - pacientesSemFichas.size(),
+                    pacientesSemFichas.size(), eficiencia);
 
             return ResponseUtil.success(previa);
-        } catch (Exception e) {
-            logger.error("Erro ao gerar prévia: {}", e.getMessage());
 
-            Map<String, Object> errorResponse = Map.of(
-                    "error", "Erro ao gerar prévia: " + e.getMessage(),
-                    "convenioId", request.getConvenioId(),
-                    "periodo", request.getMes() + "/" + request.getAno()
-            );
+        } catch (Exception e) {
+            logger.error("Erro ao gerar prévia de geração do convênio {}: {}", request.getConvenioId(), e.getMessage(), e);
+
+            // Resposta de erro com estrutura padronizada
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("erro", true);
+            errorResponse.put("mensagem", "Erro ao gerar prévia: " + e.getMessage());
+            errorResponse.put("convenioId", request.getConvenioId().toString());
+            errorResponse.put("periodo", request.getMes() + "/" + request.getAno());
+            errorResponse.put("totalPacientesConvenio", 0);
+            errorResponse.put("pacientesComFichas", 0);
+            errorResponse.put("pacientesSemFichas", 0);
+            errorResponse.put("seraGeradoPara", 0);
+            errorResponse.put("eficiencia", 0.0);
+            errorResponse.put("recomendacao", "Erro ao calcular prévia - tente novamente");
+            errorResponse.put("fichasExistentes", criarEstatisticasPadrao(request.getConvenioId(), request.getMes(), request.getAno()));
+            errorResponse.put("dataConsulta", LocalDateTime.now());
 
             return ResponseEntity.badRequest().body(errorResponse);
         }
     }
+
 
     /**
      * Verifica se paciente específico já possui fichas no mês
@@ -1236,5 +1267,81 @@ public class FichaPdfController {
                 hasGuiasVencidas,
                 paciente.getCreatedAt()
         );
+    }
+
+    /**
+     * Cria uma estrutura padrão de estatísticas para evitar erros de null/undefined
+     */
+    private Map<String, Object> criarEstatisticasPadrao(UUID convenioId, Integer mes, Integer ano) {
+        Map<String, Object> estatisticas = new HashMap<>();
+
+        estatisticas.put("convenioId", convenioId.toString());
+        estatisticas.put("convenioNome", "Nome não disponível");
+        estatisticas.put("totalFichas", 0);
+        estatisticas.put("totalPacientes", 0);
+        estatisticas.put("fichasGeradasMes", 0);
+        estatisticas.put("fichasGeradasAno", 0);
+        estatisticas.put("pacientesAtivos", 0);
+        estatisticas.put("especialidadesCobertas", new ArrayList<String>());
+        estatisticas.put("fichasPorEspecialidade", new HashMap<String, Long>());
+        estatisticas.put("fichasPorStatus", new HashMap<String, Long>());
+        estatisticas.put("primeiraFicha", null);
+        estatisticas.put("ultimaFicha", null);
+        estatisticas.put("mediaFichasPorPaciente", 0.0);
+        estatisticas.put("mes", mes);
+        estatisticas.put("ano", ano);
+        estatisticas.put("geradoEm", LocalDateTime.now());
+
+        return estatisticas;
+    }
+
+    /**
+     * Garante que a estrutura de estatísticas tenha todos os campos necessários
+     */
+    private Map<String, Object> garantirEstruturaPadrao(Map<String, Object> estatisticas, UUID convenioId, Integer mes, Integer ano) {
+        if (estatisticas == null) {
+            return criarEstatisticasPadrao(convenioId, mes, ano);
+        }
+
+        Map<String, Object> estatisticasSeguras = new HashMap<>(estatisticas);
+
+        // Garantir que campos críticos não sejam null
+        if (estatisticasSeguras.get("fichasPorEspecialidade") == null) {
+            estatisticasSeguras.put("fichasPorEspecialidade", new HashMap<String, Long>());
+        }
+
+        if (estatisticasSeguras.get("fichasPorStatus") == null) {
+            estatisticasSeguras.put("fichasPorStatus", new HashMap<String, Long>());
+        }
+
+        if (estatisticasSeguras.get("especialidadesCobertas") == null) {
+            estatisticasSeguras.put("especialidadesCobertas", new ArrayList<String>());
+        }
+
+        if (estatisticasSeguras.get("totalFichas") == null) {
+            estatisticasSeguras.put("totalFichas", 0);
+        }
+
+        if (estatisticasSeguras.get("totalPacientes") == null) {
+            estatisticasSeguras.put("totalPacientes", 0);
+        }
+
+        if (estatisticasSeguras.get("mediaFichasPorPaciente") == null) {
+            estatisticasSeguras.put("mediaFichasPorPaciente", 0.0);
+        }
+
+        if (estatisticasSeguras.get("convenioId") == null) {
+            estatisticasSeguras.put("convenioId", convenioId.toString());
+        }
+
+        if (estatisticasSeguras.get("mes") == null) {
+            estatisticasSeguras.put("mes", mes);
+        }
+
+        if (estatisticasSeguras.get("ano") == null) {
+            estatisticasSeguras.put("ano", ano);
+        }
+
+        return estatisticasSeguras;
     }
 }
