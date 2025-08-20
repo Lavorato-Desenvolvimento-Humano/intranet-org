@@ -465,13 +465,19 @@ public class FichaPdfController {
                     "totalFichas", fichasExistentes.size(),
                     "fichasPorEspecialidade", fichasPorEspecialidade,
                     "fichasExistentes", fichasExistentes.stream()
-                            .map(f -> Map.of(
-                                    "id", f.getId(),
-                                    "codigo", f.getCodigoFicha(),
-                                    "especialidade", f.getEspecialidade(),
-                                    "status", f.getStatus(),
-                                    "criadaEm", f.getCreatedAt()
-                            ))
+                            .map(f -> {
+                                Map<String, Object> fichaMap = new HashMap<>();
+                                fichaMap.put("id", f.getId());
+                                fichaMap.put("codigo", f.getCodigoFicha() != null ? f.getCodigoFicha() : "N/A");
+                                fichaMap.put("especialidade", f.getEspecialidade() != null ? f.getEspecialidade() : "Não informada");
+                                fichaMap.put("status", f.getStatus() != null ? f.getStatus() : "Pendente");
+                                fichaMap.put("mes", f.getMes() != null ? f.getMes() : mes);
+                                fichaMap.put("ano", f.getAno() != null ? f.getAno() : ano);
+                                fichaMap.put("criadaEm", f.getCreatedAt());
+                                fichaMap.put("numeroIdentificacao", f.getCodigoFicha() != null ? f.getCodigoFicha() : "Pendente");
+                                fichaMap.put("dataGeracao", f.getCreatedAt() != null ? f.getCreatedAt().toString() : "N/A");
+                                return fichaMap;
+                            })
                             .collect(Collectors.toList()),
                     "recomendacao", fichasExistentes.isEmpty() ?
                             "Paciente precisa de fichas para este período" :
