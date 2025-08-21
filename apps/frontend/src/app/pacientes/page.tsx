@@ -66,6 +66,7 @@ export default function PacientesPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedPaciente, setSelectedPaciente] =
     useState<PacienteSummaryDto | null>(null);
+  const [selectedStatus, setSelectedStatus] = useState("");
 
   // Estados de formulário
   const [formData, setFormData] = useState<PacienteCreateRequest>({
@@ -85,7 +86,43 @@ export default function PacientesPage() {
   // Carregar pacientes quando filtros mudarem
   useEffect(() => {
     loadPacientes();
-  }, [currentPage, searchTerm, selectedConvenio, selectedUnidade]);
+  }, [currentPage, selectedConvenio, selectedStatus]);
+
+  const handleSearch = (term: string) => {
+    setSearchTerm(term);
+    setCurrentPage(0);
+
+    // Executar busca imediatamente quando chamada
+    if (term.trim() !== "") {
+      searchPacientes(term);
+    } else {
+      loadPacientes();
+    }
+  };
+
+  const searchPacientes = async (searchQuery?: string) => {
+    try {
+      setLoading(true);
+      const query = searchQuery || searchTerm;
+
+      if (query.trim() === "") {
+        loadPacientes();
+        return;
+      }
+
+      const pacientesData = await pacienteService.searchPacientesByNome(
+        query,
+        currentPage,
+        20
+      );
+      setPacientes(pacientesData);
+    } catch (err) {
+      console.error("Erro ao buscar pacientes:", err);
+      toastUtil.error("Erro ao buscar pacientes");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadInitialData = async () => {
     try {
@@ -221,8 +258,9 @@ export default function PacientesPage() {
   const clearFilters = () => {
     setSearchTerm("");
     setSelectedConvenio("");
-    setSelectedUnidade("");
+    setSelectedStatus("");
     setCurrentPage(0);
+    loadPacientes();
   };
 
   const tableColumns = [
@@ -338,10 +376,10 @@ export default function PacientesPage() {
           <div className="bg-white p-4 rounded-lg shadow mb-6">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <SearchInput
+                placeholder="Buscar pacientes... (pressione Enter)"
                 value={searchTerm}
-                onChange={setSearchTerm}
-                placeholder="Buscar por nome..."
-                onClear={() => setSearchTerm("")}
+                onChange={handleSearch}
+                onEnterSearch={true}
               />
 
               <FilterDropdown
