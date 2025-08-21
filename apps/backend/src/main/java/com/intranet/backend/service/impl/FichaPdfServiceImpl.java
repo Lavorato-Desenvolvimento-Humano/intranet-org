@@ -1655,24 +1655,33 @@ public class FichaPdfServiceImpl implements FichaPdfService {
 
     private FichaPdfStatusDto buildStatusDto(FichaPdfJob job) {
         FichaPdfStatusDto status = new FichaPdfStatusDto();
+
+        // Campos básicos
         status.setJobId(job.getJobId());
-        status.setStatus(job.getStatus());
-        status.setTipo(job.getTipo());
-        status.setTotalItens(job.getTotalFichas());
-        status.setItensProcessados(job.getFichasProcessadas());
+        status.setStatus(job.getStatus()); // Enum direto
+        status.setTipo(job.getTipo()); // Enum direto
+
+        // Campos numéricos
+        status.setTotalItens(job.getTotalFichas() != null ? job.getTotalFichas() : 0);
+        status.setItensProcessados(job.getFichasProcessadas() != null ? job.getFichasProcessadas() : 0);
+
+        // Campos de data
         status.setIniciadoEm(job.getIniciado());
         status.setAtualizadoEm(job.getUpdatedAt());
+
+        // Campo boolean primitivo
         status.setPodeDownload(job.isPodeDownload());
 
+        // Dados do usuário
         if (job.getUsuario() != null) {
             status.setUsuarioNome(job.getUsuario().getFullName());
             status.setUsuarioEmail(job.getUsuario().getEmail());
         }
 
         // Calcular progresso
-        if (job.getTotalFichas() != null && job.getTotalFichas() > 0) {
-            int progresso = (int) ((double) job.getFichasProcessadas() / job.getTotalFichas() * 100);
-            status.setProgresso(progresso);
+        if (status.getTotalItens() > 0 && status.getItensProcessados() != null) {
+            int progresso = (int) ((double) status.getItensProcessados() / status.getTotalItens() * 100);
+            status.setProgresso(Math.min(100, Math.max(0, progresso)));
         } else {
             status.setProgresso(0);
         }
@@ -1684,21 +1693,22 @@ public class FichaPdfServiceImpl implements FichaPdfService {
                 break;
             case PROCESSANDO:
                 status.setMensagem(String.format("Processando fichas: %d/%d",
-                        job.getFichasProcessadas(), job.getTotalFichas()));
+                        status.getItensProcessados(), status.getTotalItens()));
                 break;
             case CONCLUIDO:
                 status.setMensagem("Geração concluída com sucesso");
                 break;
             case ERRO:
-                status.setMensagem("Erro no processamento: " + job.getErro());
+                status.setMensagem("Erro no processamento: " + (job.getErro() != null ? job.getErro() : "Erro desconhecido"));
                 break;
             default:
                 status.setMensagem("Status desconhecido");
         }
 
+        // Buscar dados contextuais
         status.setDadosJob(buscarDadosContextuaisJob(job));
-
         status.setObservacoes(job.getObservacoes());
+
         return status;
     }
 
@@ -1781,26 +1791,28 @@ public class FichaPdfServiceImpl implements FichaPdfService {
 
     private FichaPdfJobDto mapJobToDto(FichaPdfJob job) {
         FichaPdfJobDto dto = new FichaPdfJobDto();
+
         dto.setJobId(job.getJobId());
-        dto.setTipo(job.getTipo().name());
-        dto.setStatus(job.getStatus().name());
-        dto.setTotalFichas(job.getTotalFichas());
-        dto.setFichasProcessadas(job.getFichasProcessadas());
+        dto.setTipo(job.getTipo() != null ? job.getTipo().name() : "INDEFINIDO");
+        dto.setStatus(job.getStatus() != null ? job.getStatus().name() : "DESCONHECIDO");
+
+        dto.setTotalFichas(job.getTotalFichas() != null ? job.getTotalFichas() : 0);
+        dto.setFichasProcessadas(job.getFichasProcessadas() != null ? job.getFichasProcessadas() : 0);
+
         dto.setIniciado(job.getIniciado());
         dto.setConcluido(job.getConcluido());
 
-        // Usar verificação mais robusta
-        dto.setPodeDownload(job.isPodeDownload()); // Agora inclui verificação de arquivo físico
+        dto.setPodeDownload(job.isPodeDownload());
         dto.setObservacoes(job.getObservacoes());
 
-        if (job.getTotalFichas() != null && job.getTotalFichas() > 0 && job.getFichasProcessadas() != null) {
-            int progresso = (int) ((double) job.getFichasProcessadas() / job.getTotalFichas() * 100);
-            dto.setProgresso(progresso);
+        // Calcular progresso apenas se houver dados válidos
+        if (dto.getTotalFichas() > 0 && dto.getFichasProcessadas() != null) {
+            int progresso = (int) ((double) dto.getFichasProcessadas() / dto.getTotalFichas() * 100);
+            dto.setProgresso(Math.min(100, Math.max(0, progresso))); // Garantir entre 0-100
         } else {
             dto.setProgresso(0);
         }
 
-        // Só definir URL de download se realmente pode baixar
         if (dto.getPodeDownload()) {
             dto.setDownloadUrl("/api/fichas-pdf/download/" + job.getJobId());
         }
