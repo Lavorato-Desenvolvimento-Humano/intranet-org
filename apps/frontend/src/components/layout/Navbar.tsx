@@ -17,6 +17,10 @@ import {
   Book,
   GitBranch,
   Bell,
+  FileText,
+  FileSignature,
+  BarChart3,
+  FilePlus,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import NotificationPanel from "@/components/workflow/NotificationPanel";
@@ -25,9 +29,9 @@ export default function Navbar() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [guiasDropdownOpen, setGuiasDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const notificationsRef = useRef<HTMLDivElement>(null);
+  const guiasDropdownRef = useRef<HTMLDivElement>(null);
 
   const hasAdminRole = user?.roles?.some(
     (role) => role === "ROLE_ADMIN" || role === "ADMIN"
@@ -46,13 +50,19 @@ export default function Navbar() {
       ) {
         setDropdownOpen(false);
       }
+      if (
+        guiasDropdownRef.current &&
+        !guiasDropdownRef.current.contains(event.target as Node)
+      ) {
+        setGuiasDropdownOpen(false);
+      }
     }
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [dropdownRef]);
+  }, [dropdownRef, guiasDropdownRef]);
 
   // Função para lidar com o logout
   const handleLogout = async (e: React.MouseEvent) => {
@@ -61,13 +71,6 @@ export default function Navbar() {
     await logout();
     router.push("auth/login");
   };
-
-  // Função auxiliar para navegação com router
-  // const handleNavigate = (path: string) => (e: React.MouseEvent) => {
-  //   e.preventDefault();
-  //   router.push(path);
-  //   setDropdownOpen(false);
-  // };
 
   const navigateTo = (path: string) => {
     window.location.href = path;
@@ -98,6 +101,80 @@ export default function Navbar() {
 
             {/* Componente de Notificações */}
             <NotificationPanel />
+
+            {/* NOVO: Dropdown de Guias - Sistema Clínico */}
+            <div className="relative" ref={guiasDropdownRef}>
+              <button
+                className="flex items-center text-white hover:text-gray-200 focus:outline-none px-3 py-2 rounded-md hover:bg-primary-dark transition-colors"
+                onClick={() => setGuiasDropdownOpen(!guiasDropdownOpen)}>
+                <span className="mr-1 font-medium">Guias</span>
+                <ChevronDown size={16} />
+              </button>
+
+              {guiasDropdownOpen && (
+                <div className="absolute z-10 mt-2 w-56 bg-white rounded-md shadow-lg py-1 text-gray-800">
+                  <Link
+                    href="/pacientes"
+                    className="flex items-center px-4 py-2 hover:bg-gray-100"
+                    onClick={(e: any) => {
+                      e.preventDefault();
+                      navigateTo("/pacientes");
+                      setGuiasDropdownOpen(false);
+                    }}>
+                    <Users className="mr-3" size={16} />
+                    <span>Pacientes</span>
+                  </Link>
+
+                  <Link
+                    href="/guias"
+                    className="flex items-center px-4 py-2 hover:bg-gray-100"
+                    onClick={(e: any) => {
+                      e.preventDefault();
+                      navigateTo("/guias");
+                      setGuiasDropdownOpen(false);
+                    }}>
+                    <FileText className="mr-3" size={16} />
+                    <span>Guias</span>
+                  </Link>
+
+                  <Link
+                    href="/fichas"
+                    className="flex items-center px-4 py-2 hover:bg-gray-100"
+                    onClick={(e: any) => {
+                      e.preventDefault();
+                      navigateTo("/fichas");
+                      setGuiasDropdownOpen(false);
+                    }}>
+                    <FileSignature className="mr-3" size={16} />
+                    <span>Fichas</span>
+                  </Link>
+
+                  <Link
+                    href="/relatorios"
+                    className="flex items-center px-4 py-2 hover:bg-gray-100"
+                    onClick={(e: any) => {
+                      e.preventDefault();
+                      navigateTo("/relatorios");
+                      setGuiasDropdownOpen(false);
+                    }}>
+                    <BarChart3 className="mr-3" size={16} />
+                    <span>Relatórios</span>
+                  </Link>
+
+                  <Link
+                    href="/fichas-pdf"
+                    className="flex items-center px-4 py-2 hover:bg-gray-100"
+                    onClick={(e: any) => {
+                      e.preventDefault();
+                      navigateTo("/fichas-pdf");
+                      setGuiasDropdownOpen(false);
+                    }}>
+                    <FilePlus className="mr-3" size={16} />
+                    <span>Fichas PDF</span>
+                  </Link>
+                </div>
+              )}
+            </div>
 
             {/* Dropdown de navegação */}
             <div className="relative" ref={dropdownRef}>
