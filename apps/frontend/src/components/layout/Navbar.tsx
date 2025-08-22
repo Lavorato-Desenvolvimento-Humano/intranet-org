@@ -19,6 +19,7 @@ import {
   Bell,
   FileText,
   FileSignature,
+  ChevronRight,
   BarChart3,
   FilePlus,
 } from "lucide-react";
@@ -29,9 +30,8 @@ export default function Navbar() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [guiasDropdownOpen, setGuiasDropdownOpen] = useState(false);
+  const [guiasSubmenuOpen, setGuiasSubmenuOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const guiasDropdownRef = useRef<HTMLDivElement>(null);
 
   const hasAdminRole = user?.roles?.some(
     (role) => role === "ROLE_ADMIN" || role === "ADMIN"
@@ -49,12 +49,7 @@ export default function Navbar() {
         !dropdownRef.current.contains(event.target as Node)
       ) {
         setDropdownOpen(false);
-      }
-      if (
-        guiasDropdownRef.current &&
-        !guiasDropdownRef.current.contains(event.target as Node)
-      ) {
-        setGuiasDropdownOpen(false);
+        setGuiasSubmenuOpen(false);
       }
     }
 
@@ -62,7 +57,7 @@ export default function Navbar() {
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [dropdownRef, guiasDropdownRef]);
+  }, [dropdownRef]);
 
   // Função para lidar com o logout
   const handleLogout = async (e: React.MouseEvent) => {
@@ -74,6 +69,12 @@ export default function Navbar() {
 
   const navigateTo = (path: string) => {
     window.location.href = path;
+  };
+
+  const toggleGuiasSubmenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setGuiasSubmenuOpen(!guiasSubmenuOpen);
   };
 
   return (
@@ -101,80 +102,6 @@ export default function Navbar() {
 
             {/* Componente de Notificações */}
             <NotificationPanel />
-
-            {/* NOVO: Dropdown de Guias - Sistema Clínico */}
-            <div className="relative" ref={guiasDropdownRef}>
-              <button
-                className="flex items-center text-white hover:text-gray-200 focus:outline-none px-3 py-2 rounded-md hover:bg-primary-dark transition-colors"
-                onClick={() => setGuiasDropdownOpen(!guiasDropdownOpen)}>
-                <span className="mr-1 font-medium">Guias</span>
-                <ChevronDown size={16} />
-              </button>
-
-              {guiasDropdownOpen && (
-                <div className="absolute z-10 mt-2 w-56 bg-white rounded-md shadow-lg py-1 text-gray-800">
-                  <Link
-                    href="/pacientes"
-                    className="flex items-center px-4 py-2 hover:bg-gray-100"
-                    onClick={(e: any) => {
-                      e.preventDefault();
-                      navigateTo("/pacientes");
-                      setGuiasDropdownOpen(false);
-                    }}>
-                    <Users className="mr-3" size={16} />
-                    <span>Pacientes</span>
-                  </Link>
-
-                  <Link
-                    href="/guias"
-                    className="flex items-center px-4 py-2 hover:bg-gray-100"
-                    onClick={(e: any) => {
-                      e.preventDefault();
-                      navigateTo("/guias");
-                      setGuiasDropdownOpen(false);
-                    }}>
-                    <FileText className="mr-3" size={16} />
-                    <span>Guias</span>
-                  </Link>
-
-                  <Link
-                    href="/fichas"
-                    className="flex items-center px-4 py-2 hover:bg-gray-100"
-                    onClick={(e: any) => {
-                      e.preventDefault();
-                      navigateTo("/fichas");
-                      setGuiasDropdownOpen(false);
-                    }}>
-                    <FileSignature className="mr-3" size={16} />
-                    <span>Fichas</span>
-                  </Link>
-
-                  <Link
-                    href="/relatorios"
-                    className="flex items-center px-4 py-2 hover:bg-gray-100"
-                    onClick={(e: any) => {
-                      e.preventDefault();
-                      navigateTo("/relatorios");
-                      setGuiasDropdownOpen(false);
-                    }}>
-                    <BarChart3 className="mr-3" size={16} />
-                    <span>Relatórios</span>
-                  </Link>
-
-                  <Link
-                    href="/fichas-pdf"
-                    className="flex items-center px-4 py-2 hover:bg-gray-100"
-                    onClick={(e: any) => {
-                      e.preventDefault();
-                      navigateTo("/fichas-pdf");
-                      setGuiasDropdownOpen(false);
-                    }}>
-                    <FilePlus className="mr-3" size={16} />
-                    <span>Fichas PDF</span>
-                  </Link>
-                </div>
-              )}
-            </div>
 
             {/* Dropdown de navegação */}
             <div className="relative" ref={dropdownRef}>
@@ -219,6 +146,92 @@ export default function Navbar() {
                     <Table className="mr-2" size={16} />
                     <span>Tabelas</span>
                   </Link>
+
+                  {/* Item Guias com submenu */}
+                  <div className="relative">
+                    <button
+                      className="w-full flex items-center justify-between px-4 py-2 hover:bg-gray-100 text-left"
+                      onClick={toggleGuiasSubmenu}>
+                      <div className="flex items-center">
+                        <Book className="mr-2" size={16} />
+                        <span>Guias</span>
+                      </div>
+                      <ChevronRight
+                        size={16}
+                        className={`transform transition-transform ${guiasSubmenuOpen ? "rotate-90" : ""}`}
+                      />
+                    </button>
+
+                    {/* Submenu Guias */}
+                    {guiasSubmenuOpen && (
+                      <div className="ml-4 border-l border-gray-200">
+                        <Link
+                          href="/pacientes"
+                          className="flex items-center px-4 py-2 hover:bg-gray-100 text-sm"
+                          onClick={(e: any) => {
+                            e.preventDefault();
+                            navigateTo("/pacientes");
+                            setDropdownOpen(false);
+                            setGuiasSubmenuOpen(false);
+                          }}>
+                          <Users className="mr-3" size={14} />
+                          <span>Pacientes</span>
+                        </Link>
+
+                        <Link
+                          href="/guias"
+                          className="flex items-center px-4 py-2 hover:bg-gray-100 text-sm"
+                          onClick={(e: any) => {
+                            e.preventDefault();
+                            navigateTo("/guias");
+                            setDropdownOpen(false);
+                            setGuiasSubmenuOpen(false);
+                          }}>
+                          <FileText className="mr-3" size={14} />
+                          <span>Guias</span>
+                        </Link>
+
+                        <Link
+                          href="/fichas"
+                          className="flex items-center px-4 py-2 hover:bg-gray-100 text-sm"
+                          onClick={(e: any) => {
+                            e.preventDefault();
+                            navigateTo("/fichas");
+                            setDropdownOpen(false);
+                            setGuiasSubmenuOpen(false);
+                          }}>
+                          <FileSignature className="mr-3" size={14} />
+                          <span>Fichas</span>
+                        </Link>
+
+                        <Link
+                          href="/relatorios"
+                          className="flex items-center px-4 py-2 hover:bg-gray-100 text-sm"
+                          onClick={(e: any) => {
+                            e.preventDefault();
+                            navigateTo("/relatorios");
+                            setDropdownOpen(false);
+                            setGuiasSubmenuOpen(false);
+                          }}>
+                          <BarChart3 className="mr-3" size={14} />
+                          <span>Relatórios</span>
+                        </Link>
+
+                        <Link
+                          href="/fichas-pdf"
+                          className="flex items-center px-4 py-2 hover:bg-gray-100 text-sm"
+                          onClick={(e: any) => {
+                            e.preventDefault();
+                            navigateTo("/fichas-pdf");
+                            setDropdownOpen(false);
+                            setGuiasSubmenuOpen(false);
+                          }}>
+                          <FilePlus className="mr-3" size={14} />
+                          <span>Fichas PDF</span>
+                        </Link>
+                      </div>
+                    )}
+                  </div>
 
                   {/* Adicionando o item de Fluxos de Trabalho */}
                   <Link
