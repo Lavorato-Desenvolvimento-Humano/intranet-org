@@ -134,20 +134,27 @@ export default function FichasPage() {
       setLoading(true);
       const query = searchQuery || searchTerm;
 
+      console.log("searchFichas chamado com query:", query); // Debug
+
       if (query.trim() === "") {
         loadFichas();
         return;
       }
 
       const fichasData = await fichaService.searchByCodigoFicha(
-        query,
+        query.trim(), // Garantir que não há espaços extras
         currentPage,
         20
       );
+
+      console.log("Resultado da busca:", fichasData); // Debug
       setFichas(fichasData);
     } catch (err) {
       console.error("Erro ao buscar fichas:", err);
       toastUtil.error("Erro ao buscar fichas");
+
+      // Em caso de erro, mostrar lista completa
+      loadFichas();
     } finally {
       setLoading(false);
     }
@@ -167,14 +174,25 @@ export default function FichasPage() {
   };
 
   const handleSearch = (term: string) => {
-    setSearchTerm(term);
+    console.log("handleSearch chamado com termo:", term); // Debug
+
+    // Limpar filtros quando iniciar busca
+    setSelectedConvenio("");
+    setSelectedStatus("");
+    setSelectedEspecialidade("");
     setCurrentPage(0);
 
-    if (term.trim() !== "") {
-      searchFichas(term);
-    } else {
+    // Atualizar estado do termo de busca
+    setSearchTerm(term);
+
+    // Se o termo está vazio, recarregar lista completa
+    if (term.trim() === "") {
       loadFichas();
+      return;
     }
+
+    // Caso contrário, fazer busca por código
+    searchFichas(term);
   };
 
   const handleVincularGuia = (ficha: FichaSummaryDto) => {
