@@ -196,18 +196,33 @@ public class GuiaController {
             @RequestParam String termo,
             @PageableDefault(size = 20) Pageable pageable
     ) {
-        Page<GuiaSummaryDto> guias = guiaService.searchByNumeroGuia(termo, pageable);
-        return ResponseEntity.ok(guias);
+        logger.info("Buscando guias por número/termo: {}", termo);
+
+        try {
+            if (termo == null || termo.trim().isEmpty()) {
+                logger.warn("Termo de busca vazio recebido para guias");
+                return ResponseEntity.badRequest().build();
+            }
+
+            Page<GuiaSummaryDto> guias = guiaService.searchByNumeroGuia(termo.trim(), pageable);
+
+            logger.info("Encontradas {} guias para o termo: {}", guias.getTotalElements(), termo);
+
+            return ResponseUtil.success(guias);
+        } catch (Exception e) {
+            logger.error("Erro ao buscar guias por número: {}", e.getMessage(), e);
+            throw e;
+        }
     }
 
-    @GetMapping("/status/status")
+    @GetMapping("/status/{status}")
     public ResponseEntity<Page<GuiaSummaryDto>> getGuiasByStatus(
-            @RequestParam String status,
+            @PathVariable String status,
             @PageableDefault(size = 20) Pageable pageable) {
         logger.info("Requisição para buscar guias com status: {}", status);
 
         Page<GuiaSummaryDto> guias = guiaService.getGuiasByStatus(status, pageable);
-        return ResponseEntity.ok(guias);
+        return ResponseUtil.success(guias);
     }
 
     @GetMapping("/{id}/historico-status")
