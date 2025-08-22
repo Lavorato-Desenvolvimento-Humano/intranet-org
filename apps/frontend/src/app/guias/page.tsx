@@ -83,14 +83,32 @@ export default function GuiasPage() {
     try {
       if (!loading) setLoading(true);
 
-      const filters = {
-        search: searchTerm,
-        convenioId: selectedConvenio,
-        status: selectedStatus,
-        periodo: selectedPeriodo,
-      };
+      let guiasData: PageResponse<GuiaSummaryDto>;
 
-      const guiasData = await guiaService.getAllGuias(currentPage, 20);
+      if (selectedConvenio) {
+        guiasData = await guiaService.getGuiasByConvenio(
+          selectedConvenio,
+          currentPage,
+          20
+        );
+      } else if (selectedStatus) {
+        guiasData = await guiaService.getGuiasByStatus(
+          selectedStatus,
+          currentPage,
+          20
+        );
+      } else if (selectedPeriodo) {
+        const [mes, ano] = selectedPeriodo.split("/").map(Number);
+        guiasData = await guiaService.getGuiasByPeriodo(
+          mes,
+          ano,
+          currentPage,
+          20
+        );
+      } else {
+        guiasData = await guiaService.getAllGuias(currentPage, 20);
+      }
+
       setGuias(guiasData);
     } catch (err) {
       console.error("Erro ao carregar guias:", err);
@@ -121,16 +139,56 @@ export default function GuiasPage() {
     }
   };
 
+  const searchGuias = async (searchQuery?: string) => {
+    try {
+      setLoading(true);
+      const query = searchQuery || searchTerm;
+
+      console.log("searchGuias chamado com query:", query); // Debug
+
+      if (query.trim() === "") {
+        loadGuias();
+        return;
+      }
+
+      // Usar o método correto para buscar por número de guia
+      const guiasData = await guiaService.searchByNumeroGuia(
+        query.trim(),
+        currentPage,
+        20
+      );
+
+      console.log("Resultado da busca de guias:", guiasData); // Debug
+      setGuias(guiasData);
+    } catch (err) {
+      console.error("Erro ao buscar guias:", err);
+      toastUtil.error("Erro ao buscar guias");
+
+      // Em caso de erro, mostrar lista completa
+      loadGuias();
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSearch = (term: string) => {
-    setSearchTerm(term);
+    console.log("handleSearch de guias chamado com termo:", term); // Debug
+
+    setSelectedConvenio("");
+    setSelectedStatus("");
+    setSelectedPeriodo("");
     setCurrentPage(0);
 
-    // Executar busca imediatamente quando chamada
-    if (term.trim() !== "") {
-      loadGuiasWithSearch(term);
-    } else {
+    setSearchTerm(term);
+
+    // Se o termo está vazio, recarregar lista completa
+    if (term.trim() === "") {
       loadGuias();
+      return;
     }
+
+    // Caso contrário, fazer busca por número de guia
+    searchGuias(term);
   };
 
   const handleDeleteGuia = async (guia: GuiaSummaryDto) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Search, X } from "lucide-react";
 
 interface SearchInputProps {
@@ -22,7 +22,7 @@ export const SearchInput: React.FC<SearchInputProps> = ({
 }) => {
   const [internalValue, setInternalValue] = useState(value);
 
-  React.useEffect(() => {
+  useEffect(() => {
     setInternalValue(value);
   }, [value]);
 
@@ -35,8 +35,9 @@ export const SearchInput: React.FC<SearchInputProps> = ({
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && onEnterSearch) {
+      e.preventDefault();
       onChange(internalValue);
     }
   };
@@ -58,7 +59,7 @@ export const SearchInput: React.FC<SearchInputProps> = ({
         type="text"
         value={internalValue}
         onChange={handleInputChange}
-        onKeyPress={handleKeyPress}
+        onKeyDown={handleKeyDown}
         placeholder={placeholder}
         className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
       />
