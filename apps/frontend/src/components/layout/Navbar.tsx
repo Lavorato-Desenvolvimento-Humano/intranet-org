@@ -22,6 +22,7 @@ import {
   ChevronRight,
   BarChart3,
   FilePlus,
+  HousePlus,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import NotificationPanel from "@/components/workflow/NotificationPanel";
@@ -270,6 +271,17 @@ export default function Navbar() {
                       <span>Painel Administrativo</span>
                     </Link>
                   )}
+
+                  <Link
+                    href="http://56.124.35.86:8080/"
+                    className="flex items-center px-4 py-2 hover:bg-gray-100"
+                    onClick={(e: any) => {
+                      e.preventDefault();
+                      window.open("http://56.124.35.86:8080/", "_blank");
+                    }}>
+                    <HousePlus className="mr-2" size={16} />
+                    <span>Hipo Saúde</span>
+                  </Link>
                 </div>
               )}
             </div>
