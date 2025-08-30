@@ -1,0 +1,72 @@
+server:
+  port: 8444
+
+spring:
+  application:
+    name: drive-file-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/drive_db
+    username: drive_user
+    password: drive_pass
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        default_schema: drive_files
+        format_sql: true
+
+  flyway:
+    enabled: true
+    default-schema: drive_files
+    locations: classpath:db/migration
+
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+#Config JWT
+jwt:
+  secret: ${JWT_SECRET:MySecretKeyForJWTTokenGenerationThatShouldBeLongEnough}
+  expiration: ${JWT_EXPIRATION:86400}
+
+#MinIO
+minio:
+  url: $${MINIO_URL:http://localhost:9000}
+  access-key: ${MINIO_ACCESS_KEY:minioadmin}
+  secret-key: ${MINIO_SECRET_KEY:minioadmin}
+  bucket-name: ${MINIO_BUCKET:drive-files}
+
+file:
+  max-size: ${FILE_MAX_SIZE:52428800} # 50MB em bytes
+  allowed-types: ${FILE_ALLOWED_TYPES:image/jpeg,image/png,image/gif,application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet}
+  upload-path: ${FILE_UPLOAD_PATH:/tmp/drive-uploads}
+
+intranet:
+  core:
+    url: ${INTRANET_CORE_URL:https://localhost:8443}
+    auth-endpoint: ${INTRANET_AUTH_ENDPOINT:/api/auth/validate}
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when_authorized
+
+# Loggs
+logging:
+  level:
+    com.intranet.drive.file: DEBUG
+    org.springframework.security: DEBUG
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
