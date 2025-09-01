@@ -28,12 +28,6 @@
     <modules>
         <module>shared/drive-common</module>
         <module>services/drive-file-service</module>
-        <module>services/drive-folder-service</module>
-        <module>services/drive-permission-service</module>
-        <module>services/drive-quota-service</module>
-        <module>services/drive-search-service</module>
-        <module>services/drive-audit-service</module>
-        <module>gateway</module>
     </modules>
 
     <dependencyManagement>
