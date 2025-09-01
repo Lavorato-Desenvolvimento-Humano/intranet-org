@@ -9,6 +9,7 @@ public class UserDto {
     private String username;
     private String email;
     private String nome;
+    private Boolean active;
 
     @JsonProperty("roles")
     private Set<String> roles;
@@ -22,11 +23,12 @@ public class UserDto {
     //Construtores
     public UserDto() {}
 
-    public UserDto(Long id, String username, String email, String nome) {
+    public UserDto(Long id, String username, String email, String nome, Boolean active) {
         this.id = id;
         this.username = username;
         this.email = email;
         this.nome = nome;
+        this.active = active;
     }
 
     //Getters e Setters
@@ -53,4 +55,7 @@ public class UserDto {
 
     public LocalDateTime getLastLogin() { return lastLogin; }
     public void setLastLogin(LocalDateTime lastLogin) { this.lastLogin = lastLogin; }
+
+    public Boolean getActive() { return active; }
+    public void setActive(Boolean active) { this.active = active; }
 }
