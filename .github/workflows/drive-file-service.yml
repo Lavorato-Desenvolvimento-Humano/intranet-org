@@ -36,88 +36,16 @@ jobs:
           distribution: "temurin"
           cache: "maven"
 
-      - name: Desabilitar Dependência Circular Temporariamente
+      - name: Build Drive Microservices
         run: |
           cd drive-microservices
-          echo "🔧 Comentando dependência circular temporariamente..."
+          echo "Building Drive File Service..."
 
-          # Comentar a dependência problemática ao invés de remover
-          sed -i 's|<dependency>|<!-- DEPENDENCY_DISABLED|g; s|</dependency>|DEPENDENCY_DISABLED -->|g' shared/drive-common/pom.xml
-          sed -i 's|<!-- DEPENDENCY_DISABLED\s*<groupId>com\.intranet\.drive</groupId>|<dependency>\n        <groupId>com.intranet.drive</groupId>|g' shared/drive-common/pom.xml
-          sed -i 's|DEPENDENCY_DISABLED -->\s*</groupId>|</groupId>\n        DEPENDENCY_DISABLED -->|g' shared/drive-common/pom.xml
+          # Build usando Maven multi-módulo (após POMs corrigidos)
+          mvn clean package -Dfile.encoding=UTF-8 -DskipTests -pl shared/drive-common,services/drive-file-service
 
-          # Abordagem mais simples: substituir toda a seção problemática
-          cat > temp_fix.py << 'PYTHON_EOF'
-          import re
-
-          with open('shared/drive-common/pom.xml', 'r') as f:
-              content = f.read()
-
-          # Comentar especificamente a dependência drive-file-service
-          pattern = r'(\s*)<dependency>\s*<groupId>com\.intranet\.drive</groupId>\s*<artifactId>drive-file-service</artifactId>\s*<version>1\.0\.0-SNAPSHOT</version>\s*</dependency>'
-
-          def replace_func(match):
-              indent = match.group(1)
-              return f'{indent}<!-- CIRCULAR DEPENDENCY DISABLED\n{indent}<dependency>\n{indent}    <groupId>com.intranet.drive</groupId>\n{indent}    <artifactId>drive-file-service</artifactId>\n{indent}    <version>1.0.0-SNAPSHOT</version>\n{indent}</dependency>\n{indent}CIRCULAR DEPENDENCY DISABLED -->'
-
-          new_content = re.sub(pattern, replace_func, content, flags=re.MULTILINE | re.DOTALL)
-
-          with open('shared/drive-common/pom.xml', 'w') as f:
-              f.write(new_content)
-
-          print("✅ Dependência comentada!")
-          PYTHON_EOF
-
-          python3 temp_fix.py
-          rm temp_fix.py
-
-          echo "📋 Verificando correção:"
-          grep -A2 -B2 "CIRCULAR DEPENDENCY DISABLED" shared/drive-common/pom.xml || echo "⚠️ Nenhuma alteração feita"
-
-      - name: Build Drive Common
-        run: |
-          cd drive-microservices/shared/drive-common
-          echo "📦 Building drive-common..."
-
-          # Verificar se o pom.xml é válido antes de buildar
-          echo "🔍 Validando POM..."
-          mvn help:effective-pom -q > /dev/null && echo "✅ POM válido" || {
-            echo "❌ POM inválido! Conteúdo:"
-            cat pom.xml
-            exit 1
-          }
-
-          # Build e instalar no repositório local
-          mvn clean install -Dfile.encoding=UTF-8 -DskipTests -Dmaven.test.skip=true
-          echo "✅ drive-common instalado no repositório local Maven"
-
-      - name: Build Drive File Service
-        run: |
-          cd drive-microservices/services/drive-file-service
-          echo "📦 Building drive-file-service..."
-
-          # Build do drive-file-service
-          mvn clean package -Dfile.encoding=UTF-8 -DskipTests -Dmaven.test.skip=true
-
-          echo "✅ Verificando JAR gerado:"
-          ls -la target/ || {
-            echo "❌ Diretório target não existe!"
-            echo "Saída do Maven:"
-            mvn clean package -Dfile.encoding=UTF-8 -DskipTests -X | tail -50
-            exit 1
-          }
-
-          # Verificar se o JAR foi criado
-          JAR_FILE=$(find target -name "drive-file-service-*.jar" -type f | head -1)
-          if [ -f "$JAR_FILE" ]; then
-            echo "🎯 JAR criado: $JAR_FILE"
-            echo "📏 Tamanho: $(du -h "$JAR_FILE" | cut -f1)"
-          else
-            echo "❌ JAR não encontrado!"
-            echo "Arquivos no target:"
-            ls -la target/
-            exit 1
-          fi
+          echo "JAR criado:"
+          ls -la services/drive-file-service/target/
 
       - name: Autenticar no GHCR
         if: github.event_name != 'pull_request'
@@ -132,13 +60,8 @@ jobs:
           REPO_LOWERCASE=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
           IMAGE_NAME="ghcr.io/$REPO_LOWERCASE/drive-file-service:$IMAGE_TAG"
 
-          echo "🐳 Building: $IMAGE_NAME"
-
-          # Usar o Dockerfile existente
           docker build -t $IMAGE_NAME .
           docker push $IMAGE_NAME
-
-          echo "✅ Image pushed successfully!"
 
   deploy:
     name: Deploy Drive File Service
@@ -157,94 +80,46 @@ jobs:
       - name: Deploy na VPS
         run: |
           ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
-            echo "🚀 Deploying Drive File Service..."
+            echo "Deploying Drive File Service..."
             
-            # Usar a estrutura existente da VPS
             mkdir -p /opt/deploy/drive-microservices/${{ github.ref_name }}
             cd /opt/deploy/drive-microservices/${{ github.ref_name }}
             
             REPO_LOWERCASE=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
             
-            # Copiar arquivos do projeto para VPS (usando rsync ou git clone seria melhor)
-            echo "📁 Preparando arquivos do projeto..."
-            
-            # Criar .env apenas se não existir
-            if [ ! -f ".env" ]; then
-              cat > .env << 'ENV_EOF'
-          # Drive Microservices Environment Variables
-          POSTGRES_DB=drive_db
-          POSTGRES_USER=drive_user  
-          POSTGRES_PASSWORD=drive_pass
-
-          # MinIO
-          MINIO_ROOT_USER=minioadmin
-          MINIO_ROOT_PASSWORD=minioadmin
-
-          # JWT Integration com sistema principal
-          JWT_SECRET=lavoratoSecretKeyForJWTAuthenticationWithSpringBootProject
-          JWT_EXPIRATION=86400
-
-          # Intranet Core
-          INTRANET_CORE_URL=https://localhost:8443
-          INTRANET_AUTH_ENDPOINT=/api/auth/validate
-
-          # File settings
-          FILE_MAX_SIZE=52428800
-          FILE_UPLOAD_PATH=/app/uploads
-          FILE_ALLOWED_TYPES=image/jpeg,image/png,image/gif,application/pdf,text/plain
-
-          # CORS
-          CORS_ALLOWED_ORIGINS=https://localhost:3000,https://lavorato.app.br,https://dev.lavorato.app.br
-          ENV_EOF
-            fi
-            
-            # Usar o docker-compose.yml existente do projeto, mas adicionar o drive-file-service
-            echo "🔧 Configurando docker-compose..."
-            
-            # Se não existir, copiar do projeto ou criar uma versão estendida
+            # Usar docker-compose existente do projeto
             if [ ! -f "docker-compose.yml" ]; then
+              # Copiar do repositório ou criar versão básica
               cat > docker-compose.yml << 'COMPOSE_EOF'
           version: '3.8'
 
           services:
             postgres:
               image: postgres:15
-              container_name: drive-postgres
               environment:
-                POSTGRES_DB: ${POSTGRES_DB}
-                POSTGRES_USER: ${POSTGRES_USER}
-                POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+                POSTGRES_DB: drive_db
+                POSTGRES_USER: drive_user
+                POSTGRES_PASSWORD: drive_pass
               ports:
                 - "5432:5432"
               volumes:
                 - postgres_data:/var/lib/postgresql/data
                 - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
 
-            redis:
-              image: redis:7-alpine
-              container_name: drive-redis
-              ports:
-                - "6379:6379"
-              command: redis-server --appendonly yes
-              volumes:
-                - redis_data:/data
-
             minio:
               image: minio/minio:latest
-              container_name: drive-minio
               ports:
                 - "9000:9000"
                 - "9001:9001"
               environment:
-                MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-                MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+                MINIO_ROOT_USER: minioadmin
+                MINIO_ROOT_PASSWORD: minioadmin
               command: server /data --console-address ":9001"
               volumes:
                 - minio_data:/data
 
             drive-file-service:
               image: ghcr.io/REPO_PLACEHOLDER/drive-file-service:BRANCH_PLACEHOLDER
-              container_name: drive-file-service
               restart: always
               depends_on:
                 - postgres
@@ -252,89 +127,39 @@ jobs:
               environment:
                 - SPRING_PROFILES_ACTIVE=docker
                 - DB_HOST=postgres
-                - DB_PORT=5432
-                - DB_NAME=${POSTGRES_DB}
-                - DB_USER=${POSTGRES_USER}
-                - DB_PASSWORD=${POSTGRES_PASSWORD}
+                - DB_NAME=drive_db
+                - DB_USER=drive_user
+                - DB_PASSWORD=drive_pass
                 - MINIO_URL=http://minio:9000
-                - MINIO_ACCESS_KEY=${MINIO_ROOT_USER}
-                - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD}
-                - MINIO_BUCKET=drive-files
-                - JWT_SECRET=${JWT_SECRET}
-                - JWT_EXPIRATION=${JWT_EXPIRATION}
-                - INTRANET_CORE_URL=${INTRANET_CORE_URL}
-                - FILE_MAX_SIZE=${FILE_MAX_SIZE}
-                - FILE_UPLOAD_PATH=${FILE_UPLOAD_PATH}
-                - FILE_ALLOWED_TYPES=${FILE_ALLOWED_TYPES}
-                - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+                - MINIO_ACCESS_KEY=minioadmin
+                - MINIO_SECRET_KEY=minioadmin
               ports:
                 - "8444:8444"
               volumes:
                 - drive_uploads:/app/uploads
-                - drive_logs:/app/logs
-              healthcheck:
-                test: ["CMD", "curl", "-f", "http://localhost:8444/actuator/health"]
-                interval: 30s
-                timeout: 10s
-                retries: 3
-                start_period: 60s
 
           volumes:
             postgres_data:
-            redis_data:
             minio_data:
             drive_uploads:
-            drive_logs:
           COMPOSE_EOF
               
-              # Substituir placeholders
               sed -i "s|REPO_PLACEHOLDER|$REPO_LOWERCASE|g" docker-compose.yml
               sed -i "s|BRANCH_PLACEHOLDER|${{ github.ref_name }}|g" docker-compose.yml
             fi
             
-            # Copiar script de init do banco se não existir
+            # Usar init-db.sql existente
             if [ ! -f "scripts/init-db.sql" ]; then
               mkdir -p scripts
               cat > scripts/init-db.sql << 'SQL_EOF'
-          -- Criar esquemas para microserviços do drive
           CREATE SCHEMA IF NOT EXISTS drive_files;
-          CREATE SCHEMA IF NOT EXISTS drive_folders; 
-          CREATE SCHEMA IF NOT EXISTS drive_permissions;
-          CREATE SCHEMA IF NOT EXISTS drive_quotas;
-          CREATE SCHEMA IF NOT EXISTS drive_audit;
-
-          -- Permissões
           GRANT ALL PRIVILEGES ON SCHEMA drive_files TO drive_user;
-          GRANT ALL PRIVILEGES ON SCHEMA drive_folders TO drive_user;
-          GRANT ALL PRIVILEGES ON SCHEMA drive_permissions TO drive_user;
-          GRANT ALL PRIVILEGES ON SCHEMA drive_quotas TO drive_user;
-          GRANT ALL PRIVILEGES ON SCHEMA drive_audit TO drive_user;
           SQL_EOF
             fi
             
-            echo "🐳 Pull da nova imagem..."
             docker pull ghcr.io/$REPO_LOWERCASE/drive-file-service:${{ github.ref_name }}
+            docker-compose up -d
             
-            echo "🔄 Restart dos serviços..."
-            # Subir infraestrutura se não estiver rodando
-            docker-compose up -d postgres redis minio
-            
-            # Aguardar serviços subirem
-            echo "⏳ Aguardando serviços..."
-            sleep 15
-            
-            # Restart apenas do drive-file-service
-            docker-compose up -d drive-file-service
-            
-            echo "✅ Deploy concluído!"
-            echo "📊 Status:"
+            echo "Deploy concluído!"
             docker-compose ps
-            
-            echo "🔗 URLs:"
-            echo "   • Drive File Service: http://$(hostname -I | awk '{print $1}'):8444"
-            echo "   • MinIO Console: http://$(hostname -I | awk '{print $1}'):9001"
-            echo "   • Health Check: http://$(hostname -I | awk '{print $1}'):8444/actuator/health"
-            
-            # Cleanup
-            docker image prune -af --filter "until=168h" || true
           ENDSSH
