@@ -36,25 +36,59 @@ jobs:
           distribution: "temurin"
           cache: "maven"
 
-      - name: Corrigir e Build Drive Common
+      - name: Desabilitar Dependência Circular Temporariamente
         run: |
           cd drive-microservices
-          echo "🔧 Corrigindo e construindo drive-common..."
+          echo "🔧 Comentando dependência circular temporariamente..."
 
-          # 1. Remover dependência circular
-          sed -i '/<dependency>/,/<\/dependency>/{
-            /<groupId>com\.intranet\.drive<\/groupId>/,/<\/dependency>/{
-              /<artifactId>drive-file-service<\/artifactId>/,/<\/dependency>/d
-            }
-          }' shared/drive-common/pom.xml
+          # Comentar a dependência problemática ao invés de remover
+          sed -i 's|<dependency>|<!-- DEPENDENCY_DISABLED|g; s|</dependency>|DEPENDENCY_DISABLED -->|g' shared/drive-common/pom.xml
+          sed -i 's|<!-- DEPENDENCY_DISABLED\s*<groupId>com\.intranet\.drive</groupId>|<dependency>\n        <groupId>com.intranet.drive</groupId>|g' shared/drive-common/pom.xml
+          sed -i 's|DEPENDENCY_DISABLED -->\s*</groupId>|</groupId>\n        DEPENDENCY_DISABLED -->|g' shared/drive-common/pom.xml
+
+          # Abordagem mais simples: substituir toda a seção problemática
+          cat > temp_fix.py << 'PYTHON_EOF'
+          import re
+
+          with open('shared/drive-common/pom.xml', 'r') as f:
+              content = f.read()
+
+          # Comentar especificamente a dependência drive-file-service
+          pattern = r'(\s*)<dependency>\s*<groupId>com\.intranet\.drive</groupId>\s*<artifactId>drive-file-service</artifactId>\s*<version>1\.0\.0-SNAPSHOT</version>\s*</dependency>'
+
+          def replace_func(match):
+              indent = match.group(1)
+              return f'{indent}<!-- CIRCULAR DEPENDENCY DISABLED\n{indent}<dependency>\n{indent}    <groupId>com.intranet.drive</groupId>\n{indent}    <artifactId>drive-file-service</artifactId>\n{indent}    <version>1.0.0-SNAPSHOT</version>\n{indent}</dependency>\n{indent}CIRCULAR DEPENDENCY DISABLED -->'
+
+          new_content = re.sub(pattern, replace_func, content, flags=re.MULTILINE | re.DOTALL)
+
+          with open('shared/drive-common/pom.xml', 'w') as f:
+              f.write(new_content)
+
+          print("✅ Dependência comentada!")
+          PYTHON_EOF
+
+          python3 temp_fix.py
+          rm temp_fix.py
 
           echo "📋 Verificando correção:"
-          grep -A3 -B3 "drive-file-service" shared/drive-common/pom.xml || echo "✅ Dependência circular removida"
+          grep -A2 -B2 "CIRCULAR DEPENDENCY DISABLED" shared/drive-common/pom.xml || echo "⚠️ Nenhuma alteração feita"
 
-          # 2. Build e instalar drive-common no repositório local Maven
-          echo "📦 Building e instalando drive-common..."
-          cd shared/drive-common
-          mvn clean install -Dfile.encoding=UTF-8 -DskipTests -Dmaven.test.skip=true -q
+      - name: Build Drive Common
+        run: |
+          cd drive-microservices/shared/drive-common
+          echo "📦 Building drive-common..."
+
+          # Verificar se o pom.xml é válido antes de buildar
+          echo "🔍 Validando POM..."
+          mvn help:effective-pom -q > /dev/null && echo "✅ POM válido" || {
+            echo "❌ POM inválido! Conteúdo:"
+            cat pom.xml
+            exit 1
+          }
+
+          # Build e instalar no repositório local
+          mvn clean install -Dfile.encoding=UTF-8 -DskipTests -Dmaven.test.skip=true
           echo "✅ drive-common instalado no repositório local Maven"
 
       - name: Build Drive File Service
@@ -62,19 +96,26 @@ jobs:
           cd drive-microservices/services/drive-file-service
           echo "📦 Building drive-file-service..."
 
-          # Agora o drive-common está disponível no repositório local
+          # Build do drive-file-service
           mvn clean package -Dfile.encoding=UTF-8 -DskipTests -Dmaven.test.skip=true
 
           echo "✅ Verificando JAR gerado:"
-          ls -la target/
+          ls -la target/ || {
+            echo "❌ Diretório target não existe!"
+            echo "Saída do Maven:"
+            mvn clean package -Dfile.encoding=UTF-8 -DskipTests -X | tail -50
+            exit 1
+          }
 
-          # Verificar se o JAR foi criado corretamente
-          JAR_FILE=$(ls target/drive-file-service-*.jar | head -1)
+          # Verificar se o JAR foi criado
+          JAR_FILE=$(find target -name "drive-file-service-*.jar" -type f | head -1)
           if [ -f "$JAR_FILE" ]; then
             echo "🎯 JAR criado: $JAR_FILE"
-            echo "📏 Tamanho: $(du -h $JAR_FILE | cut -f1)"
+            echo "📏 Tamanho: $(du -h "$JAR_FILE" | cut -f1)"
           else
             echo "❌ JAR não encontrado!"
+            echo "Arquivos no target:"
+            ls -la target/
             exit 1
           fi
 
