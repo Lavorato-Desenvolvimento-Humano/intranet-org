@@ -8,7 +8,7 @@ spring:
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:drive_db}
     username: ${DB_USER:drive_user}
-    password: ${DB_USER:drive_pass}
+    password: ${DB_PASSWORD:drive_pass}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 20
