@@ -1,10 +1,10 @@
 package com.intranet.drive.file.service;
 
 import com.intranet.drive.common.dto.UserDto;
-import com.intranet.drive.common.security.JwtTokenUtil;
 import com.intranet.drive.file.dto.FileDto;
 import com.intranet.drive.file.entity.FileEntity;
 import com.intranet.drive.file.repository.FileRepository;
+import com.intranet.drive.common.service.CoreIntegrationService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.tika.Tika;
 import org.slf4j.Logger;
@@ -233,23 +233,28 @@ public class FileService {
     }
 
     private UserDto getCurrentUser() {
-       // Primeiro tentar obter do request (colocado pelo JwtAuthenticationFilter)
-        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-        if (attributes != null) {
-            HttpServletRequest request = attributes.getRequest();
-            UserDto user = (UserDto) request.getAttribute("currentUser");
-            if (user != null) {
-                return user;
+        try {
+            ServletRequestAttributes attr = (ServletRequestAttributes) RequestContextHolder.currentRequestAttributes();
+            HttpServletRequest request = attr.getRequest();
+            Object currentUser = request.getAttribute("currentUser");
+
+            if (currentUser instanceof UserDto) {
+                return (UserDto) currentUser;
             }
-        }
 
-        // Fallback obter do SecurityContext
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getName() != null) {
-            throw new RuntimeException("Usuário não encontrado no contexto de segurança");
-        }
+            // Fallback: pega do SecurityContext
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication != null && authentication.getPrincipal() instanceof String) {
+                String username = (String) authentication.getPrincipal();
+                return coreIntegrationService.getUserByUsername(username)
+                        .orElseThrow(() -> new RuntimeException("Usuário não encontrado: " + username));
+            }
 
-        throw new RuntimeException("Usuário não autenticado");
+            throw new RuntimeException("Usuário não autenticado");
+        } catch (Exception e) {
+            logger.error("Erro ao obter usuário atual: {}", e.getMessage());
+            throw new RuntimeException("Erro ao obter informações do usuário");
+        }
     }
 
     private String detectMimeType(MultipartFile file) throws IOException {
