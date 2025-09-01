@@ -36,16 +36,24 @@ jobs:
           distribution: "temurin"
           cache: "maven"
 
-      - name: Build Drive File Service
+      - name: Build Apenas Drive File Service (Skip Problemas)
         run: |
           cd drive-microservices
-          echo "🔧 Build Maven multi-módulo..."
+          echo "🔧 Build específico evitando módulos problemáticos..."
 
-          # Build apenas drive-file-service e suas dependências (drive-common)
-          mvn clean package -Dfile.encoding=UTF-8 -DskipTests -pl services/drive-file-service -am
+          # Build primeiro o drive-common isoladamente
+          echo "📦 Building drive-common..."
+          cd shared/drive-common
+          mvn clean package -Dfile.encoding=UTF-8 -DskipTests -Dmaven.test.skip=true
+          cd ../..
 
-          echo "✅ Verificando JAR:"
-          ls -la services/drive-file-service/target/
+          # Depois build o drive-file-service isoladamente  
+          echo "📦 Building drive-file-service..."
+          cd services/drive-file-service
+          mvn clean package -Dfile.encoding=UTF-8 -DskipTests -Dmaven.test.skip=true
+
+          echo "✅ Verificando JAR gerado:"
+          ls -la target/
 
       - name: Autenticar no GHCR
         if: github.event_name != 'pull_request'
