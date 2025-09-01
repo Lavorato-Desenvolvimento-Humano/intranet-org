@@ -5,6 +5,7 @@ import com.intranet.drive.common.security.JwtTokenUtil;
 import com.intranet.drive.file.dto.FileDto;
 import com.intranet.drive.file.entity.FileEntity;
 import com.intranet.drive.file.repository.FileRepository;
+import jakarta.servlet.http.HttpServletRequest;
 import org.apache.tika.Tika;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,15 +17,16 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.MessageDigest;
-import java.time.LocalDateTime;
+import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -35,7 +37,7 @@ public class FileService {
 
     private final FileRepository fileRepository;
     private final StorageService storageService;
-    private final JwtTokenUtil jwtTokenUtil;
+    private final CoreIntegrationService coreIntegrationService;
     private final Tika tika;
 
     @Value("${file.max-size:52428800}") // 50MB
@@ -46,10 +48,10 @@ public class FileService {
 
     public FileService(FileRepository fileRepository,
                        StorageService storageService,
-                       JwtTokenUtil jwtTokenUtil) {
+                       CoreIntegrationService coreIntegrationService) {
         this.fileRepository = fileRepository;
         this.storageService = storageService;
-        this.jwtTokenUtil = jwtTokenUtil;
+        this.coreIntegrationService = coreIntegrationService;
         this.tika = new Tika();
     }
 
@@ -59,6 +61,7 @@ public class FileService {
         validateFile(file);
 
         UserDto currentUser = getCurrentUser();
+        logger.debug("Upload iniciado pelo usuário: {} (ID: {})", currentUser.getUsername(), currentUser.getId());
 
         String detectedMimeType = tika.detect(file.getInputStream(), file.getOriginalFilename());
 
@@ -73,22 +76,12 @@ public class FileService {
         String storageKey = storageService.storeFile(file);
 
         // Criar entidade
-        FileEntity fileEntity = new FileEntity(
-                sanitizeFileName(file.getOriginalFilename()),
-                file.getOriginalFilename(),
-                detectedMimeType,
-                file.getSize(),
-                "/files/" + storageKey, // path virtual
-                storageKey,
-                md5Hash,
-                currentUser.getId(),
-                currentUser.getUsername()
-        );
+        FileEntity fileEntity = createFileEntity(file, detectedMimeType, md5Hash, storageKey, folderId, currentUser);
 
-        fileEntity.setFolderId(folderId);
+        fileEntity = fileRepository.save(fileEntity);
 
-        logger.info("Arquivo uploadado com sucesso - ID: {}, Storage Key: {}",
-                fileEntity.getId(), storageKey);
+        logger.info("Arquivo uploadado com sucesso - ID: {}, Storage Key: {}, Usuário: {}",
+                fileEntity.getId(), storageKey, currentUser.getUsername());
 
         return new FileDto(fileEntity);
     }
@@ -104,6 +97,9 @@ public class FileService {
         validateFileAccess(file);
 
         fileRepository.incrementDownloadCount(fileId);
+
+        logger.info("Download autorizado para arquivo: {} - Usuário: {}",
+                file.getName(), getCurrentUser().getUsername());
 
         return storageService.getFile(file.getStorageKey());
     }
@@ -130,6 +126,7 @@ public class FileService {
         }
 
         List<FileDto> fileDtos = files.getContent().stream()
+                .filter(this::hasFileAccess)
                 .map(FileDto::new)
                 .collect(Collectors.toList());
 
@@ -152,12 +149,15 @@ public class FileService {
         FileEntity file = fileRepository.findByIdAndNotDeleted(fileId)
                 .orElseThrow(() -> new RuntimeException("Arquivo não encontrado"));
 
-        validateFileOwnership(file);
+        validateFileAccess(file);
 
-        file.setName(sanitizeFileName(newName));
+        String sanitizedName = sanitizeFileName(newName);
+        file.setName(sanitizedName);
+
         file = fileRepository.save(file);
 
-        logger.info("Arquivo {} renomeado para {}", fileId, newName);
+        logger.info("Arquivo {} renomeado para {} pelo usuário {}", fileId, sanitizedName, getCurrentUser().getUsername());
+
         return new FileDto(file);
     }
 
@@ -165,13 +165,14 @@ public class FileService {
         FileEntity file = fileRepository.findByIdAndNotDeleted(fileId)
                 .orElseThrow(() -> new RuntimeException("Arquivo não encontrado"));
 
-        validateFileOwnership(file);
+        validateFileAccess(file);
 
         // Soft delete
         file.markAsDeleted();
         fileRepository.save(file);
 
-        logger.info("Arquivo {} marcado como deletado", fileId);
+        logger.info("Arquivo {} deletado pelo usuário {}",
+                fileId, getCurrentUser().getUsername());
     }
 
     public void permanentDeleteFile(Long fileId) {
@@ -202,69 +203,99 @@ public class FileService {
     // Métodos auxiliares
 
     private void validateFile(MultipartFile file) {
-        if (file.isEmpty()) {
+        if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("Arquivo não pode estar vazio");
         }
 
         if (file.getSize() > maxFileSize) {
             throw new IllegalArgumentException(
-                    String.format("Arquivo muito grande. Máximo permitido: %d bytes", maxFileSize)
+                    String.format("Arquivo muito grande. Máximo permitido: %d MB", maxFileSize / 1024 / 1024)
             );
         }
 
-        // Validar tipo do arquivo
-        List<String> allowedTypes = Arrays.asList(allowedTypesString.split(","));
-        if (!allowedTypes.contains(file.getContentType())) {
-            throw new IllegalArgumentException(
-                    String.format("Tipo de arquivo não permitido: %s", file.getContentType())
-            );
+        if (file.getOriginalFilename() == null || file.getOriginalFilename().trim().isEmpty()) {
+            throw new IllegalArgumentException("Nome do arquivo é obrigatório");
+        }
+
+        // Validar por extensão
+        String filename = file.getOriginalFilename().toLowerCase();
+        if (filename.contains("..") || filename.contains("/") || filename.contains("\\")) {
+            throw new IllegalArgumentException("Nome do arquivo contém caracteres inválidos");
         }
     }
 
-    private String sanitizeFileName(String fileName) {
-        if (fileName == null) return "unnamed";
+    private String sanitizeFileName(String filename) {
+        if (filename == null) return "arquivo_sem_nome";
 
-        // Remover caracteres perigosos
-        return fileName.replaceAll("[^a-zA-Z0-9._-]", "_");
-    }
-
-    private String calculateMD5(byte[] content) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("MD5");
-            byte[] digest = md.digest(content);
-            StringBuilder sb = new StringBuilder();
-            for (byte b : digest) {
-                sb.append(String.format("%02x", b));
-            }
-            return sb.toString();
-        } catch (Exception e) {
-            throw new RuntimeException("Erro ao calcular MD5", e);
-        }
+        return filename.replaceAll("[^a-zA-Z0-9._-]", "_")
+                .replaceAll("_{2,}", "_")
+                .substring(0, Math.min(filename.length(), 255));
     }
 
     private UserDto getCurrentUser() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !auth.isAuthenticated()) {
-            throw new RuntimeException("Usuário não autenticado");
+       // Primeiro tentar obter do request (colocado pelo JwtAuthenticationFilter)
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attributes != null) {
+            HttpServletRequest request = attributes.getRequest();
+            UserDto user = (UserDto) request.getAttribute("currentUser");
+            if (user != null) {
+                return user;
+            }
         }
 
-        // Por enquanto, estou criando o userDetail básico
-        // Futuramente integrar com intranet-core para obter dados completos
-        UserDto user = new UserDto();
-        user.setUsername(auth.getName());
-        user.setId(1L); // Temporário - obter do token JWT
+        // Fallback obter do SecurityContext
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getName() != null) {
+            throw new RuntimeException("Usuário não encontrado no contexto de segurança");
+        }
 
-        return user;
+        throw new RuntimeException("Usuário não autenticado");
+    }
+
+    private String detectMimeType(MultipartFile file) throws IOException {
+        try (InputStream inputStream = file.getInputStream()) {
+            String detectedType = tika.detect(inputStream, file.getOriginalFilename());
+
+            // Validar se o tipo é permitido
+            List<String> allowedTypes = Arrays.asList(allowedTypesString.split(","));
+            if (!allowedTypes.contains(detectedType)) {
+                throw new IllegalArgumentException(
+                        "Tipo de arquivo não permitido: " + detectedType
+                );
+            }
+
+            return detectedType;
+        }
+    }
+
+    private String calculateMD5(byte[] data) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            byte[] hashBytes = md.digest(data);
+            StringBuilder sb = new StringBuilder();
+            for (byte b : hashBytes) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("Erro ao calcular MD5", e);
+        }
     }
 
     private void validateFileAccess(FileEntity file) {
         UserDto currentUser = getCurrentUser();
 
-        // Por enquanto, apenas verificar se é o owner
-        // Futuramente integrar com drive-permission-service
-        if (!file.getOwnerId().equals(currentUser.getId())) {
-            throw new RuntimeException("Acesso negado ao arquivo");
+        if (file.getOwnerId().equals(currentUser.getId())) {
+            return;
         }
+
+        if (coreIntegrationService.hasRole(currentUser, "ADMIN")) {
+            return;
+        }
+
+        // FUTURA INTEGRAÇÃO COM DRIVE-PERMISSION-SERVICE
+        // Por enquanto, só o proprietário e admin têm acesso
+        throw new RuntimeException("Acesso negado ao arquivo");
     }
 
     private boolean hasFileAccess(FileEntity file) {
@@ -282,5 +313,30 @@ public class FileService {
         if (!file.getOwnerId().equals(currentUser.getId())) {
             throw new RuntimeException("Apenas o proprietário pode modificar este arquivo");
         }
+    }
+
+    /**
+     * Criar entidade de arquivo
+     */
+    private FileEntity createFileEntity(MultipartFile file, String mimeType, String md5Hash,
+                                        String storageKey, Long folderId, UserDto user) {
+        String sanitizedName = sanitizeFileName(file.getOriginalFilename());
+        String virtualPath = "/files/" + storageKey;
+
+        FileEntity fileEntity = new FileEntity(
+                sanitizedName,
+                file.getOriginalFilename(),
+                mimeType,
+                file.getSize(),
+                virtualPath,
+                storageKey,
+                md5Hash,
+                user.getId(),
+                user.getUsername()
+        );
+
+        fileEntity.setFolderId(folderId);
+
+        return fileEntity;
     }
 }
