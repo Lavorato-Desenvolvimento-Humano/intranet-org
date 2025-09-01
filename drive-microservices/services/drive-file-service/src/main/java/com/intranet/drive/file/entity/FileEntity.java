@@ -40,10 +40,10 @@ public class FileEntity {
     private String md5Hash;
 
     @Column(name = "folder_id")
-    private long folderId;
+    private Long folderId;
 
     @Column(name = "owner_id", nullable = false)
-    private long ownerId;
+    private Long ownerId;
 
     @Column(name = "owner_username", nullable = false)
     private String ownerUsername;
@@ -179,9 +179,17 @@ public class FileEntity {
 
     public boolean isDocument() {
         return mimeType != null && (
-                mimeType.startsWith("application/vnd.openxmlformats-officedocument") ||
-                        mimeType.startsWith("application/msword") ||
-                        mimeType.startsWith("application/vnd.ms-")
+                mimeType.startsWith("application/msword") ||
+                        mimeType.startsWith("application/vnd.openxmlformats-officedocument") ||
+                        mimeType.equals("text/plain") ||
+                        mimeType.startsWith("application/vnd.ms-excel")
         );
+    }
+
+    public String getFileExtension() {
+        if (name == null || !name.contains(".")) {
+            return "";
+        }
+        return name.substring(name.lastIndexOf(".") + 1).toLowerCase();
     }
 }
