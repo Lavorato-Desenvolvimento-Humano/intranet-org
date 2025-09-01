@@ -13,7 +13,7 @@
     </parent>
 
     <artifactId>drive-file-service</artifactId>
-    <name>Drive File Service</name>
+    <n>Drive File Service</n>
     <description>Microserviço para gestão de arquivos</description>
 
     <dependencies>
@@ -104,6 +104,10 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <skip>false</skip> 
+                    <mainClass>com.intranet.drive.file.DriveFileServiceApplication</mainClass>
+                </configuration>
             </plugin>
         </plugins>
     </build>
