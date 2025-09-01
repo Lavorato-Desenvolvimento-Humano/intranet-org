@@ -6,10 +6,15 @@ spring:
     name: drive-file-service
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/drive_db
-    username: drive_user
-    password: drive_pass
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:drive_db}
+    username: ${DB_USER:drive_user}
+    password: ${DB_USER:drive_pass}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      idle-timeout: 300000
+      max-lifetime: 1200000
 
   jpa:
     hibernate:
@@ -20,16 +25,21 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         default_schema: drive_files
         format_sql: true
+    auditing:
+      enabled: true
 
   flyway:
     enabled: true
     default-schema: drive_files
     locations: classpath:db/migration
+    validate-on-migrate: true
+    baseline-on-migrate: true
 
   servlet:
     multipart:
       max-file-size: 50MB
       max-request-size: 50MB
+      resolve-lazily: true
 
 #Config JWT
 jwt:
@@ -38,7 +48,7 @@ jwt:
 
 #MinIO
 minio:
-  url: $${MINIO_URL:http://localhost:9000}
+  url: ${MINIO_URL:http://localhost:9000}
   access-key: ${MINIO_ACCESS_KEY:minioadmin}
   secret-key: ${MINIO_SECRET_KEY:minioadmin}
   bucket-name: ${MINIO_BUCKET:drive-files}
@@ -47,26 +57,66 @@ file:
   max-size: ${FILE_MAX_SIZE:52428800} # 50MB em bytes
   allowed-types: ${FILE_ALLOWED_TYPES:image/jpeg,image/png,image/gif,application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet}
   upload-path: ${FILE_UPLOAD_PATH:/tmp/drive-uploads}
+  thumbnail:
+    enabled: true
+    max-width: 200
+    max-height: 200
+    quality: 0.8
 
 intranet:
   core:
     url: ${INTRANET_CORE_URL:https://localhost:8443}
     auth-endpoint: ${INTRANET_AUTH_ENDPOINT:/api/auth/validate}
+    timeout:
+      connect: ${CORE_CONNECT_TIMEOUT:5000}
+      read: ${CORE_READ_TIMEOUT:10000}
 
 # Actuator
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics, prometheus
   endpoint:
     health:
       show-details: when_authorized
+      show-components: always
+  info:
+    env:
+      enabled: true
+    java:
+      enabled: true
+    os:
+      enabled: true
 
 # Loggs
 logging:
   level:
     com.intranet.drive.file: DEBUG
-    org.springframework.security: DEBUG
+    org.springframework.security: INFO
+    org.springframework.web: INFO
+    org.hibernate.SQL: ${SQL_LOG_LEVEL:WARN}
+    org.hibernate.type.descriptor.sql.BasicBinder: ${SQL_BIND_LOG_LEVEL:WARN}
   pattern:
-    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{correlationId}] %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{correlationId}] %logger{36} - %msg%n"
+  file:
+    name: ${LOG_FILE_PATH:/var/log/drive/drive-file-service.log}
+
+cache:
+  redis:
+    enabled: ${REDIS_ENABLED:false}
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    timeout: ${REDIS_TIMEOUT:2000}
+
+security:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:https://localhost:3000, https://lavorato.app.br,https://dev.lavorato.app.br}
+    allowed-methods: ${CORS_ALLOWED_METHODS:GET,POST,PUT,DELETE,OPTIONS}
+    allowed-headers: ${CORS_ALLOWED_HEADERS:*}
+    allow-credentials: true
+
+rate-limit:
+  enabled: ${RATE_LIMIT_ENABLED:false}
+  request_per_minute: ${RATE_LIMIT_RPM:100}
