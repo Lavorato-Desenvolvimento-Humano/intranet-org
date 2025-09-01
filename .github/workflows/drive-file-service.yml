@@ -1,0 +1,268 @@
+name: Drive File Service CI/CD
+
+on:
+  push:
+    branches:
+      - develop
+      - staging
+      - main
+    paths:
+      - "drive-microservices/**"
+      - ".github/workflows/drive-file-service.yml"
+  pull_request:
+    branches:
+      - develop
+      - staging
+      - main
+    paths:
+      - "drive-microservices/**"
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Configurar JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: "temurin"
+          cache: "maven"
+
+      - name: Build Drive File Service
+        run: |
+          cd drive-microservices
+          echo "🔧 Build Maven multi-módulo..."
+
+          # Build apenas drive-file-service e suas dependências (drive-common)
+          mvn clean package -Dfile.encoding=UTF-8 -DskipTests -pl services/drive-file-service -am
+
+          echo "✅ Verificando JAR:"
+          ls -la services/drive-file-service/target/
+
+      - name: Autenticar no GHCR
+        if: github.event_name != 'pull_request'
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Build e Push Docker Image
+        if: github.event_name != 'pull_request'
+        run: |
+          cd drive-microservices/services/drive-file-service
+
+          IMAGE_TAG=${{ github.ref_name }}
+          REPO_LOWERCASE=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE_NAME="ghcr.io/$REPO_LOWERCASE/drive-file-service:$IMAGE_TAG"
+
+          echo "🐳 Building: $IMAGE_NAME"
+
+          # Usar o Dockerfile existente
+          docker build -t $IMAGE_NAME .
+          docker push $IMAGE_NAME
+
+          echo "✅ Image pushed successfully!"
+
+  deploy:
+    name: Deploy Drive File Service
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/main')
+
+    steps:
+      - name: Configurar SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy na VPS
+        run: |
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
+            echo "🚀 Deploying Drive File Service..."
+            
+            # Usar a estrutura existente da VPS
+            mkdir -p /opt/deploy/drive-microservices/${{ github.ref_name }}
+            cd /opt/deploy/drive-microservices/${{ github.ref_name }}
+            
+            REPO_LOWERCASE=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+            
+            # Copiar arquivos do projeto para VPS (usando rsync ou git clone seria melhor)
+            echo "📁 Preparando arquivos do projeto..."
+            
+            # Criar .env apenas se não existir
+            if [ ! -f ".env" ]; then
+              cat > .env << 'ENV_EOF'
+          # Drive Microservices Environment Variables
+          POSTGRES_DB=drive_db
+          POSTGRES_USER=drive_user  
+          POSTGRES_PASSWORD=drive_pass
+
+          # MinIO
+          MINIO_ROOT_USER=minioadmin
+          MINIO_ROOT_PASSWORD=minioadmin
+
+          # JWT Integration com sistema principal
+          JWT_SECRET=lavoratoSecretKeyForJWTAuthenticationWithSpringBootProject
+          JWT_EXPIRATION=86400
+
+          # Intranet Core
+          INTRANET_CORE_URL=https://localhost:8443
+          INTRANET_AUTH_ENDPOINT=/api/auth/validate
+
+          # File settings
+          FILE_MAX_SIZE=52428800
+          FILE_UPLOAD_PATH=/app/uploads
+          FILE_ALLOWED_TYPES=image/jpeg,image/png,image/gif,application/pdf,text/plain
+
+          # CORS
+          CORS_ALLOWED_ORIGINS=https://localhost:3000,https://lavorato.app.br,https://dev.lavorato.app.br
+          ENV_EOF
+            fi
+            
+            # Usar o docker-compose.yml existente do projeto, mas adicionar o drive-file-service
+            echo "🔧 Configurando docker-compose..."
+            
+            # Se não existir, copiar do projeto ou criar uma versão estendida
+            if [ ! -f "docker-compose.yml" ]; then
+              cat > docker-compose.yml << 'COMPOSE_EOF'
+          version: '3.8'
+
+          services:
+            postgres:
+              image: postgres:15
+              container_name: drive-postgres
+              environment:
+                POSTGRES_DB: ${POSTGRES_DB}
+                POSTGRES_USER: ${POSTGRES_USER}
+                POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+              ports:
+                - "5432:5432"
+              volumes:
+                - postgres_data:/var/lib/postgresql/data
+                - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+
+            redis:
+              image: redis:7-alpine
+              container_name: drive-redis
+              ports:
+                - "6379:6379"
+              command: redis-server --appendonly yes
+              volumes:
+                - redis_data:/data
+
+            minio:
+              image: minio/minio:latest
+              container_name: drive-minio
+              ports:
+                - "9000:9000"
+                - "9001:9001"
+              environment:
+                MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+                MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+              command: server /data --console-address ":9001"
+              volumes:
+                - minio_data:/data
+
+            drive-file-service:
+              image: ghcr.io/REPO_PLACEHOLDER/drive-file-service:BRANCH_PLACEHOLDER
+              container_name: drive-file-service
+              restart: always
+              depends_on:
+                - postgres
+                - minio
+              environment:
+                - SPRING_PROFILES_ACTIVE=docker
+                - DB_HOST=postgres
+                - DB_PORT=5432
+                - DB_NAME=${POSTGRES_DB}
+                - DB_USER=${POSTGRES_USER}
+                - DB_PASSWORD=${POSTGRES_PASSWORD}
+                - MINIO_URL=http://minio:9000
+                - MINIO_ACCESS_KEY=${MINIO_ROOT_USER}
+                - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD}
+                - MINIO_BUCKET=drive-files
+                - JWT_SECRET=${JWT_SECRET}
+                - JWT_EXPIRATION=${JWT_EXPIRATION}
+                - INTRANET_CORE_URL=${INTRANET_CORE_URL}
+                - FILE_MAX_SIZE=${FILE_MAX_SIZE}
+                - FILE_UPLOAD_PATH=${FILE_UPLOAD_PATH}
+                - FILE_ALLOWED_TYPES=${FILE_ALLOWED_TYPES}
+                - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+              ports:
+                - "8444:8444"
+              volumes:
+                - drive_uploads:/app/uploads
+                - drive_logs:/app/logs
+              healthcheck:
+                test: ["CMD", "curl", "-f", "http://localhost:8444/actuator/health"]
+                interval: 30s
+                timeout: 10s
+                retries: 3
+                start_period: 60s
+
+          volumes:
+            postgres_data:
+            redis_data:
+            minio_data:
+            drive_uploads:
+            drive_logs:
+          COMPOSE_EOF
+              
+              # Substituir placeholders
+              sed -i "s|REPO_PLACEHOLDER|$REPO_LOWERCASE|g" docker-compose.yml
+              sed -i "s|BRANCH_PLACEHOLDER|${{ github.ref_name }}|g" docker-compose.yml
+            fi
+            
+            # Copiar script de init do banco se não existir
+            if [ ! -f "scripts/init-db.sql" ]; then
+              mkdir -p scripts
+              cat > scripts/init-db.sql << 'SQL_EOF'
+          -- Criar esquemas para microserviços do drive
+          CREATE SCHEMA IF NOT EXISTS drive_files;
+          CREATE SCHEMA IF NOT EXISTS drive_folders; 
+          CREATE SCHEMA IF NOT EXISTS drive_permissions;
+          CREATE SCHEMA IF NOT EXISTS drive_quotas;
+          CREATE SCHEMA IF NOT EXISTS drive_audit;
+
+          -- Permissões
+          GRANT ALL PRIVILEGES ON SCHEMA drive_files TO drive_user;
+          GRANT ALL PRIVILEGES ON SCHEMA drive_folders TO drive_user;
+          GRANT ALL PRIVILEGES ON SCHEMA drive_permissions TO drive_user;
+          GRANT ALL PRIVILEGES ON SCHEMA drive_quotas TO drive_user;
+          GRANT ALL PRIVILEGES ON SCHEMA drive_audit TO drive_user;
+          SQL_EOF
+            fi
+            
+            echo "🐳 Pull da nova imagem..."
+            docker pull ghcr.io/$REPO_LOWERCASE/drive-file-service:${{ github.ref_name }}
+            
+            echo "🔄 Restart dos serviços..."
+            # Subir infraestrutura se não estiver rodando
+            docker-compose up -d postgres redis minio
+            
+            # Aguardar serviços subirem
+            echo "⏳ Aguardando serviços..."
+            sleep 15
+            
+            # Restart apenas do drive-file-service
+            docker-compose up -d drive-file-service
+            
+            echo "✅ Deploy concluído!"
+            echo "📊 Status:"
+            docker-compose ps
+            
+            echo "🔗 URLs:"
+            echo "   • Drive File Service: http://$(hostname -I | awk '{print $1}'):8444"
+            echo "   • MinIO Console: http://$(hostname -I | awk '{print $1}'):9001"
+            echo "   • Health Check: http://$(hostname -I | awk '{print $1}'):8444/actuator/health"
+            
+            # Cleanup
+            docker image prune -af --filter "until=168h" || true
+          ENDSSH
