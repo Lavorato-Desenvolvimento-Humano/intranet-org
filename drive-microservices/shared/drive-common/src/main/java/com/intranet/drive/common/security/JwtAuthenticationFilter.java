@@ -1,7 +1,7 @@
 package com.intranet.drive.common.security;
 
 import com.intranet.drive.common.dto.UserDto;
-import com.intranet.drive.file.service.CoreIntegrationService;
+import com.intranet.drive.common.service.CoreIntegrationService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
