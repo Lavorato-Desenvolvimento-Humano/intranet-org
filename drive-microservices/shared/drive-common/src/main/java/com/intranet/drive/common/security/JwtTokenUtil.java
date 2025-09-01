@@ -19,7 +19,7 @@ public class JwtTokenUtil {
     @Value("${jwt.secret:MySecretKeyForJWTTokenGenerationThatShouldBeLongEnough}")
     private String secret;
 
-    @Value("{jwt.expiration:86400}")
+    @Value("${jwt.expiration:86400}")
     private Long expiration;
 
     private SecretKey getSigningKey() {
