@@ -36,24 +36,47 @@ jobs:
           distribution: "temurin"
           cache: "maven"
 
-      - name: Build Apenas Drive File Service (Skip Problemas)
+      - name: Corrigir e Build Drive Common
         run: |
           cd drive-microservices
-          echo "🔧 Build específico evitando módulos problemáticos..."
+          echo "🔧 Corrigindo e construindo drive-common..."
 
-          # Build primeiro o drive-common isoladamente
-          echo "📦 Building drive-common..."
+          # 1. Remover dependência circular
+          sed -i '/<dependency>/,/<\/dependency>/{
+            /<groupId>com\.intranet\.drive<\/groupId>/,/<\/dependency>/{
+              /<artifactId>drive-file-service<\/artifactId>/,/<\/dependency>/d
+            }
+          }' shared/drive-common/pom.xml
+
+          echo "📋 Verificando correção:"
+          grep -A3 -B3 "drive-file-service" shared/drive-common/pom.xml || echo "✅ Dependência circular removida"
+
+          # 2. Build e instalar drive-common no repositório local Maven
+          echo "📦 Building e instalando drive-common..."
           cd shared/drive-common
-          mvn clean package -Dfile.encoding=UTF-8 -DskipTests -Dmaven.test.skip=true
-          cd ../..
+          mvn clean install -Dfile.encoding=UTF-8 -DskipTests -Dmaven.test.skip=true -q
+          echo "✅ drive-common instalado no repositório local Maven"
 
-          # Depois build o drive-file-service isoladamente  
+      - name: Build Drive File Service
+        run: |
+          cd drive-microservices/services/drive-file-service
           echo "📦 Building drive-file-service..."
-          cd services/drive-file-service
+
+          # Agora o drive-common está disponível no repositório local
           mvn clean package -Dfile.encoding=UTF-8 -DskipTests -Dmaven.test.skip=true
 
           echo "✅ Verificando JAR gerado:"
           ls -la target/
+
+          # Verificar se o JAR foi criado corretamente
+          JAR_FILE=$(ls target/drive-file-service-*.jar | head -1)
+          if [ -f "$JAR_FILE" ]; then
+            echo "🎯 JAR criado: $JAR_FILE"
+            echo "📏 Tamanho: $(du -h $JAR_FILE | cut -f1)"
+          else
+            echo "❌ JAR não encontrado!"
+            exit 1
+          fi
 
       - name: Autenticar no GHCR
         if: github.event_name != 'pull_request'
