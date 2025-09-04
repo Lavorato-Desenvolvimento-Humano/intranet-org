@@ -14,7 +14,10 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
         "com.intranet.drive.file.entity",
         "com.intranet.drive.common.entity"
 })
-@ComponentScan(basePackages = {"com.intranet.drive.file", "com.intranet.drive.common"})
+@ComponentScan(basePackages = {
+        "com.intranet.drive.file",
+        "com.intranet.drive.common"
+})
 public class DriveFileServiceApplication {
     public static void main(String[] args) {
         SpringApplication.run(DriveFileServiceApplication.class, args);
