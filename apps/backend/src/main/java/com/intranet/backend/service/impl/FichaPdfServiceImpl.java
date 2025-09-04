@@ -17,6 +17,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -37,7 +38,6 @@ public class FichaPdfServiceImpl implements FichaPdfService {
     private final FichaPdfJobRepository jobRepository;
     private final ConvenioFichaPdfConfigRepository configRepository;
     private final FichaPdfLogRepository logRepository;
-    private final FichaRepository fichaRepository;
     private final UserRepository userRepository;
     private final PacienteRepository pacienteRepository;
     private final GuiaRepository guiaRepository;
@@ -538,13 +538,15 @@ public class FichaPdfServiceImpl implements FichaPdfService {
     @Async("fichaPdfTaskExecutor")
     @Transactional
     public CompletableFuture<FichaPdfResponseDto> gerarFichasConvenioComJobIdEUsuario(
-            FichaPdfConvenioRequest request, String jobId, User usuario) {
-
+            FichaPdfConvenioRequest request,
+            String jobId,
+            User usuario
+    ) {
         logger.info("Iniciando geração assíncrona com usuário fornecido: {} - {}/{} - JobId: {} - Usuário: {}",
                 request.getConvenioId(), request.getMes(), request.getAno(), jobId, usuario.getEmail());
 
         try {
-            // Criar job com usuário já fornecido (sem usar getCurrentUser())
+            // Criar job
             FichaPdfJob job = criarJobComUsuario(jobId, FichaPdfJob.TipoGeracao.CONVENIO, usuario);
             logger.info("Job criado com sucesso: {}", job.getJobId());
 
@@ -556,24 +558,46 @@ public class FichaPdfServiceImpl implements FichaPdfService {
                 return CompletableFuture.completedFuture(buildResponse(job, "Nenhuma guia encontrada"));
             }
 
-            // Filtrar pacientes que já possuem fichas
-            List<UUID> pacientesOriginais = todosItens.stream()
-                    .map(FichaPdfItemDto::getPacienteId)
-                    .distinct()
-                    .collect(Collectors.toList());
+            // CORREÇÃO: Verificar se o convênio tem template personalizado
+            Optional<ConvenioFichaPdfConfig> configOpt = configRepository.findByConvenioId(request.getConvenioId());
+            boolean temTemplatePersonalizado = false;
 
-            List<UUID> pacientesSemFichas = fichaVerificationService.filtrarPacientesSemFichas(
-                    request.getConvenioId(), request.getMes(), request.getAno(), pacientesOriginais);
-
-            // Filtrar itens apenas para pacientes sem fichas
-            List<FichaPdfItemDto> itensParaProcessar = todosItens.stream()
-                    .filter(item -> pacientesSemFichas.contains(item.getPacienteId()))
-                    .collect(Collectors.toList());
-
-            if (itensParaProcessar.isEmpty()) {
-                finalizarJobComSucesso(job, "Todos os pacientes já possuem fichas geradas para este período");
-                return CompletableFuture.completedFuture(buildResponse(job, "Fichas já existem"));
+            if (configOpt.isPresent()) {
+                ConvenioFichaPdfConfig config = configOpt.get();
+                temTemplatePersonalizado = templateService.temTemplateEspecificoPorConfig(config);
+                logger.info("Convênio {} tem template personalizado: {}",
+                        config.getConvenio().getName(), temTemplatePersonalizado);
             }
+
+            List<FichaPdfItemDto> itensParaProcessar;
+
+            if (temTemplatePersonalizado) {
+                // PARA CONVÊNIOS COM TEMPLATE PERSONALIZADO: GERAR SEMPRE
+                logger.info("🎯 TEMPLATE PERSONALIZADO DETECTADO - Gerando fichas sem filtro de duplicatas");
+                itensParaProcessar = todosItens;
+            } else {
+                // PARA CONVÊNIOS SEM TEMPLATE PERSONALIZADO: Aplicar filtro normal
+                logger.info("📋 Template padrão - Aplicando filtro de fichas existentes");
+
+                List<UUID> pacientesOriginais = todosItens.stream()
+                        .map(FichaPdfItemDto::getPacienteId)
+                        .distinct()
+                        .collect(Collectors.toList());
+
+                List<UUID> pacientesSemFichas = fichaVerificationService.filtrarPacientesSemFichas(
+                        request.getConvenioId(), request.getMes(), request.getAno(), pacientesOriginais);
+
+                itensParaProcessar = todosItens.stream()
+                        .filter(item -> pacientesSemFichas.contains(item.getPacienteId()))
+                        .collect(Collectors.toList());
+
+                if (itensParaProcessar.isEmpty()) {
+                    finalizarJobComSucesso(job, "Todos os pacientes já possuem fichas geradas para este período");
+                    return CompletableFuture.completedFuture(buildResponse(job, "Fichas já existem"));
+                }
+            }
+
+            logger.info("Total de fichas a processar: {}", itensParaProcessar.size());
 
             // Atualizar job com total de fichas
             job.setTotalFichas(itensParaProcessar.size());
@@ -591,46 +615,41 @@ public class FichaPdfServiceImpl implements FichaPdfService {
                     }
             );
 
-            // Salvar arquivo
-            String caminhoArquivo = salvarArquivoPdf(pdfBytes, jobId);
-
-            // Finalizar job com sucesso
-            job.setStatus(FichaPdfJob.StatusJob.CONCLUIDO);
-            job.setArquivoPath(caminhoArquivo);
+            // Salvar arquivo e finalizar job
+            String fileName = salvarArquivoPdf(pdfBytes, jobId);
+            job.setArquivoPath(fileName);
             job.setPodeDownload(true);
+            job.setStatus(FichaPdfJob.StatusJob.CONCLUIDO);
             job.setConcluido(LocalDateTime.now());
             job.setFichasProcessadas(itensParaProcessar.size());
+
+            String observacao = temTemplatePersonalizado
+                    ? String.format("Geradas %d fichas com template personalizado", itensParaProcessar.size())
+                    : String.format("Geradas %d fichas para %d pacientes", itensParaProcessar.size(),
+                    itensParaProcessar.stream().map(FichaPdfItemDto::getPacienteId).distinct().collect(Collectors.toList()).size());
+
+            job.setObservacoes(observacao);
             jobRepository.save(job);
 
             // Registrar logs
-            registrarLogsFichasSeguro(job, itensParaProcessar);
+            registrarLogsFichas(job, itensParaProcessar);
 
-            logger.info("✅ Fichas geradas com sucesso para o convênio {} - JobId: {} - Usuário: {}",
-                    request.getConvenioId(), jobId, usuario.getEmail());
+            logger.info("Geração por convênio finalizada: JobId: {}, Fichas: {}, Template personalizado: {}",
+                    jobId, itensParaProcessar.size(), temTemplatePersonalizado);
 
-            return CompletableFuture.completedFuture(buildResponse(job, "Sucesso"));
+            return CompletableFuture.completedFuture(buildResponse(job, "PDF gerado com sucesso"));
 
         } catch (Exception e) {
-            logger.error("❌ Erro na geração assíncrona de fichas com usuário fornecido: {}", e.getMessage(), e);
+            logger.error("Erro na geração de fichas por convênio: {}", e.getMessage(), e);
 
-            // Tentar buscar o job para marcar como erro
             try {
                 Optional<FichaPdfJob> jobOpt = jobRepository.findByJobId(jobId);
                 if (jobOpt.isPresent()) {
-                    finalizarJobComErro(jobOpt.get(), e);
-                } else {
-                    // Se o job não foi criado, criar um job de erro
-                    FichaPdfJob errorJob = new FichaPdfJob();
-                    errorJob.setJobId(jobId);
-                    errorJob.setTipo(FichaPdfJob.TipoGeracao.CONVENIO);
+                    FichaPdfJob errorJob = jobOpt.get();
                     errorJob.setStatus(FichaPdfJob.StatusJob.ERRO);
-                    errorJob.setIniciado(LocalDateTime.now());
+                    errorJob.setErro("Erro interno: " + e.getMessage());
                     errorJob.setConcluido(LocalDateTime.now());
-                    errorJob.setErro(e.getMessage());
-                    errorJob.setTotalFichas(0);
-                    errorJob.setFichasProcessadas(0);
-                    errorJob.setUsuario(usuario); // Usar o usuário fornecido
-
+                    errorJob.setUsuario(usuario);
                     jobRepository.save(errorJob);
                 }
             } catch (Exception ex) {
@@ -648,16 +667,21 @@ public class FichaPdfServiceImpl implements FichaPdfService {
     @Async
     @Transactional
     public CompletableFuture<FichaPdfResponseDto> gerarFichasLoteComJobId(FichaPdfLoteRequest request, String jobId) {
-        logger.info("Iniciando geração em lote para {} convênios com jobId fornecido: {}", request.getConvenioIds().size(), jobId);
+        logger.info("Iniciando geração em lote para {} convênios com jobId fornecido: {}",
+                request.getConvenioIds().size(), jobId);
 
         User currentUser = getCurrentUser();
         FichaPdfJob job = criarJob(jobId, FichaPdfJob.TipoGeracao.LOTE, currentUser);
 
         try {
             List<FichaPdfItemDto> todosItens = new ArrayList<>();
+            int conveniosComTemplatePersonalizado = 0;
+            int conveniosComTemplatePadrao = 0;
 
             // Processar cada convênio
             for (UUID convenioId : request.getConvenioIds()) {
+                logger.info("=== PROCESSANDO CONVÊNIO EM LOTE: {} ===", convenioId);
+
                 FichaPdfConvenioRequest convenioRequest = new FichaPdfConvenioRequest();
                 convenioRequest.setConvenioId(convenioId);
                 convenioRequest.setMes(request.getMes());
@@ -665,33 +689,83 @@ public class FichaPdfServiceImpl implements FichaPdfService {
 
                 List<FichaPdfItemDto> itensConvenio = buscarItensParaConvenio(convenioRequest);
 
-                // Filtrar pacientes que já possuem fichas
-                List<UUID> pacientesOriginais = itensConvenio.stream()
-                        .map(FichaPdfItemDto::getPacienteId)
-                        .distinct()
-                        .collect(Collectors.toList());
+                if (itensConvenio.isEmpty()) {
+                    logger.warn("Nenhuma guia encontrada para convênio: {}", convenioId);
+                    continue;
+                }
 
-                List<UUID> pacientesSemFichas = fichaVerificationService.filtrarPacientesSemFichas(
-                        convenioId, request.getMes(), request.getAno(), pacientesOriginais);
+                // VERIFICAR SE O CONVÊNIO TEM TEMPLATE PERSONALIZADO
+                Optional<ConvenioFichaPdfConfig> configOpt = configRepository.findByConvenioId(convenioId);
+                boolean temTemplatePersonalizado = false;
+                String nomeConvenio = "Desconhecido";
 
-                List<FichaPdfItemDto> itensFiltrados = itensConvenio.stream()
-                        .filter(item -> pacientesSemFichas.contains(item.getPacienteId()))
-                        .collect(Collectors.toList());
+                if (configOpt.isPresent()) {
+                    ConvenioFichaPdfConfig config = configOpt.get();
+                    temTemplatePersonalizado = templateService.temTemplateEspecificoPorConfig(config);
+                    nomeConvenio = config.getConvenio().getName();
 
-                // Verificar e corrigir duplicatas
-                List<FichaPdfItemDto> itensCorrigidos = fichaVerificationService.verificarECorrigirDuplicatas(itensFiltrados);
-                todosItens.addAll(itensCorrigidos);
+                    logger.info("🔍 Convênio: {} - Template personalizado: {}", nomeConvenio, temTemplatePersonalizado);
+                }
+
+                List<FichaPdfItemDto> itensParaProcessar;
+
+                if (temTemplatePersonalizado) {
+                    // PARA CONVÊNIOS COM TEMPLATE PERSONALIZADO: PROCESSAR TODAS AS FICHAS
+                    logger.info("🎯 TEMPLATE PERSONALIZADO detectado para {} - Processando {} fichas SEM filtro",
+                            nomeConvenio, itensConvenio.size());
+                    itensParaProcessar = itensConvenio;
+                    conveniosComTemplatePersonalizado++;
+                } else {
+                    // PARA CONVÊNIOS SEM TEMPLATE PERSONALIZADO: APLICAR FILTRO NORMAL
+                    logger.info("📋 Template padrão para {} - Aplicando filtro de fichas existentes", nomeConvenio);
+
+                    List<UUID> pacientesOriginais = itensConvenio.stream()
+                            .map(FichaPdfItemDto::getPacienteId)
+                            .distinct()
+                            .collect(Collectors.toList());
+
+                    List<UUID> pacientesSemFichas = fichaVerificationService.filtrarPacientesSemFichas(
+                            convenioId, request.getMes(), request.getAno(), pacientesOriginais);
+
+                    itensParaProcessar = itensConvenio.stream()
+                            .filter(item -> pacientesSemFichas.contains(item.getPacienteId()))
+                            .collect(Collectors.toList());
+
+                    logger.info("📊 Filtro aplicado - Total: {}, Sem fichas: {}, Para processar: {}",
+                            pacientesOriginais.size(), pacientesSemFichas.size(), itensParaProcessar.size());
+                    conveniosComTemplatePadrao++;
+                }
+
+                // Verificar e corrigir duplicatas apenas se há itens para processar
+                if (!itensParaProcessar.isEmpty()) {
+                    List<FichaPdfItemDto> itensCorrigidos = fichaVerificationService.verificarECorrigirDuplicatas(itensParaProcessar);
+                    todosItens.addAll(itensCorrigidos);
+
+                    logger.info("✅ Adicionados {} itens do convênio {} ao lote", itensCorrigidos.size(), nomeConvenio);
+                } else {
+                    logger.info("⚠️ Nenhum item para processar do convênio {}", nomeConvenio);
+                }
             }
 
+            // VALIDAR SE HÁ ITENS PARA PROCESSAR
             if (todosItens.isEmpty()) {
+                String observacao = String.format("Nenhuma ficha nova encontrada. Convênios processados: %d (Template personalizado: %d, Template padrão: %d)",
+                        request.getConvenioIds().size(), conveniosComTemplatePersonalizado, conveniosComTemplatePadrao);
+
                 job.setStatus(FichaPdfJob.StatusJob.CONCLUIDO);
-                job.setObservacoes("Nenhuma ficha nova encontrada para os convênios especificados");
+                job.setObservacoes(observacao);
                 job.setTotalFichas(0);
                 job.setFichasProcessadas(0);
                 job.setConcluido(LocalDateTime.now());
+                job.setPodeDownload(false);
                 jobRepository.save(job);
+
+                logger.info("📄 Geração em lote finalizada sem fichas: {}", observacao);
                 return CompletableFuture.completedFuture(buildResponse(job, "Nenhuma ficha nova encontrada"));
             }
+
+            // PROCESSAR FICHAS ENCONTRADAS
+            logger.info("🚀 Iniciando processamento de {} fichas do lote", todosItens.size());
 
             job.setTotalFichas(todosItens.size());
             job.setStatus(FichaPdfJob.StatusJob.PROCESSANDO);
@@ -705,25 +779,32 @@ public class FichaPdfServiceImpl implements FichaPdfService {
             String fileName = salvarArquivoPdf(pdfBytes, jobId);
 
             // Finalizar job
+            String observacaoFinal = String.format("Lote processado com sucesso: %d fichas geradas. Convênios com template personalizado: %d, Convênios com template padrão: %d",
+                    todosItens.size(), conveniosComTemplatePersonalizado, conveniosComTemplatePadrao);
+
             job.setStatus(FichaPdfJob.StatusJob.CONCLUIDO);
             job.setFichasProcessadas(todosItens.size());
             job.setConcluido(LocalDateTime.now());
             job.setArquivoPath(fileName);
             job.setPodeDownload(true);
+            job.setObservacoes(observacaoFinal);
             jobRepository.save(job);
 
             // Registrar logs
             registrarLogsFichas(job, todosItens);
 
-            logger.info("Geração em lote concluída. JobId: {}, Fichas: {}", jobId, todosItens.size());
+            logger.info("✅ Geração em lote concluída com sucesso - JobId: {}, Fichas: {}, Templates personalizados: {}, Templates padrão: {}",
+                    jobId, todosItens.size(), conveniosComTemplatePersonalizado, conveniosComTemplatePadrao);
+
             return CompletableFuture.completedFuture(buildResponse(job, "PDF de lote gerado com sucesso"));
 
         } catch (Exception e) {
-            logger.error("Erro na geração em lote: {}", e.getMessage(), e);
+            logger.error("❌ Erro na geração em lote: {}", e.getMessage(), e);
             finalizarJobComErro(job, e);
             return CompletableFuture.completedFuture(buildResponse(job, "Erro na geração: " + e.getMessage()));
         }
     }
+
 
     @Override
     @Async
@@ -932,7 +1013,6 @@ public class FichaPdfServiceImpl implements FichaPdfService {
     }
 
     private List<FichaPdfItemDto> buscarItensParaPaciente(FichaPdfPacienteRequest request) {
-        logger.info("=== BUSCA CORRIGIDA DE ITENS ===");
         logger.info("Paciente: {}, Período: {}/{}", request.getPacienteId(), request.getMes(), request.getAno());
 
         // Verificar se paciente existe
@@ -953,14 +1033,166 @@ public class FichaPdfServiceImpl implements FichaPdfService {
             return new ArrayList<>();
         }
 
-        // Processar guias para fichas
-        return processarGuiasParaFichas(guias, request.getMes(), request.getAno());
+        // Processar guias para fichas com configuração de template
+        return processarGuiasParaFichasComTemplate(guias, request.getMes(), request.getAno());
     }
+
+    private List<FichaPdfItemDto> buscarItensParaConvenio(FichaPdfConvenioRequest request) {
+        logger.info("=== BUSCAR ITENS PARA CONVÊNIO ===");
+        logger.info("Convênio: {}, Período: {}/{}", request.getConvenioId(), request.getMes(), request.getAno());
+
+        // Verificar se o convênio está habilitado
+        if (!isConvenioHabilitado(request.getConvenioId())) {
+            throw new IllegalArgumentException("Convênio não habilitado para geração de fichas PDF");
+        }
+
+        // NOVA LÓGICA: Obter configuração específica do convênio UMA VEZ
+        Optional<ConvenioFichaPdfConfig> configOpt = configRepository.findByConvenioId(request.getConvenioId());
+        ConvenioFichaPdfConfig config = configOpt.orElse(null);
+
+        List<FichaPdfItemDto> todosItens = new ArrayList<>();
+
+        // LÓGICA ORIGINAL: Buscar guias por convênio usando método existente
+        List<String> statusAtivos = Arrays.asList(
+                "EMITIDO", "SUBIU", "ANALISE", "ASSINADO", "FATURADO", "ENVIADO A BM"
+        );
+
+        List<Guia> guiasConvenio = guiaRepository.findByConvenioIdAndStatusIn(
+                request.getConvenioId(), statusAtivos);
+
+        logger.info("Guias ativas encontradas para o convênio: {}", guiasConvenio.size());
+
+        // Filtrar por período se especificado
+        Integer mes = request.getMes();
+        Integer ano = request.getAno();
+
+        if (mes != null && ano != null) {
+            guiasConvenio = guiasConvenio.stream()
+                    .filter(guia -> {
+                        // Verificar se a guia está no período correto
+                        return (guia.getMes() != null && guia.getMes().equals(mes) &&
+                                guia.getAno() != null && guia.getAno().equals(ano)) ||
+                                // OU se foi criada/atualizada no período
+                                isGuiaNoMesAno(guia, mes, ano);
+                    })
+                    .collect(Collectors.toList());
+        }
+
+        logger.info("Guias após filtro de período: {}", guiasConvenio.size());
+
+        // Processar cada guia para gerar itens (LÓGICA ORIGINAL)
+        for (Guia guia : guiasConvenio) {
+            if (guia.getEspecialidades() != null && !guia.getEspecialidades().isEmpty()) {
+                // Gerar uma ficha por especialidade
+                for (String especialidade : guia.getEspecialidades()) {
+                    FichaPdfItemDto item = criarItemFicha(guia, especialidade, mes, ano);
+
+                    // ÚNICA MUDANÇA: Usar configuração específica do convênio
+                    String htmlGerado = templateService.gerarHtmlComConfiguracaoConvenio(item, config);
+
+                    // Armazenar o HTML no item para uso posterior
+                    item.setHtmlGerado(htmlGerado);
+
+                    todosItens.add(item);
+                }
+            } else {
+                // Criar ficha sem especialidade específica
+                FichaPdfItemDto item = criarItemFicha(guia, "Não informado", mes, ano);
+
+                // ÚNICA MUDANÇA: Usar configuração específica do convênio
+                String htmlGerado = templateService.gerarHtmlComConfiguracaoConvenio(item, config);
+
+                // Armazenar o HTML no item para uso posterior
+                item.setHtmlGerado(htmlGerado);
+
+                todosItens.add(item);
+            }
+        }
+
+        logger.info("Total de itens gerados para o convênio: {}", todosItens.size());
+        return todosItens;
+    }
+
+    @Override
+    @Transactional
+    public void atualizarTemplateConvenio(UUID convenioId, String templatePersonalizado) {
+        logger.info("Atualizando template do convênio {} para: {}", convenioId, templatePersonalizado);
+
+        Convenio convenio = convenioRepository.findById(convenioId)
+                .orElseThrow(() -> new ResourceNotFoundException("Convênio não encontrado: " + convenioId));
+
+        // Buscar ou criar configuração
+        ConvenioFichaPdfConfig config = configRepository.findByConvenioId(convenioId)
+                .orElse(new ConvenioFichaPdfConfig());
+
+        // Se não existe, criar nova configuração
+        if (config.getId() == null) {
+            config.setConvenio(convenio);
+            config.setHabilitado(true); // Habilitar automaticamente quando configura template
+            config.setDiasAtividade(30);
+            config.setPrefixoIdentificacao("");
+        }
+
+        // Validar template se fornecido
+        if (StringUtils.hasText(templatePersonalizado)) {
+            boolean templateValido = templateService.temTemplateEspecificoPorConfig(config);
+            if (!templateValido) {
+                // Criar config temporária para teste
+                ConvenioFichaPdfConfig tempConfig = new ConvenioFichaPdfConfig();
+                tempConfig.setConvenio(convenio);
+                tempConfig.setTemplatePersonalizado(templatePersonalizado);
+
+                if (!templateService.temTemplateEspecificoPorConfig(tempConfig)) {
+                    logger.warn("Template '{}' não encontrado, mas será salvo na configuração", templatePersonalizado);
+                }
+            }
+        }
+
+        config.setTemplatePersonalizado(templatePersonalizado);
+        configRepository.save(config);
+
+        logger.info("✅ Template do convênio {} atualizado com sucesso", convenio.getName());
+    }
+
+    @Override
+    public List<Map<String, Object>> getTemplatesDisponiveis() {
+        logger.info("Listando templates disponíveis");
+
+        List<Map<String, Object>> templates = new ArrayList<>();
+
+        // Template padrão (sempre disponível)
+        templates.add(Map.of(
+                "nome", "padrao",
+                "descricao", "Template padrão do sistema",
+                "disponivel", true,
+                "tipo", "sistema"
+        ));
+
+        // Template FUSEX (hardcoded)
+        templates.add(Map.of(
+                "nome", "fusex",
+                "descricao", "Template específico para FUSEX",
+                "disponivel", true,
+                "tipo", "sistema"
+        ));
+
+        // Buscar templates personalizados em arquivos (se habilitado)
+        try {
+            // Aqui você pode implementar busca por templates em diretório
+            // Por exemplo: classpath:templates/fichas/*.html
+            logger.debug("Busca por templates personalizados não implementada ainda");
+        } catch (Exception e) {
+            logger.warn("Erro ao buscar templates personalizados: {}", e.getMessage());
+        }
+
+        logger.info("✅ {} templates encontrados", templates.size());
+        return templates;
+    }
+
 
     private List<Guia> buscarGuiasCorrigidas(UUID pacienteId, Integer mes, Integer ano,
                                              List<String> especialidades, Boolean incluirInativos) {
 
-        logger.info("=== BUSCA CORRIGIDA DE GUIAS ===");
         logger.info("Paciente: {}, Período: {}/{}, Especialidades: {}, Incluir Inativos: {}",
                 pacienteId, mes, ano, especialidades, incluirInativos);
 
@@ -1084,37 +1316,37 @@ public class FichaPdfServiceImpl implements FichaPdfService {
     /**
      * Busca itens para convênio (para antecipação de fichas)
      */
-    private List<FichaPdfItemDto> buscarItensParaConvenio(FichaPdfConvenioRequest request) {
-        logger.info("Buscando itens para convênio: {} - {}/{}", request.getConvenioId(), request.getMes(), request.getAno());
-
-        // Buscar pacientes do convênio
-        List<Paciente> pacientes = pacienteRepository.findByConvenioId(request.getConvenioId());
-
-        if (pacientes.isEmpty()) {
-            logger.warn("Nenhum paciente encontrado para o convênio: {}", request.getConvenioId());
-            return new ArrayList<>();
-        }
-
-        List<FichaPdfItemDto> todosItens = new ArrayList<>();
-
-        for (Paciente paciente : pacientes) {
-            // Para geração por convênio, considerar guias que podem ser antecipadas
-            List<Guia> guiasAntecipadas = buscarGuiasParaAntecipacao(
-                    paciente.getId(),
-                    request.getMes(),
-                    request.getAno(),
-                    request.getEspecialidades()
-            );
-
-            for (Guia guia : guiasAntecipadas) {
-                List<FichaPdfItemDto> itensGuia = processarGuiasParaFichas(Arrays.asList(guia), request.getMes(), request.getAno());
-                todosItens.addAll(itensGuia);
-            }
-        }
-
-        logger.info("Encontrados {} itens para antecipação no convênio", todosItens.size());
-        return todosItens;
-    }
+//    private List<FichaPdfItemDto> buscarItensParaConvenio(FichaPdfConvenioRequest request) {
+//        logger.info("Buscando itens para convênio: {} - {}/{}", request.getConvenioId(), request.getMes(), request.getAno());
+//
+//        // Buscar pacientes do convênio
+//        List<Paciente> pacientes = pacienteRepository.findByConvenioId(request.getConvenioId());
+//
+//        if (pacientes.isEmpty()) {
+//            logger.warn("Nenhum paciente encontrado para o convênio: {}", request.getConvenioId());
+//            return new ArrayList<>();
+//        }
+//
+//        List<FichaPdfItemDto> todosItens = new ArrayList<>();
+//
+//        for (Paciente paciente : pacientes) {
+//            // Para geração por convênio, considerar guias que podem ser antecipadas
+//            List<Guia> guiasAntecipadas = buscarGuiasParaAntecipacao(
+//                    paciente.getId(),
+//                    request.getMes(),
+//                    request.getAno(),
+//                    request.getEspecialidades()
+//            );
+//
+//            for (Guia guia : guiasAntecipadas) {
+//                List<FichaPdfItemDto> itensGuia = processarGuiasParaFichas(Arrays.asList(guia), request.getMes(), request.getAno());
+//                todosItens.addAll(itensGuia);
+//            }
+//        }
+//
+//        logger.info("Encontrados {} itens para antecipação no convênio", todosItens.size());
+//        return todosItens;
+//    }
 
     /**
      * Busca guias que podem ser antecipadas para o próximo mês
@@ -1132,6 +1364,7 @@ public class FichaPdfServiceImpl implements FichaPdfService {
                 .filter(guia -> isGuiaValidaParaAntecipacao(guia, mes, ano))
                 .collect(Collectors.toList());
     }
+
 
     /**
      * Verifica se guia é válida para antecipação
@@ -1154,24 +1387,56 @@ public class FichaPdfServiceImpl implements FichaPdfService {
         return guia.getCreatedAt() != null && guia.getCreatedAt().isAfter(tresMesesAtras);
     }
 
-    private List<FichaPdfItemDto> processarGuiasParaFichas(List<Guia> guias, Integer mes, Integer ano) {
+    private List<FichaPdfItemDto> processarGuiasParaFichasComTemplate(List<Guia> guias, Integer mes, Integer ano) {
         List<FichaPdfItemDto> itens = new ArrayList<>();
 
         for (Guia guia : guias) {
-            // Processar cada especialidade da guia
+            Optional<ConvenioFichaPdfConfig> configOpt = configRepository.findByConvenioId(guia.getConvenio().getId());
+            ConvenioFichaPdfConfig config = configOpt.orElse(null);
+
+            // Processar cada especialidade da guia (LÓGICA ORIGINAL)
             if (guia.getEspecialidades() != null && !guia.getEspecialidades().isEmpty()) {
                 for (String especialidade : guia.getEspecialidades()) {
                     FichaPdfItemDto item = criarItemFicha(guia, especialidade, mes, ano);
+
+                    String htmlGerado = templateService.gerarHtmlComConfiguracaoConvenio(item, config);
+
+                    // Armazenar o HTML no item para uso posterior
+                    item.setHtmlGerado(htmlGerado);
+
                     itens.add(item);
                 }
             } else {
-                // Criar ficha sem especialidade específica
                 FichaPdfItemDto item = criarItemFicha(guia, "Não informado", mes, ano);
+
+                String htmlGerado = templateService.gerarHtmlComConfiguracaoConvenio(item, config);
+
+                // Armazenar o HTML no item para uso posterior
+                item.setHtmlGerado(htmlGerado);
+
                 itens.add(item);
             }
         }
 
         return itens;
+    }
+
+    private boolean isGuiaNoMesAno(Guia guia, Integer mes, Integer ano) {
+        if (guia.getCreatedAt() != null) {
+            int mesGuia = guia.getCreatedAt().getMonthValue();
+            int anoGuia = guia.getCreatedAt().getYear();
+            if (mesGuia == mes && anoGuia == ano) {
+                return true;
+            }
+        }
+        if (guia.getUpdatedAt() != null) {
+            int mesGuia = guia.getUpdatedAt().getMonthValue();
+            int anoGuia = guia.getUpdatedAt().getYear();
+            if (mesGuia == mes && anoGuia == ano) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private FichaPdfItemDto criarItemFicha(Guia guia, String especialidade, Integer mes, Integer ano) {
@@ -1246,19 +1511,20 @@ public class FichaPdfServiceImpl implements FichaPdfService {
         return jobSalvo;
     }
 
-    private void atualizarProgressoJob(String jobId, int processadas) {
+    private void atualizarProgressoJob(String jobId, Integer progresso) {
         try {
             Optional<FichaPdfJob> jobOpt = jobRepository.findByJobId(jobId);
             if (jobOpt.isPresent()) {
                 FichaPdfJob job = jobOpt.get();
-                job.setFichasProcessadas(processadas);
+                job.setFichasProcessadas(progresso);
+                job.setUpdatedAt(LocalDateTime.now());
                 jobRepository.save(job);
-                logger.debug("Progresso atualizado - Job: {}, Processadas: {}", jobId, processadas);
             }
         } catch (Exception e) {
             logger.warn("Erro ao atualizar progresso do job {}: {}", jobId, e.getMessage());
         }
     }
+
 
     private FichaPdfJob criarJobComUsuario(String jobId, FichaPdfJob.TipoGeracao tipo, User usuario) {
         try {
@@ -1281,18 +1547,22 @@ public class FichaPdfServiceImpl implements FichaPdfService {
 
     private void finalizarJobComSucesso(FichaPdfJob job, String mensagem) {
         job.setStatus(FichaPdfJob.StatusJob.CONCLUIDO);
-        job.setConcluido(LocalDateTime.now());
         job.setObservacoes(mensagem);
+        job.setConcluido(LocalDateTime.now());
+        job.setTotalFichas(0);
+        job.setFichasProcessadas(0);
         job.setPodeDownload(false);
         jobRepository.save(job);
+        logger.info("Job finalizado com sucesso: {} - {}", job.getJobId(), mensagem);
     }
 
-    private void finalizarJobComErro(FichaPdfJob job, Exception e) {
+
+    private void finalizarJobComErro(FichaPdfJob job, Exception erro) {
         job.setStatus(FichaPdfJob.StatusJob.ERRO);
-        job.setErro(e.getMessage());
+        job.setErro("Erro: " + erro.getMessage());
         job.setConcluido(LocalDateTime.now());
-        job.setPodeDownload(false);
         jobRepository.save(job);
+        logger.error("Job finalizado com erro: {} - {}", job.getJobId(), erro.getMessage());
     }
 
     private void registrarLogsFichas(FichaPdfJob job, List<FichaPdfItemDto> itens) {
@@ -1385,24 +1655,33 @@ public class FichaPdfServiceImpl implements FichaPdfService {
 
     private FichaPdfStatusDto buildStatusDto(FichaPdfJob job) {
         FichaPdfStatusDto status = new FichaPdfStatusDto();
+
+        // Campos básicos
         status.setJobId(job.getJobId());
-        status.setStatus(job.getStatus());
-        status.setTipo(job.getTipo());
-        status.setTotalItens(job.getTotalFichas());
-        status.setItensProcessados(job.getFichasProcessadas());
+        status.setStatus(job.getStatus()); // Enum direto
+        status.setTipo(job.getTipo()); // Enum direto
+
+        // Campos numéricos
+        status.setTotalItens(job.getTotalFichas() != null ? job.getTotalFichas() : 0);
+        status.setItensProcessados(job.getFichasProcessadas() != null ? job.getFichasProcessadas() : 0);
+
+        // Campos de data
         status.setIniciadoEm(job.getIniciado());
         status.setAtualizadoEm(job.getUpdatedAt());
+
+        // Campo boolean primitivo
         status.setPodeDownload(job.isPodeDownload());
 
+        // Dados do usuário
         if (job.getUsuario() != null) {
             status.setUsuarioNome(job.getUsuario().getFullName());
             status.setUsuarioEmail(job.getUsuario().getEmail());
         }
 
         // Calcular progresso
-        if (job.getTotalFichas() != null && job.getTotalFichas() > 0) {
-            int progresso = (int) ((double) job.getFichasProcessadas() / job.getTotalFichas() * 100);
-            status.setProgresso(progresso);
+        if (status.getTotalItens() > 0 && status.getItensProcessados() != null) {
+            int progresso = (int) ((double) status.getItensProcessados() / status.getTotalItens() * 100);
+            status.setProgresso(Math.min(100, Math.max(0, progresso)));
         } else {
             status.setProgresso(0);
         }
@@ -1414,21 +1693,22 @@ public class FichaPdfServiceImpl implements FichaPdfService {
                 break;
             case PROCESSANDO:
                 status.setMensagem(String.format("Processando fichas: %d/%d",
-                        job.getFichasProcessadas(), job.getTotalFichas()));
+                        status.getItensProcessados(), status.getTotalItens()));
                 break;
             case CONCLUIDO:
                 status.setMensagem("Geração concluída com sucesso");
                 break;
             case ERRO:
-                status.setMensagem("Erro no processamento: " + job.getErro());
+                status.setMensagem("Erro no processamento: " + (job.getErro() != null ? job.getErro() : "Erro desconhecido"));
                 break;
             default:
                 status.setMensagem("Status desconhecido");
         }
 
+        // Buscar dados contextuais
         status.setDadosJob(buscarDadosContextuaisJob(job));
-
         status.setObservacoes(job.getObservacoes());
+
         return status;
     }
 
@@ -1511,26 +1791,28 @@ public class FichaPdfServiceImpl implements FichaPdfService {
 
     private FichaPdfJobDto mapJobToDto(FichaPdfJob job) {
         FichaPdfJobDto dto = new FichaPdfJobDto();
+
         dto.setJobId(job.getJobId());
-        dto.setTipo(job.getTipo().name());
-        dto.setStatus(job.getStatus().name());
-        dto.setTotalFichas(job.getTotalFichas());
-        dto.setFichasProcessadas(job.getFichasProcessadas());
+        dto.setTipo(job.getTipo() != null ? job.getTipo().name() : "INDEFINIDO");
+        dto.setStatus(job.getStatus() != null ? job.getStatus().name() : "DESCONHECIDO");
+
+        dto.setTotalFichas(job.getTotalFichas() != null ? job.getTotalFichas() : 0);
+        dto.setFichasProcessadas(job.getFichasProcessadas() != null ? job.getFichasProcessadas() : 0);
+
         dto.setIniciado(job.getIniciado());
         dto.setConcluido(job.getConcluido());
 
-        // Usar verificação mais robusta
-        dto.setPodeDownload(job.isPodeDownload()); // Agora inclui verificação de arquivo físico
+        dto.setPodeDownload(job.isPodeDownload());
         dto.setObservacoes(job.getObservacoes());
 
-        if (job.getTotalFichas() != null && job.getTotalFichas() > 0 && job.getFichasProcessadas() != null) {
-            int progresso = (int) ((double) job.getFichasProcessadas() / job.getTotalFichas() * 100);
-            dto.setProgresso(progresso);
+        // Calcular progresso apenas se houver dados válidos
+        if (dto.getTotalFichas() > 0 && dto.getFichasProcessadas() != null) {
+            int progresso = (int) ((double) dto.getFichasProcessadas() / dto.getTotalFichas() * 100);
+            dto.setProgresso(Math.min(100, Math.max(0, progresso))); // Garantir entre 0-100
         } else {
             dto.setProgresso(0);
         }
 
-        // Só definir URL de download se realmente pode baixar
         if (dto.getPodeDownload()) {
             dto.setDownloadUrl("/api/fichas-pdf/download/" + job.getJobId());
         }
@@ -1551,6 +1833,7 @@ public class FichaPdfServiceImpl implements FichaPdfService {
         dto.setConvenioId(config.getConvenio().getId().toString());
         dto.setConvenioNome(config.getConvenio().getName());
         dto.setHabilitado(config.getHabilitado());
+        dto.setTemplatePersonalizado(config.getTemplatePersonalizado());
         dto.setDiasAtividade(config.getDiasAtividade());
         dto.setFormatoPadrao("A4"); // Por enquanto fixo
         dto.setIncluirLogo(true); // Por enquanto fixo

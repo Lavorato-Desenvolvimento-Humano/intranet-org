@@ -4,7 +4,6 @@ import { PageResponse } from "./clinical";
 /*
  * Enums
  */
-
 export enum StatusJobEnum {
   INICIADO = "INICIADO",
   PROCESSANDO = "PROCESSANDO",
@@ -155,18 +154,38 @@ export interface FichaPdfPreviaRequest {
 }
 
 export interface FichaPdfPreviaDto {
-  totalFichasEstimadas: number;
-  fichasPorConvenio: Record<string, number>;
-  fichasPorEspecialidade: Record<string, number>;
-  fichasPorUnidade: Record<string, number>;
-  pacientesComFichas: {
-    pacienteId: string;
-    pacienteNome: string;
+  totalPacientesConvenio: number;
+  pacientesComFichas: number;
+  pacientesSemFichas: number;
+  seraGeradoPara: number;
+  eficiencia: number;
+  recomendacao: string;
+  periodo: string;
+  convenioId: string;
+  dataConsulta: string;
+  fichasExistentes: {
+    convenioId: string;
+    convenioNome: string;
     totalFichas: number;
-    especialidades: string[];
-  }[];
-  avisos: string[];
-  bloqueios: string[];
+    totalPacientes: number;
+    fichasGeradasMes: number;
+    fichasGeradasAno: number;
+    pacientesAtivos: number;
+    especialidadesCobertas: string[];
+    fichasPorEspecialidade: Record<string, number>;
+    fichasPorStatus: Record<string, number>;
+    primeiraFicha?: string;
+    ultimaFicha?: string;
+    mediaFichasPorPaciente: number;
+    mes: number;
+    ano: number;
+    geradoEm: string;
+  };
+  // Campos opcionais para compatibilidade
+  totalFichasEstimadas?: number;
+  avisos?: string[];
+  bloqueios?: string[];
+  fichasPorConvenio?: Record<string, number>;
 }
 
 export interface FichaPdfValidacaoRequest {
@@ -253,6 +272,7 @@ export interface PacienteVerificacaoDto {
     ano: number;
     especialidades: string[];
   }[];
+  mensagem?: string;
 }
 
 /*
@@ -345,16 +365,82 @@ export const fichaPdfHelpers = {
     return `${meses[mes - 1]} ${ano}`;
   },
 
-  formatarDataHora: (dataString: string): string => {
+  formatarDataHora: (dataString: string | null | undefined): string => {
+    if (!dataString) {
+      return "Não informado";
+    }
+
+    try {
+      // Se a string está vazia ou é inválida
+      if (typeof dataString !== "string" || dataString.trim() === "") {
+        return "Não informado";
+      }
+
+      // Tentar criar data a partir da string
+      const data = new Date(dataString);
+
+      // Verificar se a data é válida
+      if (isNaN(data.getTime())) {
+        console.warn("Data inválida recebida:", dataString);
+        return "Data inválida";
+      }
+
+      // Formatar data em português brasileiro
+      const dataFormatada = data.toLocaleDateString("pt-BR");
+      const horaFormatada = data.toLocaleTimeString("pt-BR", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
+      return `${dataFormatada} às ${horaFormatada}`;
+    } catch (error) {
+      console.error(
+        "Erro ao formatar data:",
+        error,
+        "Data recebida:",
+        dataString
+      );
+      return "Erro ao formatar data";
+    }
+  },
+
+  isDataValida: (dataString: string | null | undefined): boolean => {
+    if (
+      !dataString ||
+      typeof dataString !== "string" ||
+      dataString.trim() === ""
+    ) {
+      return false;
+    }
+
     try {
       const data = new Date(dataString);
-      return (
-        data.toLocaleDateString("pt-BR") +
-        " às " +
-        data.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
-      );
+      return !isNaN(data.getTime());
     } catch {
-      return "-";
+      return false;
+    }
+  },
+
+  formatarData: (dataString: string | null | undefined): string => {
+    if (!dataString) {
+      return "Não informado";
+    }
+
+    try {
+      if (typeof dataString !== "string" || dataString.trim() === "") {
+        return "Não informado";
+      }
+
+      const data = new Date(dataString);
+
+      if (isNaN(data.getTime())) {
+        return "Data inválida";
+      }
+
+      return data.toLocaleDateString("pt-BR");
+    } catch (error) {
+      console.error("Erro ao formatar data:", error);
+      return "Erro ao formatar data";
     }
   },
 

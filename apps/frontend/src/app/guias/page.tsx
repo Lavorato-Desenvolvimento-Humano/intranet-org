@@ -58,13 +58,7 @@ export default function GuiasPage() {
   // Recarregar quando filtros mudarem
   useEffect(() => {
     loadGuias();
-  }, [
-    searchTerm,
-    selectedConvenio,
-    selectedStatus,
-    selectedPeriodo,
-    currentPage,
-  ]);
+  }, [selectedConvenio, selectedStatus, selectedPeriodo, currentPage]);
 
   const loadInitialData = async () => {
     try {
@@ -89,8 +83,47 @@ export default function GuiasPage() {
     try {
       if (!loading) setLoading(true);
 
+      let guiasData: PageResponse<GuiaSummaryDto>;
+
+      if (selectedConvenio) {
+        guiasData = await guiaService.getGuiasByConvenio(
+          selectedConvenio,
+          currentPage,
+          20
+        );
+      } else if (selectedStatus) {
+        guiasData = await guiaService.getGuiasByStatus(
+          selectedStatus,
+          currentPage,
+          20
+        );
+      } else if (selectedPeriodo) {
+        const [mes, ano] = selectedPeriodo.split("/").map(Number);
+        guiasData = await guiaService.getGuiasByPeriodo(
+          mes,
+          ano,
+          currentPage,
+          20
+        );
+      } else {
+        guiasData = await guiaService.getAllGuias(currentPage, 20);
+      }
+
+      setGuias(guiasData);
+    } catch (err) {
+      console.error("Erro ao carregar guias:", err);
+      toastUtil.error("Erro ao carregar guias");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadGuiasWithSearch = async (searchQuery: string) => {
+    try {
+      if (!loading) setLoading(true);
+
       const filters = {
-        search: searchTerm,
+        search: searchQuery,
         convenioId: selectedConvenio,
         status: selectedStatus,
         periodo: selectedPeriodo,
@@ -99,11 +132,63 @@ export default function GuiasPage() {
       const guiasData = await guiaService.getAllGuias(currentPage, 20);
       setGuias(guiasData);
     } catch (err) {
-      console.error("Erro ao carregar guias:", err);
-      toastUtil.error("Erro ao carregar guias");
+      console.error("Erro ao buscar guias:", err);
+      setError("Erro ao buscar guias");
     } finally {
       setLoading(false);
     }
+  };
+
+  const searchGuias = async (searchQuery?: string) => {
+    try {
+      setLoading(true);
+      const query = searchQuery || searchTerm;
+
+      console.log("searchGuias chamado com query:", query); // Debug
+
+      if (query.trim() === "") {
+        loadGuias();
+        return;
+      }
+
+      // Usar o método correto para buscar por número de guia
+      const guiasData = await guiaService.searchByNumeroGuia(
+        query.trim(),
+        currentPage,
+        20
+      );
+
+      console.log("Resultado da busca de guias:", guiasData); // Debug
+      setGuias(guiasData);
+    } catch (err) {
+      console.error("Erro ao buscar guias:", err);
+      toastUtil.error("Erro ao buscar guias");
+
+      // Em caso de erro, mostrar lista completa
+      loadGuias();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearch = (term: string) => {
+    console.log("handleSearch de guias chamado com termo:", term); // Debug
+
+    setSelectedConvenio("");
+    setSelectedStatus("");
+    setSelectedPeriodo("");
+    setCurrentPage(0);
+
+    setSearchTerm(term);
+
+    // Se o termo está vazio, recarregar lista completa
+    if (term.trim() === "") {
+      loadGuias();
+      return;
+    }
+
+    // Caso contrário, fazer busca por número de guia
+    searchGuias(term);
   };
 
   const handleDeleteGuia = async (guia: GuiaSummaryDto) => {
@@ -127,6 +212,8 @@ export default function GuiasPage() {
     setSelectedStatus("");
     setSelectedPeriodo("");
     setCurrentPage(0);
+
+    loadGuias();
   };
 
   const formatDate = (dateString: string) => {
@@ -294,9 +381,10 @@ export default function GuiasPage() {
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
               <SearchInput
+                placeholder="Buscar guias... (pressione Enter)"
                 value={searchTerm}
-                onChange={setSearchTerm}
-                placeholder="Buscar por paciente, número..."
+                onChange={handleSearch}
+                onEnterSearch={true}
               />
 
               <FilterDropdown

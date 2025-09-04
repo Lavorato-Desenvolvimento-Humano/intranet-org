@@ -360,7 +360,7 @@ export const fichaService = {
     size: number = 20
   ): Promise<PageResponse<FichaSummaryDto>> {
     const response = await api.get(
-      `/api/fichas/search-codigo?termo=${codigoFicha}&page=${page}&size=${size}`
+      `/api/fichas/search/codigo?termo=${encodeURIComponent(codigoFicha)}&page=${page}&size=${size}`
     );
     return response.data;
   },

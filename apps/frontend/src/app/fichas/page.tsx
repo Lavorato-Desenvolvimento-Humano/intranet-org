@@ -79,17 +79,17 @@ export default function FichasPage() {
   }, [currentPage, selectedConvenio, selectedStatus, selectedEspecialidade]);
 
   // Busca com debounce
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (searchTerm !== "") {
-        searchFichas();
-      } else {
-        loadFichas();
-      }
-    }, 500);
+  // useEffect(() => {
+  //   const timeoutId = setTimeout(() => {
+  //     if (searchTerm !== "") {
+  //       searchFichas();
+  //     } else {
+  //       loadFichas();
+  //     }
+  //   }, 500);
 
-    return () => clearTimeout(timeoutId);
-  }, [searchTerm]);
+  //   return () => clearTimeout(timeoutId);
+  // }, [searchTerm]);
 
   const loadFichas = async () => {
     try {
@@ -129,20 +129,32 @@ export default function FichasPage() {
     }
   };
 
-  const searchFichas = async () => {
+  const searchFichas = async (searchQuery?: string) => {
     try {
       setLoading(true);
+      const query = searchQuery || searchTerm;
 
-      // Buscar por código da ficha
+      console.log("searchFichas chamado com query:", query); // Debug
+
+      if (query.trim() === "") {
+        loadFichas();
+        return;
+      }
+
       const fichasData = await fichaService.searchByCodigoFicha(
-        searchTerm,
+        query.trim(), // Garantir que não há espaços extras
         currentPage,
         20
       );
+
+      console.log("Resultado da busca:", fichasData); // Debug
       setFichas(fichasData);
     } catch (err) {
       console.error("Erro ao buscar fichas:", err);
       toastUtil.error("Erro ao buscar fichas");
+
+      // Em caso de erro, mostrar lista completa
+      loadFichas();
     } finally {
       setLoading(false);
     }
@@ -162,8 +174,25 @@ export default function FichasPage() {
   };
 
   const handleSearch = (term: string) => {
-    setSearchTerm(term);
+    console.log("handleSearch chamado com termo:", term); // Debug
+
+    // Limpar filtros quando iniciar busca
+    setSelectedConvenio("");
+    setSelectedStatus("");
+    setSelectedEspecialidade("");
     setCurrentPage(0);
+
+    // Atualizar estado do termo de busca
+    setSearchTerm(term);
+
+    // Se o termo está vazio, recarregar lista completa
+    if (term.trim() === "") {
+      loadFichas();
+      return;
+    }
+
+    // Caso contrário, fazer busca por código
+    searchFichas(term);
   };
 
   const handleVincularGuia = (ficha: FichaSummaryDto) => {
@@ -207,6 +236,8 @@ export default function FichasPage() {
     setSelectedStatus("");
     setSelectedEspecialidade("");
     setCurrentPage(0);
+
+    loadFichas();
   };
 
   const handleDeleteFicha = async (fichaId: string) => {
@@ -415,9 +446,10 @@ export default function FichasPage() {
               {/* Busca */}
               <div>
                 <SearchInput
-                  placeholder="Buscar por código da ficha..."
+                  placeholder="Buscar por código da ficha... (pressione Enter)"
                   value={searchTerm}
                   onChange={handleSearch}
+                  onEnterSearch={true}
                 />
               </div>
 
