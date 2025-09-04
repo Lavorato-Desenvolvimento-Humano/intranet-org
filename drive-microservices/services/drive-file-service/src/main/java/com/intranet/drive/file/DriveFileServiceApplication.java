@@ -3,6 +3,7 @@ package com.intranet.drive.file;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 
 @SpringBootApplication(scanBasePackages = {
@@ -12,6 +13,10 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 @EntityScan(basePackages = {
         "com.intranet.drive.file.entity",
         "com.intranet.drive.common.entity"
+})
+@ComponentScan(basePackages = {
+        "com.intranet.drive.file",
+        "com.intranet.drive.common"
 })
 public class DriveFileServiceApplication {
     public static void main(String[] args) {
