@@ -109,62 +109,95 @@ public class FichaVerificationService {
     public Map<String, Object> getEstatisticasFichasConvenio(UUID convenioId, Integer mes, Integer ano) {
         logger.info("Gerando estatísticas de fichas - convênio: {}, período: {}/{}", convenioId, mes, ano);
 
+        // Inicializar estrutura padrão
+        Map<String, Object> estatisticas = new HashMap<>();
+
         try {
             Convenio convenio = convenioRepository.findById(convenioId)
                     .orElseThrow(() -> new ResourceNotFoundException("Convênio não encontrado: " + convenioId));
 
             List<Ficha> fichasExistentes = fichaRepository.findFichasExistentesPorConvenioMesAno(convenioId, mes, ano);
 
-            // Estatísticas por especialidade
-            Map<String, Long> fichasPorEspecialidade = fichasExistentes.stream()
-                    .collect(Collectors.groupingBy(
-                            Ficha::getEspecialidade,
-                            Collectors.counting()
-                    ));
+            // Estatísticas por especialidade - GARANTIR que não seja null
+            Map<String, Long> fichasPorEspecialidade = new HashMap<>();
+            if (fichasExistentes != null && !fichasExistentes.isEmpty()) {
+                fichasPorEspecialidade = fichasExistentes.stream()
+                        .filter(f -> f.getEspecialidade() != null) // Filtrar nulls
+                        .collect(Collectors.groupingBy(
+                                Ficha::getEspecialidade,
+                                Collectors.counting()
+                        ));
+            }
 
-            // Estatísticas por status
-            Map<String, Long> fichasPorStatus = fichasExistentes.stream()
-                    .collect(Collectors.groupingBy(
-                            Ficha::getStatus,
-                            Collectors.counting()
-                    ));
+            // Estatísticas por status - GARANTIR que não seja null
+            Map<String, Long> fichasPorStatus = new HashMap<>();
+            if (fichasExistentes != null && !fichasExistentes.isEmpty()) {
+                fichasPorStatus = fichasExistentes.stream()
+                        .filter(f -> f.getStatus() != null) // Filtrar nulls
+                        .collect(Collectors.groupingBy(
+                                Ficha::getStatus,
+                                Collectors.counting()
+                        ));
+            }
 
-            // Pacientes únicos
-            Set<UUID> pacientesUnicos = fichasExistentes.stream()
-                    .map(f -> f.getPaciente() != null ? f.getPaciente().getId() :
-                            (f.getGuia() != null ? f.getGuia().getPaciente().getId() : null))
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toSet());
+            // Pacientes únicos - GARANTIR tratamento de nulls
+            Set<UUID> pacientesUnicos = new HashSet<>();
+            if (fichasExistentes != null && !fichasExistentes.isEmpty()) {
+                pacientesUnicos = fichasExistentes.stream()
+                        .map(f -> {
+                            if (f.getPaciente() != null) {
+                                return f.getPaciente().getId();
+                            } else if (f.getGuia() != null && f.getGuia().getPaciente() != null) {
+                                return f.getGuia().getPaciente().getId();
+                            }
+                            return null;
+                        })
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toSet());
+            }
 
-            // Período de atividade
-            LocalDateTime primeiraFicha = fichasExistentes.stream()
-                    .map(Ficha::getCreatedAt)
-                    .min(LocalDateTime::compareTo)
-                    .orElse(null);
+            // Período de atividade - GARANTIR tratamento de nulls
+            LocalDateTime primeiraFicha = null;
+            LocalDateTime ultimaFicha = null;
 
-            LocalDateTime ultimaFicha = fichasExistentes.stream()
-                    .map(Ficha::getCreatedAt)
-                    .max(LocalDateTime::compareTo)
-                    .orElse(null);
+            if (fichasExistentes != null && !fichasExistentes.isEmpty()) {
+                primeiraFicha = fichasExistentes.stream()
+                        .map(Ficha::getCreatedAt)
+                        .filter(Objects::nonNull)
+                        .min(LocalDateTime::compareTo)
+                        .orElse(null);
 
-            // Especialidades cobertas (lista de strings)
-            List<String> especialidadesCobertas = fichasPorEspecialidade.keySet()
-                    .stream()
-                    .filter(Objects::nonNull)
-                    .sorted()
-                    .collect(Collectors.toList());
+                ultimaFicha = fichasExistentes.stream()
+                        .map(Ficha::getCreatedAt)
+                        .filter(Objects::nonNull)
+                        .max(LocalDateTime::compareTo)
+                        .orElse(null);
+            }
 
-            Map<String, Object> estatisticas = new HashMap<>();
+            // Especialidades cobertas (lista de strings) - GARANTIR que não seja null
+            List<String> especialidadesCobertas = new ArrayList<>();
+            if (fichasPorEspecialidade != null && !fichasPorEspecialidade.isEmpty()) {
+                especialidadesCobertas = fichasPorEspecialidade.keySet()
+                        .stream()
+                        .filter(Objects::nonNull)
+                        .sorted()
+                        .collect(Collectors.toList());
+            }
 
+            // Calcular tamanhos de forma segura
+            int totalFichas = fichasExistentes != null ? fichasExistentes.size() : 0;
+            int totalPacientes = pacientesUnicos.size();
+
+            // CONSTRUIR ESTRUTURA COMPLETA E CONSISTENTE
             estatisticas.put("convenioId", convenioId.toString());
             estatisticas.put("convenioNome", convenio.getName() != null ? convenio.getName() : "Nome não disponível");
 
             // Estatísticas das fichas
-            estatisticas.put("totalFichas", fichasExistentes.size());
-            estatisticas.put("totalPacientes", pacientesUnicos.size());
-            estatisticas.put("fichasGeradasMes", fichasExistentes.size()); // Para compatibilidade com frontend
-            estatisticas.put("fichasGeradasAno", fichasExistentes.size()); // Para compatibilidade com frontend
-            estatisticas.put("pacientesAtivos", pacientesUnicos.size());
+            estatisticas.put("totalFichas", totalFichas);
+            estatisticas.put("totalPacientes", totalPacientes);
+            estatisticas.put("fichasGeradasMes", totalFichas); // Para compatibilidade com frontend
+            estatisticas.put("fichasGeradasAno", totalFichas); // Para compatibilidade com frontend
+            estatisticas.put("pacientesAtivos", totalPacientes);
             estatisticas.put("especialidadesCobertas", especialidadesCobertas);
             estatisticas.put("fichasPorEspecialidade", fichasPorEspecialidade);
             estatisticas.put("fichasPorStatus", fichasPorStatus);
@@ -174,19 +207,23 @@ public class FichaVerificationService {
             estatisticas.put("ano", ano);
             estatisticas.put("geradoEm", LocalDateTime.now());
 
-            // Métricas adicionais
-            double mediaFichasPorPaciente = pacientesUnicos.isEmpty() ?
-                    0.0 : (double) fichasExistentes.size() / pacientesUnicos.size();
-            estatisticas.put("mediaFichasPorPaciente", Math.round(mediaFichasPorPaciente * 100.0) / 100.0);
+            // Métricas adicionais - GARANTIR que não seja NaN ou Infinity
+            double mediaFichasPorPaciente = 0.0;
+            if (totalPacientes > 0) {
+                mediaFichasPorPaciente = (double) totalFichas / totalPacientes;
+                mediaFichasPorPaciente = Math.round(mediaFichasPorPaciente * 100.0) / 100.0;
+            }
+            estatisticas.put("mediaFichasPorPaciente", mediaFichasPorPaciente);
 
             logger.info("Estatísticas geradas - convênio: {} ({}), fichas: {}, pacientes: {}",
-                    convenioId, convenio.getName(), fichasExistentes.size(), pacientesUnicos.size());
+                    convenioId, convenio.getName(), totalFichas, totalPacientes);
 
             return estatisticas;
 
         } catch (Exception e) {
             logger.error("Erro ao gerar estatísticas para convênio {}: {}", convenioId, e.getMessage(), e);
 
+            // ESTRUTURA DE ERRO PADRONIZADA
             String convenioNome = "Nome não disponível";
             try {
                 Convenio convenio = convenioRepository.findById(convenioId).orElse(null);
@@ -197,22 +234,26 @@ public class FichaVerificationService {
                 logger.warn("Erro ao buscar nome do convênio para resposta de erro: {}", ex.getMessage());
             }
 
-            Map<String, Object> estatisticasErro = new HashMap<>();
-            estatisticasErro.put("erro", "Erro ao calcular estatísticas: " + e.getMessage());
-            estatisticasErro.put("convenioId", convenioId.toString());
-            estatisticasErro.put("convenioNome", convenioNome);
-            estatisticasErro.put("totalFichas", 0);
-            estatisticasErro.put("totalPacientes", 0);
-            estatisticasErro.put("fichasGeradasMes", 0);
-            estatisticasErro.put("fichasGeradasAno", 0);
-            estatisticasErro.put("pacientesAtivos", 0);
-            estatisticasErro.put("especialidadesCobertas", new ArrayList<String>());
-            estatisticasErro.put("mediaFichasPorPaciente", 0.0);
-            estatisticasErro.put("mes", mes);
-            estatisticasErro.put("ano", ano);
-            estatisticasErro.put("geradoEm", LocalDateTime.now());
+            // Garantir estrutura completa mesmo em caso de erro
+            estatisticas.put("erro", "Erro ao calcular estatísticas: " + e.getMessage());
+            estatisticas.put("convenioId", convenioId.toString());
+            estatisticas.put("convenioNome", convenioNome);
+            estatisticas.put("totalFichas", 0);
+            estatisticas.put("totalPacientes", 0);
+            estatisticas.put("fichasGeradasMes", 0);
+            estatisticas.put("fichasGeradasAno", 0);
+            estatisticas.put("pacientesAtivos", 0);
+            estatisticas.put("especialidadesCobertas", new ArrayList<String>());
+            estatisticas.put("fichasPorEspecialidade", new HashMap<String, Long>());
+            estatisticas.put("fichasPorStatus", new HashMap<String, Long>());
+            estatisticas.put("primeiraFicha", null);
+            estatisticas.put("ultimaFicha", null);
+            estatisticas.put("mediaFichasPorPaciente", 0.0);
+            estatisticas.put("mes", mes);
+            estatisticas.put("ano", ano);
+            estatisticas.put("geradoEm", LocalDateTime.now());
 
-            return estatisticasErro;
+            return estatisticas;
         }
     }
 

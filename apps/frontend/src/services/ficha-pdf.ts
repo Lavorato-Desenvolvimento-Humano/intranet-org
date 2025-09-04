@@ -1,3 +1,4 @@
+import { PacienteSummaryDto } from "@/types/clinical";
 import api from "./api";
 import {
   FichaPdfPacienteRequest,
@@ -23,6 +24,32 @@ import {
 
 const fichaPdfService = {
   // Geração de fichas
+
+  /**
+   * Busca pacientes por nome para seleção em geração de fichas PDF
+   */
+  buscarPacientesParaFichaPdf: async (
+    nome: string,
+    limit: number = 10
+  ): Promise<PacienteSummaryDto[]> => {
+    try {
+      if (nome.trim().length < 2) {
+        return [];
+      }
+
+      console.log("Buscando pacientes por nome:", nome);
+      const response = await api.get<PacienteSummaryDto[]>(
+        `/api/fichas-pdf/pacientes/buscar`,
+        {
+          params: { nome: nome.trim(), limit },
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Erro ao buscar pacientes:", error);
+      return [];
+    }
+  },
 
   /*
    * Gera fichas PDF para um paciente específico

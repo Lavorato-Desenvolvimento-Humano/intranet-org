@@ -1,6 +1,5 @@
 package com.intranet.backend.dto;
 
-import com.intranet.backend.model.Convenio;
 import com.intranet.backend.model.Paciente;
 import lombok.AllArgsConstructor;
 import lombok.Data;

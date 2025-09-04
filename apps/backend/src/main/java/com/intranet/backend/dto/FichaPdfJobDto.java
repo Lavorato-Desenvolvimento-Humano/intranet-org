@@ -1,5 +1,6 @@
 package com.intranet.backend.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -12,8 +13,13 @@ public class FichaPdfJobDto {
     private Integer totalFichas;
     private Integer fichasProcessadas;
     private Integer progresso;
+
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime iniciado;
+
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime concluido;
+
     private Boolean podeDownload;
     private String downloadUrl;
     private String observacoes;
@@ -38,6 +44,7 @@ public class FichaPdfJobDto {
         return podeDownload != null ? podeDownload : false;
     }
 
+    // Getter para jobId com valor padrão
     public String getJobId() {
         return jobId != null ? jobId : "";
     }
