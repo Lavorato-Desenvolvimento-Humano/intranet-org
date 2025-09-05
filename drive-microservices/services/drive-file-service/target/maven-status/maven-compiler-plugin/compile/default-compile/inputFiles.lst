@@ -1,0 +1,11 @@
+C:\Projetos\intranet-org\drive-microservices\services\drive-file-service\src\main\java\com\intranet\drive\file\config\DriveFileServiceConfig.java
+C:\Projetos\intranet-org\drive-microservices\services\drive-file-service\src\main\java\com\intranet\drive\file\config\MinioConfig.java
+C:\Projetos\intranet-org\drive-microservices\services\drive-file-service\src\main\java\com\intranet\drive\file\controller\FileController.java
+C:\Projetos\intranet-org\drive-microservices\services\drive-file-service\src\main\java\com\intranet\drive\file\controller\HealthController.java
+C:\Projetos\intranet-org\drive-microservices\services\drive-file-service\src\main\java\com\intranet\drive\file\DriveFileServiceApplication.java
+C:\Projetos\intranet-org\drive-microservices\services\drive-file-service\src\main\java\com\intranet\drive\file\dto\FileDto.java
+C:\Projetos\intranet-org\drive-microservices\services\drive-file-service\src\main\java\com\intranet\drive\file\dto\FileUploadRequest.java
+C:\Projetos\intranet-org\drive-microservices\services\drive-file-service\src\main\java\com\intranet\drive\file\entity\FileEntity.java
+C:\Projetos\intranet-org\drive-microservices\services\drive-file-service\src\main\java\com\intranet\drive\file\repository\FileRepository.java
+C:\Projetos\intranet-org\drive-microservices\services\drive-file-service\src\main\java\com\intranet\drive\file\service\FileService.java
+C:\Projetos\intranet-org\drive-microservices\services\drive-file-service\src\main\java\com\intranet\drive\file\service\StorageService.java

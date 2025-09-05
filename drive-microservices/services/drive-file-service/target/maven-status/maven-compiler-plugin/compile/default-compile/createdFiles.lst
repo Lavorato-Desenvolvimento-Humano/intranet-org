@@ -1,0 +1,12 @@
+com\intranet\drive\file\dto\FileDto.class
+com\intranet\drive\file\entity\FileEntity.class
+com\intranet\drive\file\config\MinioConfig.class
+com\intranet\drive\file\controller\FileController.class
+com\intranet\drive\file\service\StorageService$ObjectStat.class
+com\intranet\drive\file\repository\FileRepository.class
+com\intranet\drive\file\dto\FileUploadRequest.class
+com\intranet\drive\file\service\StorageService.class
+com\intranet\drive\file\service\FileService.class
+com\intranet\drive\file\controller\HealthController.class
+com\intranet\drive\file\config\DriveFileServiceConfig.class
+com\intranet\drive\file\DriveFileServiceApplication.class
