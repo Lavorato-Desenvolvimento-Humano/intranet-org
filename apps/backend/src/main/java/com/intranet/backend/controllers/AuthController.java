@@ -1,10 +1,11 @@
 package com.intranet.backend.controllers;
 
-import com.intranet.backend.dto.JwtResponse;
-import com.intranet.backend.dto.LoginRequest;
-import com.intranet.backend.dto.RegisterRequest;
-import com.intranet.backend.dto.ResetPasswordRequest;
+import com.intranet.backend.dto.*;
+import com.intranet.backend.model.User;
+import com.intranet.backend.repository.UserRepository;
+import com.intranet.backend.security.JwtUtils;
 import com.intranet.backend.service.AuthService;
+import com.intranet.backend.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -18,7 +19,9 @@ import org.springframework.core.env.Environment;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -30,6 +33,12 @@ public class AuthController {
 
     @Autowired
     private Environment environment;
+
+    @Autowired
+    private JwtUtils jwtUtils;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @PostMapping("/login")
     public ResponseEntity<JwtResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
@@ -45,6 +54,127 @@ public class AuthController {
             throw e;
         }
     }
+
+    @PostMapping("/validate")
+    public ResponseEntity<TokenValidationResponse> validateToken(
+            @Valid @RequestBody TokenValidationRequest request) {
+
+        try {
+            String token = request.getToken();
+
+            // Log da tentativa de validação
+            logger.debug("Validando token para integração com microserviços");
+
+            // Verificar se o token tem formato válido
+            if (token == null || token.trim().isEmpty()) {
+                return ResponseEntity.ok(TokenValidationResponse.builder()
+                        .valid(false)
+                        .message("Token não fornecido")
+                        .build());
+            }
+
+            // Remover prefixo Bearer se presente
+            if (token.startsWith("Bearer ")) {
+                token = token.substring(7);
+            }
+
+            // Validar token com JwtUtils (classe correta do Core)
+            if (!jwtUtils.validateJwtToken(token)) {
+                return ResponseEntity.ok(TokenValidationResponse.builder()
+                        .valid(false)
+                        .message("Token inválido ou expirado")
+                        .build());
+            }
+
+            // Extrair username do token usando JwtUtils
+            String username = jwtUtils.getUserNameFromJwtToken(token);
+            if (username == null) {
+                return ResponseEntity.ok(TokenValidationResponse.builder()
+                        .valid(false)
+                        .message("Não foi possível extrair usuário do token")
+                        .build());
+            }
+
+            // Buscar usuário no banco de dados (username é geralmente o email)
+            Optional<User> userOptional = userRepository.findByEmail(username);
+            if (userOptional.isEmpty()) {
+                return ResponseEntity.ok(TokenValidationResponse.builder()
+                        .valid(false)
+                        .message("Usuário não encontrado")
+                        .build());
+            }
+
+            User user = userOptional.get();
+
+            // Verificar se o usuário está ativo
+            if (!user.isActive()) {
+                return ResponseEntity.ok(TokenValidationResponse.builder()
+                        .valid(false)
+                        .message("Usuário inativo")
+                        .build());
+            }
+
+            // Verificar se o email foi verificado
+            if (!user.isEmailVerified()) {
+                return ResponseEntity.ok(TokenValidationResponse.builder()
+                        .valid(false)
+                        .message("Email não verificado")
+                        .build());
+            }
+
+            // Verificar se foi aprovado pelo admin
+            if (!user.isAdminApproved()) {
+                return ResponseEntity.ok(TokenValidationResponse.builder()
+                        .valid(false)
+                        .message("Usuário não aprovado pelo administrador")
+                        .build());
+            }
+
+            // Buscar roles do usuário usando o método existente no repositório
+            List<String> roles = userRepository.findRoleNamesByUserId(user.getId());
+
+            // Buscar equipes do usuário
+            List<String> teams = List.of(); // Por enquanto vazio, pode ser implementado depois
+            try {
+                // Esta parte pode ser implementada quando necessário
+                teams = List.of();
+            } catch (Exception e) {
+                logger.debug("Equipes não implementadas ou erro ao buscar: {}", e.getMessage());
+                teams = List.of();
+            }
+
+            // Converter usuário para DTO
+            TokenValidationResponse.UserDto userDto = TokenValidationResponse.UserDto.builder()
+                    .id(user.getId().toString())
+                    .username(user.getEmail()) // Core usa email como username
+                    .email(user.getEmail())
+                    .fullName(user.getFullName())
+                    .profileImage(user.getProfileImage())
+                    .roles(roles)
+                    .teams(teams)
+                    .isActive(user.isActive())
+                    .emailVerified(user.isEmailVerified())
+                    .adminApproved(user.isAdminApproved())
+                    .build();
+
+            logger.info("Token validado com sucesso para usuário: {}", username);
+
+            return ResponseEntity.ok(TokenValidationResponse.builder()
+                    .valid(true)
+                    .user(userDto)
+                    .message("Token válido")
+                    .build());
+
+        } catch (Exception e) {
+            logger.error("Erro na validação do token: {}", e.getMessage(), e);
+
+            return ResponseEntity.ok(TokenValidationResponse.builder()
+                    .valid(false)
+                    .message("Erro interno na validação do token")
+                    .build());
+        }
+    }
+
 
     @PostMapping("/register")
     public ResponseEntity<JwtResponse> register(@Valid @RequestBody RegisterRequest registerRequest) {

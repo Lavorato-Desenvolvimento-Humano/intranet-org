@@ -1,91 +1,64 @@
-// context/DriveAuthContext.tsx
 "use client";
 
 import React, {
   createContext,
   useContext,
-  useEffect,
   useState,
+  useEffect,
   useCallback,
+  ReactNode,
 } from "react";
-import { UserDto } from "@/services/user";
-import { userDto, AuthContextType, DrivePermission } from "@/types/auth";
+import { userDto, AuthContextType } from "@/types/auth";
 import driveAuthService from "@/services/auth-drive";
+import { getCurrentUser } from "@/services/auth";
 
+// Contexto de autenticação específico para o Drive
 const DriveAuthContext = createContext<AuthContextType | undefined>(undefined);
 
 interface DriveAuthProviderProps {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
-const getCurrentUser = (): UserDto | null => {
-  if (typeof window !== "undefined") {
-    const userJson = localStorage.getItem("currentUser");
-    return userJson ? JSON.parse(userJson) : null;
-  }
-  return null;
-};
-
+/**
+ * Provider de autenticação para o Drive
+ * Implementa RF01.1 - Integração com Sistema Existente
+ */
 export function DriveAuthProvider({ children }: DriveAuthProviderProps) {
   const [user, setUser] = useState<userDto | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Computed values
+  // Estado derivado
   const isAuthenticated = !!user && !!token;
 
   /**
    * Verifica se o usuário tem uma permissão específica
-   * Implementa RF01.1 - Integação com roles existentes
    */
   const checkPermission = useCallback(
     (permission: string): boolean => {
       if (!user) return false;
 
-      // Admins têm todas as permissões
+      // Administradores têm todas as permissões
       if (driveAuthService.isAdmin(user)) return true;
 
-      // Mapeamento de roles para permissões do Drive
-      const rolePermissions: Record<string, string[]> = {
-        SUPERVISOR: [
-          DrivePermission.READ,
-          DrivePermission.WRITE,
-          DrivePermission.UPLOAD,
-          DrivePermission.DOWNLOAD,
-          DrivePermission.CREATE_FOLDER,
-          DrivePermission.SHARE,
-          DrivePermission.VIEW_AUDIT,
-        ],
-        GERENTE: [
-          DrivePermission.READ,
-          DrivePermission.WRITE,
-          DrivePermission.UPLOAD,
-          DrivePermission.DOWNLOAD,
-          DrivePermission.CREATE_FOLDER,
-          DrivePermission.SHARE,
-          DrivePermission.MANAGE_PERMISSIONS,
-          DrivePermission.VIEW_AUDIT,
-        ],
-        USER: [
-          DrivePermission.READ,
-          DrivePermission.WRITE,
-          DrivePermission.UPLOAD,
-          DrivePermission.DOWNLOAD,
-          DrivePermission.CREATE_FOLDER,
-        ],
-      };
-
-      // Verificar permissões baseadas nas roles do usuário
-      for (const userRole of user.roles) {
-        const roleKey = userRole.replace("ROLE_", "").toUpperCase();
-        const permissions = rolePermissions[roleKey];
-
-        if (permissions && permissions.includes(permission)) {
-          return true;
-        }
+      // Verificar permissões específicas do drive baseadas nas roles
+      switch (permission) {
+        case "drive:read":
+          return driveAuthService.canAccessDrive(user);
+        case "drive:write":
+        case "drive:upload":
+          return driveAuthService.canAccessDrive(user);
+        case "drive:delete":
+          return (
+            driveAuthService.isSupervisorOrManager(user) ||
+            driveAuthService.isAdmin(user)
+          );
+        case "drive:admin":
+        case "drive:manage_permissions":
+          return driveAuthService.isAdmin(user);
+        default:
+          return false;
       }
-
-      return false;
     },
     [user]
   );
@@ -199,31 +172,50 @@ export function DriveAuthProvider({ children }: DriveAuthProviderProps) {
       try {
         setIsLoading(true);
 
-        // Verificar se há usuário logado no sistema principal
-        const systemUser = getCurrentUser();
-
-        if (!systemUser) {
-          console.log("Nenhum usuário logado no sistema principal");
-          return;
-        }
-
         // Primeiro, tentar token armazenado específico do Drive
         const storedDriveToken = driveAuthService.getStoredToken();
 
-        if (storedDriveToken && systemUser.token === storedDriveToken) {
+        if (storedDriveToken) {
           const isValid = await validateToken();
           if (isValid) {
+            console.log("Login realizado com token do Drive armazenado");
             return; // Login bem-sucedido com token do Drive
           }
         }
 
-        // Se não há token do Drive ou é diferente, tentar login automático
+        // Verificar se há usuário logado no sistema principal
+        const systemUser = getCurrentUser();
+
+        if (systemUser?.token) {
+          // Tentar usar o token do sistema principal
+          const validation = await driveAuthService.validateTokenWithCore(
+            systemUser.token
+          );
+
+          if (validation.valid && validation.user) {
+            if (driveAuthService.canAccessDrive(validation.user)) {
+              setUser(validation.user);
+              setToken(systemUser.token);
+              driveAuthService.storeToken(systemUser.token);
+              console.log(
+                "Login automático realizado com token do sistema principal"
+              );
+              return;
+            } else {
+              console.warn(
+                "Usuário do sistema principal não tem permissão para acessar o Drive"
+              );
+            }
+          }
+        }
+
+        // Se não há token do Drive nem do sistema principal, tentar login automático
         const autoLoginResult = await driveAuthService.loginWithExistingToken();
 
         if (autoLoginResult.valid && autoLoginResult.user) {
           if (driveAuthService.canAccessDrive(autoLoginResult.user)) {
             setUser(autoLoginResult.user);
-            setToken(systemUser.token || null);
+            setToken(driveAuthService.getStoredToken());
             console.log("Login automático realizado com sucesso");
           } else {
             console.warn("Usuário não tem permissão para acessar o Drive");
@@ -239,7 +231,7 @@ export function DriveAuthProvider({ children }: DriveAuthProviderProps) {
     };
 
     initializeAuth();
-  }, [validateToken]);
+  }, []); // Removemos validateToken das dependências para evitar loops
 
   // Verificar periodicamente se o token ainda é válido
   useEffect(() => {
@@ -250,7 +242,7 @@ export function DriveAuthProvider({ children }: DriveAuthProviderProps) {
         const isValid = await validateToken();
         if (!isValid) {
           console.warn("Token expirado, fazendo logout...");
-          logout();
+          logout(true); // Manter login do sistema principal
         }
       },
       5 * 60 * 1000

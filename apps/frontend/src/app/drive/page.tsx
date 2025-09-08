@@ -1,4 +1,3 @@
-// app/drive/page.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -6,143 +5,118 @@ import { useRouter } from "next/navigation";
 import {
   Upload,
   FolderPlus,
-  Clock,
+  Search,
+  Grid,
+  List,
+  Filter,
+  Download,
+  Share2,
+  MoreVertical,
+  File,
+  Folder,
   HardDrive,
-  Users,
-  FileText,
-  Image,
-  Video,
-  Archive,
-  TrendingUp,
-  Activity,
-  AlertCircle,
 } from "lucide-react";
-import { useDriveAuth } from "@/context/DriveAuthContext";
-// import { useDrivePermissions } from "@/components/auth/DriveProtectedRoute";
+import DriveProtectedRoute, {
+  useDrivePermissions,
+} from "@/components/auth/DriveProtectedRoute";
+import DriveNavbar from "@/components/layout/DriveNavbar";
 import { CustomButton } from "@/components/ui/custom-button";
+import Input from "@/components/ui/input";
 import { Loading } from "@/components/ui/loading";
-import driveApiClient from "@/services/api/driveApiClient";
+import { DrivePermission } from "@/types/auth";
+import toastUtil from "@/utils/toast";
 
-interface QuotaInfo {
-  used: number;
-  total: number;
-  percentage: number;
-}
-
-interface RecentFile {
+interface DriveItem {
   id: string;
   name: string;
-  type: string;
-  size: number;
+  type: "file" | "folder";
+  size?: number;
   modifiedAt: string;
-  modifiedBy: string;
+  createdBy: string;
+  mimeType?: string;
 }
 
-interface DashboardStats {
-  totalFiles: number;
-  totalFolders: number;
-  totalShared: number;
-  recentActivity: number;
-}
+// Dados mock para demonstração
+const mockDriveItems: DriveItem[] = [
+  {
+    id: "1",
+    name: "Documentos",
+    type: "folder",
+    modifiedAt: "2024-01-15T10:30:00Z",
+    createdBy: "João Silva",
+  },
+  {
+    id: "2",
+    name: "Projetos",
+    type: "folder",
+    modifiedAt: "2024-01-14T15:45:00Z",
+    createdBy: "Maria Santos",
+  },
+  {
+    id: "3",
+    name: "Relatório_Q4_2024.pdf",
+    type: "file",
+    size: 2457600,
+    modifiedAt: "2024-01-13T09:20:00Z",
+    createdBy: "Carlos Lima",
+    mimeType: "application/pdf",
+  },
+  {
+    id: "4",
+    name: "Apresentação_Vendas.pptx",
+    type: "file",
+    size: 5242880,
+    modifiedAt: "2024-01-12T14:15:00Z",
+    createdBy: "Ana Costa",
+    mimeType:
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  },
+];
 
 /**
- * Dashboard principal do Drive
+ * Página principal do Drive
  * Implementa RF04.1 - Dashboard Principal
  */
-export default function DriveDashboard() {
+function DriveMainContent() {
   const router = useRouter();
-  const { user } = useDriveAuth();
-  //   const { canWrite, canUpload, canCreateFolder, isAdmin } =
-  //     useDrivePermissions();
+  const { user, canUpload, canCreateFolder, canWrite, canDelete, canShare } =
+    useDrivePermissions();
 
-  // Estados
-  const [quotaInfo, setQuotaInfo] = useState<QuotaInfo | null>(null);
-  const [recentFiles, setRecentFiles] = useState<RecentFile[]>([]);
-  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [items, setItems] = useState<DriveItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
 
-  // Carregar dados do dashboard
+  // Simular carregamento de dados
   useEffect(() => {
-    loadDashboardData();
+    const loadDriveItems = async () => {
+      try {
+        setLoading(true);
+        // Simular delay da API
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        setItems(mockDriveItems);
+      } catch (error) {
+        console.error("Erro ao carregar itens:", error);
+        toastUtil.error("Erro ao carregar arquivos e pastas");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDriveItems();
   }, []);
 
-  const loadDashboardData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const [quotaResponse, filesResponse, statsResponse] =
-        await Promise.allSettled([
-          driveApiClient.getUserQuota(),
-          loadRecentFiles(),
-          loadStats(),
-        ]);
-
-      // Processar quota
-      if (quotaResponse.status === "fulfilled") {
-        setQuotaInfo(quotaResponse.value);
-      }
-
-      // Processar arquivos recentes
-      if (filesResponse.status === "fulfilled") {
-        setRecentFiles(filesResponse.value);
-      }
-
-      // Processar estatísticas
-      if (statsResponse.status === "fulfilled") {
-        setStats(statsResponse.value);
-      }
-    } catch (error) {
-      console.error("Erro ao carregar dados do dashboard:", error);
-      setError("Erro ao carregar dados do dashboard");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadRecentFiles = async (): Promise<RecentFile[]> => {
-    // Simulação - substituir pela chamada real à API
-    return [
-      {
-        id: "1",
-        name: "Relatório Q4 2024.pdf",
-        type: "application/pdf",
-        size: 2048000,
-        modifiedAt: "2024-12-15T10:30:00Z",
-        modifiedBy: "João Silva",
-      },
-      {
-        id: "2",
-        name: "Apresentação Cliente.pptx",
-        type: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-        size: 5120000,
-        modifiedAt: "2024-12-14T16:45:00Z",
-        modifiedBy: "Maria Santos",
-      },
-    ];
-  };
-
-  const loadStats = async (): Promise<DashboardStats> => {
-    // Simulação - substituir pela chamada real à API
-    return {
-      totalFiles: 156,
-      totalFolders: 23,
-      totalShared: 42,
-      recentActivity: 12,
-    };
-  };
-
-  const formatFileSize = (bytes: number): string => {
-    const sizes = ["Bytes", "KB", "MB", "GB"];
+  const formatFileSize = (bytes: number) => {
     if (bytes === 0) return "0 Bytes";
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return Math.round((bytes / Math.pow(1024, i)) * 100) / 100 + " " + sizes[i];
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("pt-BR", {
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("pt-BR", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -151,357 +125,227 @@ export default function DriveDashboard() {
     });
   };
 
-  const getFileIcon = (mimeType: string) => {
-    if (mimeType.startsWith("image/")) return Image;
-    if (mimeType.startsWith("video/")) return Video;
-    if (mimeType.includes("pdf") || mimeType.includes("document"))
-      return FileText;
-    if (mimeType.includes("zip") || mimeType.includes("rar")) return Archive;
-    return FileText;
+  const handleItemClick = (item: DriveItem) => {
+    if (item.type === "folder") {
+      router.push(`/drive/folder/${item.id}`);
+    } else {
+      // Abrir preview ou download do arquivo
+      console.log("Abrir arquivo:", item.name);
+    }
   };
 
-  if (loading) {
-    return (
-      <div className="p-6">
-        <div className="flex items-center justify-center h-64">
-          <Loading size="large" />
-        </div>
-      </div>
-    );
-  }
+  const handleNewFolder = () => {
+    if (!canCreateFolder) {
+      toastUtil.error("Você não tem permissão para criar pastas");
+      return;
+    }
+    // Implementar criação de pasta
+    console.log("Criar nova pasta");
+  };
+
+  const handleUpload = () => {
+    if (!canUpload) {
+      toastUtil.error("Você não tem permissão para fazer upload");
+      return;
+    }
+    // Implementar upload
+    console.log("Fazer upload");
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      router.push(`/drive/search?q=${encodeURIComponent(searchQuery)}`);
+    }
+  };
+
+  const filteredItems = items.filter((item) =>
+    item.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Cabeçalho */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            Bem-vindo, {user?.fullName?.split(" ")[0]}!
-          </h1>
-          <p className="text-gray-600">
-            Gerencie seus arquivos e colabore com sua equipe
-          </p>
-        </div>
+    <div className="min-h-screen bg-gray-50">
+      <DriveNavbar />
 
-        {/* Ações rápidas */}
-        <div className="flex space-x-3">
-          {/* {canUpload && (
-            <CustomButton
-              onClick={() => router.push("/drive/upload")}
-              className="bg-blue-600 hover:bg-blue-700">
-              <Upload className="h-4 w-4 mr-2" />
-              Upload
-            </CustomButton>
-          )} */}
-          {/* {canCreateFolder && (
-            <CustomButton
-              onClick={() => router.push("/drive/files?action=new-folder")}
-              variant="primary">
-              <FolderPlus className="h-4 w-4 mr-2" />
-              Nova Pasta
-            </CustomButton>
-          )} */}
-        </div>
-      </div>
-
-      {/* Cards de estatísticas */}
-      {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <FileText className="h-8 w-8 text-blue-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">
-                  Total de Arquivos
-                </p>
-                <p className="text-2xl font-semibold text-gray-900">
-                  {stats.totalFiles}
-                </p>
-              </div>
+      <main className="container mx-auto px-4 py-6">
+        {/* Cabeçalho */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 flex items-center">
+                <HardDrive className="h-8 w-8 mr-3 text-blue-600" />
+                Meu Drive
+              </h1>
+              <p className="text-gray-600 mt-1">
+                Bem-vindo(a), {user?.fullName || user?.username}
+              </p>
             </div>
-          </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <FolderPlus className="h-8 w-8 text-green-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">
-                  Total de Pastas
-                </p>
-                <p className="text-2xl font-semibold text-gray-900">
-                  {stats.totalFolders}
-                </p>
-              </div>
-            </div>
-          </div>
+            {/* Ações principais */}
+            <div className="flex items-center space-x-3">
+              {canCreateFolder && (
+                <CustomButton
+                  onClick={handleNewFolder}
+                  variant="primary"
+                  className="flex items-center">
+                  <FolderPlus className="h-4 w-4 mr-2" />
+                  Nova Pasta
+                </CustomButton>
+              )}
 
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <Users className="h-8 w-8 text-purple-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">
-                  Compartilhados
-                </p>
-                <p className="text-2xl font-semibold text-gray-900">
-                  {stats.totalShared}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <Activity className="h-8 w-8 text-orange-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">
-                  Atividade Recente
-                </p>
-                <p className="text-2xl font-semibold text-gray-900">
-                  {stats.recentActivity}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Uso de cota */}
-        <div className="lg:col-span-1">
-          <div className="bg-white rounded-lg shadow">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium text-gray-900">
-                  Uso de Espaço
-                </h3>
-                <HardDrive className="h-5 w-5 text-gray-400" />
-              </div>
-
-              {quotaInfo ? (
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex justify-between text-sm text-gray-600 mb-2">
-                      <span>Usado: {formatFileSize(quotaInfo.used)}</span>
-                      <span>Total: {formatFileSize(quotaInfo.total)}</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className={`h-2 rounded-full ${
-                          quotaInfo.percentage > 90
-                            ? "bg-red-600"
-                            : quotaInfo.percentage > 80
-                              ? "bg-yellow-600"
-                              : "bg-blue-600"
-                        }`}
-                        style={{
-                          width: `${Math.min(quotaInfo.percentage, 100)}%`,
-                        }}></div>
-                    </div>
-                    <p className="text-sm text-gray-500 mt-2">
-                      {quotaInfo.percentage.toFixed(1)}% utilizado
-                    </p>
-                  </div>
-
-                  {quotaInfo.percentage > 80 && (
-                    <div className="flex items-center p-3 bg-yellow-50 rounded-md">
-                      <AlertCircle className="h-4 w-4 text-yellow-600 mr-2" />
-                      <p className="text-sm text-yellow-700">
-                        {quotaInfo.percentage > 90
-                          ? "Cota quase esgotada! Libere espaço ou entre em contato com o administrador."
-                          : "Atenção: Você está usando mais de 80% da sua cota."}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="flex items-center justify-center h-24">
-                  <Loading />
-                </div>
+              {canUpload && (
+                <CustomButton
+                  onClick={handleUpload}
+                  variant="primary"
+                  className="flex items-center">
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload
+                </CustomButton>
               )}
             </div>
           </div>
+
+          {/* Barra de ferramentas */}
+          <div className="flex items-center justify-between">
+            {/* Busca */}
+            <form onSubmit={handleSearch} className="flex-1 max-w-md">
+              <div className="relative">
+                <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Buscar arquivos e pastas..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </form>
+
+            {/* Controles de visualização */}
+            <div className="flex items-center space-x-2 ml-4">
+              <button
+                onClick={() => setViewMode("list")}
+                className={`p-2 rounded-md ${
+                  viewMode === "list"
+                    ? "bg-blue-100 text-blue-600"
+                    : "text-gray-400 hover:text-gray-600"
+                }`}>
+                <List className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setViewMode("grid")}
+                className={`p-2 rounded-md ${
+                  viewMode === "grid"
+                    ? "bg-blue-100 text-blue-600"
+                    : "text-gray-400 hover:text-gray-600"
+                }`}>
+                <Grid className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
         </div>
 
-        {/* Arquivos recentes */}
-        <div className="lg:col-span-2">
+        {/* Conteúdo principal */}
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loading message="Carregando arquivos..." />
+          </div>
+        ) : (
           <div className="bg-white rounded-lg shadow">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium text-gray-900">
-                  Arquivos Recentes
+            {filteredItems.length === 0 ? (
+              <div className="text-center py-12">
+                <HardDrive className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  {searchQuery ? "Nenhum resultado encontrado" : "Pasta vazia"}
                 </h3>
-                <Clock className="h-5 w-5 text-gray-400" />
+                <p className="text-gray-500">
+                  {searchQuery
+                    ? "Tente ajustar sua busca"
+                    : "Comece fazendo upload de arquivos ou criando pastas"}
+                </p>
               </div>
+            ) : (
+              <div className="overflow-hidden">
+                {/* Cabeçalho da tabela */}
+                <div className="bg-gray-50 px-6 py-3 border-b border-gray-200">
+                  <div className="flex items-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <div className="flex-1">Nome</div>
+                    <div className="w-24 hidden md:block">Tamanho</div>
+                    <div className="w-32 hidden lg:block">Modificado</div>
+                    <div className="w-32 hidden lg:block">Criado por</div>
+                    <div className="w-12"></div>
+                  </div>
+                </div>
 
-              {recentFiles.length > 0 ? (
-                <div className="space-y-3">
-                  {recentFiles.map((file) => {
-                    const FileIcon = getFileIcon(file.type);
-                    return (
-                      <div
-                        key={file.id}
-                        className="flex items-center p-3 hover:bg-gray-50 rounded-md cursor-pointer transition-colors"
-                        onClick={() => router.push(`/drive/files/${file.id}`)}>
-                        <div className="flex-shrink-0">
-                          <FileIcon className="h-8 w-8 text-gray-400" />
+                {/* Lista de itens */}
+                <div className="divide-y divide-gray-200">
+                  {filteredItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className="px-6 py-4 hover:bg-gray-50 cursor-pointer"
+                      onClick={() => handleItemClick(item)}>
+                      <div className="flex items-center">
+                        <div className="flex-1 flex items-center min-w-0">
+                          {item.type === "folder" ? (
+                            <Folder className="h-8 w-8 text-blue-500 mr-3" />
+                          ) : (
+                            <File className="h-8 w-8 text-gray-400 mr-3" />
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-gray-900 truncate">
+                              {item.name}
+                            </p>
+                          </div>
                         </div>
-                        <div className="ml-3 flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">
-                            {file.name}
-                          </p>
+
+                        <div className="w-24 hidden md:block">
                           <p className="text-sm text-gray-500">
-                            {formatFileSize(file.size)} • Modificado por{" "}
-                            {file.modifiedBy}
+                            {item.size ? formatFileSize(item.size) : "-"}
                           </p>
                         </div>
-                        <div className="ml-3 flex-shrink-0">
-                          <p className="text-xs text-gray-500">
-                            {formatDate(file.modifiedAt)}
+
+                        <div className="w-32 hidden lg:block">
+                          <p className="text-sm text-gray-500">
+                            {formatDate(item.modifiedAt)}
                           </p>
+                        </div>
+
+                        <div className="w-32 hidden lg:block">
+                          <p className="text-sm text-gray-500 truncate">
+                            {item.createdBy}
+                          </p>
+                        </div>
+
+                        <div className="w-12">
+                          <button
+                            className="p-1 rounded-md text-gray-400 hover:text-gray-600"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              console.log("Menu de opções para:", item.name);
+                            }}>
+                            <MoreVertical className="h-4 w-4" />
+                          </button>
                         </div>
                       </div>
-                    );
-                  })}
+                    </div>
+                  ))}
                 </div>
-              ) : (
-                <div className="text-center py-8">
-                  <FileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500">Nenhum arquivo recente</p>
-                  <p className="text-sm text-gray-400">
-                    Seus arquivos recentes aparecerão aqui
-                  </p>
-                </div>
-              )}
-
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <CustomButton
-                  onClick={() => router.push("/drive/files")}
-                  variant="primary"
-                  className="w-full">
-                  Ver Todos os Arquivos
-                </CustomButton>
               </div>
-            </div>
+            )}
           </div>
-        </div>
-      </div>
-
-      {/* Ações rápidas adicionais */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">
-          Ações Rápidas
-        </h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <button
-            onClick={() => router.push("/drive/search")}
-            className="flex flex-col items-center p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors">
-            <Activity className="h-8 w-8 text-blue-600 mb-2" />
-            <span className="text-sm font-medium text-gray-900">Buscar</span>
-            <span className="text-xs text-gray-500">Encontrar arquivos</span>
-          </button>
-
-          <button
-            onClick={() => router.push("/drive/shared")}
-            className="flex flex-col items-center p-4 border border-gray-200 rounded-lg hover:border-green-300 hover:bg-green-50 transition-colors">
-            <Users className="h-8 w-8 text-green-600 mb-2" />
-            <span className="text-sm font-medium text-gray-900">
-              Compartilhados
-            </span>
-            <span className="text-xs text-gray-500">Arquivos em equipe</span>
-          </button>
-
-          <button
-            onClick={() => router.push("/drive/starred")}
-            className="flex flex-col items-center p-4 border border-gray-200 rounded-lg hover:border-yellow-300 hover:bg-yellow-50 transition-colors">
-            <TrendingUp className="h-8 w-8 text-yellow-600 mb-2" />
-            <span className="text-sm font-medium text-gray-900">Favoritos</span>
-            <span className="text-xs text-gray-500">Itens marcados</span>
-          </button>
-
-          {/* {isAdmin && (
-            <button
-              onClick={() => router.push("/drive/admin")}
-              className="flex flex-col items-center p-4 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 transition-colors">
-              <AlertCircle className="h-8 w-8 text-purple-600 mb-2" />
-              <span className="text-sm font-medium text-gray-900">Admin</span>
-              <span className="text-xs text-gray-500">Gerenciar sistema</span>
-            </button>
-          )} */}
-        </div>
-      </div>
-
-      {/* Informações do sistema (apenas para admins) */}
-      {/* {isAdmin && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">
-            Status do Sistema
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="text-center p-4 bg-green-50 rounded-lg">
-              <div className="w-3 h-3 bg-green-500 rounded-full mx-auto mb-2"></div>
-              <p className="text-sm font-medium text-green-900">File Service</p>
-              <p className="text-xs text-green-600">Online</p>
-            </div>
-            <div className="text-center p-4 bg-green-50 rounded-lg">
-              <div className="w-3 h-3 bg-green-500 rounded-full mx-auto mb-2"></div>
-              <p className="text-sm font-medium text-green-900">
-                Permission Service
-              </p>
-              <p className="text-xs text-green-600">Online</p>
-            </div>
-            <div className="text-center p-4 bg-green-50 rounded-lg">
-              <div className="w-3 h-3 bg-green-500 rounded-full mx-auto mb-2"></div>
-              <p className="text-sm font-medium text-green-900">
-                Search Service
-              </p>
-              <p className="text-xs text-green-600">Online</p>
-            </div>
-          </div>
-        </div>
-      )} */}
-
-      {/* Dicas e avisos */}
-      <div className="bg-blue-50 rounded-lg p-6">
-        <div className="flex items-start">
-          <div className="flex-shrink-0">
-            <AlertCircle className="h-5 w-5 text-blue-600" />
-          </div>
-          <div className="ml-3">
-            <h3 className="text-sm font-medium text-blue-900">
-              Dicas do Drive
-            </h3>
-            <div className="mt-2 text-sm text-blue-700">
-              <ul className="list-disc list-inside space-y-1">
-                <li>
-                  Use pastas para organizar seus arquivos por projeto ou
-                  departamento
-                </li>
-                <li>
-                  Compartilhe arquivos com sua equipe para facilitar a
-                  colaboração
-                </li>
-                <li>
-                  Marque arquivos importantes como favoritos para acesso rápido
-                </li>
-                {quotaInfo && quotaInfo.percentage > 50 && (
-                  <li>
-                    Considere mover arquivos antigos para o arquivo morto para
-                    liberar espaço
-                  </li>
-                )}
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
+        )}
+      </main>
     </div>
+  );
+}
+
+/**
+ * Página principal do Drive com proteção de rota
+ */
+export default function DrivePage() {
+  return (
+    <DriveProtectedRoute requiredPermissions={[DrivePermission.READ]}>
+      <DriveMainContent />
+    </DriveProtectedRoute>
   );
 }
