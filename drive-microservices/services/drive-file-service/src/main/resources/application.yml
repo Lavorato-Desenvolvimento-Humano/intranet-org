@@ -71,6 +71,13 @@ intranet:
       connect: ${CORE_CONNECT_TIMEOUT:5000}
       read: ${CORE_READ_TIMEOUT:10000}
 
+github:
+  client:
+    id: ${GITHUB_CLIENT_ID:Ov23lic9kEyc71AJlnsl}
+    secret: ${GITHUB_CLIENT_SECRET:31250705dd6558fadb6c84080c554ae02b30710f}
+  redirect:
+    uri: ${GITHUB_REDIRECT_URI:http://localhost:8443/api/auth/github/callback}
+
 # Actuator
 management:
   endpoints:

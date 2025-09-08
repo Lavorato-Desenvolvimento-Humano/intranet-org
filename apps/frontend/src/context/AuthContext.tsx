@@ -46,11 +46,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Carregar usuário do localStorage ao iniciar
   useEffect(() => {
     const checkUser = () => {
-      const currentUser = authService.getCurrentUser();
-      if (currentUser) {
-        setUser(currentUser);
+      try {
+        const currentUser = authService.getCurrentUser();
+        if (currentUser) {
+          setUser(currentUser);
+          console.log("[Auth] Usuário logado encontrado:", currentUser.email);
+        } else {
+          console.log("[Auth] Nenhum usuário logado encontrado");
+        }
+      } catch (error) {
+        console.error("[Auth] Erro ao verificar usuário atual:", error);
+        // Limpar dados corrompidos
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     checkUser();
