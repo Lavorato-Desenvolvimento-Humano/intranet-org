@@ -214,24 +214,29 @@ class DriveAuthService {
 
   /**
    * Recupera token do sistema principal (se existir)
+   * Versão segura para SSR
    */
   private getMainSystemToken(): string | null {
     if (typeof window !== "undefined") {
-      // Tentar diferentes chaves que o sistema principal pode usar
-      const possibleKeys = [
-        "auth_token",
-        "jwt_token",
-        "access_token",
-        "token",
-        "intranet_token",
-      ];
+      try {
+        // Tentar diferentes chaves que o sistema principal pode usar
+        const possibleKeys = [
+          "auth_token",
+          "jwt_token",
+          "access_token",
+          "token",
+          "intranet_token",
+        ];
 
-      for (const key of possibleKeys) {
-        const token = localStorage.getItem(key);
-        if (token && token.length > 10) {
-          // Validação básica
-          return token;
+        for (const key of possibleKeys) {
+          const token = localStorage.getItem(key);
+          if (token && token.length > 10) {
+            // Validação básica
+            return token;
+          }
         }
+      } catch (error) {
+        console.warn("Erro ao acessar localStorage:", error);
       }
     }
     return null;
@@ -334,59 +339,89 @@ class DriveAuthService {
   }
 
   /**
-   * Armazena token no localStorage
+   * Armazena token no localStorage - Versão segura para SSR
    */
   storeToken(token: string): void {
     if (typeof window !== "undefined") {
-      localStorage.setItem("drive_auth_token", token);
+      try {
+        localStorage.setItem("drive_auth_token", token);
+      } catch (error) {
+        console.warn("Erro ao armazenar token:", error);
+      }
     }
   }
 
   /**
-   * Recupera token do localStorage
+   * Recupera token do localStorage - Versão segura para SSR
    */
   getStoredToken(): string | null {
     if (typeof window !== "undefined") {
-      return localStorage.getItem("drive_auth_token");
+      try {
+        return localStorage.getItem("drive_auth_token");
+      } catch (error) {
+        console.warn("Erro ao recuperar token:", error);
+      }
     }
     return null;
   }
 
   /**
-   * Remove token do localStorage
+   * Remove token do localStorage - Versão segura para SSR
    */
   removeStoredToken(): void {
     if (typeof window !== "undefined") {
-      localStorage.removeItem("drive_auth_token");
+      try {
+        localStorage.removeItem("drive_auth_token");
+      } catch (error) {
+        console.warn("Erro ao remover token:", error);
+      }
     }
   }
 
   /**
-   * Faz logout completo
+   * Faz logout completo - Versão segura para SSR
    */
   logout(): void {
     this.removeStoredToken();
     if (typeof window !== "undefined") {
-      window.location.href = "/login";
+      try {
+        window.location.href = "/login";
+      } catch (error) {
+        console.warn("Erro ao redirecionar:", error);
+      }
     }
   }
 
+  /**
+   * Logout apenas do Drive - Versão segura para SSR
+   */
   logoutDrive(): void {
     this.removeStoredToken();
     if (typeof window !== "undefined") {
-      window.location.href = "/drive/login";
+      try {
+        window.location.href = "/drive/login";
+      } catch (error) {
+        console.warn("Erro ao redirecionar:", error);
+      }
     }
   }
 
+  /**
+   * Logout completo do sistema - Versão segura para SSR
+   */
   logoutComplete(): void {
     this.removeStoredToken();
     if (typeof window !== "undefined") {
-      // Limpar também tokens do sistema principal
-      localStorage.removeItem("auth_token");
-      localStorage.removeItem("jwt_token");
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("token");
-      window.location.href = "/logout";
+      try {
+        // Limpar também tokens do sistema principal
+        localStorage.removeItem("auth_token");
+        localStorage.removeItem("jwt_token");
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("token");
+        window.location.href = "/logout";
+      } catch (error) {
+        console.warn("Erro ao fazer logout completo:", error);
+      }
     }
   }
 }

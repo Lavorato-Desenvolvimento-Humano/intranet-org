@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, use } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, HardDrive, Loader2, AlertCircle } from "lucide-react";
 import { useDriveAuth } from "@/context/DriveAuthContext";
@@ -19,11 +19,16 @@ interface FormErrors {
   general?: string;
 }
 
-export default function DriveLoginPage() {
+/**
+ * Componente interno que usa useSearchParams
+ * Separado para permitir Suspense boundary
+ */
+function DriveLoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login, isAuthenticated, isLoading: authLoading } = useDriveAuth();
 
+  // Estados do formulário
   const [formData, setFormData] = useState<LoginFormData>({
     email: "",
     password: "",
@@ -33,31 +38,52 @@ export default function DriveLoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  const redirectTo = searchParams.get("redirect") || "/drive";
-  const message = searchParams.get("message");
+  // Parâmetros de URL - tratados de forma segura
+  const [redirectTo, setRedirectTo] = useState("/drive");
+  const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
-  }, []);
 
+    // Só acessar searchParams após o componente montar
+    if (typeof window !== "undefined") {
+      try {
+        const redirect = searchParams.get("redirect") || "/drive";
+        const urlMessage = searchParams.get("message");
+
+        setRedirectTo(redirect);
+        setMessage(urlMessage);
+      } catch (error) {
+        console.warn("Erro ao acessar searchParams:", error);
+        setRedirectTo("/drive");
+        setMessage(null);
+      }
+    }
+  }, [searchParams]);
+
+  // Redirecionar se já está autenticado
   useEffect(() => {
     if (mounted && !authLoading && isAuthenticated) {
       router.push(redirectTo);
     }
   }, [mounted, authLoading, isAuthenticated, router, redirectTo]);
 
+  // Exibir mensagem da URL se existir
   useEffect(() => {
     if (mounted && message) {
-      if (message === "session_expired") {
+      if (message === "token_expired") {
         toastUtil.warning("Sua sessão expirou. Faça login novamente.");
       } else if (message === "access_denied") {
         toastUtil.error("Acesso negado. Verifique suas credenciais.");
       } else if (message === "unauthorized") {
-        toastUtil.error("Você precisa fazer login para acessar esta página.");
+        toastUtil.warning("Você precisa fazer login para acessar esta página.");
       }
     }
   }, [mounted, message]);
 
+  /**
+   * Valida os campos do formulário
+   */
   const validateForm = (): boolean => {
     const errors: FormErrors = {};
 
@@ -77,6 +103,9 @@ export default function DriveLoginPage() {
     return Object.keys(errors).length === 0;
   };
 
+  /**
+   * Atualiza dados do formulário
+   */
   const handleInputChange = (field: keyof LoginFormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
 
@@ -86,6 +115,9 @@ export default function DriveLoginPage() {
     }
   };
 
+  /**
+   * Submete o formulário de login
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -96,16 +128,18 @@ export default function DriveLoginPage() {
 
     try {
       // Fazer login através do Core Service (sistema principal)
-      const loginResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_CORE_API_URL || "http://localhost:8443"}/api/auth/login`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(formData),
-        }
-      );
+      const coreApiUrl =
+        process.env.NEXT_PUBLIC_CORE_API_URL ||
+        process.env.NEXT_PUBLIC_API_URL ||
+        "http://localhost:8443";
+
+      const loginResponse = await fetch(`${coreApiUrl}/api/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
 
       if (!loginResponse.ok) {
         const errorData = await loginResponse.json();
@@ -144,16 +178,23 @@ export default function DriveLoginPage() {
     }
   };
 
+  /**
+   * Tenta login automático com token existente do sistema
+   */
   const handleAutoLogin = async () => {
     setIsLoading(true);
 
     try {
       // Verificar se existe token do sistema principal
-      const mainToken =
-        localStorage.getItem("auth_token") ||
-        localStorage.getItem("jwt_token") ||
-        localStorage.getItem("access_token") ||
-        localStorage.getItem("token");
+      let mainToken = null;
+
+      if (typeof window !== "undefined") {
+        mainToken =
+          localStorage.getItem("auth_token") ||
+          localStorage.getItem("jwt_token") ||
+          localStorage.getItem("access_token") ||
+          localStorage.getItem("token");
+      }
 
       if (mainToken) {
         await login(mainToken);
@@ -173,9 +214,17 @@ export default function DriveLoginPage() {
   };
 
   if (!mounted) {
-    return null;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-600" />
+          <p className="mt-2 text-gray-600">Carregando...</p>
+        </div>
+      </div>
+    );
   }
 
+  // Loading state durante verificação de autenticação
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -343,5 +392,25 @@ export default function DriveLoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Página principal do Drive com Suspense boundary
+ * Implementa RF01.1 - Integração com Sistema Existente
+ */
+export default function DriveLoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-600" />
+            <p className="mt-2 text-gray-600">Carregando página de login...</p>
+          </div>
+        </div>
+      }>
+      <DriveLoginContent />
+    </Suspense>
   );
 }
