@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, use } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, HardDrive, Loader2, AlertCircle } from "lucide-react";
 import { useDriveAuth } from "@/context/DriveAuthContext";
@@ -19,16 +19,11 @@ interface FormErrors {
   general?: string;
 }
 
-/**
- * Página de login específica para o Drive
- * Implementa RF01.1 - Integração com Sistema Existente
- */
 export default function DriveLoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login, isAuthenticated, isLoading: authLoading } = useDriveAuth();
 
-  // Estados do formulário
   const [formData, setFormData] = useState<LoginFormData>({
     email: "",
     password: "",
@@ -38,7 +33,6 @@ export default function DriveLoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  // Parâmetros de URL
   const redirectTo = searchParams.get("redirect") || "/drive";
   const message = searchParams.get("message");
 
@@ -46,29 +40,24 @@ export default function DriveLoginPage() {
     setMounted(true);
   }, []);
 
-  // Redirecionar se já está autenticado
   useEffect(() => {
     if (mounted && !authLoading && isAuthenticated) {
       router.push(redirectTo);
     }
   }, [mounted, authLoading, isAuthenticated, router, redirectTo]);
 
-  // Exibir mensagem da URL se existir
   useEffect(() => {
     if (mounted && message) {
-      if (message === "token_expired") {
+      if (message === "session_expired") {
         toastUtil.warning("Sua sessão expirou. Faça login novamente.");
       } else if (message === "access_denied") {
         toastUtil.error("Acesso negado. Verifique suas credenciais.");
       } else if (message === "unauthorized") {
-        toastUtil.warning("Você precisa fazer login para acessar esta página.");
+        toastUtil.error("Você precisa fazer login para acessar esta página.");
       }
     }
   }, [mounted, message]);
 
-  /**
-   * Valida os campos do formulário
-   */
   const validateForm = (): boolean => {
     const errors: FormErrors = {};
 
@@ -88,9 +77,6 @@ export default function DriveLoginPage() {
     return Object.keys(errors).length === 0;
   };
 
-  /**
-   * Atualiza dados do formulário
-   */
   const handleInputChange = (field: keyof LoginFormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
 
@@ -100,9 +86,6 @@ export default function DriveLoginPage() {
     }
   };
 
-  /**
-   * Submete o formulário de login
-   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -112,18 +95,21 @@ export default function DriveLoginPage() {
     setFormErrors({});
 
     try {
-      // Fazer login no sistema principal (simulação)
-      // Em um ambiente real, você faria uma chamada para a API de autenticação principal
-      const loginResponse = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
+      // Fazer login através do Core Service (sistema principal)
+      const loginResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_CORE_API_URL || "http://localhost:8443"}/api/auth/login`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(formData),
+        }
+      );
 
       if (!loginResponse.ok) {
-        throw new Error("Credenciais inválidas");
+        const errorData = await loginResponse.json();
+        throw new Error(errorData.message || "Credenciais inválidas");
       }
 
       const { token } = await loginResponse.json();
@@ -140,7 +126,8 @@ export default function DriveLoginPage() {
 
       if (
         errorMessage.includes("credenciais") ||
-        errorMessage.includes("inválid")
+        errorMessage.includes("inválid") ||
+        errorMessage.includes("invalid")
       ) {
         setFormErrors({ general: "Email ou senha incorretos" });
       } else if (errorMessage.includes("permissão")) {
@@ -157,9 +144,6 @@ export default function DriveLoginPage() {
     }
   };
 
-  /**
-   * Tenta login automático com token existente do sistema
-   */
   const handleAutoLogin = async () => {
     setIsLoading(true);
 
@@ -168,7 +152,8 @@ export default function DriveLoginPage() {
       const mainToken =
         localStorage.getItem("auth_token") ||
         localStorage.getItem("jwt_token") ||
-        localStorage.getItem("access_token");
+        localStorage.getItem("access_token") ||
+        localStorage.getItem("token");
 
       if (mainToken) {
         await login(mainToken);
@@ -191,7 +176,6 @@ export default function DriveLoginPage() {
     return null;
   }
 
-  // Loading state durante verificação de autenticação
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -315,87 +299,46 @@ export default function DriveLoginPage() {
               </div>
             </div>
 
-            {/* Botão de submissão */}
+            {/* Botão de submit */}
             <div>
               <CustomButton
                 type="submit"
                 disabled={isLoading}
+                variant="primary"
                 className="w-full">
-                Entrar no Drive
+                {isLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Entrando...
+                  </>
+                ) : (
+                  "Entrar"
+                )}
               </CustomButton>
             </div>
           </form>
 
-          {/* Links úteis */}
-          <div className="mt-6 text-center text-sm">
-            <p className="text-gray-600">
-              Não tem acesso?{" "}
-              <a href="/contact" className="text-blue-600 hover:text-blue-500">
-                Entre em contato
-              </a>
-            </p>
+          {/* Link para voltar ao sistema principal */}
+          <div className="mt-6 text-center">
+            <a
+              href="/login"
+              className="text-sm text-blue-600 hover:text-blue-500">
+              ← Voltar para login principal
+            </a>
           </div>
         </div>
       </div>
 
-      {/* Lado direito - Imagem/ilustração */}
+      {/* Lado direito - Imagem/Background */}
       <div className="hidden lg:block relative w-0 flex-1">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-600 to-indigo-700">
-          <div className="absolute inset-0 bg-black opacity-20"></div>
-          <div className="relative h-full flex items-center justify-center p-12">
-            <div className="text-center text-white">
-              <h2 className="text-4xl font-bold mb-4">Bem-vindo ao Drive</h2>
-              <p className="text-xl opacity-90 mb-8">
-                Gerencie seus arquivos com segurança e colabore com sua equipe
-              </p>
-              <div className="grid grid-cols-1 gap-4 text-left">
-                <div className="flex items-center">
-                  <div className="bg-white bg-opacity-20 rounded-full p-2 mr-3">
-                    <svg
-                      className="w-4 h-4"
-                      fill="currentColor"
-                      viewBox="0 0 20 20">
-                      <path
-                        fillRule="evenodd"
-                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </div>
-                  <span>Upload e download seguros</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="bg-white bg-opacity-20 rounded-full p-2 mr-3">
-                    <svg
-                      className="w-4 h-4"
-                      fill="currentColor"
-                      viewBox="0 0 20 20">
-                      <path
-                        fillRule="evenodd"
-                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </div>
-                  <span>Controle de permissões granular</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="bg-white bg-opacity-20 rounded-full p-2 mr-3">
-                    <svg
-                      className="w-4 h-4"
-                      fill="currentColor"
-                      viewBox="0 0 20 20">
-                      <path
-                        fillRule="evenodd"
-                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </div>
-                  <span>Integração com sistema existente</span>
-                </div>
-              </div>
-            </div>
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center">
+          <div className="text-center text-white max-w-md">
+            <HardDrive className="h-20 w-20 mx-auto mb-6 opacity-90" />
+            <h3 className="text-2xl font-bold mb-4">Seu drive corporativo</h3>
+            <p className="text-blue-100">
+              Acesse, organize e compartilhe seus arquivos de trabalho com
+              segurança e praticidade.
+            </p>
           </div>
         </div>
       </div>

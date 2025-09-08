@@ -1,188 +1,209 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useDriveAuth } from "@/context/DriveAuthContext";
-import { DrivePermission } from "@/types/auth";
 import { Loading } from "@/components/ui/loading";
+import { AlertCircle, HardDrive } from "lucide-react";
+import { DrivePermission } from "@/types/auth";
 
 interface DriveProtectedRouteProps {
   children: React.ReactNode;
+  requiredPermissions?: DrivePermission[];
   requiredRoles?: string[];
-  requiredPermissions?: string[];
-  fallbackUrl?: string;
-  showUnauthorizedMessage?: boolean;
+  fallbackComponent?: React.ReactNode;
 }
 
 /**
  * Componente para proteger rotas do Drive
+ * Implementa RF01.1 - Integração com Sistema Existente
+ * Implementa RF01.2 - Controle de Acesso Granular
  */
 export default function DriveProtectedRoute({
   children,
+  requiredPermissions = [DrivePermission.READ],
   requiredRoles = [],
-  requiredPermissions = [],
-  fallbackUrl = "/login",
-  showUnauthorizedMessage = true,
+  fallbackComponent,
 }: DriveProtectedRouteProps) {
-  const { user, isAuthenticated, isLoading, hasAnyRole, checkPermission } =
-    useDriveAuth();
   const router = useRouter();
-  const [mounted, setMounted] = useState(false);
+  const pathname = usePathname();
+  const { isAuthenticated, isLoading, user, checkPermission, hasAnyRole } =
+    useDriveAuth();
+  const [isCheckingPermissions, setIsCheckingPermissions] = useState(true);
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    const checkAccess = async () => {
+      setIsCheckingPermissions(true);
 
-  useEffect(() => {
-    if (!mounted || isLoading) return;
-
-    // Se não autenticado, redireciona para o login
-    if (!isAuthenticated || !user) {
-      console.warn("Usuário não atenticado, redirecionando");
-      router.push(fallbackUrl);
-      return;
-    }
-
-    // Verifica se o usuário tem acesso básico ao Drive
-    if (!user.isActive || !user.emailVerified || !user.adminApproved) {
-      console.warn("Usuário não tem acesso ao Drive");
-      router.push("/drive/unauthorized");
-      return;
-    }
-
-    // Verifica roles necessárias
-    if (requiredRoles.length > 0 && !hasAnyRole(requiredRoles)) {
-      console.warn("Usuário não tem as roles necessárias:", requiredRoles);
-      router.push("drive/forbidden");
-    }
-
-    // Verifica permissões necessárias
-    if (requiredPermissions.length > 0) {
-      const hasAllPermissions = requiredPermissions.every((permission) =>
-        checkPermission(permission)
-      );
-
-      if (!hasAllPermissions) {
-        console.warn(
-          "Usuário não tem as permissões necessárias:",
-          requiredPermissions
-        );
-        router.push("/drive/forbidden");
+      // Se ainda está carregando, aguardar
+      if (isLoading) {
         return;
       }
-    }
+
+      // Se não está autenticado, redirecionar para login
+      if (!isAuthenticated) {
+        const redirectUrl = `/drive/login?redirect=${encodeURIComponent(pathname)}`;
+        router.push(redirectUrl);
+        return;
+      }
+
+      // Verificar permissões se especificadas
+      if (requiredPermissions.length > 0) {
+        const hasRequiredPermissions = requiredPermissions.every((permission) =>
+          checkPermission(permission)
+        );
+
+        if (!hasRequiredPermissions) {
+          const redirectUrl = `/drive/login?message=access_denied&redirect=${encodeURIComponent(pathname)}`;
+          router.push(redirectUrl);
+          return;
+        }
+      }
+
+      // Verificar roles se especificadas
+      if (requiredRoles.length > 0) {
+        const hasRequiredRoles = hasAnyRole(requiredRoles);
+
+        if (!hasRequiredRoles) {
+          const redirectUrl = `/drive/login?message=access_denied&redirect=${encodeURIComponent(pathname)}`;
+          router.push(redirectUrl);
+          return;
+        }
+      }
+
+      setIsCheckingPermissions(false);
+    };
+
+    checkAccess();
   }, [
-    mounted,
-    isLoading,
     isAuthenticated,
+    isLoading,
     user,
-    requiredRoles,
-    requiredPermissions,
-    hasAnyRole,
-    checkPermission,
+    pathname,
     router,
-    fallbackUrl,
+    requiredPermissions,
+    requiredRoles,
+    checkPermission,
+    hasAnyRole,
   ]);
 
-  // Loading
-  if (!mounted || isLoading) {
+  // Loading state durante verificação de autenticação
+  if (isLoading || isCheckingPermissions) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <Loading size="large" />
-          <p className="mt-4 text-gray-600">Validando acesso...</p>
+          <Loading message="Verificando permissões..." />
         </div>
       </div>
     );
   }
 
-  // Não autenticado
-  if (!isAuthenticated || !user) {
-    return null;
+  // Se não está autenticado, mostrar fallback ou loading
+  if (!isAuthenticated) {
+    if (fallbackComponent) {
+      return <>{fallbackComponent}</>;
+    }
+
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <HardDrive className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <p className="text-gray-600">Redirecionando para login...</p>
+        </div>
+      </div>
+    );
   }
 
-  const hasBasicAccess =
-    user.isActive && user.emailVerified && user.adminApproved;
-  const hasRequiredRoles =
-    requiredRoles.length === 0 || hasAnyRole(requiredRoles);
-  const hasRequiredPermissions =
-    requiredPermissions.length === 0 ||
-    requiredPermissions.every((permission) => checkPermission(permission));
+  // Verificar permissões
+  if (requiredPermissions.length > 0) {
+    const hasRequiredPermissions = requiredPermissions.every((permission) =>
+      checkPermission(permission)
+    );
 
-  if (!hasBasicAccess) {
-    if (showUnauthorizedMessage) {
+    if (!hasRequiredPermissions) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="max-w-md mx-auto text-center">
-            <div className="bg-white rounded-lg shadow-md p-8">
-              <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
-                <svg
-                  className="w-8 h-8 text-red-600"
-                  fill="currentColor"
-                  viewBox="0 0 20 20">
-                  <path
-                    fillRule="evenodd"
-                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                Acesso Negado
-              </h2>
-              <p className="text-gray-600 mb-6">
-                Sua conta não tem permissão para acessar o Drive. Entre em
-                contato com o administrador.
-              </p>
-              <div className="space-y-2 text-sm text-gray-500">
-                {!user.emailVerified && <p>• Email não verificado</p>}
-                {!user.adminApproved && (
-                  <p>• Conta não aprovada pelo administrador</p>
-                )}
-                {!user.isActive && <p>• Conta inativa</p>}
-              </div>
+          <div className="text-center max-w-md mx-auto p-6">
+            <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              Acesso Negado
+            </h2>
+            <p className="text-gray-600 mb-4">
+              Você não tem permissão para acessar esta página do Drive.
+            </p>
+            <div className="space-y-2">
+              <button
+                onClick={() => router.push("/drive")}
+                className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors">
+                Voltar ao Drive
+              </button>
+              <button
+                onClick={() => router.push("/")}
+                className="w-full bg-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-400 transition-colors">
+                Ir para Início
+              </button>
             </div>
           </div>
         </div>
       );
     }
-    return null;
   }
 
-  if (!hasRequiredRoles) {
-    if (showUnauthorizedMessage) {
+  // Verificar roles
+  if (requiredRoles.length > 0) {
+    const hasRequiredRoles = hasAnyRole(requiredRoles);
+
+    if (!hasRequiredRoles) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="max-w-md mx-auto text-center">
-            <div className="bg-white rounded-lg shadow-md p-8">
-              <div className="w-16 h-16 mx-auto mb-4 bg-yellow-100 rounded-full flex items-center justify-center">
-                <svg
-                  className="w-8 h-8 text-yellow-600"
-                  fill="currentColor"
-                  viewBox="0 0 20 20">
-                  <path
-                    fillRule="evenodd"
-                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                Permissão Insuficiente
-              </h2>
-              <p className="text-gray-600 mb-4">
-                Você não tem as permissões necessárias para acessar esta página.
-              </p>
-              <p className="text-sm text-gray-500">
-                Roles necessárias: {requiredRoles.join(", ")}
-              </p>
+          <div className="text-center max-w-md mx-auto p-6">
+            <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              Acesso Restrito
+            </h2>
+            <p className="text-gray-600 mb-4">
+              Esta funcionalidade requer permissões especiais que você não
+              possui.
+            </p>
+            <div className="space-y-2">
+              <button
+                onClick={() => router.push("/drive")}
+                className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors">
+                Voltar ao Drive
+              </button>
             </div>
           </div>
         </div>
       );
     }
-    return null;
   }
 
+  // Se passou por todas as verificações, renderizar o conteúdo
   return <>{children}</>;
+}
+
+/**
+ * Hook para usar permissões do Drive em componentes
+ */
+export function useDrivePermissions() {
+  const { user, checkPermission, hasRole, hasAnyRole } = useDriveAuth();
+
+  return {
+    user,
+    isAdmin: hasRole("ADMIN"),
+    isSupervisor: hasRole("SUPERVISOR"),
+    isManager: hasRole("GERENTE"),
+    canRead: checkPermission(DrivePermission.READ),
+    canWrite: checkPermission(DrivePermission.WRITE),
+    canDelete: checkPermission(DrivePermission.DELETE),
+    canShare: checkPermission(DrivePermission.SHARE),
+    canUpload: checkPermission(DrivePermission.UPLOAD),
+    canDownload: checkPermission(DrivePermission.DOWNLOAD),
+    canCreateFolder: checkPermission(DrivePermission.CREATE_FOLDER),
+    canManagePermissions: checkPermission(DrivePermission.MANAGE_PERMISSIONS),
+    canViewAudit: checkPermission(DrivePermission.VIEW_AUDIT),
+    checkPermission,
+    hasRole,
+    hasAnyRole,
+  };
 }

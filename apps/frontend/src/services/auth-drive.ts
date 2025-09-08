@@ -1,4 +1,3 @@
-// services/auth.ts
 import axios, { AxiosInstance } from "axios";
 import {
   userDto,
@@ -13,8 +12,13 @@ class DriveAuthService {
 
   constructor() {
     // URL base do Core Service para validação de auth
+    const baseURL =
+      process.env.NEXT_PUBLIC_CORE_API_URL ||
+      process.env.NEXT_PUBLIC_API_URL ||
+      "http://localhost:8443";
+
     this.api = axios.create({
-      baseURL: process.env.NEXT_PUBLIC_CORE_API_URL || "http://localhost:8443",
+      baseURL,
       timeout: 10000,
       headers: {
         "Content-Type": "application/json",
@@ -39,10 +43,8 @@ class DriveAuthService {
       (error) => {
         if (error.response?.status === 401) {
           this.removeStoredToken();
-          // Redirecionar para login se necessário
-          if (typeof window !== "undefined") {
-            window.location.href = "/login";
-          }
+          // Não redirecionar automaticamente aqui para evitar loops
+          console.warn("Token inválido detectado");
         }
         return Promise.reject(error);
       }
@@ -54,104 +56,196 @@ class DriveAuthService {
    * Implementa RF01.1 - Integração com Sistema Existente
    */
   async validateTokenWithCore(token?: string): Promise<DriveAuthResponse> {
+    const tokenToValidate = token || this.getStoredToken();
+
+    if (!tokenToValidate) {
+      return {
+        valid: false,
+        message: "Token não fornecido",
+      };
+    }
+
     try {
-      const tokenToValidate = token || this.getStoredToken();
-
-      if (!tokenToValidate) {
-        return { valid: false, message: "Token não encontrado" };
-      }
-
-      // Validação local básica antes de chamar o servidor
+      // Validação local básica primeiro
       if (!this.isTokenValidFormat(tokenToValidate)) {
-        return { valid: false, message: "Formato de token inválido" };
-      }
-
-      // Validar com o Core Service
-      const response = await this.api.post<userDto>(
-        "/api/auth/validate",
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${tokenToValidate}`,
-          },
-        }
-      );
-
-      if (response.status === 200 && response.data) {
         return {
-          valid: true,
-          user: response.data,
+          valid: false,
+          message: "Formato de token inválido",
         };
       }
 
-      return { valid: false, message: "Token inválido" };
+      // Decodificar token para verificar expiração
+      const tokenInfo = this.decodeToken(tokenToValidate);
+      if (tokenInfo && tokenInfo.exp < Date.now() / 1000) {
+        return {
+          valid: false,
+          message: "Token expirado",
+        };
+      }
+
+      // Validar com o Core Service
+      const response = await this.api.post("/api/auth/validate", {
+        token: tokenToValidate,
+      });
+
+      const { valid, user, message } = response.data;
+
+      if (valid && user) {
+        // Verificar se o usuário pode acessar o Drive
+        if (!this.canAccessDrive(user)) {
+          return {
+            valid: false,
+            message: "Usuário não tem permissão para acessar o Drive",
+          };
+        }
+
+        return {
+          valid: true,
+          user: user,
+        };
+      }
+
+      return {
+        valid: false,
+        message: message || "Token inválido",
+      };
     } catch (error: any) {
       console.error("Erro na validação do token:", error);
 
-      if (error.response?.status === 401) {
-        return { valid: false, message: "Token expirado ou inválido" };
+      // Se for erro de rede ou servidor, tentar validação local como fallback
+      if (error.code === "NETWORK_ERROR" || error.response?.status >= 500) {
+        const localValidation = this.validateTokenLocally(tokenToValidate);
+        if (localValidation.valid) {
+          console.warn("Usando validação local como fallback");
+          return localValidation;
+        }
       }
 
-      // Em caso de erro de comunicação, tentar validação local
-      const localValidation = this.validateTokenLocally(token);
-      if (localValidation.valid) {
-        console.warn(
-          "Usando validação local devido à falha na comunicação com o Core Service"
-        );
-        return localValidation;
-      }
-
-      return { valid: false, message: "Erro na validação do token" };
+      return {
+        valid: false,
+        message: error.response?.data?.message || "Erro na validação do token",
+      };
     }
   }
 
   /**
-   * Validação local do token JWT (fallback)
+   * Validação local como fallback
    */
-  private validateTokenLocally(token?: string): DriveAuthResponse {
+  private validateTokenLocally(token: string): DriveAuthResponse {
     try {
-      const tokenToValidate = token || this.getStoredToken();
-
-      if (!tokenToValidate) {
-        return { valid: false, message: "Token não encontrado" };
-      }
-
-      const tokenInfo = this.decodeToken(tokenToValidate);
+      const tokenInfo = this.decodeToken(token);
 
       if (!tokenInfo) {
-        return { valid: false, message: "Token inválido" };
+        return { valid: false, message: "Token não pode ser decodificado" };
       }
 
       // Verificar expiração
-      const now = Math.floor(Date.now() / 1000);
-      if (tokenInfo.exp < now) {
+      if (tokenInfo.exp < Date.now() / 1000) {
         return { valid: false, message: "Token expirado" };
       }
 
+      // Criar usuário básico a partir do token
       const user: userDto = {
         id: tokenInfo.sub,
         username: tokenInfo.sub,
         email: tokenInfo.sub,
         fullName: tokenInfo.sub,
-        roles: tokenInfo.roles || ["ROLE_USER"],
+        roles: tokenInfo.roles || [],
         isActive: true,
         emailVerified: true,
         adminApproved: true,
       };
 
-      return { valid: true, user };
+      if (!this.canAccessDrive(user)) {
+        return {
+          valid: false,
+          message: "Usuário não tem permissão para acessar o Drive",
+        };
+      }
+
+      return {
+        valid: true,
+        user: user,
+      };
     } catch (error) {
-      console.error("Erro na validação local do token:", error);
       return { valid: false, message: "Erro na validação local" };
     }
   }
 
   /**
-   * Decodifica o token JWT
+   * Login usando token existente do sistema principal
+   * (para quando o usuário já está logado na intranet)
+   */
+  async loginWithExistingToken(): Promise<DriveAuthResponse> {
+    try {
+      // Tentar recuperar token do localStorage do sistema principal
+      const mainSystemToken = this.getMainSystemToken();
+
+      if (mainSystemToken) {
+        const validation = await this.validateTokenWithCore(mainSystemToken);
+        if (validation.valid) {
+          this.storeToken(mainSystemToken);
+          return validation;
+        }
+      }
+
+      // Tentar obter usuário logado do sistema principal
+      const systemUser = getCurrentUser();
+      if (systemUser?.token) {
+        const validation = await this.validateTokenWithCore(systemUser.token);
+        if (validation.valid) {
+          this.storeToken(systemUser.token);
+          return validation;
+        }
+      }
+
+      return {
+        valid: false,
+        message: "Token do sistema principal não encontrado ou inválido",
+      };
+    } catch (error: any) {
+      console.error("Erro no login automático:", error);
+      return {
+        valid: false,
+        message: error.message || "Erro no login automático",
+      };
+    }
+  }
+
+  /**
+   * Recupera token do sistema principal (se existir)
+   */
+  private getMainSystemToken(): string | null {
+    if (typeof window !== "undefined") {
+      // Tentar diferentes chaves que o sistema principal pode usar
+      const possibleKeys = [
+        "auth_token",
+        "jwt_token",
+        "access_token",
+        "token",
+        "intranet_token",
+      ];
+
+      for (const key of possibleKeys) {
+        const token = localStorage.getItem(key);
+        if (token && token.length > 10) {
+          // Validação básica
+          return token;
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Decodifica token JWT (sem verificar assinatura)
    */
   private decodeToken(token: string): JwtTokenInfo | null {
     try {
-      const payload = token.split(".")[1];
+      const parts = token.split(".");
+      if (parts.length !== 3) return null;
+
+      const payload = parts[1];
       const decoded = JSON.parse(atob(payload));
       return decoded;
     } catch (error) {
@@ -165,7 +259,7 @@ class DriveAuthService {
    */
   private isTokenValidFormat(token: string): boolean {
     const parts = token.split(".");
-    return parts.length === 3;
+    return parts.length === 3 && parts.every((part) => part.length > 0);
   }
 
   /**
@@ -181,7 +275,9 @@ class DriveAuthService {
     ];
 
     return user.roles.some((userRole) =>
-      roleVariants.includes(userRole.toUpperCase())
+      roleVariants.some(
+        (variant) => userRole.toUpperCase() === variant.toUpperCase()
+      )
     );
   }
 
@@ -199,8 +295,23 @@ class DriveAuthService {
   canAccessDrive(user: userDto | null): boolean {
     if (!user) return false;
 
-    // Usuários autenticados e aprovados podem acessar o drive
-    return user.isActive && user.emailVerified && user.adminApproved;
+    // Usuários ativos, verificados e aprovados podem acessar o drive
+    const hasBasicAccess =
+      user.isActive && user.emailVerified && user.adminApproved;
+
+    // Verificar se tem pelo menos uma role válida
+    const hasValidRole = this.hasAnyRole(user, [
+      USER_ROLES.USER,
+      USER_ROLES.ROLE_USER,
+      USER_ROLES.ADMIN,
+      USER_ROLES.ROLE_ADMIN,
+      USER_ROLES.SUPERVISOR,
+      USER_ROLES.ROLE_SUPERVISOR,
+      USER_ROLES.GERENTE,
+      USER_ROLES.ROLE_GERENTE,
+    ]);
+
+    return hasBasicAccess && hasValidRole;
   }
 
   /**
@@ -263,53 +374,20 @@ class DriveAuthService {
   logoutDrive(): void {
     this.removeStoredToken();
     if (typeof window !== "undefined") {
-      window.location.href = "/login-drive";
+      window.location.href = "/drive/login";
     }
   }
 
   logoutComplete(): void {
     this.removeStoredToken();
     if (typeof window !== "undefined") {
+      // Limpar também tokens do sistema principal
+      localStorage.removeItem("auth_token");
+      localStorage.removeItem("jwt_token");
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("token");
       window.location.href = "/logout";
     }
-  }
-
-  /**
-   * Login usando token existente do sistema principal
-   * (para quando o usuário já está logado na intranet)
-   */
-  async loginWithExistingToken(): Promise<DriveAuthResponse> {
-    // Tentar recuperar token do localStorage do sistema principal
-    const mainSystemToken = this.getMainSystemToken();
-
-    if (mainSystemToken) {
-      const validation = await this.validateTokenWithCore(mainSystemToken);
-      if (validation.valid) {
-        this.storeToken(mainSystemToken);
-        return validation;
-      }
-    }
-
-    return {
-      valid: false,
-      message: "Token do sistema principal não encontrado",
-    };
-  }
-
-  /**
-   * Recupera token do sistema principal (se existir)
-   */
-  private getMainSystemToken(): string | null {
-    if (typeof window !== "undefined") {
-      // Tentar diferentes chaves que o sistema principal pode usar
-      const possibleKeys = ["auth_token", "jwt_token", "access_token", "token"];
-
-      for (const key of possibleKeys) {
-        const token = localStorage.getItem(key);
-        if (token) return token;
-      }
-    }
-    return null;
   }
 }
 
