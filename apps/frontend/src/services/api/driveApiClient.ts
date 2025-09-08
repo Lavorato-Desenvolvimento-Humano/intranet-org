@@ -90,7 +90,7 @@ class DriveApiClient {
         typeof window !== "undefined" ? window.location.hostname : "SSR",
       services: Object.keys(this.instances).reduce(
         (acc, key) => {
-          acc[key] = this.instances[key].defaults.baseURL;
+          acc[key] = this.instances[key].defaults.baseURL || "";
           return acc;
         },
         {} as Record<string, string>
