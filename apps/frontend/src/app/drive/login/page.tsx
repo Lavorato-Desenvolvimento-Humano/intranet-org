@@ -133,7 +133,7 @@ function DriveLoginContent() {
         process.env.NEXT_PUBLIC_API_URL ||
         "http://localhost:8443";
 
-      const loginResponse = await fetch(`${coreApiUrl}/api/auth/login`, {
+      const loginResponse = await fetch(`${coreApiUrl}/api/api/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
