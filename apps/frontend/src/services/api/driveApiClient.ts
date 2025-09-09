@@ -1,4 +1,4 @@
-// services/api/driveApiClient.ts
+// apps/frontend/src/services/api/driveApiClient.ts
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
 import driveAuthService from "@/services/auth-drive";
 
@@ -7,6 +7,30 @@ class DriveApiClient {
 
   constructor() {
     this.setupApiInstances();
+  }
+
+  /**
+   * Obter configuração de URL baseada no ambiente e domínio atual
+   */
+  private getServiceUrl(defaultPort: number): string {
+    const isDevelopment = process.env.NODE_ENV === "development";
+
+    if (isDevelopment) {
+      return `http://localhost:${defaultPort}`;
+    }
+
+    // Em produção, usar o domínio drive.lavorato.app.br com proxy
+    if (typeof window !== "undefined") {
+      const hostname = window.location.hostname;
+
+      if (hostname === "drive.lavorato.app.br") {
+        // Para drive.lavorato.app.br, usar proxy direto
+        return "https://drive.lavorato.app.br";
+      }
+    }
+
+    // Fallback para outros casos
+    return `http://localhost:${defaultPort}`;
   }
 
   /**
@@ -20,45 +44,58 @@ class DriveApiClient {
       },
     };
 
-    // Microserviços do Drive
+    // Microserviços do Drive com URLs corrigidas
     this.instances = {
       files: this.createInstance({
         ...baseConfig,
         baseURL:
           process.env.NEXT_PUBLIC_DRIVE_FILE_SERVICE_URL ||
-          "http://localhost:8444",
+          this.getServiceUrl(8444),
       }),
       folders: this.createInstance({
         ...baseConfig,
         baseURL:
           process.env.NEXT_PUBLIC_DRIVE_FOLDER_SERVICE_URL ||
-          "http://localhost:8445",
+          this.getServiceUrl(8445),
       }),
       permissions: this.createInstance({
         ...baseConfig,
         baseURL:
           process.env.NEXT_PUBLIC_DRIVE_PERMISSION_SERVICE_URL ||
-          "http://localhost:8446",
+          this.getServiceUrl(8446),
       }),
       quotas: this.createInstance({
         ...baseConfig,
         baseURL:
           process.env.NEXT_PUBLIC_DRIVE_QUOTA_SERVICE_URL ||
-          "http://localhost:8447",
+          this.getServiceUrl(8447),
       }),
       search: this.createInstance({
         ...baseConfig,
         baseURL:
           process.env.NEXT_PUBLIC_DRIVE_SEARCH_SERVICE_URL ||
-          "http://localhost:8448",
+          this.getServiceUrl(8448),
       }),
       audit: this.createInstance({
         ...baseConfig,
         baseURL:
           process.env.NEXT_PUBLIC_DRIVE_AUDIT_SERVICE_URL ||
-          "http://localhost:8449",
+          this.getServiceUrl(8449),
       }),
     };
+
+    console.log("[DriveApiClient] Instâncias configuradas:", {
+      isDevelopment: process.env.NODE_ENV === "development",
+      hostname:
+        typeof window !== "undefined" ? window.location.hostname : "SSR",
+      services: Object.keys(this.instances).reduce(
+        (acc, key) => {
+          acc[key] = this.instances[key].defaults.baseURL || "";
+          return acc;
+        },
+        {} as Record<string, string>
+      ),
+    });
   }
 
   /**
@@ -79,14 +116,14 @@ class DriveApiClient {
         // Log de requests (apenas em desenvolvimento)
         if (process.env.NODE_ENV === "development") {
           console.log(
-            `[API] ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`
+            `[DriveAPI] ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`
           );
         }
 
         return config;
       },
       (error) => {
-        console.error("[API] Erro na requisição:", error);
+        console.error("[DriveAPI] Erro na requisição:", error);
         return Promise.reject(error);
       }
     );
@@ -96,7 +133,7 @@ class DriveApiClient {
       (response: AxiosResponse) => {
         if (process.env.NODE_ENV === "development") {
           console.log(
-            `[API] ${response.status} ${response.config.method?.toUpperCase()} ${response.config.url}`
+            `[DriveAPI] ${response.status} ${response.config.method?.toUpperCase()} ${response.config.url}`
           );
         }
         return response;
@@ -105,36 +142,33 @@ class DriveApiClient {
         if (error.response) {
           const { status, config } = error.response;
 
+          console.error(`[DriveAPI] Erro ${status} em ${config?.url}:`, {
+            status,
+            data: error.response.data,
+            service: config?.baseURL,
+          });
+
           // Token expirado ou inválido
           if (status === 401) {
-            console.warn("[API] Token inválido, fazendo logout...");
-            driveAuthService.logout();
-            return Promise.reject(error);
-          }
-
-          // Forbidden - sem permissão
-          if (status === 403) {
-            console.warn("[API] Acesso negado:", config.url);
-          }
-
-          // Rate limiting
-          if (status === 429) {
-            console.warn("[API] Rate limit atingido:", config.url);
-          }
-
-          // Server error
-          if (status >= 500) {
-            console.error(
-              "[API] Erro no servidor:",
-              config.url,
-              error.response.data
+            console.warn(
+              "[DriveAPI] Token inválido, removendo autenticação..."
             );
+            driveAuthService.removeStoredToken();
+
+            // Não redirecionar automaticamente para evitar loops
+            // O componente pai deve lidar com isso
+          }
+
+          // Erro de conectividade com serviço
+          if (status >= 500) {
+            console.warn(`[DriveAPI] Serviço indisponível: ${config?.baseURL}`);
           }
         } else if (error.request) {
-          // Erro de rede
-          console.error("[API] Erro de rede:", error.message);
-        } else {
-          console.error("[API] Erro desconhecido:", error.message);
+          console.error("[DriveAPI] Erro de rede:", {
+            url: error.config?.url,
+            baseURL: error.config?.baseURL,
+            message: error.message,
+          });
         }
 
         return Promise.reject(error);
@@ -144,73 +178,63 @@ class DriveApiClient {
     return instance;
   }
 
-  /**
-   * Getter para o serviço de arquivos
-   */
-  get files(): AxiosInstance {
+  // Métodos da API permanecem os mesmos...
+  get files() {
     return this.instances.files;
   }
-
-  /**
-   * Getter para o serviço de pastas
-   */
-  get folders(): AxiosInstance {
+  get folders() {
     return this.instances.folders;
   }
-
-  /**
-   * Getter para o serviço de permissões
-   */
-  get permissions(): AxiosInstance {
+  get permissions() {
     return this.instances.permissions;
   }
-
-  /**
-   * Getter para o serviço de cotas
-   */
-  get quotas(): AxiosInstance {
+  get quotas() {
     return this.instances.quotas;
   }
-
-  /**
-   * Getter para o serviço de auditoria
-   */
-  get audit(): AxiosInstance {
+  get search() {
+    return this.instances.search;
+  }
+  get audit() {
     return this.instances.audit;
   }
 
   /**
-   * Método utilitário para upload de arquivos
+   * Upload de arquivo
    */
   async uploadFile(
     file: File,
     folderId?: string,
     onProgress?: (progress: number) => void
-  ): Promise<AxiosResponse> {
+  ): Promise<any> {
     const formData = new FormData();
     formData.append("file", file);
-
     if (folderId) {
       formData.append("folderId", folderId);
     }
 
-    return this.files.post("/api/drive/files/upload", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-      onUploadProgress: (progressEvent) => {
-        if (onProgress && progressEvent.total) {
-          const progress = Math.round(
-            (progressEvent.loaded * 100) / progressEvent.total
-          );
-          onProgress(progress);
-        }
-      },
-    });
+    const response = await this.files.post(
+      "/api/drive/files/upload",
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+        onUploadProgress: (progressEvent) => {
+          if (onProgress && progressEvent.total) {
+            const progress = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total
+            );
+            onProgress(progress);
+          }
+        },
+      }
+    );
+
+    return response.data;
   }
 
   /**
-   * Método utilitário para download de arquivos
+   * Download de arquivo
    */
   async downloadFile(fileId: string, filename?: string): Promise<Blob> {
     const response = await this.files.get(
@@ -234,51 +258,6 @@ class DriveApiClient {
 
     return response.data;
   }
-
-  /**
-   * Método utilitário para verificar permissões
-   */
-  async checkPermission(
-    resourceId: string,
-    permission: string
-  ): Promise<boolean> {
-    try {
-      const response = await this.permissions.post(
-        "/api/drive/permissions/check",
-        {
-          resourceId,
-          permission,
-        }
-      );
-      return response.data.hasPermission || false;
-    } catch (error) {
-      console.error("Erro ao verificar permissão:", error);
-      return false;
-    }
-  }
-
-  /**
-   * Método utilitário para obter informações de cota
-   */
-  async getUserQuota(userId?: string): Promise<any> {
-    const endpoint = userId
-      ? `/api/drive/quotas/user/${userId}`
-      : "/api/drive/quotas/user/current";
-
-    const response = await this.quotas.get(endpoint);
-    return response.data;
-  }
-
-  /**
-   * Método utilitário para busca
-   */
-  //   async search(query: string, filters?: any): Promise<any> {
-  //     const response = await this.search.post("/api/drive/search", {
-  //       query,
-  //       filters,
-  //     });
-  //     return response.data;
-  //   }
 
   /**
    * Método para verificar saúde dos serviços

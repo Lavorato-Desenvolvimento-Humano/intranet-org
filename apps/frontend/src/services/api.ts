@@ -1,4 +1,4 @@
-// src/services/api.ts (modificado)
+// src/services/api.ts
 import axios from "axios";
 
 // Auto-detectar ambiente de forma segura para SSR

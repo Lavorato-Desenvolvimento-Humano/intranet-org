@@ -67,7 +67,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("https://dev.lavorato.app.br", "http://localhost:3000", "https://lavorato.app.br"));
+        configuration.setAllowedOrigins(Arrays.asList("https://dev.lavorato.app.br", "http://localhost:3000", "https://lavorato.app.br", "https://drive.lavorato.app.br"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With"));
         configuration.setAllowCredentials(true);
@@ -138,5 +138,17 @@ public class SecurityConfig {
         delegate.initialize();
 
         return new DelegatingSecurityContextAsyncTaskExecutor(delegate);
+    }
+
+    @PostConstruct
+    public void logSecurityConfiguration() {
+        logger.info("=== CONFIGURAÇÃO DE SEGURANÇA INICIALIZADA ===");
+        logger.info("CORS habilitado para:");
+        logger.info("- https://lavorato.app.br");
+        logger.info("- https://dev.lavorato.app.br");
+        logger.info("- https://drive.lavorato.app.br");
+        logger.info("- http://localhost:3000");
+        logger.info("JWT Authentication habilitado");
+        logger.info("==============================");
     }
 }
