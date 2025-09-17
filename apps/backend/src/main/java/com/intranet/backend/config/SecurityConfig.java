@@ -106,7 +106,6 @@ public class SecurityConfig {
                                 .requestMatchers("/auth/validate-token").authenticated()
                                 .requestMatchers("/drive-integration/**").authenticated()
 
-
                                 // Permitir uploads temporários para usuários autenticados
                                 .requestMatchers("/api/postagens/temp/**").authenticated()
                                 .requestMatchers("/api/temp/**").authenticated()
