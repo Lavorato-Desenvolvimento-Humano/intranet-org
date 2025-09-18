@@ -1,11 +1,9 @@
+// apps/frontend/src/app/drive/login/page.tsx
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Eye, EyeOff, HardDrive, Loader2, AlertCircle } from "lucide-react";
-import { useDriveAuth } from "@/context/DriveAuthContext";
-import { CustomButton } from "@/components/ui/custom-button";
-import Input from "@/components/ui/input";
+import { Eye, EyeOff, Lock, Mail, AlertCircle } from "lucide-react";
 import toastUtil from "@/utils/toast";
 
 interface LoginFormData {
@@ -19,59 +17,27 @@ interface FormErrors {
   general?: string;
 }
 
-/**
- * Componente interno que usa useSearchParams
- * Separado para permitir Suspense boundary
- */
-function DriveLoginContent() {
+export default function DriveLoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login, isAuthenticated, isLoading: authLoading } = useDriveAuth();
+  const redirectTo = searchParams.get("redirect") || "/drive";
+  const message = searchParams.get("message");
 
-  // Estados do formulário
+  const [mounted, setMounted] = useState(false);
   const [formData, setFormData] = useState<LoginFormData>({
     email: "",
     password: "",
   });
   const [formErrors, setFormErrors] = useState<FormErrors>({});
-  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  // Parâmetros de URL - tratados de forma segura
-  const [redirectTo, setRedirectTo] = useState("/drive");
-  const [message, setMessage] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     setMounted(true);
 
-    // Só acessar searchParams após o componente montar
-    if (typeof window !== "undefined") {
-      try {
-        const redirect = searchParams.get("redirect") || "/drive";
-        const urlMessage = searchParams.get("message");
-
-        setRedirectTo(redirect);
-        setMessage(urlMessage);
-      } catch (error) {
-        console.warn("Erro ao acessar searchParams:", error);
-        setRedirectTo("/drive");
-        setMessage(null);
-      }
-    }
-  }, [searchParams]);
-
-  // Redirecionar se já está autenticado
-  useEffect(() => {
-    if (mounted && !authLoading && isAuthenticated) {
-      router.push(redirectTo);
-    }
-  }, [mounted, authLoading, isAuthenticated, router, redirectTo]);
-
-  // Exibir mensagem da URL se existir
-  useEffect(() => {
-    if (mounted && message) {
-      if (message === "token_expired") {
+    // Processar mensagens da URL
+    if (message) {
+      if (message === "session_expired") {
         toastUtil.warning("Sua sessão expirou. Faça login novamente.");
       } else if (message === "access_denied") {
         toastUtil.error("Acesso negado. Verifique suas credenciais.");
@@ -80,6 +46,20 @@ function DriveLoginContent() {
       }
     }
   }, [mounted, message]);
+
+  /**
+   * Obter URL do Core API baseada no ambiente
+   */
+  const getCoreApiUrl = (): string => {
+    const isDevelopment = process.env.NODE_ENV === "development";
+
+    if (isDevelopment) {
+      return "http://localhost:8443";
+    }
+
+    // Em produção, usar dev.lavorato.app.br (Core System)
+    return "https://dev.lavorato.app.br";
+  };
 
   /**
    * Valida os campos do formulário
@@ -127,87 +107,90 @@ function DriveLoginContent() {
     setFormErrors({});
 
     try {
-      // Fazer login através do Core Service (sistema principal)
-      const coreApiUrl =
-        process.env.NEXT_PUBLIC_CORE_API_URL ||
-        process.env.NEXT_PUBLIC_API_URL ||
-        "http://localhost:8443";
+      const coreApiUrl = getCoreApiUrl();
 
-      const loginResponse = await fetch(`${coreApiUrl}/api/api/auth/login`, {
+      console.log(
+        `[Drive Login] Tentando login via: ${coreApiUrl}/api/auth/login`
+      );
+
+      // Fazer login através do Core Service (sistema principal)
+      const loginResponse = await fetch(`${coreApiUrl}/api/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(formData),
+        // Para HTTPS com certificados self-signed em dev
+        ...(process.env.NODE_ENV === "development" && {
+          mode: "cors",
+        }),
       });
 
+      console.log(`[Drive Login] Response status: ${loginResponse.status}`);
+
       if (!loginResponse.ok) {
-        const errorData = await loginResponse.json();
+        const errorData = await loginResponse.json().catch(() => ({
+          message: `Erro HTTP ${loginResponse.status}`,
+        }));
+
+        console.error("[Drive Login] Erro na resposta:", errorData);
         throw new Error(errorData.message || "Credenciais inválidas");
       }
 
-      const { token } = await loginResponse.json();
+      const loginData = await loginResponse.json();
+      const { token, user } = loginData;
 
-      // Fazer login no contexto do Drive
-      await login(token);
+      if (!token) {
+        throw new Error("Token não recebido do servidor");
+      }
+
+      console.log("[Drive Login] Login realizado com sucesso");
+
+      // Armazenar token e dados do usuário para o Drive
+      localStorage.setItem("drive_token", token);
+      localStorage.setItem("drive_user", JSON.stringify(user));
+
+      // Também armazenar no localStorage padrão para compatibilidade
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
 
       toastUtil.success("Login realizado com sucesso!");
-      router.push(redirectTo);
+
+      // Aguardar um pouco antes do redirect para permitir que o toast seja exibido
+      setTimeout(() => {
+        router.push(redirectTo);
+      }, 1000);
     } catch (error: any) {
-      console.error("Erro no login:", error);
+      console.error("[Drive Login] Erro no login:", error);
 
       const errorMessage = error.message || "Erro ao fazer login";
 
       if (
         errorMessage.includes("credenciais") ||
         errorMessage.includes("inválid") ||
-        errorMessage.includes("invalid")
+        errorMessage.includes("invalid") ||
+        errorMessage.includes("unauthorized")
       ) {
         setFormErrors({ general: "Email ou senha incorretos" });
-      } else if (errorMessage.includes("permissão")) {
+      } else if (
+        errorMessage.includes("não verificado") ||
+        errorMessage.includes("Email não verificado")
+      ) {
         setFormErrors({
-          general: "Você não tem permissão para acessar o Drive",
+          general:
+            "Email não verificado. Verifique sua caixa de entrada antes de fazer login.",
+        });
+      } else if (errorMessage.includes("fetch")) {
+        setFormErrors({
+          general: "Erro de conexão. Verifique sua internet e tente novamente.",
         });
       } else {
-        setFormErrors({ general: "Erro interno. Tente novamente." });
+        setFormErrors({
+          general: `Erro interno: ${errorMessage}. Tente novamente.`,
+        });
       }
 
-      toastUtil.error(errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  /**
-   * Tenta login automático com token existente do sistema
-   */
-  const handleAutoLogin = async () => {
-    setIsLoading(true);
-
-    try {
-      // Verificar se existe token do sistema principal
-      let mainToken = null;
-
-      if (typeof window !== "undefined") {
-        mainToken =
-          localStorage.getItem("auth_token") ||
-          localStorage.getItem("jwt_token") ||
-          localStorage.getItem("access_token") ||
-          localStorage.getItem("token");
-      }
-
-      if (mainToken) {
-        await login(mainToken);
-        toastUtil.success("Login automático realizado!");
-        router.push(redirectTo);
-      } else {
-        toastUtil.info("Nenhuma sessão ativa encontrada no sistema principal");
-      }
-    } catch (error: any) {
-      console.error("Erro no login automático:", error);
-      toastUtil.warning(
-        "Não foi possível fazer login automático. Use suas credenciais."
-      );
+      toastUtil.error(formErrors.general || errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -215,202 +198,172 @@ function DriveLoginContent() {
 
   if (!mounted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-600" />
-          <p className="mt-2 text-gray-600">Carregando...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Loading state durante verificação de autenticação
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-600" />
-          <p className="mt-2 text-gray-600">Verificando autenticação...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="text-gray-600 mt-2">Carregando...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex">
-      {/* Lado esquerdo - Formulário de login */}
-      <div className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-20 xl:px-24">
-        <div className="mx-auto w-full max-w-sm lg:w-96">
-          {/* Cabeçalho */}
-          <div className="text-center">
-            <div className="flex items-center justify-center mb-6">
-              <div className="bg-blue-600 rounded-lg p-3">
-                <HardDrive className="h-8 w-8 text-white" />
-              </div>
-            </div>
-            <h2 className="text-3xl font-bold text-gray-900">Drive Intranet</h2>
-            <p className="mt-2 text-gray-600">
-              Acesse seus arquivos e documentos
-            </p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <div className="max-w-md w-full space-y-8">
+        {/* Header */}
+        <div className="text-center">
+          <div className="mx-auto h-12 w-12 bg-blue-600 rounded-xl flex items-center justify-center">
+            <Lock className="h-6 w-6 text-white" />
           </div>
+          <h2 className="mt-6 text-3xl font-bold text-gray-900">
+            Lavorato Drive
+          </h2>
+          <p className="mt-2 text-sm text-gray-600">
+            Faça login para acessar seus arquivos
+          </p>
+        </div>
 
-          {/* Botão de login automático */}
-          <div className="mt-8">
-            <CustomButton
-              onClick={handleAutoLogin}
-              disabled={isLoading}
-              variant="primary"
-              className="w-full">
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : null}
-              Usar sessão ativa do sistema
-            </CustomButton>
-          </div>
-
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-gray-50 text-gray-500">
-                  Ou faça login manual
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Formulário de login */}
-          <form className="mt-6 space-y-6" onSubmit={handleSubmit}>
+        {/* Form */}
+        <div className="bg-white py-8 px-6 shadow-xl rounded-xl">
+          <form className="space-y-6" onSubmit={handleSubmit}>
             {/* Erro geral */}
             {formErrors.general && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-4">
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                 <div className="flex">
-                  <AlertCircle className="h-5 w-5 text-red-400" />
-                  <div className="ml-3">
-                    <p className="text-sm text-red-700">{formErrors.general}</p>
-                  </div>
+                  <AlertCircle className="h-5 w-5 text-red-400 mr-2 flex-shrink-0 mt-0.5" />
+                  <span className="text-sm text-red-700">
+                    {formErrors.general}
+                  </span>
                 </div>
               </div>
             )}
 
-            {/* Campo de email */}
+            {/* Email */}
             <div>
-              <label htmlFor="email" className="sr-only">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-gray-700">
                 Email
               </label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                placeholder="Email"
-                value={formData.email}
-                onChange={(e) => handleInputChange("email", e.target.value)}
-                error={formErrors.email}
-                disabled={isLoading}
-              />
+              <div className="mt-1 relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Mail className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={formData.email}
+                  onChange={(e) => handleInputChange("email", e.target.value)}
+                  className={`block w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    formErrors.email
+                      ? "border-red-300 bg-red-50"
+                      : "border-gray-300"
+                  }`}
+                  placeholder="seu@email.com"
+                />
+              </div>
+              {formErrors.email && (
+                <p className="mt-1 text-sm text-red-600">{formErrors.email}</p>
+              )}
             </div>
 
-            {/* Campo de senha */}
+            {/* Senha */}
             <div>
-              <label htmlFor="password" className="sr-only">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700">
                 Senha
               </label>
-              <div className="relative">
-                <Input
+              <div className="mt-1 relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Lock className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
                   id="password"
                   name="password"
                   type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
                   required
-                  placeholder="Senha"
                   value={formData.password}
                   onChange={(e) =>
                     handleInputChange("password", e.target.value)
                   }
-                  error={formErrors.password}
-                  disabled={isLoading}
+                  className={`block w-full pl-10 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    formErrors.password
+                      ? "border-red-300 bg-red-50"
+                      : "border-gray-300"
+                  }`}
+                  placeholder="Sua senha"
                 />
                 <button
                   type="button"
                   className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  onClick={() => setShowPassword(!showPassword)}
-                  disabled={isLoading}>
+                  onClick={() => setShowPassword(!showPassword)}>
                   {showPassword ? (
-                    <EyeOff className="h-4 w-4 text-gray-400" />
+                    <EyeOff className="h-5 w-5 text-gray-400" />
                   ) : (
-                    <Eye className="h-4 w-4 text-gray-400" />
+                    <Eye className="h-5 w-5 text-gray-400" />
                   )}
                 </button>
               </div>
+              {formErrors.password && (
+                <p className="mt-1 text-sm text-red-600">
+                  {formErrors.password}
+                </p>
+              )}
             </div>
 
-            {/* Botão de submit */}
+            {/* Submit Button */}
             <div>
-              <CustomButton
+              <button
                 type="submit"
                 disabled={isLoading}
-                variant="primary"
-                className="w-full">
+                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                 {isLoading ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                     Entrando...
                   </>
                 ) : (
                   "Entrar"
                 )}
-              </CustomButton>
+              </button>
             </div>
           </form>
 
-          {/* Link para voltar ao sistema principal */}
-          <div className="mt-6 text-center">
+          {/* Links úteis */}
+          <div className="mt-6 text-center space-y-2">
             <a
-              href="/login"
-              className="text-sm text-blue-600 hover:text-blue-500">
-              ← Voltar para login principal
+              href="/auth/forgot-password"
+              className="text-sm text-blue-600 hover:text-blue-800">
+              Esqueci minha senha
             </a>
+            <div className="text-sm text-gray-600">
+              Novo usuário?{" "}
+              <a
+                href="/auth/register"
+                className="text-blue-600 hover:text-blue-800">
+                Criar conta
+              </a>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Lado direito - Imagem/Background */}
-      <div className="hidden lg:block relative w-0 flex-1">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center">
-          <div className="text-center text-white max-w-md">
-            <HardDrive className="h-20 w-20 mx-auto mb-6 opacity-90" />
-            <h3 className="text-2xl font-bold mb-4">Seu drive corporativo</h3>
-            <p className="text-blue-100">
-              Acesse, organize e compartilhe seus arquivos de trabalho com
-              segurança e praticidade.
+        {/* Debug Info (apenas em desenvolvimento) */}
+        {process.env.NODE_ENV === "development" && (
+          <div className="bg-gray-100 p-4 rounded-lg text-xs text-gray-600">
+            <p>
+              <strong>Debug Info:</strong>
             </p>
+            <p>Core API URL: {getCoreApiUrl()}</p>
+            <p>Environment: {process.env.NODE_ENV}</p>
+            <p>Redirect To: {redirectTo}</p>
           </div>
-        </div>
+        )}
       </div>
     </div>
-  );
-}
-
-/**
- * Página principal do Drive com Suspense boundary
- * Implementa RF01.1 - Integração com Sistema Existente
- */
-export default function DriveLoginPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="text-center">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-600" />
-            <p className="mt-2 text-gray-600">Carregando página de login...</p>
-          </div>
-        </div>
-      }>
-      <DriveLoginContent />
-    </Suspense>
   );
 }

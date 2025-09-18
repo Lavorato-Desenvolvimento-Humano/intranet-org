@@ -67,9 +67,9 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("https://dev.lavorato.app.br", "http://localhost:3000", "https://lavorato.app.br", "https://drive.lavorato.app.br"));
+        configuration.setAllowedOrigins(Arrays.asList("https://dev.lavorato.app.br", "http://localhost:3000", "http://localhost:3001", "https://localhost:3000", "https://localhost:3001", "https://lavorato.app.br", "https://drive.lavorato.app.br"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With"));
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers", "X-Requested-With", "X-Forwarded-For", "X-Forwarded-Proto", "X-Forwarded-Host"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
 
@@ -103,6 +103,8 @@ public class SecurityConfig {
                                 .requestMatchers("/api/files/check/**").permitAll()
                                 .requestMatchers("/api/profile-images/**", "/profile-images/**").permitAll()
                                 .requestMatchers("/profiles/**").permitAll()
+                                .requestMatchers("/auth/validate-token").authenticated()
+                                .requestMatchers("/drive-integration/**").authenticated()
 
                                 // Permitir uploads temporários para usuários autenticados
                                 .requestMatchers("/api/postagens/temp/**").authenticated()

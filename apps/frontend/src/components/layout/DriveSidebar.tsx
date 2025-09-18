@@ -194,7 +194,7 @@ export default function DriveSidebar() {
           {/* Informações do usuário no rodapé */}
           <div className="flex-shrink-0 p-4 border-t border-gray-200">
             <div className="text-xs text-gray-500">
-              <p className="font-medium">{user?.fullName}</p>
+              <p className="font-medium">{user?.name}</p>
               <p>{user?.email}</p>
               <div className="mt-2 flex flex-wrap gap-1">
                 {user?.roles?.map((role, index) => (

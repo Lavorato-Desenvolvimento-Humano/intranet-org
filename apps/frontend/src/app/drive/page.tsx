@@ -176,9 +176,7 @@ function DriveMainContent() {
                 <HardDrive className="h-8 w-8 mr-3 text-blue-600" />
                 Meu Drive
               </h1>
-              <p className="text-gray-600 mt-1">
-                Bem-vindo(a), {user?.fullName || user?.username}
-              </p>
+              <p className="text-gray-600 mt-1">Bem-vindo(a), {user?.name}</p>
             </div>
 
             {/* Ações principais */}

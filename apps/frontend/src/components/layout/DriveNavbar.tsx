@@ -105,18 +105,18 @@ export default function DriveNavbar() {
               onClick={() => setShowUserMenu(!showUserMenu)}
               className="flex items-center space-x-2 p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md">
               <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                {user?.profileImage ? (
+                {/* {user?.profileImage ? (
                   <img
-                    src={user.profileImage}
+                    src={}
                     alt="Profile"
                     className="w-8 h-8 rounded-full"
                   />
                 ) : (
                   <User className="h-4 w-4 text-white" />
-                )}
+                )} */}
               </div>
               <div className="hidden sm:block text-left">
-                <p className="text-sm font-medium">{user?.fullName}</p>
+                <p className="text-sm font-medium">{user?.name}</p>
                 <p className="text-xs text-gray-500">{user?.roles?.[0]}</p>
               </div>
               <ChevronDown className="h-4 w-4" />
@@ -128,7 +128,7 @@ export default function DriveNavbar() {
                 <div className="py-1">
                   <div className="px-4 py-2 border-b border-gray-100">
                     <p className="text-sm font-medium text-gray-900">
-                      {user?.fullName}
+                      {user?.name}
                     </p>
                     <p className="text-xs text-gray-500">{user?.email}</p>
                   </div>

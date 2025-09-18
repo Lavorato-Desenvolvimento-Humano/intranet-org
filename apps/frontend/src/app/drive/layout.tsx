@@ -10,6 +10,7 @@ interface DriveLayoutProps {
 /**
  * Layout específico para páginas do Drive
  * Fornece o contexto de autenticação do Drive
+ * Implementa RF01.1 - Integração com Sistema Existente
  */
 export default function DriveLayout({ children }: DriveLayoutProps) {
   return <DriveAuthProvider>{children}</DriveAuthProvider>;
