@@ -110,11 +110,11 @@ function DriveLoginContent() {
       const coreApiUrl = getCoreApiUrl();
 
       console.log(
-        `[Drive Login] Tentando login via: ${coreApiUrl}/api/auth/login`
+        `[Drive Login] Tentando login via: ${coreApiUrl}/api/api/auth/login`
       );
 
       // Fazer login através do Core Service (sistema principal)
-      const loginResponse = await fetch(`${coreApiUrl}/api/auth/login`, {
+      const loginResponse = await fetch(`${coreApiUrl}/api/api/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
