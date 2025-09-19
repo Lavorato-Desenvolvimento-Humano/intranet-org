@@ -1,7 +1,6 @@
-// apps/frontend/src/app/drive/login/page.tsx
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, Lock, Mail, AlertCircle } from "lucide-react";
 import toastUtil from "@/utils/toast";
@@ -17,7 +16,8 @@ interface FormErrors {
   general?: string;
 }
 
-export default function DriveLoginPage() {
+// Componente que usa useSearchParams
+function DriveLoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect") || "/drive";
@@ -45,7 +45,7 @@ export default function DriveLoginPage() {
         toastUtil.warning("Você precisa fazer login para acessar esta página.");
       }
     }
-  }, [mounted, message]);
+  }, [message]);
 
   /**
    * Obter URL do Core API baseada no ambiente
@@ -186,11 +186,11 @@ export default function DriveLoginPage() {
         });
       } else {
         setFormErrors({
-          general: `Erro interno: ${errorMessage}. Tente novamente.`,
+          general: `Erro interno: ${errorMessage}. Entre em contato com o suporte.`,
         });
       }
 
-      toastUtil.error(formErrors.general || errorMessage);
+      toastUtil.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -198,54 +198,38 @@ export default function DriveLoginPage() {
 
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="text-gray-600 mt-2">Carregando...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
-        {/* Header */}
-        <div className="text-center">
-          <div className="mx-auto h-12 w-12 bg-blue-600 rounded-xl flex items-center justify-center">
-            <Lock className="h-6 w-6 text-white" />
-          </div>
-          <h2 className="mt-6 text-3xl font-bold text-gray-900">
-            Lavorato Drive
+        <div>
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+            Acesse o Drive
           </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Faça login para acessar seus arquivos
+          <p className="mt-2 text-center text-sm text-gray-600">
+            Faça login com suas credenciais
           </p>
         </div>
 
-        {/* Form */}
-        <div className="bg-white py-8 px-6 shadow-xl rounded-xl">
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            {/* Erro geral */}
-            {formErrors.general && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <div className="flex">
-                  <AlertCircle className="h-5 w-5 text-red-400 mr-2 flex-shrink-0 mt-0.5" />
-                  <span className="text-sm text-red-700">
-                    {formErrors.general}
-                  </span>
-                </div>
-              </div>
-            )}
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          {formErrors.general && (
+            <div className="flex items-center p-4 text-sm text-red-700 bg-red-100 border border-red-300 rounded-lg">
+              <AlertCircle className="w-4 h-4 mr-2" />
+              <span>{formErrors.general}</span>
+            </div>
+          )}
 
-            {/* Email */}
+          <div className="space-y-4">
             <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-gray-700">
+              <label htmlFor="email" className="sr-only">
                 Email
               </label>
-              <div className="mt-1 relative">
+              <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Mail className="h-5 w-5 text-gray-400" />
                 </div>
@@ -257,12 +241,10 @@ export default function DriveLoginPage() {
                   required
                   value={formData.email}
                   onChange={(e) => handleInputChange("email", e.target.value)}
-                  className={`block w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    formErrors.email
-                      ? "border-red-300 bg-red-50"
-                      : "border-gray-300"
-                  }`}
-                  placeholder="seu@email.com"
+                  className={`appearance-none rounded-md relative block w-full pl-10 pr-3 py-3 border ${
+                    formErrors.email ? "border-red-300" : "border-gray-300"
+                  } placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm`}
+                  placeholder="Email"
                 />
               </div>
               {formErrors.email && (
@@ -270,14 +252,11 @@ export default function DriveLoginPage() {
               )}
             </div>
 
-            {/* Senha */}
             <div>
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-gray-700">
+              <label htmlFor="password" className="sr-only">
                 Senha
               </label>
-              <div className="mt-1 relative">
+              <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Lock className="h-5 w-5 text-gray-400" />
                 </div>
@@ -291,21 +270,19 @@ export default function DriveLoginPage() {
                   onChange={(e) =>
                     handleInputChange("password", e.target.value)
                   }
-                  className={`block w-full pl-10 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    formErrors.password
-                      ? "border-red-300 bg-red-50"
-                      : "border-gray-300"
-                  }`}
-                  placeholder="Sua senha"
+                  className={`appearance-none rounded-md relative block w-full pl-10 pr-10 py-3 border ${
+                    formErrors.password ? "border-red-300" : "border-gray-300"
+                  } placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm`}
+                  placeholder="Senha"
                 />
                 <button
                   type="button"
                   className="absolute inset-y-0 right-0 pr-3 flex items-center"
                   onClick={() => setShowPassword(!showPassword)}>
                   {showPassword ? (
-                    <EyeOff className="h-5 w-5 text-gray-400" />
+                    <EyeOff className="h-4 w-4 text-gray-400" />
                   ) : (
-                    <Eye className="h-5 w-5 text-gray-400" />
+                    <Eye className="h-4 w-4 text-gray-400" />
                   )}
                 </button>
               </div>
@@ -315,55 +292,39 @@ export default function DriveLoginPage() {
                 </p>
               )}
             </div>
-
-            {/* Submit Button */}
-            <div>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                {isLoading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Entrando...
-                  </>
-                ) : (
-                  "Entrar"
-                )}
-              </button>
-            </div>
-          </form>
-
-          {/* Links úteis */}
-          <div className="mt-6 text-center space-y-2">
-            <a
-              href="/auth/forgot-password"
-              className="text-sm text-blue-600 hover:text-blue-800">
-              Esqueci minha senha
-            </a>
-            <div className="text-sm text-gray-600">
-              Novo usuário?{" "}
-              <a
-                href="/auth/register"
-                className="text-blue-600 hover:text-blue-800">
-                Criar conta
-              </a>
-            </div>
           </div>
-        </div>
 
-        {/* Debug Info (apenas em desenvolvimento) */}
-        {process.env.NODE_ENV === "development" && (
-          <div className="bg-gray-100 p-4 rounded-lg text-xs text-gray-600">
-            <p>
-              <strong>Debug Info:</strong>
-            </p>
-            <p>Core API URL: {getCoreApiUrl()}</p>
-            <p>Environment: {process.env.NODE_ENV}</p>
-            <p>Redirect To: {redirectTo}</p>
+          <div>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200">
+              {isLoading ? (
+                <div className="flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Entrando...
+                </div>
+              ) : (
+                "Entrar"
+              )}
+            </button>
           </div>
-        )}
+        </form>
       </div>
     </div>
+  );
+}
+
+// Componente principal envolto com Suspense
+export default function DriveLoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        </div>
+      }>
+      <DriveLoginContent />
+    </Suspense>
   );
 }
