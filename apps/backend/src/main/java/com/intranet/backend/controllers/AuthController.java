@@ -175,7 +175,6 @@ public class AuthController {
         }
     }
 
-
     @PostMapping("/register")
     public ResponseEntity<JwtResponse> register(@Valid @RequestBody RegisterRequest registerRequest) {
         logger.info("Solicitação de registro recebida para o email: {}", registerRequest.getEmail());
