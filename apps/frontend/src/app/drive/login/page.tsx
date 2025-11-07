@@ -4,6 +4,7 @@ import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, Lock, Mail, AlertCircle } from "lucide-react";
 import toastUtil from "@/utils/toast";
+import { useDriveAuth } from "@/context/DriveAuthContext";
 
 interface LoginFormData {
   email: string;
@@ -22,6 +23,8 @@ function DriveLoginContent() {
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect") || "/drive";
   const message = searchParams.get("message");
+
+  const { loginWithToken, isAuthenticated } = useDriveAuth();
 
   const [mounted, setMounted] = useState(false);
   const [formData, setFormData] = useState<LoginFormData>({
@@ -46,6 +49,13 @@ function DriveLoginContent() {
       }
     }
   }, [message]);
+
+  useEffect(() => {
+    if (isAuthenticated && mounted) {
+      console.log("[Drive Login] Usuário já autenticado, redirecionando...");
+      router.push(redirectTo);
+    }
+  }, [isAuthenticated, mounted, redirectTo, router]);
 
   /**
    * Obter URL do Core API baseada no ambiente
@@ -146,22 +156,20 @@ function DriveLoginContent() {
 
       console.log("[Drive Login] Login realizado com sucesso");
 
-      // Armazenar token e dados do usuário para o Drive
-      localStorage.setItem("drive_token", token);
-      localStorage.setItem("drive_user", JSON.stringify(user));
-
-      // Também armazenar no localStorage padrão para compatibilidade
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(user));
+      // ✅ CORREÇÃO CRÍTICA: Usar o método loginWithToken do contexto
+      // Isso garante que o DriveAuthContext seja atualizado ANTES do redirect
+      await loginWithToken(token);
 
       toastUtil.success("Login realizado com sucesso!");
 
-      // Aguardar um pouco antes do redirect para permitir que o toast seja exibido
-      setTimeout(() => {
-        router.push(redirectTo);
-      }, 1000);
+      // ✅ O redirecionamento será feito automaticamente pelo useEffect
+      // quando isAuthenticated mudar para true
+      console.log(
+        "[Drive Login] Aguardando atualização do contexto para redirecionar..."
+      );
     } catch (error: any) {
       console.error("[Drive Login] Erro no login:", error);
+      setIsLoading(false);
 
       const errorMessage = error.message || "Erro ao fazer login";
 
@@ -189,10 +197,6 @@ function DriveLoginContent() {
           general: `Erro interno: ${errorMessage}. Entre em contato com o suporte.`,
         });
       }
-
-      toastUtil.error(errorMessage);
-    } finally {
-      setIsLoading(false);
     }
   };
 
