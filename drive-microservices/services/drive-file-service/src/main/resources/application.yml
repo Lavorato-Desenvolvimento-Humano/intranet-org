@@ -65,7 +65,7 @@ file:
 
 intranet:
   core:
-    url: ${INTRANET_CORE_URL:https://backend:8443}
+    url: ${INTRANET_CORE_URL:http://backend:8443}
     auth-endpoint: ${INTRANET_AUTH_ENDPOINT:/api/api/auth/validate}
     timeout:
       connect: ${CORE_CONNECT_TIMEOUT:5000}

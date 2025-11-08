@@ -120,12 +120,12 @@ class DriveAuthService {
     try {
       console.log("[DriveAuth] Validando token...");
 
-      const response = await fetch(`${this.CORE_API_URL}/auth/validate-token`, {
-        method: "GET",
+      const response = await fetch(`${this.CORE_API_URL}/auth/validate`, {
+        method: "POST",
         headers: {
-          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
+        body: JSON.stringify({ token }),
         mode: "cors",
         credentials: "include",
       });
