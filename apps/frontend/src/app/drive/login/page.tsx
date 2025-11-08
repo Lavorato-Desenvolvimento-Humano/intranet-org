@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, Suspense, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, Lock, Mail, AlertCircle } from "lucide-react";
 import toastUtil from "@/utils/toast";
@@ -35,6 +35,8 @@ function DriveLoginContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  const hasRedirected = useRef(false);
+
   useEffect(() => {
     setMounted(true);
 
@@ -51,11 +53,18 @@ function DriveLoginContent() {
   }, [message]);
 
   useEffect(() => {
-    if (isAuthenticated && mounted) {
+    if (isAuthenticated && mounted && !hasRedirected.current) {
       console.log("[Drive Login] Usuário já autenticado, redirecionando...");
+      hasRedirected.current = true; // Marcar que já redirecionamos
       router.push(redirectTo);
     }
   }, [isAuthenticated, mounted, redirectTo, router]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      hasRedirected.current = false;
+    }
+  }, [isAuthenticated]);
 
   /**
    * Obter URL do Core API baseada no ambiente
@@ -156,14 +165,10 @@ function DriveLoginContent() {
 
       console.log("[Drive Login] Login realizado com sucesso");
 
-      // ✅ CORREÇÃO CRÍTICA: Usar o método loginWithToken do contexto
-      // Isso garante que o DriveAuthContext seja atualizado ANTES do redirect
       await loginWithToken(token);
 
       toastUtil.success("Login realizado com sucesso!");
 
-      // ✅ O redirecionamento será feito automaticamente pelo useEffect
-      // quando isAuthenticated mudar para true
       console.log(
         "[Drive Login] Aguardando atualização do contexto para redirecionar..."
       );
