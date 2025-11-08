@@ -120,7 +120,7 @@ class DriveAuthService {
     try {
       console.log("[DriveAuth] Validando token...");
 
-      const response = await fetch(`${this.CORE_API_URL}/auth/validate`, {
+      const response = await fetch(`${this.CORE_API_URL}/api/auth/validate`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
