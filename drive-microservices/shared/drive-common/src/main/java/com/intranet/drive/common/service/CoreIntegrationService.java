@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.client.RestClientException;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -71,27 +73,48 @@ public class CoreIntegrationService {
         try {
             String url = coreUrl + authEndpoint;
 
+            logger.debug("Validando token com Core: {} {} ", url, token.substring(0, Math.min(20, token.length())) + "...");
+
             HttpHeaders headers = new HttpHeaders();
-            headers.setBearerAuth(token);
             headers.setContentType(MediaType.APPLICATION_JSON);
 
-            HttpEntity<Void> entity = new HttpEntity<>(headers);
+            Map<String, String> requestBody = new HashMap<>();
+            requestBody.put("token", token);
 
-            ResponseEntity<UserDto> response = restTemplate.exchange(
-                    url, HttpMethod.POST, entity, UserDto.class
+            HttpEntity<Map<String, String>> entity = new HttpEntity<>(requestBody, headers);
+
+            ResponseEntity<Map> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.POST,
+                    entity,
+                    Map.class
             );
 
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                logger.debug("Token validado com sucesso para usuário: {}",
-                        response.getBody().getUsername());
-                return Optional.of(response.getBody());
+                Map<String, Object> body = response.getBody();
+
+                Boolean isValid = (Boolean) body.get("valid");
+
+                if (Boolean.TRUE.equals(isValid)) {
+                    // Extrair dados do usuário da resposta
+                    Map<String, Object> userData = (Map<String, Object>) body.get("user");
+
+//                    if (userData != null) {
+//                        UserDto userDto = mapToUserDto(userData);
+//                        logger.debug("Token validado com sucesso para usuário: {}", userDto.getUsername());
+//                        return Optional.of(userDto);
+//                    }
+                }
+
+                logger.debug("Token inválido - resposta do Core: {}", body.get("message"));
+                return Optional.empty();
             }
 
             logger.debug("Validação do token falhou - resposta: {}", response.getStatusCode());
             return Optional.empty();
 
         } catch (RestClientException e) {
-            logger.warn("Erro na comunicação com Core Service: {}", e.getMessage());
+            logger.error("Erro na comunicação com Core Service: {}", e.getMessage(), e);
             // Em caso de erro de comunicação, permite validação local apenas
             return createLocalUserFromToken(token);
         }
