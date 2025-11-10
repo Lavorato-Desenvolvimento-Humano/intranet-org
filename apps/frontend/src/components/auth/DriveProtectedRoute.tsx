@@ -85,6 +85,10 @@ export default function DriveProtectedRoute({
     checkAccess();
   }, [isAuthenticated, isLoading, pathname, router]);
 
+  useEffect(() => {
+    hasRedirected.current = false;
+  }, [pathname]);
+
   // Loading state durante verificação de autenticação
   if (isLoading || isCheckingPermissions) {
     return (
