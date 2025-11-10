@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, Lock, Mail, AlertCircle } from "lucide-react";
 import toastUtil from "@/utils/toast";
 import { useDriveAuth } from "@/context/DriveAuthContext";
+import toast from "react-hot-toast";
 
 interface LoginFormData {
   email: string;
@@ -37,6 +38,7 @@ function DriveLoginContent() {
   const [showPassword, setShowPassword] = useState(false);
 
   const hasRedirected = useRef(false);
+  const isRedirecting = useRef(false);
 
   useEffect(() => {
     setMounted(true);
@@ -54,18 +56,28 @@ function DriveLoginContent() {
   }, [message]);
 
   useEffect(() => {
+    // Se já está redirecionando, não fazer nada
+    if (isRedirecting.current) {
+      return;
+    }
+
+    // Se autenticado, montado e ainda não redirecionou
     if (isAuthenticated && mounted && !hasRedirected.current) {
       console.log("[Drive Login] Usuário já autenticado, redirecionando...");
-      hasRedirected.current = true; // Marcar que já redirecionamos
-      router.push(redirectTo);
+
+      // Marcar as flags IMEDIATAMENTE para evitar múltiplas execuções
+      hasRedirected.current = true;
+      isRedirecting.current = true;
+
+      // Redirecionar após um pequeno delay para garantir estabilidade do estado
+      const timeoutId = setTimeout(() => {
+        router.push(redirectTo);
+      }, 100);
+
+      // Cleanup para cancelar o timeout se o componente desmontar
+      return () => clearTimeout(timeoutId);
     }
   }, [isAuthenticated, mounted, redirectTo, router]);
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      hasRedirected.current = false;
-    }
-  }, [isAuthenticated]);
 
   /**
    * Obter URL do Core API baseada no ambiente
@@ -201,6 +213,8 @@ function DriveLoginContent() {
           general: `Erro interno: ${errorMessage}. Entre em contato com o suporte.`,
         });
       }
+
+      toastUtil.error(errorMessage);
     }
   };
 
