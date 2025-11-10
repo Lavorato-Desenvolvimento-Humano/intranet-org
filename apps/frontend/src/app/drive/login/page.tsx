@@ -1,6 +1,7 @@
+// apps/frontend/src/app/drive/login/page.tsx
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, Suspense, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, Lock, Mail, AlertCircle } from "lucide-react";
 import toastUtil from "@/utils/toast";
@@ -35,6 +36,8 @@ function DriveLoginContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  const hasRedirected = useRef(false);
+
   useEffect(() => {
     setMounted(true);
 
@@ -51,11 +54,18 @@ function DriveLoginContent() {
   }, [message]);
 
   useEffect(() => {
-    if (isAuthenticated && mounted) {
+    if (isAuthenticated && mounted && !hasRedirected.current) {
       console.log("[Drive Login] Usuário já autenticado, redirecionando...");
+      hasRedirected.current = true; // Marcar que já redirecionamos
       router.push(redirectTo);
     }
   }, [isAuthenticated, mounted, redirectTo, router]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      hasRedirected.current = false;
+    }
+  }, [isAuthenticated]);
 
   /**
    * Obter URL do Core API baseada no ambiente
@@ -123,14 +133,12 @@ function DriveLoginContent() {
         `[Drive Login] Tentando login via: ${coreApiUrl}/api/api/auth/login`
       );
 
-      // Fazer login através do Core Service (sistema principal)
       const loginResponse = await fetch(`${coreApiUrl}/api/api/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(formData),
-        // Para HTTPS com certificados self-signed em dev
         ...(process.env.NODE_ENV === "development" && {
           mode: "cors",
         }),
@@ -156,14 +164,10 @@ function DriveLoginContent() {
 
       console.log("[Drive Login] Login realizado com sucesso");
 
-      // ✅ CORREÇÃO CRÍTICA: Usar o método loginWithToken do contexto
-      // Isso garante que o DriveAuthContext seja atualizado ANTES do redirect
       await loginWithToken(token);
 
       toastUtil.success("Login realizado com sucesso!");
 
-      // ✅ O redirecionamento será feito automaticamente pelo useEffect
-      // quando isAuthenticated mudar para true
       console.log(
         "[Drive Login] Aguardando atualização do contexto para redirecionar..."
       );
@@ -200,10 +204,14 @@ function DriveLoginContent() {
     }
   };
 
-  if (!mounted) {
+  // Se o usuário já está autenticado, mostrar mensagem de carregamento
+  if (isAuthenticated && mounted) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Redirecionando...</p>
+        </div>
       </div>
     );
   }
@@ -211,24 +219,32 @@ function DriveLoginContent() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Acesse o Drive
+        {/* Header */}
+        <div className="text-center">
+          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+            Drive - Login
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Faça login com suas credenciais
+          <p className="mt-2 text-sm text-gray-600">
+            Entre com suas credenciais do sistema
           </p>
         </div>
 
+        {/* Form */}
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          {/* Error Geral */}
           {formErrors.general && (
-            <div className="flex items-center p-4 text-sm text-red-700 bg-red-100 border border-red-300 rounded-lg">
-              <AlertCircle className="w-4 h-4 mr-2" />
-              <span>{formErrors.general}</span>
+            <div className="rounded-md bg-red-50 p-4">
+              <div className="flex">
+                <AlertCircle className="h-5 w-5 text-red-400" />
+                <div className="ml-3">
+                  <p className="text-sm text-red-800">{formErrors.general}</p>
+                </div>
+              </div>
             </div>
           )}
 
           <div className="space-y-4">
+            {/* Email */}
             <div>
               <label htmlFor="email" className="sr-only">
                 Email
@@ -245,10 +261,11 @@ function DriveLoginContent() {
                   required
                   value={formData.email}
                   onChange={(e) => handleInputChange("email", e.target.value)}
-                  className={`appearance-none rounded-md relative block w-full pl-10 pr-3 py-3 border ${
+                  className={`appearance-none relative block w-full pl-10 pr-3 py-2 border ${
                     formErrors.email ? "border-red-300" : "border-gray-300"
-                  } placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm`}
+                  } placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm`}
                   placeholder="Email"
+                  disabled={isLoading}
                 />
               </div>
               {formErrors.email && (
@@ -256,6 +273,7 @@ function DriveLoginContent() {
               )}
             </div>
 
+            {/* Password */}
             <div>
               <label htmlFor="password" className="sr-only">
                 Senha
@@ -274,19 +292,21 @@ function DriveLoginContent() {
                   onChange={(e) =>
                     handleInputChange("password", e.target.value)
                   }
-                  className={`appearance-none rounded-md relative block w-full pl-10 pr-10 py-3 border ${
+                  className={`appearance-none relative block w-full pl-10 pr-10 py-2 border ${
                     formErrors.password ? "border-red-300" : "border-gray-300"
-                  } placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm`}
+                  } placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm`}
                   placeholder="Senha"
+                  disabled={isLoading}
                 />
                 <button
                   type="button"
                   className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  onClick={() => setShowPassword(!showPassword)}>
+                  onClick={() => setShowPassword(!showPassword)}
+                  disabled={isLoading}>
                   {showPassword ? (
-                    <EyeOff className="h-4 w-4 text-gray-400" />
+                    <EyeOff className="h-5 w-5 text-gray-400" />
                   ) : (
-                    <Eye className="h-4 w-4 text-gray-400" />
+                    <Eye className="h-5 w-5 text-gray-400" />
                   )}
                 </button>
               </div>
@@ -298,34 +318,66 @@ function DriveLoginContent() {
             </div>
           </div>
 
+          {/* Submit Button */}
           <div>
             <button
               type="submit"
               disabled={isLoading}
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200">
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
               {isLoading ? (
-                <div className="flex items-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                <span className="flex items-center">
+                  <svg
+                    className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24">
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
                   Entrando...
-                </div>
+                </span>
               ) : (
                 "Entrar"
               )}
             </button>
           </div>
         </form>
+
+        {/* Footer */}
+        <div className="text-center text-sm">
+          <p className="text-gray-600">
+            Não tem acesso ao Drive?{" "}
+            <a
+              href="/"
+              className="font-medium text-blue-600 hover:text-blue-500">
+              Voltar ao sistema principal
+            </a>
+          </p>
+        </div>
       </div>
     </div>
   );
 }
 
-// Componente principal envolto com Suspense
+// Componente principal com Suspense
 export default function DriveLoginPage() {
   return (
     <Suspense
       fallback={
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Carregando...</p>
+          </div>
         </div>
       }>
       <DriveLoginContent />
