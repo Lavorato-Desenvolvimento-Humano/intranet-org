@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useDriveAuth } from "@/context/DriveAuthContext";
 import { Loading } from "@/components/ui/loading";
@@ -30,9 +30,14 @@ export default function DriveProtectedRoute({
   const { isAuthenticated, isLoading, user, checkPermission, hasAnyRole } =
     useDriveAuth();
   const [isCheckingPermissions, setIsCheckingPermissions] = useState(true);
+  const hasRedirected = useRef(false);
 
   useEffect(() => {
     const checkAccess = async () => {
+      if (hasRedirected.current) {
+        return;
+      }
+
       setIsCheckingPermissions(true);
 
       // Se ainda está carregando, aguardar
@@ -42,6 +47,7 @@ export default function DriveProtectedRoute({
 
       // Se não está autenticado, redirecionar para login
       if (!isAuthenticated) {
+        hasRedirected.current = true;
         const redirectUrl = `/drive/login?redirect=${encodeURIComponent(pathname)}`;
         router.push(redirectUrl);
         return;
@@ -54,6 +60,7 @@ export default function DriveProtectedRoute({
         );
 
         if (!hasRequiredPermissions) {
+          hasRedirected.current = true;
           const redirectUrl = `/drive/login?message=access_denied&redirect=${encodeURIComponent(pathname)}`;
           router.push(redirectUrl);
           return;
@@ -65,6 +72,7 @@ export default function DriveProtectedRoute({
         const hasRequiredRoles = hasAnyRole(requiredRoles);
 
         if (!hasRequiredRoles) {
+          hasRedirected.current = true;
           const redirectUrl = `/drive/login?message=access_denied&redirect=${encodeURIComponent(pathname)}`;
           router.push(redirectUrl);
           return;
@@ -75,17 +83,7 @@ export default function DriveProtectedRoute({
     };
 
     checkAccess();
-  }, [
-    isAuthenticated,
-    isLoading,
-    user,
-    pathname,
-    router,
-    requiredPermissions,
-    requiredRoles,
-    checkPermission,
-    hasAnyRole,
-  ]);
+  }, [isAuthenticated, isLoading, pathname, router]);
 
   // Loading state durante verificação de autenticação
   if (isLoading || isCheckingPermissions) {
