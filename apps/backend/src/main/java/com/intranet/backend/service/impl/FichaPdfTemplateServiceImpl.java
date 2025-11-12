@@ -824,7 +824,26 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
             line-height: 1.3;
         }
         
-        /* --- REMOVIDO: Regras .page que forçavam página única --- */
+        /* --- ADICIONADO: Contêiner para o cabeçalho fixo --- */
+        .header-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            /* Alinha com as margens da página */
+            padding-top: 10mm;
+            padding-left: 15mm;
+            padding-right: 15mm;
+            background: #fff; /* Evita que o texto da tabela passe por baixo */
+            z-index: 10;
+        }
+        
+        /* --- ADICIONADO: Contêiner para o conteúdo que flui --- */
+        .content-container {
+            /* Empurra o conteúdo para baixo do cabeçalho fixo */
+            /* Este valor pode precisar de ajuste fino */
+            padding-top: 4cm; 
+        }
 
         .header {
             text-align: center;
@@ -963,15 +982,31 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
                 print-color-adjust: exact;
             }
             
-            /* --- REMOVIDO: Regras .page de @media print --- */
+            /* --- ADICIONADO: Reforça as regras de cabeçalho para impressão --- */
+            .header-container {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                padding-top: 10mm;
+                padding-left: 15mm;
+                padding-right: 15mm;
+                background: #fff;
+                z-index: 10;
+            }
+            
+            .content-container {
+                 padding-top: 4cm; 
+            }
         }
     </style>
     </head>
     <body>
     
-    <!-- CORREÇÃO: Removido o <div class="page"> que limitava a uma página -->
-    <div class="header">
-        <!-- CORREÇÃO: Usando placeholder {LOGO_BASE64} -->
+    <!-- CORREÇÃO: Cabeçalho agora dentro de um contêiner fixo -->
+    <div class="header-container">
+        <div class="header">
+            <!-- CORREÇÃO: Usando placeholder {LOGO_BASE64} -->
             <img src="{LOGO_BASE64}" alt="Brasão da República" class="header-logo">
             <div class="header-text">
                 MINISTÉRIO DA DEFESA<br>
@@ -980,7 +1015,10 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
                 HOSPITAL MILITAR DE ÁREA DE BRASÍLIA
             </div>
         </div>
+    </div>
 
+    <!-- CORREÇÃO: Conteúdo principal movido para seu próprio contêiner -->
+    <div class="content-container">
         <div class="patient-info">
             <div class="info-row">
                 <span class="info-label">NOME COMPLETO:</span>
@@ -1019,7 +1057,7 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
                 {LINHAS_TABELA}
             </tbody>
         </table>
-    <!-- CORREÇÃO: Removido o </div> de fechamento do .page -->
+    </div> <!-- Fim do content-container -->
     
     </body>
     </html>
