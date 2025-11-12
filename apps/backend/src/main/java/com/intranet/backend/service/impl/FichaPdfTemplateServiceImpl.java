@@ -740,136 +740,223 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
     }
 
     /**
-     * Template específico para o Fusex
-     * Baseado no sistema legado em PHP
+     * Template específico para FUSEX - Folha de Frequência Multidisciplinar
+     * Baseado no documento oficial do Hospital Militar de Área de Brasília
+     * Com geração dinâmica de linhas baseada na quantidade autorizada
      */
     private String criarTemplateFusex() {
+        logger.info("Criando template FUSEX - Folha de Frequência Multidisciplinar");
+
         return """
     <!DOCTYPE html>
     <html lang="pt-BR">
     <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Ficha de Assinatura</title>
-        <style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Folha de Frequência Multidisciplinar - FUSEX</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 15mm 10mm 15mm 10mm;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            font-size: 11pt;
+            color: #000;
+            line-height: 1.4;
+        }
+
+        .page {
+            page-break-after: always;
+        }
+
+        .page:last-child {
+            page-break-after: auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .header-logo {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 10px;
+            display: block;
+        }
+
+        .header-text {
+            font-size: 10pt;
+            font-weight: bold;
+            line-height: 1.3;
+        }
+
+        .patient-info {
+            margin: 20px 0;
+            border-bottom: 1px solid #000;
+            padding-bottom: 10px;
+        }
+
+        .info-row {
+            display: flex;
+            margin-bottom: 8px;
+            align-items: baseline;
+        }
+
+        .info-label {
+            font-weight: normal;
+            margin-right: 5px;
+        }
+
+        .info-value {
+            border-bottom: 1px solid #000;
+            flex: 1;
+            min-height: 20px;
+            padding: 0 5px;
+        }
+
+        .info-date {
+            display: inline-flex;
+            align-items: baseline;
+            gap: 5px;
+        }
+
+        .date-separator {
+            border-bottom: 1px solid #000;
+            width: 30px;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .title {
+            text-align: center;
+            font-size: 14pt;
+            font-weight: bold;
+            margin: 25px 0 20px 0;
+            text-transform: uppercase;
+        }
+
+        .attendance-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        .attendance-table th {
+            background-color: #fff;
+            border: 1px solid #000;
+            padding: 8px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 11pt;
+        }
+
+        .attendance-table td {
+            border: 1px solid #000;
+            padding: 8px;
+            text-align: center;
+            min-height: 35px;
+            font-size: 10pt;
+        }
+
+        .col-data {
+            width: 12%;
+        }
+
+        .col-horario {
+            width: 12%;
+        }
+
+        .col-procedimento {
+            width: 30%;
+        }
+
+        .col-assinatura {
+            width: 33%;
+        }
+
+        .col-parentesco {
+            width: 13%;
+        }
+
+        /* Estilos para impressão */
+        @media print {
             body {
-                font-family: Arial, sans-serif;
-                font-size: 12px;
-                margin: 5px;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
             }
-            .header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 10px;
+            
+            .page {
+                page-break-after: always;
             }
-            .header img {
-                width: 150px;
-                height: auto;
+
+            .page:last-child {
+                page-break-after: auto;
             }
-            .header h1 {
-                font-size: 18px;
-                margin: 0;
-                text-align: center;
-                flex-grow: 1;
-            }
-            .header .identificacao {
-                font-size: 14px;
-                font-weight: bold;
-            }
-            .section {
-                margin-bottom: 5px;
-            }
-            .section label {
-                display: inline-block;
-                width: 200px;
-                font-weight: bold;
-            }
-            .table {
-                width: 100%;
-                border-collapse: collapse;
-            }
-            .table th, .table td {
-                border: 1px solid #000;
-                padding: 5px;
-                text-align: center;
-            }
-            .info-header {
-                text-align: left;
-                margin-bottom: 5px;
-            }
-            .footer {
-                 margin-top: 20px;
-                 padding: 10px;
-                 border-top: 1px solid #ccc;
-                 font-size: 11px;
-            }
-            .footer p {
-                 margin: 3px 0;
-            }
-            .metadata {
-                  margin-top: 15px;
-                  padding: 8px;
-                  background-color: #f9f9f9;
-                  border: 1px solid #ddd;
-                  font-size: 10px;
-                  text-align: center;
-            }
-            .metadata span {
-                   margin: 0 15px;
-                   color: #666;
-            }
+        }
         </style>
-    </head>
-    <body>
-        <div class="header">
-            <img src="{LOGO_BASE64}" alt="Logo">
-            <h1>FICHA DE ASSINATURA</h1>
-            <div class="identificacao">ID: {NUMERO_IDENTIFICACAO}</div>
-        </div>
-
-        <div class="info-header">
-            <div class="section">
-                <label>Paciente:</label> {PACIENTE_NOME}
+        </head>
+        <body>
+        <!-- PRIMEIRA PÁGINA COM CABEÇALHO COMPLETO -->
+        <div class="page">
+            <div class="header">
+                <img src="${logo}" alt="Brasão da República" class="header-logo">
+                <div class="header-text">
+                    MINISTÉRIO DA DEFESA<br>
+                    EXÉRCITO BRASILEIRO<br>
+                    CMP - 11ª R M<br>
+                    HOSPITAL MILITAR DE ÁREA DE BRASÍLIA
+                </div>
             </div>
-            <div class="section">
-                <label>Especialidade:</label> {ESPECIALIDADE}
+    
+            <div class="patient-info">
+                <div class="info-row">
+                    <span class="info-label">NOME COMPLETO:</span>
+                    <span class="info-value">${pacienteNome}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">D/N</span>
+                    <span class="info-date">
+                        <span class="date-separator"></span>/
+                        <span class="date-separator"></span>/
+                        <span class="date-separator" style="width: 60px;"></span>
+                    </span>
+                    <span class="info-label" style="margin-left: 20px;">DIAGNÓSTICO:</span>
+                    <span class="info-value"></span>
+                    <span class="info-label" style="margin-left: 20px;">MÊS:</span>
+                    <span class="info-value" style="max-width: 150px;">${mes}</span>
+                </div>
             </div>
-            <div class="section">
-                <label>Mês de referência:</label> {MES_EXTENSO}
+    
+            <h1 class="title">FOLHA DE FREQUÊNCIA MULTIDISCIPLINAR</h1>
+    
+            <table class="attendance-table">
+                <thead>
+                    <tr>
+                        <th class="col-data">DATA</th>
+                        <th class="col-horario">HORÁRIO</th>
+                        <th class="col-procedimento">PROCEDIMENTO</th>
+                        <th class="col-assinatura">ASSINATURA DO RESPONSÁVEL</th>
+                        <th class="col-parentesco">PARENTESCO</th>
+                    </tr>
+                </thead>
+                <tbody>
+        ${linhasPaginaInicial}
+                    </tbody>
+                </table>
             </div>
-            <div class="section">
-                <label>Convênio:</label> {CONVENIO_NOME}
-            </div>
-            <div class="section">
-                <label>Quantidade Autorizada:</label> {QUANTIDADE_AUTORIZADA} sessões
-            </div>
-        </div>
-
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Nº</th>
-                    <th>Data de Atendimento</th>
-                    <th>Assinatura do Responsável</th>
-                </tr>
-            </thead>
-            <tbody>
-                {LINHAS_TABELA}
-            </tbody>
-        </table>
-         <div class="footer">
-               <p><strong>Instruções:</strong></p>
-               <p>1. Preencher a data e assinar a cada atendimento realizado.</p>
-               <p>2. Este documento é de uso obrigatório para faturamento junto ao convênio.</p>
-               <p>3. Manter o documento em local seguro e apresentar quando solicitado.</p>
-         </div>
-         <div class="metadata">
-                <span>Gerado em: {DATA_GERACAO}</span>
-                <span>Sistema: Intranet v2.0</span>
-         </div>
-    </body>
-    </html>
+    
+        ${paginasAdicionais}
+        </body>
+        </html>
     """;
     }
 
@@ -955,6 +1042,105 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
 
         return linhas.toString();
 
+    }
+
+    /**
+     * Gera as linhas de frequência dinamicamente baseado na quantidade autorizada
+     * Distribui as linhas em múltiplas páginas conforme necessário
+     */
+    private String gerarLinhasFusexDinamicas(Integer quantidadeAutorizada) {
+        int totalLinhas = (quantidadeAutorizada != null && quantidadeAutorizada > 0)
+                ? quantidadeAutorizada
+                : 30; // Padrão de 30 sessões se não especificado
+
+        logger.debug("Gerando {} linhas para ficha FUSEX", totalLinhas);
+
+        // Configuração de linhas por página
+        final int LINHAS_PAGINA_INICIAL = 5;  // Primeira página tem menos espaço (cabeçalho completo)
+        final int LINHAS_PAGINAS_SEGUINTES = 10; // Páginas seguintes têm mais espaço
+
+        StringBuilder resultado = new StringBuilder();
+
+        // Gerar linhas da página inicial (máximo 5)
+        int linhasPaginaInicial = Math.min(totalLinhas, LINHAS_PAGINA_INICIAL);
+        StringBuilder linhasInicial = new StringBuilder();
+        for (int i = 0; i < linhasPaginaInicial; i++) {
+            linhasInicial.append(gerarLinhaVazia());
+        }
+
+        // Calcular linhas restantes
+        int linhasRestantes = totalLinhas - linhasPaginaInicial;
+
+        // Gerar páginas adicionais se necessário
+        StringBuilder paginasAdicionais = new StringBuilder();
+        if (linhasRestantes > 0) {
+            int numeroPagina = 2;
+            while (linhasRestantes > 0) {
+                int linhasNestaPagina = Math.min(linhasRestantes, LINHAS_PAGINAS_SEGUINTES);
+                paginasAdicionais.append(gerarPaginaAdicionalFusex(linhasNestaPagina));
+                linhasRestantes -= linhasNestaPagina;
+                numeroPagina++;
+            }
+        }
+
+        // Retornar Map com as partes do template
+        // Nota: Este método será chamado de forma diferente
+        return linhasInicial.toString() + "|||SEPARADOR|||" + paginasAdicionais.toString();
+    }
+
+    /**
+     * Gera uma linha vazia da tabela de frequência
+     */
+    private String gerarLinhaVazia() {
+        return """
+                <tr>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                </tr>
+""";
+    }
+
+    /**
+     * Gera uma página adicional com cabeçalho simplificado e tabela
+     */
+    private String gerarPaginaAdicionalFusex(int numeroLinhas) {
+        StringBuilder linhas = new StringBuilder();
+        for (int i = 0; i < numeroLinhas; i++) {
+            linhas.append(gerarLinhaVazia());
+        }
+
+        return String.format("""
+    <!-- PÁGINA ADICIONAL -->
+    <div class="page">
+        <div class="header">
+            <img src="${logo}" alt="Brasão da República" class="header-logo">
+            <div class="header-text">
+                MINISTÉRIO DA DEFESA<br>
+                EXÉRCITO BRASILEIRO<br>
+                CMP - 11ª R M<br>
+                HOSPITAL MILITAR DE ÁREA DE BRASÍLIA
+            </div>
+        </div>
+
+        <table class="attendance-table" style="margin-top: 30px;">
+            <thead>
+                <tr>
+                    <th class="col-data">DATA</th>
+                    <th class="col-horario">HORÁRIO</th>
+                    <th class="col-procedimento">PROCEDIMENTO</th>
+                    <th class="col-assinatura">ASSINATURA DO RESPONSÁVEL</th>
+                    <th class="col-parentesco">PARENTESCO</th>
+                </tr>
+            </thead>
+            <tbody>
+%s
+            </tbody>
+        </table>
+    </div>
+""", linhas.toString());
     }
 
     private String carregarTemplate(String templateNome) {
