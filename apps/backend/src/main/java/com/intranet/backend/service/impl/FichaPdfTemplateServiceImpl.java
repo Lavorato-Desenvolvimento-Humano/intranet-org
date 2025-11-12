@@ -823,6 +823,8 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
             color: #000;
             line-height: 1.3;
         }
+        
+        /* --- REMOVIDO: Regras .page que forçavam página única --- */
 
         .header {
             text-align: center;
@@ -903,6 +905,8 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
             width: 100%;
             border-collapse: collapse;
             margin-top: 10px;
+            /* --- ADICIONADO: Permite que a tabela quebre entre páginas --- */
+            page-break-inside: auto;
         }
 
         .attendance-table th {
@@ -920,6 +924,16 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
             text-align: center;
             height: 28px; /* Altura fixa para cada linha */
             font-size: 10pt;
+        }
+        
+        /* --- ADICIONADO: Repete o header da tabela em novas páginas --- */
+        .attendance-table thead {
+            display: table-header-group;
+        }
+        
+        /* --- ADICIONADO: Tenta manter as linhas intactas ao quebrar a página --- */
+        .attendance-table tbody tr {
+            page-break-inside: avoid;
         }
 
         .col-data {
@@ -948,15 +962,16 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
+            
+            /* --- REMOVIDO: Regras .page de @media print --- */
         }
     </style>
     </head>
     <body>
     
-    <!-- Template FUSEX de página única -->
-    <div class="page">
-        <div class="header">
-            <!-- CORREÇÃO: Usando placeholder {LOGO_BASE64} -->
+    <!-- CORREÇÃO: Removido o <div class="page"> que limitava a uma página -->
+    <div class="header">
+        <!-- CORREÇÃO: Usando placeholder {LOGO_BASE64} -->
             <img src="{LOGO_BASE64}" alt="Brasão da República" class="header-logo">
             <div class="header-text">
                 MINISTÉRIO DA DEFESA<br>
@@ -1004,7 +1019,7 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
                 {LINHAS_TABELA}
             </tbody>
         </table>
-    </div>
+    <!-- CORREÇÃO: Removido o </div> de fechamento do .page -->
     
     </body>
     </html>
