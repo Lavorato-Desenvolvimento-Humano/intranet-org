@@ -87,9 +87,11 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
             if (isFusexConvenio(convenioNome)) {
                 logger.info("✅ FUSEX identificado! Convênio: '{}' - Usando template específico", convenioNome);
                 String templateFusex = obterTemplateFusex();
+                // CORREÇÃO: Usar preencherTemplate que agora sabe lidar com FUSEX
                 return preencherTemplate(templateFusex, item);
             } else if (isCbmdfConvenio(convenioNome)) {
                 String templateCbmdf = obterTemplateCbmdf();
+                // CORREÇÃO: Usar preencherTemplate que agora sabe lidar com CBMDF
                 return preencherTemplate(templateCbmdf, item);
             }
 
@@ -143,13 +145,16 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
             // PRIORIDADE 3: Template padrão
             logger.debug("Usando template padrão para convênio: {}",
                     config != null ? config.getConvenio().getName() : "não configurado");
-            return gerarHtmlFicha(item);
+            // CORREÇÃO: Chamar preencherTemplateComConvenio mesmo para o padrão,
+            // para que a logo correta (padrão) seja usada.
+            return preencherTemplateComConvenio(getTemplatePadrao(), item, config);
 
         } catch (Exception e) {
             logger.error("Erro ao gerar HTML com configuração do convênio: {}", e.getMessage(), e);
             // Fallback para template padrão
             logger.warn("Usando template padrão como fallback");
-            return gerarHtmlFicha(item);
+            // CORREÇÃO: Chamar preencherTemplateComConvenio para o fallback
+            return preencherTemplateComConvenio(getTemplatePadrao(), item, config);
         }
     }
 
@@ -265,17 +270,19 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
      * Preenche template com logo específica do convênio
      */
     private String preencherTemplateComConvenio(String template, FichaPdfItemDto item, ConvenioFichaPdfConfig config) {
-        logger.debug("Preenchendo template com logo específica para: {}", item.getPacienteNome());
+        logger.debug("Preenchendo template com convênio para: {}", item.getPacienteNome());
 
         String html = template;
+        String convenioNome = (config != null && config.getConvenio() != null)
+                ? config.getConvenio().getName()
+                : item.getConvenioNome();
 
         try {
             // Logo específica baseada no convênio
-            String convenioNome = config != null ? config.getConvenio().getName() : null;
             String logoBase64 = obterLogoBase64(convenioNome);
             html = html.replace("{LOGO_BASE64}", logoBase64);
 
-            // Resto do preenchimento (copiar do método original)
+            // Resto do preenchimento
             html = html.replace("{NUMERO_IDENTIFICACAO}",
                     StringUtils.hasText(item.getNumeroIdentificacao()) ? item.getNumeroIdentificacao() : "N/A");
 
@@ -302,12 +309,28 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
             html = html.replace("{CONVENIO_NOME}",
                     StringUtils.hasText(item.getConvenioNome()) ? item.getConvenioNome() : "Não informado");
 
+            html = html.replace("{UNIDADE}",
+                    StringUtils.hasText(item.getUnidade()) ? formatarUnidade(item.getUnidade()) : "Não informado");
+
             html = html.replace("{QUANTIDADE_AUTORIZADA}",
                     item.getQuantidadeAutorizada() != null ? item.getQuantidadeAutorizada().toString() : "30");
-            
+
+            // --- INÍCIO DA CORREÇÃO ---
             // Tabela de sessões
-            String linhasTabela = gerarLinhasTabela(item.getQuantidadeAutorizada());
+            // Precisamos saber se estamos preenchendo um template FUSEX ou não
+
+            boolean isFusex = isFusexConvenio(convenioNome);
+
+            String linhasTabela;
+            if (isFusex) {
+                logger.debug("Gerando linhas da tabela FUSEX (5 colunas)");
+                linhasTabela = gerarLinhasTabelaFusex(item.getQuantidadeAutorizada());
+            } else {
+                logger.debug("Gerando linhas da tabela Padrão/CBMDF (3 colunas)");
+                linhasTabela = gerarLinhasTabela(item.getQuantidadeAutorizada());
+            }
             html = html.replace("{LINHAS_TABELA}", linhasTabela);
+            // --- FIM DA CORREÇÃO ---
 
             return html;
 
@@ -373,6 +396,7 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
             width: 120px;
             height: auto;
             max-height: 60px;
+            object-fit: contain;
         }
         
         .header h1 {
@@ -618,6 +642,10 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Ficha de Assinatura</title>
         <style>
+            @page {
+                size: A4;
+                margin: 15mm;
+            }
             body {
                 font-family: Arial, sans-serif;
                 font-size: 12px;
@@ -632,6 +660,7 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
             .header img {
                 width: 70px;
                 height: auto;
+                object-fit: contain;
             }
             .header h1 {
                 font-size: 18px;
@@ -685,6 +714,21 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
                    margin: 0 15px;
                    color: #666;
             }
+            
+            .sessao-linha {
+                height: 35px;
+                line-height: 35px;
+            }
+            
+            .numero-col {
+                width: 8%;
+            }
+            .data-col {
+                width: 25%;
+            }
+            .assinatura-col {
+                width: 67%;
+            }
         </style>
     </head>
     <body>
@@ -702,7 +746,7 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
                 <label>Especialidade:</label> {ESPECIALIDADE}
             </div>
             <div class="section">
-                <label>Mês de referência:</label> {MES_EXTENSO}
+                <label>Mês de referência:</label> {MES_EXTENSO} de {ANO}
             </div>
             <div class="section">
                 <label>Convênio:</label> {CONVENIO_NOME}
@@ -715,9 +759,9 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
         <table class="table">
             <thead>
                 <tr>
-                    <th>Nº</th>
-                    <th>Data de Atendimento</th>
-                    <th>Assinatura do Responsável</th>
+                    <th class="numero-col">Nº</th>
+                    <th class="data-col">Data de Atendimento</th>
+                    <th class="assinatura-col">Assinatura do Responsável</th>
                 </tr>
             </thead>
             <tbody>
@@ -743,6 +787,12 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
      * Template específico para FUSEX - Folha de Frequência Multidisciplinar
      * Baseado no documento oficial do Hospital Militar de Área de Brasília
      * Com geração dinâmica de linhas baseada na quantidade autorizada
+     *
+     * CORREÇÃO:
+     * 1. Definido @page size para A4 landscape
+     * 2. Removida lógica quebrada de paginação e variáveis Java (${...})
+     * 3. Adicionados placeholders corretos: {LOGO_BASE64}, {PACIENTE_NOME}, {MES_EXTENSO}, {ANO}
+     * 4. Adicionado placeholder {LINHAS_TABELA} para a tabela
      */
     private String criarTemplateFusex() {
         logger.info("Criando template FUSEX - Folha de Frequência Multidisciplinar");
@@ -756,8 +806,9 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
     <title>Folha de Frequência Multidisciplinar - FUSEX</title>
     <style>
         @page {
-            size: A4;
-            margin: 15mm 10mm 15mm 10mm;
+            /* --- CORREÇÃO: Definido para landscape e ajustado margens --- */
+            size: A4 landscape;
+            margin: 10mm 15mm;
         }
 
         * {
@@ -768,58 +819,61 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
 
         body {
             font-family: 'Arial', sans-serif;
-            font-size: 11pt;
+            font-size: 10pt; /* Reduzido um pouco para caber em landscape */
             color: #000;
-            line-height: 1.4;
-        }
-
-        .page {
-            page-break-after: always;
-        }
-
-        .page:last-child {
-            page-break-after: auto;
+            line-height: 1.3;
         }
 
         .header {
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
 
         .header-logo {
-            width: 60px;
-            height: 60px;
-            margin: 0 auto 10px;
+            width: 55px; /* Reduzido um pouco */
+            height: auto;
+            max-height: 55px;
+            margin: 0 auto 8px;
             display: block;
+            object-fit: contain;
         }
 
         .header-text {
-            font-size: 10pt;
+            font-size: 9pt; /* Reduzido um pouco */
             font-weight: bold;
             line-height: 1.3;
         }
 
         .patient-info {
-            margin: 20px 0;
+            margin: 15px 0;
             border-bottom: 1px solid #000;
-            padding-bottom: 10px;
+            padding-bottom: 8px;
         }
 
         .info-row {
             display: flex;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             align-items: baseline;
         }
 
         .info-label {
             font-weight: normal;
             margin-right: 5px;
+            white-space: nowrap;
         }
 
         .info-value {
             border-bottom: 1px solid #000;
             flex: 1;
-            min-height: 20px;
+            min-height: 18px;
+            padding: 0 5px;
+            font-weight: bold; /* Destacar valor preenchido */
+        }
+        
+        .info-value-empty {
+            border-bottom: 1px solid #000;
+            flex: 1;
+            min-height: 18px;
             padding: 0 5px;
         }
 
@@ -834,13 +888,14 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
             width: 30px;
             display: inline-block;
             text-align: center;
+            min-height: 18px;
         }
 
         .title {
             text-align: center;
-            font-size: 14pt;
+            font-size: 12pt; /* Reduzido */
             font-weight: bold;
-            margin: 25px 0 20px 0;
+            margin: 20px 0 15px 0;
             text-transform: uppercase;
         }
 
@@ -853,17 +908,17 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
         .attendance-table th {
             background-color: #fff;
             border: 1px solid #000;
-            padding: 8px;
+            padding: 6px; /* Reduzido */
             text-align: center;
             font-weight: bold;
-            font-size: 11pt;
+            font-size: 10pt;
         }
 
         .attendance-table td {
             border: 1px solid #000;
-            padding: 8px;
+            padding: 0; /* Remover padding para altura fixa funcionar */
             text-align: center;
-            min-height: 35px;
+            height: 28px; /* Altura fixa para cada linha */
             font-size: 10pt;
         }
 
@@ -893,70 +948,66 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
-            
-            .page {
-                page-break-after: always;
-            }
-
-            .page:last-child {
-                page-break-after: auto;
-            }
         }
-        </style>
-        </head>
-        <body>
-        <!-- PRIMEIRA PÁGINA COM CABEÇALHO COMPLETO -->
-        <div class="page">
-            <div class="header">
-                <img src="${logo}" alt="Brasão da República" class="header-logo">
-                <div class="header-text">
-                    MINISTÉRIO DA DEFESA<br>
-                    EXÉRCITO BRASILEIRO<br>
-                    CMP - 11ª R M<br>
-                    HOSPITAL MILITAR DE ÁREA DE BRASÍLIA
-                </div>
+    </style>
+    </head>
+    <body>
+    
+    <!-- Template FUSEX de página única -->
+    <div class="page">
+        <div class="header">
+            <!-- CORREÇÃO: Usando placeholder {LOGO_BASE64} -->
+            <img src="{LOGO_BASE64}" alt="Brasão da República" class="header-logo">
+            <div class="header-text">
+                MINISTÉRIO DA DEFESA<br>
+                EXÉRCITO BRASILEIRO<br>
+                CMP - 11ª R M<br>
+                HOSPITAL MILITAR DE ÁREA DE BRASÍLIA
             </div>
-    
-            <div class="patient-info">
-                <div class="info-row">
-                    <span class="info-label">NOME COMPLETO:</span>
-                    <span class="info-value">${pacienteNome}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">D/N</span>
-                    <span class="info-date">
-                        <span class="date-separator"></span>/
-                        <span class="date-separator"></span>/
-                        <span class="date-separator" style="width: 60px;"></span>
-                    </span>
-                    <span class="info-label" style="margin-left: 20px;">DIAGNÓSTICO:</span>
-                    <span class="info-value"></span>
-                    <span class="info-label" style="margin-left: 20px;">MÊS:</span>
-                    <span class="info-value" style="max-width: 150px;">${mes}</span>
-                </div>
+        </div>
+
+        <div class="patient-info">
+            <div class="info-row">
+                <span class="info-label">NOME COMPLETO:</span>
+                <!-- CORREÇÃO: Usando placeholder {PACIENTE_NOME} -->
+                <span class="info-value">{PACIENTE_NOME}</span>
             </div>
-    
-            <h1 class="title">FOLHA DE FREQUÊNCIA MULTIDISCIPLINAR</h1>
-    
-            <table class="attendance-table">
-                <thead>
-                    <tr>
-                        <th class="col-data">DATA</th>
-                        <th class="col-horario">HORÁRIO</th>
-                        <th class="col-procedimento">PROCEDIMENTO</th>
-                        <th class="col-assinatura">ASSINATURA DO RESPONSÁVEL</th>
-                        <th class="col-parentesco">PARENTESCO</th>
-                    </tr>
-                </thead>
-                <tbody>
-        ${linhasPaginaInicial}
-                    </tbody>
-                </table>
+            <div class="info-row">
+                <span class="info-label">D/N</span>
+                <span class="info-date">
+                    <span class="date-separator"></span>/
+                    <span class="date-separator"></span>/
+                    <span class="date-separator" style="width: 50px;"></span>
+                </span>
+                <span class="info-label" style="margin-left: 15px;">DIAGNÓSTICO:</span>
+                <span class="info-value-empty"></span>
+                <span class="info-label" style="margin-left: 15px;">MÊS:</span>
+                <!-- CORREÇÃO: Usando placeholders {MES_EXTENSO} e {ANO} -->
+                <span class="info-value" style="flex: 0 1 150px;">{MES_EXTENSO} de {ANO}</span>
             </div>
+        </div>
+
+        <h1 class="title">FOLHA DE FREQUÊNCIA MULTIDISCIPLINAR</h1>
+
+        <table class="attendance-table">
+            <thead>
+                <tr>
+                    <th class="col-data">DATA</th>
+                    <th class="col-horario">HORÁRIO</th>
+                    <th class="col-procedimento">PROCEDIMENTO</th>
+                    <th class="col-assinatura">ASSINATURA DO RESPONSÁVEL</th>
+                    <th class="col-parentesco">PARENTESCO</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- CORREÇÃO: Usando placeholder {LINHAS_TABELA} -->
+                {LINHAS_TABELA}
+            </tbody>
+        </table>
+    </div>
     
-        ${paginasAdicionais}
-        </body>
-        </html>
+    </body>
+    </html>
     """;
     }
 
@@ -1004,9 +1055,22 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
                     java.time.LocalDateTime.now().format(
                             java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
 
-            // Gerar linhas da tabela
-            String linhasTabela = gerarLinhasTabela(item.getQuantidadeAutorizada());
+            // --- INÍCIO DA CORREÇÃO ---
+            // Gerar linhas da tabela baseado no convênio
+
+            boolean isFusex = isFusexConvenio(convenioNome);
+            String linhasTabela;
+
+            if (isFusex) {
+                logger.debug("Gerando linhas da tabela FUSEX (5 colunas) para preencherTemplate");
+                linhasTabela = gerarLinhasTabelaFusex(item.getQuantidadeAutorizada());
+            } else {
+                logger.debug("Gerando linhas da tabela Padrão/CBMDF (3 colunas) para preencherTemplate");
+                linhasTabela = gerarLinhasTabela(item.getQuantidadeAutorizada());
+            }
+
             html = html.replace("{LINHAS_TABELA}", linhasTabela);
+            // --- FIM DA CORREÇÃO ---
 
             logger.debug("Template preenchido com sucesso para: {}", item.getPacienteNome());
             return html;
@@ -1018,8 +1082,7 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
     }
 
     /**
-     * Gera as linhas da tabela para o template FUSEX
-     * Sempre gera 30 linhas conforme especificação
+     * Gera as linhas da tabela para o template PADRÃO ou CBMDF (3 colunas)
      */
     private String gerarLinhasTabela(Integer quantidadeAutorizada) {
         StringBuilder linhas = new StringBuilder();
@@ -1029,119 +1092,57 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
                 ? quantidadeAutorizada
                 : 30;
 
-        // Estrutura simples e limpa para o template FUSEX
+        // Estrutura de 3 colunas
         for (int i = 1; i <= numeroLinhas; i++) {
             linhas.append(String.format(
                     "<tr class=\"sessao-linha\">" +
-                            "<td><strong>%02d</strong></td>" +
-                            "<td>___/___/______</td>" +
-                            "<td>&nbsp;</td>" +
+                            "<td class=\"numero-col\"><strong>%02d</strong></td>" +
+                            "<td class=\"data-col\">___/___/______</td>" +
+                            "<td class=\"assinatura-col\">&nbsp;</td>" +
                             "</tr>%n", i
             ));
         }
 
         return linhas.toString();
-
     }
 
     /**
-     * Gera as linhas de frequência dinamicamente baseado na quantidade autorizada
-     * Distribui as linhas em múltiplas páginas conforme necessário
+     * NOVO MÉTODO
+     * Gera as linhas da tabela para o template FUSEX (5 colunas)
      */
-    private String gerarLinhasFusexDinamicas(Integer quantidadeAutorizada) {
-        int totalLinhas = (quantidadeAutorizada != null && quantidadeAutorizada > 0)
-                ? quantidadeAutorizada
-                : 30; // Padrão de 30 sessões se não especificado
-
-        logger.debug("Gerando {} linhas para ficha FUSEX", totalLinhas);
-
-        // Configuração de linhas por página
-        final int LINHAS_PAGINA_INICIAL = 5;  // Primeira página tem menos espaço (cabeçalho completo)
-        final int LINHAS_PAGINAS_SEGUINTES = 10; // Páginas seguintes têm mais espaço
-
-        StringBuilder resultado = new StringBuilder();
-
-        // Gerar linhas da página inicial (máximo 5)
-        int linhasPaginaInicial = Math.min(totalLinhas, LINHAS_PAGINA_INICIAL);
-        StringBuilder linhasInicial = new StringBuilder();
-        for (int i = 0; i < linhasPaginaInicial; i++) {
-            linhasInicial.append(gerarLinhaVazia());
-        }
-
-        // Calcular linhas restantes
-        int linhasRestantes = totalLinhas - linhasPaginaInicial;
-
-        // Gerar páginas adicionais se necessário
-        StringBuilder paginasAdicionais = new StringBuilder();
-        if (linhasRestantes > 0) {
-            int numeroPagina = 2;
-            while (linhasRestantes > 0) {
-                int linhasNestaPagina = Math.min(linhasRestantes, LINHAS_PAGINAS_SEGUINTES);
-                paginasAdicionais.append(gerarPaginaAdicionalFusex(linhasNestaPagina));
-                linhasRestantes -= linhasNestaPagina;
-                numeroPagina++;
-            }
-        }
-
-        // Retornar Map com as partes do template
-        // Nota: Este método será chamado de forma diferente
-        return linhasInicial.toString() + "|||SEPARADOR|||" + paginasAdicionais.toString();
-    }
-
-    /**
-     * Gera uma linha vazia da tabela de frequência
-     */
-    private String gerarLinhaVazia() {
-        return """
-                <tr>
-                    <td>&nbsp;</td>
-                    <td>&nbsp;</td>
-                    <td>&nbsp;</td>
-                    <td>&nbsp;</td>
-                    <td>&nbsp;</td>
-                </tr>
-""";
-    }
-
-    /**
-     * Gera uma página adicional com cabeçalho simplificado e tabela
-     */
-    private String gerarPaginaAdicionalFusex(int numeroLinhas) {
+    private String gerarLinhasTabelaFusex(Integer quantidadeAutorizada) {
         StringBuilder linhas = new StringBuilder();
-        for (int i = 0; i < numeroLinhas; i++) {
-            linhas.append(gerarLinhaVazia());
+
+        // Usar quantidade autorizada ou padrão de 30 linhas se não informado
+        int numeroLinhas = quantidadeAutorizada != null && quantidadeAutorizada > 0
+                ? quantidadeAutorizada
+                : 30;
+
+        logger.debug("Gerando {} linhas FUSEX (5 colunas)", numeroLinhas);
+
+        // Estrutura de 5 colunas vazias
+        for (int i = 1; i <= numeroLinhas; i++) {
+            linhas.append(String.format(
+                    "<tr>" +
+                            "<td>&nbsp;</td>" + // DATA
+                            "<td>&nbsp;</td>" + // HORÁRIO
+                            "<td>&nbsp;</td>" + // PROCEDIMENTO
+                            "<td>&nbsp;</td>" + // ASSINATURA
+                            "<td>&nbsp;</td>" + // PARENTESCO
+                            "</tr>%n"
+            ));
         }
 
-        return String.format("""
-    <!-- PÁGINA ADICIONAL -->
-    <div class="page">
-        <div class="header">
-            <img src="${logo}" alt="Brasão da República" class="header-logo">
-            <div class="header-text">
-                MINISTÉRIO DA DEFESA<br>
-                EXÉRCITO BRASILEIRO<br>
-                CMP - 11ª R M<br>
-                HOSPITAL MILITAR DE ÁREA DE BRASÍLIA
-            </div>
-        </div>
-
-        <table class="attendance-table" style="margin-top: 30px;">
-            <thead>
-                <tr>
-                    <th class="col-data">DATA</th>
-                    <th class="col-horario">HORÁRIO</th>
-                    <th class="col-procedimento">PROCEDIMENTO</th>
-                    <th class="col-assinatura">ASSINATURA DO RESPONSÁVEL</th>
-                    <th class="col-parentesco">PARENTESCO</th>
-                </tr>
-            </thead>
-            <tbody>
-%s
-            </tbody>
-        </table>
-    </div>
-""", linhas.toString());
+        return linhas.toString();
     }
+
+
+    /* * MÉTODOS REMOVIDOS (Estavam quebrados e não eram chamados):
+     * - gerarLinhasFusexDinamicas
+     * - gerarLinhaVazia
+     * - gerarPaginaAdicionalFusex
+     */
+
 
     private String carregarTemplate(String templateNome) {
         try {
@@ -1150,12 +1151,19 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
                 return null;
             }
 
-            String caminhoTemplate = templatesPath + "/" + templateNome + ".html";
-            Resource resource = new ClassPathResource(caminhoTemplate);
+            // CORREÇÃO: Garantir que o caminho não tenha barras duplicadas
+            String caminhoTemplate = templatesPath.endsWith("/") ? templatesPath : templatesPath + "/";
+            caminhoTemplate += templateNome.endsWith(".html") ? templateNome : templateNome + ".html";
+
+            logger.debug("Tentando carregar template customizado de: {}", caminhoTemplate);
+
+            Resource resource = new ClassPathResource(caminhoTemplate.replace("classpath:", ""));
 
             if (resource.exists()) {
                 try (InputStream inputStream = resource.getInputStream()) {
-                    return new String(inputStream.readAllBytes(), "UTF-8");
+                    String templateContent = new String(inputStream.readAllBytes(), "UTF-8");
+                    logger.info("Template customizado '{}' carregado com sucesso.", templateNome);
+                    return templateContent;
                 }
             } else {
                 logger.warn("Template não encontrado: {}", caminhoTemplate);
@@ -1169,24 +1177,26 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
     }
 
     private String obterLogoBase64() {
-       return obterLogoBase64(null);
+        return obterLogoBase64(null);
     }
 
     private String obterLogoBase64(String convenioNome) {
         // Determinar qual logo usar
-        String caminhoLogo; // Padrão
-        String cacheKey = "logo_principal"; // Cache padrão
+        String caminhoLogo;
+        String cacheKey;
 
-        if ("Fusex".equalsIgnoreCase(convenioNome)) {
+        // CORREÇÃO: Usar os métodos isFusexConvenio e isCbmdfConvenio para consistência
+        if (isFusexConvenio(convenioNome)) {
             caminhoLogo = "classpath:static/images/logo-fusex.jpeg";
             cacheKey = "logo_fusex";
             logger.debug("✅ Usando logo específica do FUSEX");
-        }else if ("Cbmdf".equalsIgnoreCase(convenioNome)) {
+        } else if (isCbmdfConvenio(convenioNome)) {
             caminhoLogo = "classpath:static/images/logo-cbmdf.jpg";
             cacheKey = "logo_cbmdf";
             logger.debug("✅ Usando logo específica do CBMDF");
         } else {
             caminhoLogo = logoPath;
+            cacheKey = "logo_principal";
             logger.debug("Usando logo padrão para convênio: {}", convenioNome);
         }
 
@@ -1197,9 +1207,17 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
                 logger.warn("Erro ao carregar logo '{}', usando padrão: {}", caminhoLogo, e.getMessage());
                 // Fallback para logo padrão
                 try {
-                    return converterImagemParaBase64(logoPath);
+                    // Garantir que a logo padrão seja carregada do cache se já existir
+                    return logoCache.computeIfAbsent("logo_principal", k2 -> {
+                        try {
+                            return converterImagemParaBase64(logoPath);
+                        } catch (Exception fallbackError) {
+                            logger.error("Erro ao carregar logo padrão como fallback: {}", fallbackError.getMessage());
+                            return criarImagemPlaceholder();
+                        }
+                    });
                 } catch (Exception fallbackError) {
-                    logger.error("Erro até na logo padrão: {}", fallbackError.getMessage());
+                    logger.error("Erro fatal ao carregar logo padrão: {}", fallbackError.getMessage());
                     return criarImagemPlaceholder();
                 }
             }
@@ -1220,6 +1238,7 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
                         imageBytes = inputStream.readAllBytes();
                     }
                 } else {
+                    logger.warn("Imagem não encontrada no classpath: {}. Usando placeholder.", path);
                     throw new IOException("Imagem não encontrada no classpath: " + path);
                 }
             } else {
@@ -1233,8 +1252,9 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
             return String.format("data:%s;base64,%s", mimeType, base64);
 
         } catch (Exception e) {
-            logger.error("Erro ao converter imagem para base64: {}", e.getMessage());
-            throw new IOException("Erro na conversão da imagem", e);
+            logger.error("Erro ao converter imagem '{}': {}", caminhoImagem, e.getMessage());
+            // Lançar exceção para que o chamador possa tratar (usando placeholder)
+            throw new IOException("Erro na conversão da imagem: " + caminhoImagem, e);
         }
     }
 
