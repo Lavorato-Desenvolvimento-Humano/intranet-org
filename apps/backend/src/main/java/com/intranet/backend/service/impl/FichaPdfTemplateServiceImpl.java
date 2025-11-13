@@ -798,250 +798,191 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
         logger.info("Criando template FUSEX - Folha de Frequência Multidisciplinar");
 
         return """
-    <!DOCTYPE html>
-    <html lang="pt-BR">
-    <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Folha de Frequência Multidisciplinar - FUSEX</title>
-    <style>
-        @page {
-            /* --- CORREÇÃO: Definido para landscape e ajustado margens --- */
-            size: A4 landscape;
-            margin: 10mm 15mm;
-        }
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Folha de Frequência Multidisciplinar - FUSEX</title>
+<style>
+    @page {
+        size: A4;
+        margin: 15mm 10mm 15mm 10mm;
+    }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
 
-        body {
-            font-family: 'Arial', sans-serif;
-            font-size: 10pt; /* Reduzido um pouco para caber em landscape */
-            color: #000;
-            line-height: 1.3;
-        }
-        
-        /* --- ADICIONADO: Contêiner para o cabeçalho fixo --- */
-        .header-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            /* Alinha com as margens da página */
-            padding-top: 10mm;
-            padding-left: 15mm;
-            padding-right: 15mm;
-            background: #fff; /* Evita que o texto da tabela passe por baixo */
-            z-index: 10;
-        }
-        
-        /* --- ADICIONADO: Contêiner para o conteúdo que flui --- */
-        .content-container {
-            /* Empurra o conteúdo para baixo do cabeçalho fixo */
-            /* Este valor pode precisar de ajuste fino */
-            padding-top: 4cm; 
-        }
+    body {
+        font-family: 'Arial', sans-serif;
+        font-size: 11pt;
+        color: #000;
+        line-height: 1.4;
+    }
 
-        .header {
-            text-align: center;
-            margin-bottom: 15px;
-        }
+    .page {
+        page-break-after: always;
+    }
 
-        .header-logo {
-            width: 55px; /* Reduzido um pouco */
-            height: auto;
-            max-height: 55px;
-            margin: 0 auto 8px;
-            display: block;
-            object-fit: contain;
-        }
+    .page:last-child {
+        page-break-after: auto;
+    }
 
-        .header-text {
-            font-size: 9pt; /* Reduzido um pouco */
-            font-weight: bold;
-            line-height: 1.3;
-        }
+    /* Cabeçalho que aparece em todas as páginas */
+    .fusex-header {
+        text-align: center;
+        margin-bottom: 10px;
+    }
 
-        .patient-info {
-            margin: 15px 0;
-            border-bottom: 1px solid #000;
-            padding-bottom: 8px;
-        }
+    .fusex-header img {
+        width: 60px;
+        height: 60px;
+        margin: 0 auto 8px;
+        display: block;
+    }
 
-        .info-row {
-            display: flex;
-            margin-bottom: 6px;
-            align-items: baseline;
-        }
+    .fusex-header-text {
+        font-size: 10pt;
+        font-weight: bold;
+        line-height: 1.3;
+        margin-bottom: 0;
+    }
 
-        .info-label {
-            font-weight: normal;
-            margin-right: 5px;
-            white-space: nowrap;
-        }
+    /* Informações do paciente - aparece SOMENTE na primeira página */
+    .patient-info {
+        margin: 10px 0 15px 0;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #000;
+    }
 
-        .info-value {
-            border-bottom: 1px solid #000;
-            flex: 1;
-            min-height: 18px;
-            padding: 0 5px;
-            font-weight: bold; /* Destacar valor preenchido */
-        }
-        
-        .info-value-empty {
-            border-bottom: 1px solid #000;
-            flex: 1;
-            min-height: 18px;
-            padding: 0 5px;
-        }
+    .info-row {
+        display: flex;
+        margin-bottom: 5px;
+        align-items: baseline;
+        font-size: 10pt;
+    }
 
-        .info-date {
-            display: inline-flex;
-            align-items: baseline;
-            gap: 5px;
-        }
+    .info-label {
+        font-weight: normal;
+        margin-right: 5px;
+        white-space: nowrap;
+    }
 
-        .date-separator {
-            border-bottom: 1px solid #000;
-            width: 30px;
-            display: inline-block;
-            text-align: center;
-            min-height: 18px;
-        }
+    .info-value {
+        border-bottom: 1px solid #000;
+        flex: 1;
+        min-height: 18px;
+        padding: 0 5px;
+    }
 
-        .title {
-            text-align: center;
-            font-size: 12pt; /* Reduzido */
-            font-weight: bold;
-            margin: 20px 0 15px 0;
-            text-transform: uppercase;
-        }
+    .info-date {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 5px;
+    }
 
-        .attendance-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-            /* --- ADICIONADO: Permite que a tabela quebre entre páginas --- */
-            page-break-inside: auto;
-        }
+    .date-separator {
+        border-bottom: 1px solid #000;
+        width: 30px;
+        display: inline-block;
+        text-align: center;
+    }
 
-        .attendance-table th {
-            background-color: #fff;
-            border: 1px solid #000;
-            padding: 6px; /* Reduzido */
-            text-align: center;
-            font-weight: bold;
-            font-size: 10pt;
-        }
+    /* Título principal */
+    .title {
+        text-align: center;
+        font-size: 14pt;
+        font-weight: bold;
+        margin: 15px 0 10px 0;
+        text-transform: uppercase;
+    }
 
-        .attendance-table td {
-            border: 1px solid #000;
-            padding: 0; /* Remover padding para altura fixa funcionar */
-            text-align: center;
-            height: 28px; /* Altura fixa para cada linha */
-            font-size: 10pt;
-        }
-        
-        /* --- ADICIONADO: Repete o header da tabela em novas páginas --- */
-        .attendance-table thead {
-            display: table-header-group;
-        }
-        
-        /* --- ADICIONADO: Tenta manter as linhas intactas ao quebrar a página --- */
-        .attendance-table tbody tr {
-            page-break-inside: avoid;
-        }
+    /* Tabela de atendimentos */
+    .attendance-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+    }
 
-        .col-data {
-            width: 12%;
-        }
+    .attendance-table th {
+        background-color: #fff;
+        border: 1px solid #000;
+        padding: 8px;
+        text-align: center;
+        font-weight: bold;
+        font-size: 11pt;
+    }
 
-        .col-horario {
-            width: 12%;
-        }
+    .attendance-table td {
+        border: 1px solid #000;
+        padding: 8px;
+        text-align: center;
+        min-height: 35px;
+        font-size: 10pt;
+    }
 
-        .col-procedimento {
-            width: 30%;
-        }
+    .col-data {
+        width: 12%;
+    }
 
-        .col-assinatura {
-            width: 33%;
-        }
+    .col-horario {
+        width: 12%;
+    }
 
-        .col-parentesco {
-            width: 13%;
-        }
+    .col-procedimento {
+        width: 30%;
+    }
 
-        /* Estilos para impressão */
-        @media print {
-            body {
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-            }
-            
-            /* --- ADICIONADO: Reforça as regras de cabeçalho para impressão --- */
-            .header-container {
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                padding-top: 10mm;
-                padding-left: 15mm;
-                padding-right: 15mm;
-                background: #fff;
-                z-index: 10;
-            }
-            
-            .content-container {
-                 padding-top: 4cm; 
-            }
-        }
-    </style>
-    </head>
-    <body>
-    
-    <!-- CORREÇÃO: Cabeçalho agora dentro de um contêiner fixo -->
-    <div class="header-container">
-        <div class="header">
-            <!-- CORREÇÃO: Usando placeholder {LOGO_BASE64} -->
-            <img src="{LOGO_BASE64}" alt="Brasão da República" class="header-logo">
-            <div class="header-text">
+    .col-assinatura {
+        width: 33%;
+    }
+
+    .col-parentesco {
+        width: 13%;
+    }
+</style>
+</head>
+<body>
+    <!-- PRIMEIRA PÁGINA -->
+    <div class="page">
+        <!-- Cabeçalho com logo e identificação -->
+        <div class="fusex-header">
+            <img src="{LOGO_BASE64}" alt="Brasão da República">
+            <div class="fusex-header-text">
                 MINISTÉRIO DA DEFESA<br>
                 EXÉRCITO BRASILEIRO<br>
                 CMP - 11ª R M<br>
                 HOSPITAL MILITAR DE ÁREA DE BRASÍLIA
             </div>
         </div>
-    </div>
 
-    <!-- CORREÇÃO: Conteúdo principal movido para seu próprio contêiner -->
-    <div class="content-container">
+        <!-- Informações do paciente - SOMENTE na primeira página -->
         <div class="patient-info">
             <div class="info-row">
                 <span class="info-label">NOME COMPLETO:</span>
-                <!-- CORREÇÃO: Usando placeholder {PACIENTE_NOME} -->
                 <span class="info-value">{PACIENTE_NOME}</span>
             </div>
             <div class="info-row">
                 <span class="info-label">D/N</span>
-                <span class="info-date">
-                    <span class="date-separator"></span>/
-                    <span class="date-separator"></span>/
-                    <span class="date-separator" style="width: 50px;"></span>
-                </span>
-                <span class="info-label" style="margin-left: 15px;">DIAGNÓSTICO:</span>
-                <span class="info-value-empty"></span>
-                <span class="info-label" style="margin-left: 15px;">MÊS:</span>
-                <!-- CORREÇÃO: Usando placeholders {MES_EXTENSO} e {ANO} -->
-                <span class="info-value" style="flex: 0 1 150px;">{MES_EXTENSO} de {ANO}</span>
+                <span class="date-separator"></span>
+                <span>/</span>
+                <span class="date-separator"></span>
+                <span>/</span>
+                <span class="date-separator"></span>
+                <span class="info-label" style="margin-left: 20px;">DIAGNÓSTICO:</span>
+                <span class="info-value">{ESPECIALIDADE}</span>
+                <span class="info-label" style="margin-left: 20px;">MÊS:</span>
+                <span class="info-value">{MES_EXTENSO} de {ANO}</span>
             </div>
         </div>
 
-        <h1 class="title">FOLHA DE FREQUÊNCIA MULTIDISCIPLINAR</h1>
+        <!-- Título principal -->
+        <div class="title">FOLHA DE FREQUÊNCIA MULTIDISCIPLINAR</div>
 
+        <!-- Tabela de frequência -->
         <table class="attendance-table">
             <thead>
                 <tr>
@@ -1053,15 +994,13 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
                 </tr>
             </thead>
             <tbody>
-                <!-- CORREÇÃO: Usando placeholder {LINHAS_TABELA} -->
                 {LINHAS_TABELA}
             </tbody>
         </table>
-    </div> <!-- Fim do content-container -->
-    
-    </body>
-    </html>
-    """;
+    </div>
+</body>
+</html>
+""";
     }
 
     private String preencherTemplate(String template, FichaPdfItemDto item) {
@@ -1159,43 +1098,99 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
         return linhas.toString();
     }
 
-    /**
-     * NOVO MÉTODO
-     * Gera as linhas da tabela para o template FUSEX (5 colunas)
-     */
     private String gerarLinhasTabelaFusex(Integer quantidadeAutorizada) {
-        StringBuilder linhas = new StringBuilder();
-
-        // Usar quantidade autorizada ou padrão de 30 linhas se não informado
-        int numeroLinhas = quantidadeAutorizada != null && quantidadeAutorizada > 0
+        int totalLinhas = (quantidadeAutorizada != null && quantidadeAutorizada > 0)
                 ? quantidadeAutorizada
                 : 30;
 
-        logger.debug("Gerando {} linhas FUSEX (5 colunas)", numeroLinhas);
+        logger.debug("Gerando {} linhas FUSEX (5 colunas) com paginação automática", totalLinhas);
 
-        // Estrutura de 5 colunas vazias
-        for (int i = 1; i <= numeroLinhas; i++) {
-            linhas.append(String.format(
-                    "<tr>" +
-                            "<td>&nbsp;</td>" + // DATA
-                            "<td>&nbsp;</td>" + // HORÁRIO
-                            "<td>&nbsp;</td>" + // PROCEDIMENTO
-                            "<td>&nbsp;</td>" + // ASSINATURA
-                            "<td>&nbsp;</td>" + // PARENTESCO
-                            "</tr>%n"
-            ));
+        // Configuração de linhas por página
+        final int LINHAS_PRIMEIRA_PAGINA = 5;  // Primeira página tem menos espaço
+        final int LINHAS_PAGINAS_SEGUINTES = 10; // Páginas seguintes têm mais espaço
+
+        StringBuilder html = new StringBuilder();
+        int linhasGeradas = 0;
+
+        // ========================================
+        // PRIMEIRA PÁGINA - Gerar até 5 linhas
+        // ========================================
+        int linhasNestaPagina = Math.min(totalLinhas, LINHAS_PRIMEIRA_PAGINA);
+
+        for (int i = 0; i < linhasNestaPagina; i++) {
+            html.append("""
+                <tr>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                </tr>
+""");
+            linhasGeradas++;
         }
 
-        return linhas.toString();
+        // ========================================
+        // PÁGINAS ADICIONAIS - Se necessário
+        // ========================================
+        while (linhasGeradas < totalLinhas) {
+            // Fechar a página anterior
+            html.append("""
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- PÁGINA ADICIONAL -->
+    <div class="page">
+        <!-- Cabeçalho com logo - REPETIDO EM TODAS AS PÁGINAS -->
+        <div class="fusex-header">
+            <img src="{LOGO_BASE64}" alt="Brasão da República">
+            <div class="fusex-header-text">
+                MINISTÉRIO DA DEFESA<br>
+                EXÉRCITO BRASILEIRO<br>
+                CMP - 11ª R M<br>
+                HOSPITAL MILITAR DE ÁREA DE BRASÍLIA
+            </div>
+        </div>
+
+        <!-- Tabela de frequência (SEM informações do paciente em páginas adicionais) -->
+        <table class="attendance-table" style="margin-top: 20px;">
+            <thead>
+                <tr>
+                    <th class="col-data">DATA</th>
+                    <th class="col-horario">HORÁRIO</th>
+                    <th class="col-procedimento">PROCEDIMENTO</th>
+                    <th class="col-assinatura">ASSINATURA DO RESPONSÁVEL</th>
+                    <th class="col-parentesco">PARENTESCO</th>
+                </tr>
+            </thead>
+            <tbody>
+""");
+
+            // Gerar linhas para esta página adicional
+            int linhasRestantes = totalLinhas - linhasGeradas;
+            linhasNestaPagina = Math.min(linhasRestantes, LINHAS_PAGINAS_SEGUINTES);
+
+            for (int i = 0; i < linhasNestaPagina; i++) {
+                html.append("""
+                <tr>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                </tr>
+""");
+                linhasGeradas++;
+            }
+        }
+
+        logger.debug("Total de {} linhas FUSEX geradas em {} página(s)",
+                linhasGeradas,
+                (linhasGeradas <= LINHAS_PRIMEIRA_PAGINA) ? 1 : (1 + (int)Math.ceil((linhasGeradas - LINHAS_PRIMEIRA_PAGINA) / (double)LINHAS_PAGINAS_SEGUINTES)));
+
+        return html.toString();
     }
-
-
-    /* * MÉTODOS REMOVIDOS (Estavam quebrados e não eram chamados):
-     * - gerarLinhasFusexDinamicas
-     * - gerarLinhaVazia
-     * - gerarPaginaAdicionalFusex
-     */
-
 
     private String carregarTemplate(String templateNome) {
         try {
@@ -1240,7 +1235,7 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
 
         // CORREÇÃO: Usar os métodos isFusexConvenio e isCbmdfConvenio para consistência
         if (isFusexConvenio(convenioNome)) {
-            caminhoLogo = "classpath:static/images/logo-fusex.jpeg";
+            caminhoLogo = "classpath:static/images/logo-fusex.png";
             cacheKey = "logo_fusex";
             logger.debug("✅ Usando logo específica do FUSEX");
         } else if (isCbmdfConvenio(convenioNome)) {
