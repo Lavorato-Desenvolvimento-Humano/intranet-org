@@ -783,17 +783,6 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
     """;
     }
 
-    /**
-     * Template específico para FUSEX - Folha de Frequência Multidisciplinar
-     * Baseado no documento oficial do Hospital Militar de Área de Brasília
-     * Com geração dinâmica de linhas baseada na quantidade autorizada
-     *
-     * CORREÇÃO:
-     * 1. Definido @page size para A4 landscape
-     * 2. Removida lógica quebrada de paginação e variáveis Java (${...})
-     * 3. Adicionados placeholders corretos: {LOGO_BASE64}, {PACIENTE_NOME}, {MES_EXTENSO}, {ANO}
-     * 4. Adicionado placeholder {LINHAS_TABELA} para a tabela
-     */
     private String criarTemplateFusex() {
         logger.info("Criando template FUSEX - Folha de Frequência Multidisciplinar");
 
@@ -806,7 +795,7 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
 <title>Folha de Frequência Multidisciplinar - FUSEX</title>
 <style>
     @page {
-        size: A4;
+        size: A4 landscape;  
         margin: 15mm 10mm 15mm 10mm;
     }
 
@@ -1001,7 +990,7 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
 </body>
 </html>
 """;
-    }
+}
 
     private String preencherTemplate(String template, FichaPdfItemDto item) {
         logger.debug("Preenchendo template para: {}", item.getPacienteNome());
