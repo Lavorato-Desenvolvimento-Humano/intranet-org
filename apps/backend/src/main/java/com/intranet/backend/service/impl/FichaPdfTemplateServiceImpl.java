@@ -818,6 +818,18 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
     .page:last-child {
         page-break-after: auto;
     }
+    
+    .fusex-id {
+        text-align: center;
+        font-size: 11pt;
+        font-weight: bold;
+        margin-top: 10px;
+        padding: 5px 10px;
+        background-color: #f0f0f0;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        display: inline-block;
+    }
 
     /* Cabeçalho que aparece em todas as páginas */
     .fusex-header {
@@ -943,6 +955,10 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
                 EXÉRCITO BRASILEIRO<br>
                 CMP - 11ª R M<br>
                 HOSPITAL MILITAR DE ÁREA DE BRASÍLIA
+            </div>
+            
+            <div class="fusex-id">
+                ID: {NUMERO_IDENTIFICACAO}
             </div>
         </div>
 
