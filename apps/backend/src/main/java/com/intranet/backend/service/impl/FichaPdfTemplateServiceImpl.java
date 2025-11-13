@@ -843,7 +843,6 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
     .patient-info {
         margin: 10px 0 15px 0;
         padding-bottom: 8px;
-        border-bottom: 1px solid #000;
     }
 
     .info-row {
