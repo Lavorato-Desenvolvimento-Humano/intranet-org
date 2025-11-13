@@ -961,7 +961,7 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
                 <span>/</span>
                 <span class="date-separator"></span>
                 <span class="info-label" style="margin-left: 20px;">DIAGNÓSTICO:</span>
-                <span class="info-value">{ESPECIALIDADE}</span>
+                <span class="info-value"></span>
                 <span class="info-label" style="margin-left: 20px;">MÊS:</span>
                 <span class="info-value">{MES_EXTENSO} de {ANO}</span>
             </div>
@@ -1095,7 +1095,7 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
         logger.debug("Gerando {} linhas FUSEX (5 colunas) com paginação automática", totalLinhas);
 
         // Configuração de linhas por página
-        final int LINHAS_PRIMEIRA_PAGINA = 5;  // Primeira página tem menos espaço
+        final int LINHAS_PRIMEIRA_PAGINA = 6;  // Primeira página tem menos espaço
         final int LINHAS_PAGINAS_SEGUINTES = 10; // Páginas seguintes têm mais espaço
 
         StringBuilder html = new StringBuilder();
