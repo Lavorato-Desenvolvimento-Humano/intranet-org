@@ -278,10 +278,6 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
                 : item.getConvenioNome();
 
         try {
-            // Logo específica baseada no convênio
-            String logoBase64 = obterLogoBase64(convenioNome);
-            html = html.replace("{LOGO_BASE64}", logoBase64);
-
             // Resto do preenchimento
             html = html.replace("{NUMERO_IDENTIFICACAO}",
                     StringUtils.hasText(item.getNumeroIdentificacao()) ? item.getNumeroIdentificacao() : "N/A");
@@ -330,6 +326,9 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
                 linhasTabela = gerarLinhasTabela(item.getQuantidadeAutorizada());
             }
             html = html.replace("{LINHAS_TABELA}", linhasTabela);
+
+            String logoBase64 = obterLogoBase64(convenioNome);
+            html = html.replace("{LOGO_BASE64}", logoBase64);
             // --- FIM DA CORREÇÃO ---
 
             return html;
@@ -885,7 +884,7 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
         text-align: center;
         font-size: 14pt;
         font-weight: bold;
-        margin: 15px 0 10px 0;
+        margin: 25px 0 10px 0;
         text-transform: uppercase;
     }
 
@@ -1010,8 +1009,13 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
             html = html.replace("{PACIENTE_NOME}",
                     StringUtils.hasText(item.getPacienteNome()) ? item.getPacienteNome() : "Paciente não informado");
 
-            html = html.replace("{ESPECIALIDADE}",
-                    StringUtils.hasText(item.getEspecialidade()) ? item.getEspecialidade() : "Não informado");
+            boolean isFusex = isFusexConvenio(convenioNome);
+            if (isFusex) {
+                html = html.replace("{ESPECIALIDADE}", "");
+            } else {
+                html = html.replace("{ESPECIALIDADE}",
+                        StringUtils.hasText(item.getEspecialidade()) ? item.getEspecialidade() : "Não informado");
+            }
 
             html = html.replace("{MES_EXTENSO}",
                     StringUtils.hasText(item.getMesExtenso()) ? item.getMesExtenso() : obterMesExtenso(item.getMes()));
@@ -1036,10 +1040,6 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
                     java.time.LocalDateTime.now().format(
                             java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
 
-            // --- INÍCIO DA CORREÇÃO ---
-            // Gerar linhas da tabela baseado no convênio
-
-            boolean isFusex = isFusexConvenio(convenioNome);
             String linhasTabela;
 
             if (isFusex) {
