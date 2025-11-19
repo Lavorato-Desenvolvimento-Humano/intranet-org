@@ -1,5 +1,6 @@
 // src/services/admin.ts
 import api from "./api";
+import logger from "@/utils/logger";
 import { User } from "./auth";
 
 /**
@@ -14,7 +15,7 @@ const adminService = {
       const response = await api.get<User[]>("/api/users");
       return response.data;
     } catch (error) {
-      console.error("Erro ao buscar todos os usuários:", error);
+      logger.error("Erro ao buscar todos os usuários:", error);
       throw error;
     }
   },
@@ -29,7 +30,7 @@ const adminService = {
       );
       return response.data;
     } catch (error) {
-      console.error(
+      logger.error(
         `Erro ao adicionar role ${roleName} ao usuário ${userId}:`,
         error
       );
@@ -50,7 +51,7 @@ const adminService = {
       );
       return response.data;
     } catch (error) {
-      console.error(
+      logger.error(
         `Erro ao remover role ${roleName} do usuário ${userId}:`,
         error
       );
@@ -68,7 +69,7 @@ const adminService = {
       );
       return response.data;
     } catch (error) {
-      console.error(
+      logger.error(
         `Erro ao ${active ? "ativar" : "desativar"} usuário ${userId}:`,
         error
       );
@@ -89,7 +90,7 @@ const adminService = {
       );
       return response.data;
     } catch (error) {
-      console.error(
+      logger.error(
         `Erro ao ${approved ? "aprovar" : "reprovar"} usuário ${userId}:`,
         error
       );
