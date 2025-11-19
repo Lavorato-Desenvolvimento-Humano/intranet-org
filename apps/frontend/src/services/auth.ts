@@ -1,5 +1,6 @@
 // src/services/auth.ts
 import api from "./api";
+import logger from "@/utils/logger";
 
 export interface LoginCredentials {
   email: string;
@@ -48,14 +49,14 @@ export interface NewPasswordRequest {
 // Função de login usando o endpoint /auth/login
 export const login = async (credentials: LoginCredentials): Promise<User> => {
   try {
-    console.log("Tentando login com credenciais:", credentials.email);
+    logger.info("Tentando login com credenciais:", credentials.email);
     const response = await api.post<AuthResponse>(
       "/api/auth/login",
       credentials
     );
     return processAuthResponse(response.data);
   } catch (error) {
-    console.error("Erro no login:", error);
+    logger.error("Erro no login:", error);
     throw error;
   }
 };
@@ -101,7 +102,7 @@ export const requestPasswordReset = async (
 
     return response.data.message;
   } catch (error) {
-    console.error("Erro ao solicitar reset de senha:", error);
+    logger.error("Erro ao solicitar reset de senha:", error);
     throw error;
   }
 };
@@ -115,7 +116,7 @@ export const verifyResetCode = async (
       params: { email, code },
     });
   } catch (error) {
-    console.error("Erro ao verificar código:", error);
+    logger.error("Erro ao verificar código:", error);
     throw error;
   }
 };
@@ -126,7 +127,7 @@ export const resetPassword = async (
   try {
     await api.post("/api/auth/reset-password/complete", data);
   } catch (error) {
-    console.error("Erro ao redefinir senha:", error);
+    logger.error("Erro ao redefinir senha:", error);
     throw error;
   }
 };
@@ -152,24 +153,31 @@ export const getCurrentUser = (): User | null => {
 // Função para autenticar com GitHub após redirect
 export const githubLogin = async (code: string): Promise<User> => {
   try {
-    console.log("Autenticando com GitHub, código:", code);
+    logger.info("Autenticando com GitHub, código:", code);
     const response = await api.get<AuthResponse>(
       `/api/auth/github/callback?code=${code}`
     );
     return processAuthResponse(response.data);
-  } catch (error: any) {
+  } catch (error) {
     // Tratar especificamente o erro de usuário não autorizado
     if (
+      error &&
+      typeof error === 'object' &&
+      'response' in error &&
       error.response &&
+      typeof error.response === 'object' &&
+      'data' in error.response &&
       error.response.data &&
-      error.response.data.message &&
+      typeof error.response.data === 'object' &&
+      'message' in error.response.data &&
+      typeof error.response.data.message === 'string' &&
       error.response.data.message.includes("não autorizado")
     ) {
       throw new Error(
         "Apenas os usuários GitHub 'ViniciusG03' e 'JooWilliams' estão autorizados a usar este método de login."
       );
     }
-    console.error("Erro na autenticação com GitHub:", error);
+    logger.error("Erro na autenticação com GitHub:", error);
     throw error;
   }
 };
@@ -183,7 +191,7 @@ export const initiateGithubLogin = async (): Promise<string> => {
     );
     return response.data.authUrl;
   } catch (error) {
-    console.error("Erro ao iniciar login GitHub:", error);
+    logger.error("Erro ao iniciar login GitHub:", error);
     throw error;
   }
 };
@@ -198,7 +206,7 @@ export const verifyEmail = async (
       params: { email, code },
     });
   } catch (error) {
-    console.error("Erro ao verificar email:", error);
+    logger.error("Erro ao verificar email:", error);
     throw error;
   }
 };
@@ -213,7 +221,7 @@ export const resendVerificationEmail = async (
     });
     return response.data.message;
   } catch (error) {
-    console.error("Erro ao reenviar email de verificação:", error);
+    logger.error("Erro ao reenviar email de verificação:", error);
     throw error;
   }
 };

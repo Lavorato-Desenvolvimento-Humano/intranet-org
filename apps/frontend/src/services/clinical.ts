@@ -20,6 +20,7 @@ import {
   StatusChangeRequest,
   PageResponse,
   ClinicalStats,
+  FichaStats,
   StatusHistorySummaryDto,
   StatusStatsDto,
   StatusInitializeResponse,
@@ -103,7 +104,7 @@ export const pacienteService = {
     return response.data;
   },
 
-  async getPacientesStats(): Promise<any> {
+  async getPacientesStats(): Promise<ClinicalStats> {
     const response = await api.get("/api/pacientes/stats");
     return response.data;
   },
@@ -336,7 +337,7 @@ export const fichaService = {
     return response.data;
   },
 
-  async getFichasStatsDetalhadas(): Promise<any> {
+  async getFichasStatsDetalhadas(): Promise<FichaStats> {
     const response = await api.get("/api/fichas/stats");
     return response.data;
   },
