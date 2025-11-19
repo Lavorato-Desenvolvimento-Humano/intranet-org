@@ -1,5 +1,6 @@
 // src/services/user.ts
 import api from "./api";
+import logger from "@/utils/logger";
 import { User } from "./auth";
 
 export type UserDto = User;
@@ -16,7 +17,7 @@ const userService = {
       const response = await api.get<UserDto[]>("/api/users");
       return response.data;
     } catch (error) {
-      console.error("Erro ao buscar usuários:", error);
+      logger.error("Erro ao buscar usuários:", error);
       throw error;
     }
   },
@@ -29,7 +30,7 @@ const userService = {
       const response = await api.get<UserDto>(`/api/users/${id}`);
       return response.data;
     } catch (error) {
-      console.error(`Erro ao buscar usuário ${id}:`, error);
+      logger.error(`Erro ao buscar usuário ${id}:`, error);
       throw error;
     }
   },
@@ -42,7 +43,7 @@ const userService = {
       const response = await api.get<UserDto>("/api/users/me");
       return response.data;
     } catch (error) {
-      console.error("Erro ao buscar usuário atual:", error);
+      logger.error("Erro ao buscar usuário atual:", error);
       throw error;
     }
   },
@@ -58,7 +59,7 @@ const userService = {
       const response = await api.put<UserDto>(`/api/users/${id}`, updates);
       return response.data;
     } catch (error) {
-      console.error(`Erro ao atualizar usuário ${id}:`, error);
+      logger.error(`Erro ao atualizar usuário ${id}:`, error);
       throw error;
     }
   },
@@ -82,7 +83,7 @@ const userService = {
       );
       return response.data;
     } catch (error) {
-      console.error(
+      logger.error(
         `Erro ao atualizar imagem de perfil do usuário ${id}:`,
         error
       );
@@ -97,7 +98,7 @@ const userService = {
     try {
       await api.delete(`/api/users/${id}`);
     } catch (error) {
-      console.error(`Erro ao excluir usuário ${id}:`, error);
+      logger.error(`Erro ao excluir usuário ${id}:`, error);
       throw error;
     }
   },
@@ -112,7 +113,7 @@ const userService = {
       );
       return response.data;
     } catch (error) {
-      console.error(`Erro ao adicionar papel ao usuário ${id}:`, error);
+      logger.error(`Erro ao adicionar papel ao usuário ${id}:`, error);
       throw error;
     }
   },
@@ -127,7 +128,7 @@ const userService = {
       );
       return response.data;
     } catch (error) {
-      console.error(`Erro ao remover papel do usuário ${id}:`, error);
+      logger.error(`Erro ao remover papel do usuário ${id}:`, error);
       throw error;
     }
   },
@@ -142,7 +143,7 @@ const userService = {
       );
       return response.data;
     } catch (error) {
-      console.error(`Erro ao atualizar status do usuário ${id}:`, error);
+      logger.error(`Erro ao atualizar status do usuário ${id}:`, error);
       throw error;
     }
   },

@@ -1,5 +1,7 @@
 // src/services/postagem.ts
 import api from "./api";
+import logger from "@/utils/logger";
+import { isApiErrorResponse, getErrorMessage } from "@/types/errors";
 
 export interface PostagemDto {
   id: string;
@@ -82,12 +84,14 @@ const postagemService = {
     totalElements: number;
   }> => {
     try {
-      const response = await api.get<any>(
-        `/api/postagens?page=${page}&size=${size}`
-      );
+      const response = await api.get<{
+        content: PostagemSummaryDto[];
+        totalPages: number;
+        totalElements: number;
+      }>(`/api/postagens?page=${page}&size=${size}`);
       return response.data;
     } catch (error) {
-      console.error("Erro ao buscar postagens:", error);
+      logger.error("Erro ao buscar postagens:", error);
       throw error;
     }
   },
@@ -204,19 +208,19 @@ const postagemService = {
 
       response.data.url = baseUrl + url;
 
-      console.log("Imagem enviada com sucesso:", response.data);
+      logger.info("Imagem enviada com sucesso:", response.data);
       return response.data;
-    } catch (error: any) {
+    } catch (error) {
       // Tratamento de erro existente
-      console.error("Erro detalhado ao adicionar imagem temporária:", error);
+      logger.error("Erro detalhado ao adicionar imagem temporária:", error);
 
       // Mensagem amigável baseada no tipo de erro
       let errorMessage = "Erro desconhecido ao fazer upload da imagem";
 
-      if (error.response) {
+      if (isApiErrorResponse(error) && error.response) {
         // Melhorar log para depuração
-        console.error("Status do erro:", error.response.status);
-        console.error("Dados do erro:", error.response.data);
+        logger.error("Status do erro:", error.response.status);
+        logger.error("Dados do erro:", error.response.data);
 
         // Personalizar mensagem baseada no status
         if (error.response.status === 413) {
@@ -230,10 +234,10 @@ const postagemService = {
         } else if (error.response.data?.message) {
           errorMessage = error.response.data.message;
         }
-      } else if (error.request) {
+      } else if (isApiErrorResponse(error) && error.request) {
         errorMessage = "Servidor não respondeu. Verifique sua conexão.";
       } else {
-        errorMessage = `Erro na requisição: ${error.message}`;
+        errorMessage = `Erro na requisição: ${getErrorMessage(error)}`;
       }
 
       // Re-lançar o erro com mensagem personalizada
@@ -256,12 +260,12 @@ const postagemService = {
         timeout: 30000, // 30 segundos
       });
       return response.data;
-    } catch (error: any) {
-      console.error(`Erro ao adicionar anexo temporário:`, error);
+    } catch (error) {
+      logger.error(`Erro ao adicionar anexo temporário:`, error);
 
       // Tratamento de erro específico para o problema de tamanho do campo
       let message = "Erro ao fazer upload do arquivo";
-      if (error.response?.data?.message) {
+      if (isApiErrorResponse(error) && error.response?.data?.message) {
         message = error.response.data.message;
 
         // Se for o erro específico de tamanho de campo, dar uma mensagem mais amigável
