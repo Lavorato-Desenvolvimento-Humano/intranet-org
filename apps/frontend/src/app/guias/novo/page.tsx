@@ -17,6 +17,7 @@ import {
 import toastUtil from "@/utils/toast";
 import { StatusSelect } from "@/components/clinical/ui/StatusSelect";
 import { useStatus } from "@/hooks/useStatus";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 
 export default function NovaGuiaPage() {
   const router = useRouter();
@@ -262,7 +263,30 @@ export default function NovaGuiaPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Paciente *
                   </label>
-                  <select
+                  <div className="mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Paciente *
+                    </label>
+
+                    <SearchableSelect
+                      placeholder="Digite o nome do paciente..."
+                      value={formData.pacienteId}
+                      onChange={(novoId) =>
+                        handleInputChange("pacienteId", novoId)
+                      }
+                      options={pacientes.map((p) => ({
+                        value: p.id,
+                        label: `${p.nome} - ${p.convenioNome}`,
+                      }))}
+                    />
+
+                    {formErrors.pacienteId && (
+                      <p className="text-red-500 text-xs mt-1">
+                        {formErrors.pacienteId}
+                      </p>
+                    )}
+                  </div>
+                  {/* <select
                     required
                     value={formData.pacienteId}
                     onChange={(e) =>
@@ -279,7 +303,7 @@ export default function NovaGuiaPage() {
                         {paciente.nome} - {paciente.convenioNome}
                       </option>
                     ))}
-                  </select>
+                  </select> */}
                   {formErrors.pacienteId && (
                     <p className="text-red-500 text-xs mt-1">
                       {formErrors.pacienteId}
