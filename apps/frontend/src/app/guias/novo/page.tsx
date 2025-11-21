@@ -75,7 +75,7 @@ export default function NovaGuiaPage() {
       setError(null);
 
       const [pacientesData, conveniosData] = await Promise.all([
-        pacienteService.getAllPacientes(),
+        pacienteService.getAllPacientes(0, 1000),
         convenioService.getAllConvenios(),
       ]);
 
