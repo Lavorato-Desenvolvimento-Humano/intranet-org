@@ -379,7 +379,30 @@ function NovaFichaContent() {
                 {/* Guia (apenas se tipo COM_GUIA) */}
                 {formData.tipoFicha === TipoFichaEnum.COM_GUIA && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <div className="mb-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Guia *
+                      </label>
+
+                      <SearchableSelect
+                        placeholder="Digite o número da guia..."
+                        value={formData.guiaId}
+                        onChange={(novoId) =>
+                          handleInputChange("guiaId", novoId)
+                        }
+                        options={guias.map((g) => ({
+                          value: g.id,
+                          label: `#${g.numeroGuia} - ${g.pacienteNome} (${g.convenioNome})`,
+                        }))}
+                      />
+
+                      {formErrors.guiaId && (
+                        <p className="text-red-500 text-xs mt-1">
+                          {formErrors.guiaId}
+                        </p>
+                      )}
+                    </div>
+                    {/* <label className="block text-sm font-medium text-gray-700 mb-2">
                       Guia *
                     </label>
                     <select
@@ -398,7 +421,7 @@ function NovaFichaContent() {
                           {guia.convenioNome})
                         </option>
                       ))}
-                    </select>
+                    </select> */}
                     {formErrors.guiaId && (
                       <p className="mt-1 text-sm text-red-600">
                         {formErrors.guiaId}
