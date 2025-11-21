@@ -24,6 +24,7 @@ import {
 import toastUtil from "@/utils/toast";
 import { StatusSelect } from "@/components/clinical/ui/StatusSelect";
 import { useStatus } from "@/hooks/useStatus";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 
 interface FormData {
   tipoFicha: TipoFichaEnum;
@@ -409,7 +410,30 @@ function NovaFichaContent() {
                 {/* Paciente (apenas se tipo ASSINATURA) */}
                 {formData.tipoFicha === TipoFichaEnum.ASSINATURA && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <div className="mb-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Paciente *
+                      </label>
+
+                      <SearchableSelect
+                        placeholder="Digite o nome do paciente..."
+                        value={formData.pacienteId}
+                        onChange={(novoId) =>
+                          handleInputChange("pacienteId", novoId)
+                        }
+                        options={pacientes.map((p) => ({
+                          value: p.id,
+                          label: `${p.nome} - ${p.convenioNome}`,
+                        }))}
+                      />
+
+                      {formErrors.pacienteId && (
+                        <p className="text-red-500 text-xs mt-1">
+                          {formErrors.pacienteId}
+                        </p>
+                      )}
+                    </div>
+                    {/* <label className="block text-sm font-medium text-gray-700 mb-2">
                       Paciente *
                     </label>
                     <select
@@ -429,7 +453,7 @@ function NovaFichaContent() {
                           {paciente.nome} ({paciente.convenioNome})
                         </option>
                       ))}
-                    </select>
+                    </select> */}
                     {formErrors.pacienteId && (
                       <p className="mt-1 text-sm text-red-600">
                         {formErrors.pacienteId}
