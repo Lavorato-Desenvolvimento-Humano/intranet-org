@@ -1222,6 +1222,12 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
             html = html.replace("{NUMERO_GUIA}",
                     StringUtils.hasText(item.getNumeroGuia()) ? item.getNumeroGuia() : "N/A");
 
+            html = html.replace("{RESPONSAVEL_NOME}",
+                    StringUtils.hasText(item.getResponsavel()) ? item.getResponsavel() : "N/A");
+
+            html = html.replace("{NUMERO_VENDA}",
+                    StringUtils.hasText(item.getNumeroVenda()) ? item.getNumeroVenda() : "N/A");
+
             // Data de geração
             html = html.replace("{DATA_GERACAO}",
                     java.time.LocalDateTime.now().format(
@@ -1238,7 +1244,6 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
             }
 
             html = html.replace("{LINHAS_TABELA}", linhasTabela);
-            // --- FIM DA CORREÇÃO ---
 
             logger.debug("Template preenchido com sucesso para: {}", item.getPacienteNome());
             return html;
