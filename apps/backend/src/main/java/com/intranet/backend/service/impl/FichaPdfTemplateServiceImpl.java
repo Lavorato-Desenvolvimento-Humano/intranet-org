@@ -925,7 +925,7 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
                 <label>Convênio:</label> {CONVENIO_NOME}
             </div>
             <div class="section">
-                <label>Nº Guia:</label> {NUMERO_GUIA} 
+                <label>Token:</label> {NUMERO_GUIA} 
                 <span style="margin-left: 30px;"><strong>Nº Venda:</strong> {NUMERO_VENDA}</span>
             </div>
             <div class="section">
