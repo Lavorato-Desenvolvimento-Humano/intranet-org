@@ -10,6 +10,7 @@ public class FichaPdfItemDto {
     private UUID pacienteId;
     private String pacienteNome;
     private String especialidade;
+    private String responsavel;
     private String numeroIdentificacao; // Gerado automaticamente
     private Integer mes;
     private Integer ano;

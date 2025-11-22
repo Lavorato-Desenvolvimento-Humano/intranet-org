@@ -285,6 +285,9 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
             html = html.replace("{PACIENTE_NOME}",
                     StringUtils.hasText(item.getPacienteNome()) ? item.getPacienteNome() : "Paciente não informado");
 
+            html = html.replace("{RESPONSAVEL_NOME}",
+                    StringUtils.hasText(item.getResponsavel()) ? item.getResponsavel() : "N/A");
+
             html = html.replace("{ESPECIALIDADE}",
                     StringUtils.hasText(item.getEspecialidade()) ? item.getEspecialidade() : "Não informado");
 
@@ -574,6 +577,10 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
             <span class="info-label">Paciente:</span>
             <span class="info-value"><strong>{PACIENTE_NOME}</strong></span>
         </div>
+        <div class="info-row>
+            <span class="info-label">Responsável financeiro:</span>
+            <span class="info-value"><strong>{RESPONSAVEL_NOME}</strong></span>
+        </div>
         <div class="info-row">
             <span class="info-label">Especialidade:</span>
             <span class="info-value">{ESPECIALIDADE}</span>
@@ -620,7 +627,7 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
 
     <div class="metadata">
         <span>Gerado em: {DATA_GERACAO}</span>
-        <span>Guia: {NUMERO_GUIA}</span>
+        <span>Número da venda: {NUMERO_GUIA}</span>
         <span>Sistema: Intranet v2.0</span>
     </div>
     </body>
