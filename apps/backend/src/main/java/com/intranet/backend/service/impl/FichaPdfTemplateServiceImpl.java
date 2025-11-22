@@ -577,7 +577,7 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
             <span class="info-label">Paciente:</span>
             <span class="info-value"><strong>{PACIENTE_NOME}</strong></span>
         </div>
-        <div class="info-row>
+        <div class="info-row">
             <span class="info-label">Responsável Financeiro:</span>
             <span class="info-value"><strong>{RESPONSAVEL_NOME}</strong></span>
         </div>
