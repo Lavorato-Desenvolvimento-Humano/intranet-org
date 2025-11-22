@@ -88,13 +88,13 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
                 logger.info("✅ FUSEX identificado! Convênio: '{}' - Usando template específico", convenioNome);
                 String templateFusex = obterTemplateFusex();
                 return preencherTemplate(templateFusex, item);
-            } else if (isCbmdfConvenio(convenioNome)) {
-                String templateCbmdf = obterTemplateCbmdf();
-                return preencherTemplate(templateCbmdf, item);
             } else if (isCbmdfRessarcimento(convenioNome)) {
                 logger.info("✅ CBMDF RESSARCIMENTO identificado! Convênio: '{}'", convenioNome);
                 String template = criarTemplateCbmdfRessarcimento();
                 return preencherTemplate(template, item);
+            } else if (isCbmdfConvenio(convenioNome)) {
+                String templateCbmdf = obterTemplateCbmdf();
+                return preencherTemplate(templateCbmdf, item);
             }
 
             // Para outros convênios, usar template padrão
@@ -137,6 +137,10 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
                     logger.info("✅ FUSEX identificado! Convênio: '{}' - Usando template específico", convenioNome);
                     String templateFusex = obterTemplateFusex();
                     return preencherTemplateComConvenio(templateFusex, item, config);
+                } else if (isCbmdfRessarcimento(convenioNome)) {
+                    logger.info("✅ CBMDF RESSARCIMENTO identificado! Convênio: '{}'", convenioNome);
+                    String template = criarTemplateCbmdfRessarcimento();
+                    return preencherTemplate(template, item);
                 } else if (isCbmdfConvenio(convenioNome)) {
                     logger.info("✅ CBMDF identificado! Convênio: '{}' - Usando template específico", convenioNome);
                     String templateCbmdf = obterTemplateCbmdf();
@@ -144,18 +148,13 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
                 }
             }
 
-            // PRIORIDADE 3: Template padrão
             logger.debug("Usando template padrão para convênio: {}",
                     config != null ? config.getConvenio().getName() : "não configurado");
-            // CORREÇÃO: Chamar preencherTemplateComConvenio mesmo para o padrão,
-            // para que a logo correta (padrão) seja usada.
             return preencherTemplateComConvenio(getTemplatePadrao(), item, config);
 
         } catch (Exception e) {
             logger.error("Erro ao gerar HTML com configuração do convênio: {}", e.getMessage(), e);
-            // Fallback para template padrão
             logger.warn("Usando template padrão como fallback");
-            // CORREÇÃO: Chamar preencherTemplateComConvenio para o fallback
             return preencherTemplateComConvenio(getTemplatePadrao(), item, config);
         }
     }
@@ -268,7 +267,7 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
 
         // Fallback: usar a lógica atual baseada no nome
         String convenioNome = config.getConvenio().getName();
-        return isFusexConvenio(convenioNome) || isCbmdfConvenio(convenioNome);
+        return isFusexConvenio(convenioNome) || isCbmdfRessarcimento(convenioNome) || isCbmdfConvenio(convenioNome);
     }
 
     @Override
@@ -327,10 +326,6 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
 
             html = html.replace("{QUANTIDADE_AUTORIZADA}",
                     item.getQuantidadeAutorizada() != null ? item.getQuantidadeAutorizada().toString() : "30");
-
-            // --- INÍCIO DA CORREÇÃO ---
-            // Tabela de sessões
-            // Precisamos saber se estamos preenchendo um template FUSEX ou não
 
             boolean isFusex = isFusexConvenio(convenioNome);
 
