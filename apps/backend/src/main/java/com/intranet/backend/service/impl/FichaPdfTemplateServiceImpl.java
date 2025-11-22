@@ -87,12 +87,14 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
             if (isFusexConvenio(convenioNome)) {
                 logger.info("✅ FUSEX identificado! Convênio: '{}' - Usando template específico", convenioNome);
                 String templateFusex = obterTemplateFusex();
-                // CORREÇÃO: Usar preencherTemplate que agora sabe lidar com FUSEX
                 return preencherTemplate(templateFusex, item);
             } else if (isCbmdfConvenio(convenioNome)) {
                 String templateCbmdf = obterTemplateCbmdf();
-                // CORREÇÃO: Usar preencherTemplate que agora sabe lidar com CBMDF
                 return preencherTemplate(templateCbmdf, item);
+            } else if (isCbmdfRessarcimento(convenioNome)) {
+                logger.info("✅ CBMDF RESSARCIMENTO identificado! Convênio: '{}'", convenioNome);
+                String template = criarTemplateCbmdfRessarcimento();
+                return preencherTemplate(template, item);
             }
 
             // Para outros convênios, usar template padrão
@@ -183,6 +185,15 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
 
         logger.debug("❌ Convênio '{}' não é CBMDF", convenioNome);
         return false;
+    }
+
+    private boolean isCbmdfRessarcimento(String convenioNome) {
+        if (convenioNome == null) return false;
+        String nome = convenioNome.toUpperCase().trim();
+        boolean ehBombeiro = nome.contains("CBMDF") || nome.contains("BOMBEIROS");
+        boolean ehRessarcimento = nome.contains("RESSARCIMENTO") || nome.contains("REEMBOLSO") || nome.contains("PARTICULAR");
+
+        return ehBombeiro && ehRessarcimento;
     }
 
     private boolean isFusexConvenio(String convenioNome) {
@@ -304,6 +315,9 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
             // Número da guia
             html = html.replace("{NUMERO_GUIA}",
                     StringUtils.hasText(item.getNumeroGuia()) ? item.getNumeroGuia() : "N/A");
+
+            html = html.replace("{NUMERO_VENDA}",
+                    StringUtils.hasText(item.getNumeroVenda()) ? item.getNumeroVenda() : "N/A");
 
             html = html.replace("{CONVENIO_NOME}",
                     StringUtils.hasText(item.getConvenioNome()) ? item.getConvenioNome() : "Não informado");
@@ -779,6 +793,162 @@ public class FichaPdfTemplateServiceImpl implements FichaPdfTemplateService {
                <p>1. Preencher a data e assinar a cada atendimento realizado.</p>
                <p>2. Este documento é de uso obrigatório para faturamento junto ao convênio.</p>
                <p>3. Manter o documento em local seguro e apresentar quando solicitado.</p>
+         </div>
+         <div class="metadata">
+                <span>Gerado em: {DATA_GERACAO}</span>
+                <span>Sistema: Intranet v2.0</span>
+         </div>
+    </body>
+    </html>
+    """;
+    }
+
+    /**
+     * Template específico para CBMDF (Ressarcimento)
+     * Mistura layout CBMDF com campos de Particular (Responsável, Venda)
+     */
+    private String criarTemplateCbmdfRessarcimento() {
+        return """
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Ficha de Assinatura - Ressarcimento</title>
+        <style>
+            @page {
+                size: A4;
+                margin: 15mm;
+            }
+            body {
+                font-family: Arial, sans-serif;
+                font-size: 12px;
+                margin: 5px;
+            }
+            .header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 10px;
+            }
+            .header img {
+                width: 70px;
+                height: auto;
+                object-fit: contain;
+            }
+            .header h1 {
+                font-size: 18px;
+                margin: 0;
+                text-align: center;
+                flex-grow: 1;
+            }
+            .header .identificacao {
+                font-size: 14px;
+                font-weight: bold;
+            }
+            .section {
+                margin-bottom: 5px;
+            }
+            .section label {
+                display: inline-block;
+                width: 180px;
+                font-weight: bold;
+            }
+            .table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+            .table th, .table td {
+                border: 1px solid #000;
+                padding: 5px;
+                text-align: center;
+            }
+            .info-header {
+                text-align: left;
+                margin-bottom: 10px;
+                padding-bottom: 5px;
+                border-bottom: 1px solid #ccc;
+            }
+            .footer {
+                 margin-top: 20px;
+                 padding: 10px;
+                 border-top: 1px solid #ccc;
+                 font-size: 11px;
+            }
+            .footer p {
+                 margin: 3px 0;
+            }
+            .metadata {
+                  margin-top: 15px;
+                  padding: 8px;
+                  background-color: #f9f9f9;
+                  border: 1px solid #ddd;
+                  font-size: 10px;
+                  text-align: center;
+            }
+            .metadata span {
+                   margin: 0 15px;
+                   color: #666;
+            }
+            
+            .sessao-linha {
+                height: 35px;
+                line-height: 35px;
+            }
+            
+            .numero-col { width: 8%; }
+            .data-col { width: 25%; }
+            .assinatura-col { width: 67%; }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <img src="{LOGO_BASE64}" alt="logo-cbmdf">
+            <h1>FICHA DE ASSINATURA (RESSARCIMENTO)</h1>
+            <div class="identificacao">ID: {NUMERO_IDENTIFICACAO}</div>
+        </div>
+
+        <div class="info-header">
+            <div class="section">
+                <label>Paciente:</label> {PACIENTE_NOME}
+            </div>
+            <div class="section">
+                <label>Responsável Financeiro:</label> {RESPONSAVEL_NOME}
+            </div>
+            <div class="section">
+                <label>Especialidade:</label> {ESPECIALIDADE}
+            </div>
+            <div class="section">
+                <label>Mês de referência:</label> {MES_EXTENSO} de {ANO}
+            </div>
+            <div class="section">
+                <label>Convênio:</label> {CONVENIO_NOME}
+            </div>
+            <div class="section">
+                <label>Nº Guia:</label> {NUMERO_GUIA} 
+                <span style="margin-left: 30px;"><strong>Nº Venda:</strong> {NUMERO_VENDA}</span>
+            </div>
+            <div class="section">
+                <label>Quantidade Autorizada:</label> {QUANTIDADE_AUTORIZADA} sessões
+            </div>
+        </div>
+
+        <table class="table">
+            <thead>
+                <tr>
+                    <th class="numero-col">Nº</th>
+                    <th class="data-col">Data de Atendimento</th>
+                    <th class="assinatura-col">Assinatura do Responsável</th>
+                </tr>
+            </thead>
+            <tbody>
+                {LINHAS_TABELA}
+            </tbody>
+        </table>
+         <div class="footer">
+               <p><strong>Instruções:</strong></p>
+               <p>1. Preencher a data e assinar a cada atendimento realizado.</p>
+               <p>2. Documento para fins de ressarcimento junto ao CBMDF.</p>
          </div>
          <div class="metadata">
                 <span>Gerado em: {DATA_GERACAO}</span>

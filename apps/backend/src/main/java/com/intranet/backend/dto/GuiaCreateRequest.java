@@ -23,6 +23,8 @@ public class GuiaCreateRequest {
     @Size(max = 50, message = "Número da guia deve ter no máximo 50 caracteres")
     private String numeroGuia;
 
+    private String numeroVenda;
+
     @NotBlank(message = "O status da guia é obrigatório")
     private String status;
 

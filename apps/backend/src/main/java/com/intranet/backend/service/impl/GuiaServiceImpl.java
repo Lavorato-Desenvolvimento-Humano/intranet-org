@@ -370,6 +370,7 @@ public class GuiaServiceImpl implements GuiaService {
         return new GuiaDto(
                 guia.getId(),
                 guia.getNumeroGuia(),
+                guia.getNumeroVenda(),
                 guia.getStatus(),
                 guia.getPaciente().getId(),
                 guia.getPaciente().getNome(),
@@ -401,6 +402,7 @@ public class GuiaServiceImpl implements GuiaService {
                 guia.getId(),
                 guia.getPaciente().getNome(),
                 guia.getNumeroGuia(),
+                guia.getNumeroVenda(),
                 guia.getStatus(),
                 guia.getEspecialidades(),
                 guia.getQuantidadeAutorizada(),

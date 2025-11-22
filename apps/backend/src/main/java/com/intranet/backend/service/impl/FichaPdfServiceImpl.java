@@ -1469,6 +1469,11 @@ public class FichaPdfServiceImpl implements FichaPdfService {
 
         item.setGuiaId(guia.getId());
         item.setNumeroGuia(guia.getNumeroGuia());
+        if (StringUtils.hasText(guia.getNumeroVenda())) {
+            item.setNumeroVenda(guia.getNumeroVenda());
+        } else {
+            item.setNumeroVenda("N/A");
+        }
         item.setQuantidadeAutorizada(guia.getQuantidadeAutorizada());
         item.setUltimaAtividade(guia.getUpdatedAt());
 

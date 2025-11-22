@@ -23,6 +23,7 @@ public class FichaPdfItemDto {
     // Dados da guia de origem
     private UUID guiaId;
     private String numeroGuia;
+    private String numeroVenda;
     private Integer quantidadeAutorizada;
     private LocalDateTime ultimaAtividade;
 }
