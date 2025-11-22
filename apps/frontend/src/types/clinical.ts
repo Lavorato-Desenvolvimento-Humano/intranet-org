@@ -60,6 +60,7 @@ export interface GuiaDto {
   pacienteId: string;
   pacienteNome: string;
   numeroGuia: string;
+  numeroVenda: string;
   especialidades: string[];
   quantidadeAutorizada: number;
   convenioId: string;
@@ -80,6 +81,7 @@ export interface GuiaDto {
 export interface GuiaSummaryDto {
   id: string;
   numeroGuia: string;
+  numeroVenda: string;
   pacienteNome: string;
   especialidades: string[];
   quantidadeAutorizada: number;
@@ -96,6 +98,7 @@ export interface GuiaSummaryDto {
 export interface GuiaCreateRequest {
   pacienteId: string;
   numeroGuia: string;
+  numeroVenda: string;
   status: string;
   especialidades: string[];
   quantidadeAutorizada: number;
@@ -111,6 +114,7 @@ export interface GuiaCreateRequest {
 export interface GuiaUpdateRequest {
   especialidades?: string[];
   quantidadeAutorizada?: number;
+  numeroVenda?: string;
   mes?: number;
   ano?: number;
   validade?: string;

@@ -34,6 +34,7 @@ export default function NovaGuiaPage() {
   const [formData, setFormData] = useState<GuiaCreateRequest>({
     pacienteId: "",
     numeroGuia: "",
+    numeroVenda: "",
     status: "",
     especialidades: [],
     quantidadeAutorizada: 1,
@@ -383,35 +384,63 @@ export default function NovaGuiaPage() {
                   )}
                 </div>
 
-                {/* Quantidade Autorizada */}
+                {/* Número da Venda */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Quantidade Autorizada *
+                    Número da Venda *
                   </label>
                   <input
-                    type="number"
-                    required
-                    min="1"
-                    max="999"
-                    value={formData.quantidadeAutorizada}
+                    type="text"
+                    value={formData.numeroVenda}
                     onChange={(e) =>
                       handleInputChange(
-                        "quantidadeAutorizada",
-                        parseInt(e.target.value) || 1
+                        "numeroVenda",
+                        e.target.value.toUpperCase()
                       )
                     }
+                    placeholder="Ex: V123-456"
                     className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 ${
-                      formErrors.quantidadeAutorizada
+                      formErrors.numeroVenda
                         ? "border-red-500"
                         : "border-gray-300"
                     }`}
                   />
-                  {formErrors.quantidadeAutorizada && (
+                  {formErrors.numeroVenda && (
                     <p className="text-red-500 text-xs mt-1">
-                      {formErrors.quantidadeAutorizada}
+                      {formErrors.numeroVenda}
                     </p>
                   )}
                 </div>
+              </div>
+
+              {/* Quantidade Autorizada */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Quantidade Autorizada *
+                </label>
+                <input
+                  type="number"
+                  required
+                  min="1"
+                  max="999"
+                  value={formData.quantidadeAutorizada}
+                  onChange={(e) =>
+                    handleInputChange(
+                      "quantidadeAutorizada",
+                      parseInt(e.target.value) || 1
+                    )
+                  }
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+                    formErrors.quantidadeAutorizada
+                      ? "border-red-500"
+                      : "border-gray-300"
+                  }`}
+                />
+                {formErrors.quantidadeAutorizada && (
+                  <p className="text-red-500 text-xs mt-1">
+                    {formErrors.quantidadeAutorizada}
+                  </p>
+                )}
               </div>
 
               <div>
