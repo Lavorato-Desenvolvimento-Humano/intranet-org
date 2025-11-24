@@ -239,6 +239,7 @@ public class PacienteServiceImpl implements PacienteService {
         return new GuiaSummaryDto(
                 guia.getId(),
                 guia.getNumeroGuia(),
+                guia.getNumeroVenda(),
                 guia.getStatus(),
                 guia.getPaciente().getNome(),
                 guia.getEspecialidades(),

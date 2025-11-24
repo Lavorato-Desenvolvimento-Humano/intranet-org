@@ -1442,8 +1442,15 @@ public class FichaPdfServiceImpl implements FichaPdfService {
     private FichaPdfItemDto criarItemFicha(Guia guia, String especialidade, Integer mes, Integer ano) {
         FichaPdfItemDto item = new FichaPdfItemDto();
 
+        Paciente paciente = guia.getPaciente();
+
         item.setPacienteId(guia.getPaciente().getId());
         item.setPacienteNome(guia.getPaciente().getNome());
+        if (StringUtils.hasText(paciente.getResponsavel())) {
+            item.setResponsavel(paciente.getResponsavel());
+        } else {
+            item.setResponsavel("Não informado");
+        };
         item.setEspecialidade(especialidade);
         item.setMes(mes);
         item.setAno(ano);
@@ -1462,6 +1469,11 @@ public class FichaPdfServiceImpl implements FichaPdfService {
 
         item.setGuiaId(guia.getId());
         item.setNumeroGuia(guia.getNumeroGuia());
+        if (StringUtils.hasText(guia.getNumeroVenda())) {
+            item.setNumeroVenda(guia.getNumeroVenda());
+        } else {
+            item.setNumeroVenda("N/A");
+        }
         item.setQuantidadeAutorizada(guia.getQuantidadeAutorizada());
         item.setUltimaAtividade(guia.getUpdatedAt());
 

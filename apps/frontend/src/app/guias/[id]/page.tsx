@@ -324,6 +324,14 @@ export default function GuiaDetalhePage() {
                             <p className="font-medium">{guia.numeroGuia}</p>
                           </div>
                           <div>
+                            <p className="text-sm text-gray-600">
+                              Número da Venda
+                            </p>
+                            <p className="font-medium">
+                              {guia.numeroVenda || "N/A"}
+                            </p>
+                          </div>
+                          <div>
                             <p className="text-sm text-gray-600">Validade</p>
                             <p
                               className={`font-medium ${
