@@ -294,6 +294,13 @@ export interface ClinicalStats {
   fichasPorStatus: Record<string, number>;
 }
 
+export interface FichaStats {
+  totalFichas: number;
+  fichasPorStatus: Record<string, number>;
+  fichasPorConvenio?: Record<string, number>;
+  fichasPorUnidade?: Record<string, number>;
+}
+
 export interface StatusInitializeResponse {
   message: string;
   statusesCriados: number;
