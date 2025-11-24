@@ -27,6 +27,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -56,33 +57,40 @@ public class FileService {
     }
 
     public FileDto uploadFile(MultipartFile file, Long folderId) throws IOException {
-        logger.info("Iniciando upload do arquivo: {}", file.getOriginalFilename());
-
         validateFile(file);
-
         UserDto currentUser = getCurrentUser();
-        logger.debug("Upload iniciado pelo usuário: {} (ID: {})", currentUser.getUsername(), currentUser.getId());
 
-        String detectedMimeType = tika.detect(file.getInputStream(), file.getOriginalFilename());
-
+        String originalName = file.getOriginalFilename();
+        String detectedMimeType = detectMimeType(file);
         String md5Hash = calculateMD5(file.getBytes());
-
-        List<FileEntity> existingFiles = fileRepository.findByMd5Hash(md5Hash);
-        if (!existingFiles.isEmpty()) {
-            logger.info("Arquivo com MD5 {} já existe, criando referência", md5Hash);
-            //Lógica de deduplicação vou fazer ainda...
-        }
-
         String storageKey = storageService.storeFile(file);
 
-        // Criar entidade
-        FileEntity fileEntity = createFileEntity(file, detectedMimeType, md5Hash, storageKey, folderId, currentUser);
+        // RF06 - Verificar se já existe arquivo com mesmo nome na pasta (Versionamento)
+        Optional<FileEntity> existingFileOpt = fileRepository.findByNameAndFolderIdAndIsCurrentVersionTrueAndIsDeletedFalse(
+                sanitizeFileName(originalName), folderId
+        );
+
+        FileEntity fileEntity;
+
+        if (existingFileOpt.isPresent()) {
+            FileEntity previousVersion = existingFileOpt.get();
+
+            validateFileOwnership(previousVersion);
+
+            previousVersion.setIsCurrentVersion(false);
+            fileRepository.save(previousVersion);
+
+            fileEntity = createFileEntity(file, detectedMimeType, md5Hash, storageKey, folderId, currentUser);
+            fileEntity.setVersion(previousVersion.getVersion() + 1);
+            fileEntity.setParentFileId(previousVersion.getId());
+
+            logger.info("Nova versão (v{}) criada para o arquivo: {}", fileEntity.getVersion(), originalName);
+        } else {
+            fileEntity = createFileEntity(file, detectedMimeType, md5Hash, storageKey, folderId, currentUser);
+            fileEntity.setVersion(1);
+        }
 
         fileEntity = fileRepository.save(fileEntity);
-
-        logger.info("Arquivo uploadado com sucesso - ID: {}, Storage Key: {}, Usuário: {}",
-                fileEntity.getId(), storageKey, currentUser.getUsername());
-
         return new FileDto(fileEntity);
     }
 
@@ -343,5 +351,36 @@ public class FileService {
         fileEntity.setFolderId(folderId);
 
         return fileEntity;
+    }
+
+    /**
+     * RF 02.1
+     */
+    public FileDto createFolder(String folderName, Long parentFolderId) {
+        UserDto currentUser = getCurrentUser();
+
+        // Verifica se já existe pasta com esse nome no mesmo nível
+        if (fileRepository.existsByNameAndFolderIdAndIsDeletedFalse(folderName, parentFolderId)) {
+            throw new IllegalArgumentException("Já existe uma pasta ou arquivo com este nome neste local.");
+        }
+
+        FileEntity folder = new FileEntity();
+        folder.setName(folderName);
+        folder.setOriginalName(folderName);
+        folder.setMimeType("application/vnd.drive-folder");
+        folder.setFileSize(0L);
+        folder.setFolderId(parentFolderId);
+        folder.setOwnerId(currentUser.getId());
+        folder.setOwnerUsername(currentUser.getUsername());
+        folder.setStorageKey("folder_" + java.util.UUID.randomUUID());
+        folder.setMd5Hash("");
+        folder.setFilePath("/" + folderName);
+        folder.setIsCurrentVersion(true);
+        folder.setDownloadCount(0L);
+
+        folder = fileRepository.save(folder);
+        logger.info("Pasta criada: {} (ID: {})", folderName, folder.getId());
+
+        return new FileDto(folder);
     }
 }
