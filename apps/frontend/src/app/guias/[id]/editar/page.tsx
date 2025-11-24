@@ -37,6 +37,7 @@ export default function EditarGuiaPage() {
   // Estados do formulário
   const [formData, setFormData] = useState<GuiaUpdateRequest>({
     especialidades: [] as string[],
+    numeroVenda: "",
     quantidadeAutorizada: 1,
     mes: new Date().getMonth() + 1,
     ano: new Date().getFullYear(),
@@ -99,6 +100,7 @@ export default function EditarGuiaPage() {
       setFormData({
         especialidades: [...guiaData.especialidades],
         quantidadeAutorizada: guiaData.quantidadeAutorizada,
+        numeroVenda: guiaData.numeroVenda,
         mes: guiaData.mes,
         ano: guiaData.ano,
         validade: guiaData.validade,
@@ -218,6 +220,7 @@ export default function EditarGuiaPage() {
       const updateRequest: GuiaUpdateRequest = {
         especialidades: formData.especialidades,
         quantidadeAutorizada: formData.quantidadeAutorizada,
+        numeroVenda: formData.numeroVenda,
         mes: formData.mes,
         ano: formData.ano,
         validade: formData.validade,
@@ -386,6 +389,26 @@ export default function EditarGuiaPage() {
                   {formErrors.quantidadeAutorizada && (
                     <p className="text-red-500 text-xs mt-1">
                       {formErrors.quantidadeAutorizada}
+                    </p>
+                  )}
+                </div>
+
+                {/* Número da Venda */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Número da Venda *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.numeroVenda}
+                    onChange={(e) =>
+                      handleInputChange("numeroVenda", e.target.value)
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                  {formErrors.numeroVenda && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {formErrors.numeroVenda}
                     </p>
                   )}
                 </div>

@@ -17,6 +17,7 @@ import {
 import toastUtil from "@/utils/toast";
 import { StatusSelect } from "@/components/clinical/ui/StatusSelect";
 import { useStatus } from "@/hooks/useStatus";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 
 export default function NovaGuiaPage() {
   const router = useRouter();
@@ -33,6 +34,7 @@ export default function NovaGuiaPage() {
   const [formData, setFormData] = useState<GuiaCreateRequest>({
     pacienteId: "",
     numeroGuia: "",
+    numeroVenda: "",
     status: "",
     especialidades: [],
     quantidadeAutorizada: 1,
@@ -74,7 +76,7 @@ export default function NovaGuiaPage() {
       setError(null);
 
       const [pacientesData, conveniosData] = await Promise.all([
-        pacienteService.getAllPacientes(),
+        pacienteService.getAllPacientes(0, 1000),
         convenioService.getAllConvenios(),
       ]);
 
@@ -259,10 +261,30 @@ export default function NovaGuiaPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Paciente */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Paciente *
-                  </label>
-                  <select
+                  <div className="mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Paciente *
+                    </label>
+
+                    <SearchableSelect
+                      placeholder="Digite o nome do paciente..."
+                      value={formData.pacienteId}
+                      onChange={(novoId) =>
+                        handleInputChange("pacienteId", novoId)
+                      }
+                      options={pacientes.map((p) => ({
+                        value: p.id,
+                        label: `${p.nome} - ${p.convenioNome}`,
+                      }))}
+                    />
+
+                    {formErrors.pacienteId && (
+                      <p className="text-red-500 text-xs mt-1">
+                        {formErrors.pacienteId}
+                      </p>
+                    )}
+                  </div>
+                  {/* <select
                     required
                     value={formData.pacienteId}
                     onChange={(e) =>
@@ -279,7 +301,7 @@ export default function NovaGuiaPage() {
                         {paciente.nome} - {paciente.convenioNome}
                       </option>
                     ))}
-                  </select>
+                  </select> */}
                   {formErrors.pacienteId && (
                     <p className="text-red-500 text-xs mt-1">
                       {formErrors.pacienteId}
@@ -362,35 +384,63 @@ export default function NovaGuiaPage() {
                   )}
                 </div>
 
-                {/* Quantidade Autorizada */}
+                {/* Número da Venda */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Quantidade Autorizada *
+                    Número da Venda *
                   </label>
                   <input
-                    type="number"
-                    required
-                    min="1"
-                    max="999"
-                    value={formData.quantidadeAutorizada}
+                    type="text"
+                    value={formData.numeroVenda}
                     onChange={(e) =>
                       handleInputChange(
-                        "quantidadeAutorizada",
-                        parseInt(e.target.value) || 1
+                        "numeroVenda",
+                        e.target.value.toUpperCase()
                       )
                     }
+                    placeholder="Ex: V123-456"
                     className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 ${
-                      formErrors.quantidadeAutorizada
+                      formErrors.numeroVenda
                         ? "border-red-500"
                         : "border-gray-300"
                     }`}
                   />
-                  {formErrors.quantidadeAutorizada && (
+                  {formErrors.numeroVenda && (
                     <p className="text-red-500 text-xs mt-1">
-                      {formErrors.quantidadeAutorizada}
+                      {formErrors.numeroVenda}
                     </p>
                   )}
                 </div>
+              </div>
+
+              {/* Quantidade Autorizada */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Quantidade Autorizada *
+                </label>
+                <input
+                  type="number"
+                  required
+                  min="1"
+                  max="999"
+                  value={formData.quantidadeAutorizada}
+                  onChange={(e) =>
+                    handleInputChange(
+                      "quantidadeAutorizada",
+                      parseInt(e.target.value) || 1
+                    )
+                  }
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+                    formErrors.quantidadeAutorizada
+                      ? "border-red-500"
+                      : "border-gray-300"
+                  }`}
+                />
+                {formErrors.quantidadeAutorizada && (
+                  <p className="text-red-500 text-xs mt-1">
+                    {formErrors.quantidadeAutorizada}
+                  </p>
+                )}
               </div>
 
               <div>

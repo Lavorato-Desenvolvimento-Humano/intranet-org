@@ -78,6 +78,7 @@ public class GuiaServiceImpl implements GuiaService {
 
         Guia guia = new Guia();
         guia.setNumeroGuia(request.getNumeroGuia());
+        guia.setNumeroVenda(request.getNumeroVenda());
         guia.setStatus(request.getStatus());
         guia.setPaciente(paciente);
         guia.setConvenio(convenio);
@@ -123,6 +124,10 @@ public class GuiaServiceImpl implements GuiaService {
 
         if (request.getNumeroGuia() != null) {
             guia.setNumeroGuia(request.getNumeroGuia());
+        }
+
+        if (request.getNumeroVenda() != null) {
+            guia.setNumeroVenda(request.getNumeroVenda());
         }
 
         if (request.getEspecialidades() != null) {
@@ -370,6 +375,7 @@ public class GuiaServiceImpl implements GuiaService {
         return new GuiaDto(
                 guia.getId(),
                 guia.getNumeroGuia(),
+                guia.getNumeroVenda(),
                 guia.getStatus(),
                 guia.getPaciente().getId(),
                 guia.getPaciente().getNome(),
@@ -401,6 +407,7 @@ public class GuiaServiceImpl implements GuiaService {
                 guia.getId(),
                 guia.getPaciente().getNome(),
                 guia.getNumeroGuia(),
+                guia.getNumeroVenda(),
                 guia.getStatus(),
                 guia.getEspecialidades(),
                 guia.getQuantidadeAutorizada(),

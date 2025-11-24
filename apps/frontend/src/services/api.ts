@@ -1,5 +1,6 @@
 // src/services/api.ts
 import axios from "axios";
+import logger from "@/utils/logger";
 
 // Auto-detectar ambiente de forma segura para SSR
 const isDevelopment =
@@ -38,13 +39,13 @@ if (typeof window !== "undefined") {
 
       // Log para depuração
       if (isDevelopment) {
-        console.log(`Fazendo requisição para: ${config.url}`);
+        logger.info(`Fazendo requisição para: ${config.url}`);
       }
 
       return config;
     },
     (error) => {
-      console.error("Erro no interceptor de requisição:", error);
+      logger.error("Erro no interceptor de requisição:", error);
       return Promise.reject(error);
     }
   );
@@ -57,7 +58,7 @@ if (typeof window !== "undefined") {
     (error) => {
       // Melhorar o log de erro para incluir mais detalhes
       if (error.response) {
-        console.error(`Erro de API (${error.config?.url}):`, {
+        logger.error(`Erro de API (${error.config?.url}):`, {
           status: error.response.status,
           data: error.response.data,
           headers: error.response.headers,
@@ -65,7 +66,7 @@ if (typeof window !== "undefined") {
 
         // Para erros 500, logar mais detalhes
         if (error.response.status === 500) {
-          console.error("Detalhes do erro 500:", {
+          logger.error("Detalhes do erro 500:", {
             url: error.config?.url,
             method: error.config?.method,
             headers: error.config?.headers,
@@ -84,9 +85,9 @@ if (typeof window !== "undefined") {
           }
         }
       } else if (error.request) {
-        console.error("Erro de rede:", error.request);
+        logger.error("Erro de rede:", error.request);
       } else {
-        console.error("Erro de configuração de requisição:", error.message);
+        logger.error("Erro de configuração de requisição:", error.message);
       }
 
       return Promise.reject(error);
