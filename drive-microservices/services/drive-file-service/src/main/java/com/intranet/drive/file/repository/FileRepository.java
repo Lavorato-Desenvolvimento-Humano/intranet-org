@@ -26,6 +26,16 @@ public interface FileRepository extends JpaRepository<FileEntity, Long> {
     @Query("SELECT f FROM FileEntity f WHERE f.isDeleted = false")
     Page<FileEntity> findAllActive(Pageable pageable);
 
+    @Query("SELECT f FROM FileEntity f WHERE f.name = :name AND " +
+            "(:folderId IS NULL AND f.folderId IS NULL OR f.folderId = :folderId) AND " +
+            "f.isCurrentVersion = true AND f.isDeleted = false")
+    Optional<FileEntity> findCurrentVersion(@Param("name") String name, @Param("folderId") Long folderId);
+
+    @Query("SELECT COUNT(f) > 0 FROM FileEntity f WHERE f.name = :name AND " +
+            "(:folderId IS NULL AND f.folderId IS NULL OR f.folderId = :folderId) AND " +
+            "f.isDeleted = false")
+    boolean existsActiveByNameAndFolder(@Param("name") String name, @Param("folderId") Long folderId);
+
     /**
      * Buscar por ID e não deletado
      */

@@ -66,7 +66,7 @@ public class FileService {
         String storageKey = storageService.storeFile(file);
 
         // RF06 - Verificar se já existe arquivo com mesmo nome na pasta (Versionamento)
-        Optional<FileEntity> existingFileOpt = fileRepository.findByNameAndFolderIdAndIsCurrentVersionTrueAndIsDeletedFalse(
+        Optional<FileEntity> existingFileOpt = fileRepository.findCurrentVersion(
                 sanitizeFileName(originalName), folderId
         );
 
@@ -360,7 +360,7 @@ public class FileService {
         UserDto currentUser = getCurrentUser();
 
         // Verifica se já existe pasta com esse nome no mesmo nível
-        if (fileRepository.existsByNameAndFolderIdAndIsDeletedFalse(folderName, parentFolderId)) {
+        if (fileRepository.existsActiveByNameAndFolder(folderName, parentFolderId)) {
             throw new IllegalArgumentException("Já existe uma pasta ou arquivo com este nome neste local.");
         }
 
