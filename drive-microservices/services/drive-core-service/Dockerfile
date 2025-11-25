@@ -2,7 +2,7 @@ FROM eclipse-temurin:21-jre-jammy
 
 # Metadados
 LABEL maintainer="intranet-team" \
-      service="drive-file-service" \
+      service="drive-core-service" \
       version="1.0.0"
 
 # Criar usuário não-root para segurança

@@ -39,10 +39,10 @@ jobs:
       - name: Build Drive Microservices
         run: |
           cd drive-microservices
-          echo "Building Drive File Service..."
+          echo "Building Drive Core Service..."
 
           # Build usando Maven multi-módulo (após POMs corrigidos)
-          mvn clean package -Dfile.encoding=UTF-8 -DskipTests -pl shared/drive-common,services/drive-file-service
+          mvn clean package -Dfile.encoding=UTF-8 -DskipTests -pl shared/drive-common,services/drive-core-service
 
           echo "JAR criado:"
           ls -la services/drive-file-service/target/
