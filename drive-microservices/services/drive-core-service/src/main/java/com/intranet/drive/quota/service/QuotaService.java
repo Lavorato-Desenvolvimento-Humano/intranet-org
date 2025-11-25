@@ -1,4 +1,4 @@
-package com.intranet.drive.quota;
+package com.intranet.drive.quota.service;
 
 import com.intranet.drive.quota.entity.UserQuotaEntity;
 import com.intranet.drive.quota.repository.UserQuotaRepository;
