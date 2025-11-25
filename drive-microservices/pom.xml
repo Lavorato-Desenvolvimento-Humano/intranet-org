@@ -29,7 +29,7 @@
 
     <modules>
         <module>shared/drive-common</module>
-        <module>services/drive-file-service</module>
+        <module>services/drive-core-service</module>
     </modules>
 
     <dependencyManagement>
