@@ -45,7 +45,7 @@ jobs:
           mvn clean package -Dfile.encoding=UTF-8 -DskipTests -pl shared/drive-common,services/drive-core-service
 
           echo "JAR criado:"
-          ls -la services/drive-file-service/target/
+          ls -la services/drive-core-service/target/
 
       - name: Autenticar no GHCR
         if: github.event_name != 'pull_request'
@@ -54,11 +54,11 @@ jobs:
       - name: Build e Push Docker Image
         if: github.event_name != 'pull_request'
         run: |
-          cd drive-microservices/services/drive-file-service
+          cd drive-microservices/services/drive-core-service
 
           IMAGE_TAG=${{ github.ref_name }}
           REPO_LOWERCASE=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          IMAGE_NAME="ghcr.io/$REPO_LOWERCASE/drive-file-service:$IMAGE_TAG"
+          IMAGE_NAME="ghcr.io/$REPO_LOWERCASE/drive-core-service:$IMAGE_TAG"
 
           docker build -t $IMAGE_NAME .
           docker push $IMAGE_NAME
@@ -118,8 +118,8 @@ jobs:
               volumes:
                 - minio_data:/data
 
-            drive-file-service:
-              image: ghcr.io/REPO_PLACEHOLDER/drive-file-service:BRANCH_PLACEHOLDER
+            drive-core-service:
+              image: ghcr.io/REPO_PLACEHOLDER/drive-core-service:BRANCH_PLACEHOLDER
               restart: always
               depends_on:
                 - postgres
@@ -157,7 +157,7 @@ jobs:
           SQL_EOF
             fi
             
-            docker pull ghcr.io/$REPO_LOWERCASE/drive-file-service:${{ github.ref_name }}
+            docker pull ghcr.io/$REPO_LOWERCASE/drive-core-service:${{ github.ref_name }}
             docker-compose up -d
             
             echo "Deploy concluído!"
