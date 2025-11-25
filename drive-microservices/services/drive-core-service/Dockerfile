@@ -28,7 +28,7 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-COPY target/drive-file-service-*.jar app.jar
+COPY target/drive-core-service-*.jar app.jar
 
 # Alterar ownership do arquivo JAR
 RUN chown spring:spring app.jar
