@@ -25,13 +25,18 @@ public class CollaborationController {
     private final CollaborationService collaborationService;;
     private final CoreIntegrationService coreIntegrationService;
 
+    public CollaborationController(CollaborationService collaborationService, CoreIntegrationService coreIntegrationService) {
+        this.collaborationService = collaborationService;
+        this.coreIntegrationService = coreIntegrationService;
+    }
+
     @Value("${app.drive.public-url:http://localhost:3000/drive/share/}")
     private String publicShareBaseUrl;
 
     @PostMapping("/{fileId}/comments")
     public ResponseEntity<CommentResponseDto> addComment(@PathVariable Long fileId,
                                                          @RequestBody CommentRequestDto request) {
-        UserDto currentUser = getCurrentUSer();
+        UserDto currentUser = getCurrentUser();
         FileCommentEntity comment = collaborationService.addComment(
                 fileId,
                 request.content(),
