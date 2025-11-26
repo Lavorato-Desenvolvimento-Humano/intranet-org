@@ -77,6 +77,14 @@ public class FileEntity {
     @OneToMany(mappedBy = "parentFileId", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<FileEntity> versions = new ArrayList<>();
 
+    @Column(name = "approval_status")
+    @Enumerated(EnumType.STRING)
+    private ApprovalStatus approvalStatus = ApprovalStatus.APPROVED;
+
+    public enum ApprovalStatus {
+        PENDING, APPROVED, REJECTED
+    }
+
     //Construtores
     public FileEntity() {}
 
@@ -153,6 +161,9 @@ public class FileEntity {
 
     public List<FileEntity> getVersions() { return versions; }
     public void setVersions(List<FileEntity> versions) { this.versions = versions; }
+
+    public ApprovalStatus getApprovalStatus() { return approvalStatus; }
+    public void setApprovalStatus(ApprovalStatus approvalStatus) { this.approvalStatus = approvalStatus; }
 
     // Métodos auxiliares
     public void incrementDownloadCount() {

@@ -127,3 +127,7 @@ security:
 rate-limit:
   enabled: ${RATE_LIMIT_ENABLED:false}
   request_per_minute: ${RATE_LIMIT_RPM:100}
+
+app:
+  drive:
+    public-url: "https://dev.lavorato.app.br/drive/share/"
