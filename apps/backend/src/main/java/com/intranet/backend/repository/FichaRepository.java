@@ -21,6 +21,8 @@ public interface FichaRepository extends JpaRepository<Ficha, UUID> {
 
     Logger logger = LoggerFactory.getLogger(FichaRepository.class);
 
+    Optional<Ficha> findByGuiaIdAndEspecialidade(UUID guiaId, String especialidade);
+
     @Query("SELECT f FROM Ficha f WHERE f.guia.id = :guiaId ORDER BY f.especialidade ASC")
     List<Ficha> findByGuiaId(@Param("guiaId") UUID guiaId);
 
