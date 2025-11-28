@@ -328,7 +328,7 @@ public class FichaPdfController {
      * Lista templates disponíveis (apenas admins)
      */
     @GetMapping("/templates-disponiveis")
-    @PreAuthorize("hasAnyAuthority('ficha:admin') or hasAnyRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ficha:admin') or hasAnyRole('ADMIN','GUIAS')")
     public ResponseEntity<List<Map<String, Object>>> getTemplatesDisponiveis() {
         logger.info("Requisição para listar templates disponíveis");
 
@@ -345,7 +345,7 @@ public class FichaPdfController {
      * Atualiza template personalizado de um convênio (apenas admins)
      */
     @PutMapping("/convenios/{convenioId}/template")
-    @PreAuthorize("hasAnyAuthority('ficha:admin') or hasAnyRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ficha:admin') or hasAnyRole('ADMIN','GUIAS')")
     public ResponseEntity<Map<String, Object>> atualizarTemplateConvenio(
             @PathVariable UUID convenioId,
             @RequestParam(required = false) String templatePersonalizado) {
@@ -1077,7 +1077,7 @@ public class FichaPdfController {
      * Testa geração para um paciente específico (modo debug)
      */
     @PostMapping("/teste/{pacienteId}")
-    @PreAuthorize("hasAnyAuthority('ficha:test') or hasAnyRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ficha:test') or hasAnyRole('ADMIN','GUIAS')")
     public ResponseEntity<Map<String, Object>> testarGeracao(
             @PathVariable UUID pacienteId,
             @RequestParam(defaultValue = "1") Integer mes,
@@ -1171,7 +1171,7 @@ public class FichaPdfController {
      * Lista todas as configurações de convênios (apenas admins)
      */
     @GetMapping("/configuracoes")
-    @PreAuthorize("hasAnyAuthority('ficha:admin') or hasAnyRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ficha:admin') or hasAnyRole('ADMIN','GUIAS')")
     public ResponseEntity<Map<String, Object>> getConfiguracoes() {
         logger.info("Requisição para listar configurações de fichas PDF");
 
@@ -1216,7 +1216,7 @@ public class FichaPdfController {
      * Limpa cache de templates e imagens
      */
     @PostMapping("/limpar-cache")
-    @PreAuthorize("hasAnyAuthority('ficha:admin') or hasAnyRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ficha:admin') or hasAnyRole('ADMIN','GUIAS')")
     public ResponseEntity<Map<String, Object>> limparCache() {
         logger.info("Requisição para limpar cache de templates");
 
