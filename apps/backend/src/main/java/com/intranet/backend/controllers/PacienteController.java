@@ -47,7 +47,7 @@ public class PacienteController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('paciente:read') or hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('paciente:read') or hasAnyRole('ADMIN','GUIAS')")
     public ResponseEntity<PacienteDto> getPacienteById(@PathVariable UUID id) {
         logger.info("Requisição para buscar paciente com ID: {}", id);
 
@@ -56,7 +56,7 @@ public class PacienteController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('paciente:create') or hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('paciente:create') or hasAnyRole('ADMIN','GUIAS')")
     public ResponseEntity<PacienteDto> createPaciente(@Valid @RequestBody PacienteCreateRequest request) {
         logger.info("Requisição para criar novo paciente: {}", request.getNome());
 
@@ -65,7 +65,7 @@ public class PacienteController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('paciente:update') or hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('paciente:update') or hasAnyRole('ADMIN','GUIAS')")
     public ResponseEntity<PacienteDto> updatePaciente(@PathVariable UUID id,
                                                       @Valid @RequestBody PacienteUpdateRequest request) {
         logger.info("Requisição para atualizar paciente com ID: {}", id);
@@ -75,7 +75,7 @@ public class PacienteController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('paciente:delete') or hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('paciente:delete') or hasAnyRole('ADMIN','GUIAS')")
     public ResponseEntity<Void> deletePaciente(@PathVariable UUID id) {
         logger.info("Requisição para deletar paciente com ID: {}", id);
 
@@ -84,7 +84,7 @@ public class PacienteController {
     }
 
     @GetMapping("/search")
-    @PreAuthorize("hasAnyAuthority('paciente:read') or hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('paciente:read') or hasAnyRole('ADMIN','GUIAS')")
     public ResponseEntity<Page<PacienteSummaryDto>> searchPacientseByNome(
             @RequestParam String nome,
             @PageableDefault(size = 20) Pageable pageable) {
@@ -95,7 +95,7 @@ public class PacienteController {
     }
 
     @GetMapping("/convenio/{convenioId}")
-    @PreAuthorize("hasAnyAuthority('paciente:read') or hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('paciente:read') or hasAnyRole('ADMIN','GUIAS')")
     public ResponseEntity<Page<PacienteSummaryDto>> getPacientesByConvenio(
             @PathVariable UUID convenioId,
             @PageableDefault(size = 20) Pageable pageable) {
@@ -106,7 +106,7 @@ public class PacienteController {
     }
 
     @GetMapping("/unidade/{unidade}")
-    @PreAuthorize("hasAnyAuthority('paciente:read') or hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('paciente:read') or hasAnyRole('ADMIN','GUIAS')")
     public ResponseEntity<Page<PacienteSummaryDto>> getPacientesByUnidade(
             @PathVariable Paciente.UnidadeEnum unidade,
             @PageableDefault(size = 20) Pageable pageable) {
@@ -117,7 +117,7 @@ public class PacienteController {
     }
 
     @GetMapping("/data-nascimento")
-    @PreAuthorize("hasAnyAuthority('paciente:read') or hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('paciente:read') or hasAnyRole('ADMIN','GUIAS')")
     public ResponseEntity<Page<PacienteSummaryDto>> getPacientesByDataNascimento(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
@@ -129,7 +129,7 @@ public class PacienteController {
     }
 
     @GetMapping("/{id}/guias")
-    @PreAuthorize("hasAnyAuthority('paciente:read') or hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('paciente:read') or hasAnyRole('ADMIN','GUIAS')")
     public ResponseEntity<Page<GuiaSummaryDto>> getGuiasByPacienteId(
             @PathVariable UUID id,
             @PageableDefault(size = 20) Pageable pageable) {
@@ -140,7 +140,7 @@ public class PacienteController {
     }
 
     @GetMapping("/stats")
-    @PreAuthorize("hasAnyAuthority('paciente:read') or hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('paciente:read') or hasAnyRole('ADMIN','GUIAS')")
     public ResponseEntity<Map<String, Object>> getPacientesStats() {
         logger.info("Requisição para buscar estatísticas dos pacientes");
 
@@ -153,7 +153,7 @@ public class PacienteController {
     }
 
     @GetMapping("/convenio/{convenioId}/count")
-    @PreAuthorize("hasAnyAuthority('paciente:read') or hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('paciente:read') or hasAnyRole('ADMIN','GUIAS')")
     public ResponseEntity<Map<String, Long>> countPacientesByConvenio(@PathVariable UUID convenioId) {
         logger.info("Requisição para contar pacientes do convênio com ID: {}", convenioId);
 
