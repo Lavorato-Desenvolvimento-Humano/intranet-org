@@ -68,7 +68,7 @@ public class RelatorioController {
      * Lista relatórios do usuário atual
      */
     @GetMapping("/meus")
-    @PreAuthorize("hasAnyAuthority('relatorio:read') or hasAnyRole('USER', 'ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyAuthority('relatorio:read') or hasAnyRole('GUIAS', 'ADMIN', 'SUPERVISOR')")
     public ResponseEntity<Page<RelatorioSummaryDto>> getMeusRelatorios(
             @PageableDefault(size = 20) Pageable pageable) {
         logger.info("Requisição para listar meus relatórios");
