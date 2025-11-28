@@ -29,7 +29,7 @@
 
     <modules>
         <module>shared/drive-common</module>
-        <module>services/drive-file-service</module>
+        <module>services/drive-core-service</module>
     </modules>
 
     <dependencyManagement>
@@ -40,6 +40,13 @@
                 <version>${spring-cloud.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>1.18.42</version>
+                <scope>provided</scope>
             </dependency>
 
             <!-- Drive Common -->

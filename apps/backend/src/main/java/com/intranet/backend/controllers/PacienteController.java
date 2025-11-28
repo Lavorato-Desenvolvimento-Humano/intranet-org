@@ -32,7 +32,7 @@ public class PacienteController {
     private final PacienteService pacienteService;
 
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('paciente:read') or hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('paciente:read') or hasAnyRole('ADMIN','GUIAS')")
     public ResponseEntity<Page<PacienteSummaryDto>> getAllPacientes(@PageableDefault(size = 20) Pageable pageable) {
 
         // ✅ Debug temporário
