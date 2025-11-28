@@ -91,6 +91,7 @@ function NovaFichaContent() {
     "Musicoterapia",
     "Avaliação neuropsicológica",
     "Arteterapia",
+    "Terapia ABA",
   ];
 
   // Carregar dados iniciais
