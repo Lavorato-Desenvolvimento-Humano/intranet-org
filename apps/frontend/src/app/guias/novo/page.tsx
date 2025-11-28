@@ -63,6 +63,7 @@ export default function NovaGuiaPage() {
     "Musicoterapia",
     "Avaliação neuropsicológica",
     "Arteterapia",
+    "Terapia ABA",
   ];
 
   // Carregar dados iniciais
