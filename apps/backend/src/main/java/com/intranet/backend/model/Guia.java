@@ -36,7 +36,7 @@ public class Guia {
     @Column(name = "numero_guia", nullable = false, unique = false, length = 50)
     private String numeroGuia;
 
-    @Column(name = "numero_venda", unique = true)
+    @Column(name = "numero_venda")
     private String numeroVenda;
 
     @Column(name = "status", nullable = false, length = 100)

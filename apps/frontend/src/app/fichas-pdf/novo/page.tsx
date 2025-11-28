@@ -78,6 +78,7 @@ export default function NovaGeracaoPage() {
     "Musicoterapia",
     "Avaliação neuropsicológica",
     "Arteterapia",
+    "Terapia ABA",
   ];
 
   useEffect(() => {
