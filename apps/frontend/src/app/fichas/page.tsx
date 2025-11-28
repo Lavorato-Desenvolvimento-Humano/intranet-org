@@ -65,11 +65,15 @@ export default function FichasPage() {
   const especialidades = [
     "Fisioterapia",
     "Fonoaudiologia",
-    "Terapia Ocupacional",
-    "Psicologia",
+    "Terapia ocupacional",
+    "Psicoterapia",
     "Nutrição",
     "Psicopedagogia",
     "Psicomotricidade",
+    "Musicoterapia",
+    "Avaliação neuropsicológica",
+    "Arteterapia",
+    "Terapia ABA",
   ];
 
   // Carregar dados iniciais
