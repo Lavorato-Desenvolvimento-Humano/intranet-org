@@ -42,6 +42,7 @@ public class FichaPdfServiceImpl implements FichaPdfService {
     private final PacienteRepository pacienteRepository;
     private final GuiaRepository guiaRepository;
     private final ConvenioRepository convenioRepository;
+    private final FichaRepository fichaRepository;
 
     // Services auxiliares
     private final FichaPdfGeneratorService pdfGeneratorService;
@@ -1456,9 +1457,20 @@ public class FichaPdfServiceImpl implements FichaPdfService {
         item.setAno(ano);
         item.setMesExtenso(getMesExtenso(mes));
 
-        // Gerar número de identificação único
-        String prefixo = getPrefixoIdentificacao(guia.getConvenio().getId());
-        item.setNumeroIdentificacao(prefixo + gerarNumeroUnico());
+        String codigoFicha = null;
+
+        Optional<Ficha> fichaExistente = fichaRepository.findByGuiaIdAndEspecialidade(guia.getId(), especialidade);
+
+        if (fichaExistente.isPresent()) {
+            codigoFicha = fichaExistente.get().getCodigoFicha();
+            logger.debug("Ficha encontrada no banco. Usando código existente: {}", codigoFicha);
+        } else {
+            String prefixo = getPrefixoIdentificacao(guia.getConvenio().getId());
+            codigoFicha = prefixo + gerarNumeroUnico();
+            logger.debug("Ficha não encontrada no banco. Gerando código temporário: {}", codigoFicha);
+        }
+
+        item.setNumeroIdentificacao(codigoFicha);
 
         item.setConvenioId(guia.getConvenio().getId());
         item.setConvenioNome(guia.getConvenio().getName());

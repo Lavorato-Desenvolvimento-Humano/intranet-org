@@ -94,7 +94,7 @@ export default function NovaGeracaoPage() {
     ) {
       // Adicionar um delay para evitar muitas chamadas
       const timer = setTimeout(() => {
-        verificarPaciente();
+        verificarPaciente(true);
       }, 1000); // 1 segundo de delay
 
       return () => clearTimeout(timer);
@@ -111,9 +111,9 @@ export default function NovaGeracaoPage() {
     }
   };
 
-  const verificarPaciente = async () => {
+  const verificarPaciente = async (silencioso = false) => {
     if (!formData.pacienteId || !formData.mes || !formData.ano) {
-      toast.error("Dados incompletos para verificação");
+      if (!silencioso) toast.error("Dados incompletos para verificação");
       return;
     }
 
@@ -128,24 +128,45 @@ export default function NovaGeracaoPage() {
 
       setPacienteVerificacao(verificacao);
 
-      // Feedback para o usuário
-      if (verificacao.temFichasDisponiveis) {
-        toast.success(`Fichas disponíveis para ${verificacao.pacienteNome}`);
-      } else {
-        toast.warning(
-          `Nenhuma ficha pendente para ${verificacao.pacienteNome} no período ${formData.mes}/${formData.ano}`
-        );
+      if (!silencioso) {
+        const nomePaciente =
+          verificacao.pacienteNome || pacienteNomeSelecionado || "Paciente";
+
+        if (verificacao.temFichasDisponiveis) {
+          toast.success(`Fichas disponíveis para ${nomePaciente}`);
+        } else {
+          toast.warning(
+            `Nenhuma ficha pendente para ${nomePaciente} no período ${formData.mes}/${formData.ano}`
+          );
+        }
       }
     } catch (error) {
       console.error("Erro ao verificar paciente:", error);
-      toast.error("Erro ao verificar dados do paciente");
+      if (!silencioso) toast.error("Erro ao verificar dados do paciente");
       setPacienteVerificacao(null);
     } finally {
       setVerificandoPaciente(false);
     }
   };
 
-  const validarFormulario = (): boolean => {
+  const isFormularioValido = (): boolean => {
+    if (!formData.mes || !formData.ano) return false;
+
+    const validacaoPeriodo = fichaPdfHelpers.validarPeriodo(
+      formData.mes,
+      formData.ano
+    );
+    if (!validacaoPeriodo.valido) return false;
+
+    if (formData.tipo === "paciente" && !formData.pacienteId) return false;
+    if (formData.tipo === "convenio" && !formData.convenioId) return false;
+    if (formData.tipo === "lote" && formData.convenioIds.length === 0)
+      return false;
+
+    return true;
+  };
+
+  const validarFormularioComFeedback = (): boolean => {
     if (!formData.mes || !formData.ano) {
       toast.error("Mês e ano são obrigatórios");
       return false;
@@ -179,7 +200,7 @@ export default function NovaGeracaoPage() {
   };
 
   const submeterFormulario = async () => {
-    if (!validarFormulario()) return;
+    if (!validarFormularioComFeedback()) return;
 
     try {
       setLoading(true);
@@ -218,7 +239,7 @@ export default function NovaGeracaoPage() {
 
         const response = await fichaPdfService.gerarFichasConvenio(request);
         toast.success(
-          "Geração iniciada com sucesso! Você pode acompanhar o progresso na lista de jobs."
+          "Geração iniciada com sucesso! Acompanhe na lista de jobs."
         );
         router.push(`/fichas-pdf/job/${response.jobId}`);
       } else if (formData.tipo === "lote") {
@@ -354,7 +375,8 @@ export default function NovaGeracaoPage() {
                 <div className="flex items-center">
                   <User className="h-4 w-4 text-gray-600 mr-2" />
                   <span className="font-medium text-gray-900">
-                    {pacienteVerificacao.pacienteNome}
+                    {pacienteVerificacao.pacienteNome ||
+                      pacienteNomeSelecionado}
                   </span>
                 </div>
                 <span
@@ -769,7 +791,7 @@ export default function NovaGeracaoPage() {
         },
       };
 
-      setPrevia(previaSegura);
+      setPrevia(response as FichaPdfPreviaDto);
 
       if (previaSegura.seraGeradoPara === 0) {
         toast.info("Todos os pacientes já possuem fichas para este período");
@@ -779,18 +801,8 @@ export default function NovaGeracaoPage() {
         );
       }
     } catch (error: any) {
-      console.error("Erro detalhado ao gerar prévia:", error);
-
-      let mensagemErro = "Erro ao gerar prévia";
-      if (error?.response?.data?.mensagem) {
-        mensagemErro = error.response.data.mensagem;
-      } else if (error?.response?.data?.message) {
-        mensagemErro = error.response.data.message;
-      } else if (error?.message) {
-        mensagemErro = error.message;
-      }
-
-      toast.error(mensagemErro);
+      console.error("Erro ao gerar prévia:", error);
+      toast.error("Erro ao gerar prévia");
       setPrevia(null);
     } finally {
       setGerandoPrevia(false);
@@ -1110,7 +1122,7 @@ export default function NovaGeracaoPage() {
             <div className="flex space-x-3">
               <button
                 onClick={gerarPrevia}
-                disabled={gerandoPrevia || !validarFormulario()}
+                disabled={gerandoPrevia || !isFormularioValido()}
                 className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center">
                 {gerandoPrevia ? (
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
@@ -1124,7 +1136,7 @@ export default function NovaGeracaoPage() {
                 onClick={submeterFormulario}
                 disabled={
                   loading ||
-                  !validarFormulario() ||
+                  !isFormularioValido() ||
                   !!(
                     previa &&
                     Array.isArray(previa.bloqueios) &&
