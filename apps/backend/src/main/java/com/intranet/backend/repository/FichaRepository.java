@@ -277,4 +277,11 @@ public interface FichaRepository extends JpaRepository<Ficha, UUID> {
             @Param("especialidade") String especialidade,
             @Param("fichaId") UUID fichaId
     );
+
+    List<Ficha> findByPacienteIdAndMesAndAnoAndTipoFicha(
+            UUID pacienteId,
+            Integer mes,
+            Integer ano,
+            Ficha.TipoFicha tipoFicha
+    );
 }

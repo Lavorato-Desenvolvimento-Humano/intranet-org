@@ -1024,18 +1024,60 @@ public class FichaPdfServiceImpl implements FichaPdfService {
                 paciente.getNome(),
                 paciente.getConvenio() != null ? paciente.getConvenio().getName() : "Não informado");
 
+        // Lista final combinada
+        List<FichaPdfItemDto> todosItens = new ArrayList<>();
+
+        // Obter configuração do convênio para aplicar templates
+        UUID convenioId = paciente.getConvenio() != null ? paciente.getConvenio().getId() : null;
+        ConvenioFichaPdfConfig config = null;
+        if (convenioId != null) {
+            config = configRepository.findByConvenioId(convenioId).orElse(null);
+        }
+
         List<Guia> guias = buscarGuiasCorrigidas(request.getPacienteId(), request.getMes(), request.getAno(),
                 request.getEspecialidades(), request.getIncluirInativos());
 
-        logger.info("Guias encontradas após busca corrigida: {}", guias.size());
+        logger.info("Guias encontradas: {}", guias.size());
 
-        if (guias.isEmpty()) {
-            logger.warn("Nenhuma guia encontrada com busca corrigida");
-            return new ArrayList<>();
+        if (!guias.isEmpty()) {
+            // Se tem guias, processa e adiciona à lista
+            List<FichaPdfItemDto> itensGuia = processarGuiasParaFichasComTemplate(guias, request.getMes(), request.getAno());
+            todosItens.addAll(itensGuia);
         }
 
-        // Processar guias para fichas com configuração de template
-        return processarGuiasParaFichasComTemplate(guias, request.getMes(), request.getAno());
+        try {
+            List<Ficha> fichasAssinatura = fichaRepository.findByPacienteIdAndMesAndAnoAndTipoFicha(
+                    request.getPacienteId(),
+                    request.getMes(),
+                    request.getAno(),
+                    Ficha.TipoFicha.ASSINATURA
+            );
+
+            logger.info("Fichas de assinatura avulsas encontradas para o paciente: {}", fichasAssinatura.size());
+
+            for (Ficha ficha : fichasAssinatura) {
+                // Evitar duplicidade (se a ficha já foi gerada via guia acima)
+                boolean jaProcessada = todosItens.stream()
+                        .anyMatch(i -> i.getNumeroIdentificacao().equals(ficha.getCodigoFicha()));
+
+                if (!jaProcessada) {
+                    // Converter entidade para DTO
+                    FichaPdfItemDto item = converterFichaParaDto(ficha);
+
+                    // Gerar HTML
+                    String htmlGerado = templateService.gerarHtmlComConfiguracaoConvenio(item, config);
+                    item.setHtmlGerado(htmlGerado);
+
+                    todosItens.add(item);
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Erro ao buscar fichas de assinatura para paciente: {}", e.getMessage());
+        }
+
+        logger.info("Total de itens para o paciente (Guias + Assinaturas): {}", todosItens.size());
+
+        return todosItens;
     }
 
     private List<FichaPdfItemDto> buscarItensParaConvenio(FichaPdfConvenioRequest request) {
