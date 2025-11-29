@@ -86,6 +86,13 @@ public interface FichaRepository extends JpaRepository<Ficha, UUID> {
             @Param("convenioIds") List<UUID> convenioIds
     );
 
+    List<Ficha> findByConvenioIdAndMesAndAnoAndTipoFicha(
+            UUID convenioId,
+            Integer mes,
+            Integer ano,
+            Ficha.TipoFicha tipoFicha
+    );
+
     /**
      * Conta fichas por guia e data de atualização
      */

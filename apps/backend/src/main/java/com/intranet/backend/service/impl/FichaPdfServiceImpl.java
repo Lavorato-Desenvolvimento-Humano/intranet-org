@@ -1039,7 +1039,7 @@ public class FichaPdfServiceImpl implements FichaPdfService {
     }
 
     private List<FichaPdfItemDto> buscarItensParaConvenio(FichaPdfConvenioRequest request) {
-        logger.info("=== BUSCAR ITENS PARA CONVÊNIO ===");
+        logger.info("=== BUSCAR ITENS PARA CONVÊNIO (GUIAS + ASSINATURAS) ===");
         logger.info("Convênio: {}, Período: {}/{}", request.getConvenioId(), request.getMes(), request.getAno());
 
         // Verificar se o convênio está habilitado
@@ -1047,21 +1047,18 @@ public class FichaPdfServiceImpl implements FichaPdfService {
             throw new IllegalArgumentException("Convênio não habilitado para geração de fichas PDF");
         }
 
-        // NOVA LÓGICA: Obter configuração específica do convênio UMA VEZ
+        // Obter configuração específica do convênio UMA VEZ
         Optional<ConvenioFichaPdfConfig> configOpt = configRepository.findByConvenioId(request.getConvenioId());
         ConvenioFichaPdfConfig config = configOpt.orElse(null);
 
         List<FichaPdfItemDto> todosItens = new ArrayList<>();
 
-        // LÓGICA ORIGINAL: Buscar guias por convênio usando método existente
         List<String> statusAtivos = Arrays.asList(
                 "EMITIDO", "SUBIU", "ANALISE", "ASSINADO", "FATURADO", "ENVIADO A BM"
         );
 
         List<Guia> guiasConvenio = guiaRepository.findByConvenioIdAndStatusIn(
                 request.getConvenioId(), statusAtivos);
-
-        logger.info("Guias ativas encontradas para o convênio: {}", guiasConvenio.size());
 
         // Filtrar por período se especificado
         Integer mes = request.getMes();
@@ -1070,47 +1067,65 @@ public class FichaPdfServiceImpl implements FichaPdfService {
         if (mes != null && ano != null) {
             guiasConvenio = guiasConvenio.stream()
                     .filter(guia -> {
-                        // Verificar se a guia está no período correto
                         return (guia.getMes() != null && guia.getMes().equals(mes) &&
                                 guia.getAno() != null && guia.getAno().equals(ano)) ||
-                                // OU se foi criada/atualizada no período
                                 isGuiaNoMesAno(guia, mes, ano);
                     })
                     .collect(Collectors.toList());
         }
 
-        logger.info("Guias após filtro de período: {}", guiasConvenio.size());
+        logger.info("Guias ativas encontradas: {}", guiasConvenio.size());
 
-        // Processar cada guia para gerar itens (LÓGICA ORIGINAL)
+        // Processar guias
         for (Guia guia : guiasConvenio) {
             if (guia.getEspecialidades() != null && !guia.getEspecialidades().isEmpty()) {
-                // Gerar uma ficha por especialidade
                 for (String especialidade : guia.getEspecialidades()) {
                     FichaPdfItemDto item = criarItemFicha(guia, especialidade, mes, ano);
-
-                    // ÚNICA MUDANÇA: Usar configuração específica do convênio
                     String htmlGerado = templateService.gerarHtmlComConfiguracaoConvenio(item, config);
-
-                    // Armazenar o HTML no item para uso posterior
                     item.setHtmlGerado(htmlGerado);
-
                     todosItens.add(item);
                 }
             } else {
-                // Criar ficha sem especialidade específica
                 FichaPdfItemDto item = criarItemFicha(guia, "Não informado", mes, ano);
-
-                // ÚNICA MUDANÇA: Usar configuração específica do convênio
                 String htmlGerado = templateService.gerarHtmlComConfiguracaoConvenio(item, config);
-
-                // Armazenar o HTML no item para uso posterior
                 item.setHtmlGerado(htmlGerado);
-
                 todosItens.add(item);
             }
         }
 
-        logger.info("Total de itens gerados para o convênio: {}", todosItens.size());
+        try {
+            List<Ficha> fichasAssinatura = fichaRepository.findByConvenioIdAndMesAndAnoAndTipoFicha(
+                    request.getConvenioId(),
+                    request.getMes(),
+                    request.getAno(),
+                    Ficha.TipoFicha.ASSINATURA
+            );
+
+            logger.info("Fichas de assinatura avulsas encontradas: {}", fichasAssinatura.size());
+
+            for (Ficha ficha : fichasAssinatura) {
+                // Verificar se esta ficha já foi gerada via Guia (evitar duplicidade)
+                boolean jaProcessada = todosItens.stream()
+                        .anyMatch(i -> i.getNumeroIdentificacao().equals(ficha.getCodigoFicha()));
+
+                if (!jaProcessada) {
+                    FichaPdfItemDto item = converterFichaParaDto(ficha);
+
+                    // Gerar HTML usando a mesma configuração de template
+                    String htmlGerado = templateService.gerarHtmlComConfiguracaoConvenio(item, config);
+                    item.setHtmlGerado(htmlGerado);
+
+                    todosItens.add(item);
+                    logger.debug("Adicionada ficha de assinatura: {}", item.getNumeroIdentificacao());
+                }
+            }
+
+        } catch (Exception e) {
+            logger.error("Erro ao buscar fichas de assinatura: {}", e.getMessage());
+            // Não interrompe o fluxo principal, apenas loga o erro
+        }
+
+        logger.info("Total final de itens (Guias + Assinaturas): {}", todosItens.size());
         return todosItens;
     }
 
@@ -1488,6 +1503,42 @@ public class FichaPdfServiceImpl implements FichaPdfService {
         }
         item.setQuantidadeAutorizada(guia.getQuantidadeAutorizada());
         item.setUltimaAtividade(guia.getUpdatedAt());
+
+        return item;
+    }
+
+    private FichaPdfItemDto converterFichaParaDto(Ficha ficha) {
+        FichaPdfItemDto item = new FichaPdfItemDto();
+
+        item.setPacienteId(ficha.getPaciente().getId());
+        item.setPacienteNome(ficha.getPaciente().getNome());
+
+        if (StringUtils.hasText(ficha.getPaciente().getResponsavel())) {
+            item.setResponsavel(ficha.getPaciente().getResponsavel());
+        } else {
+            item.setResponsavel("Não informado");
+        }
+
+        item.setEspecialidade(ficha.getEspecialidade());
+        item.setMes(ficha.getMes());
+        item.setAno(ficha.getAno());
+        item.setMesExtenso(getMesExtenso(ficha.getMes()));
+
+        item.setNumeroIdentificacao(ficha.getCodigoFicha());
+
+        item.setConvenioId(ficha.getConvenio().getId());
+        item.setConvenioNome(ficha.getConvenio().getName());
+
+        if (ficha.getPaciente().getUnidade() != null) {
+            item.setUnidade(ficha.getPaciente().getUnidade().name());
+        }
+
+        item.setGuiaId(null);
+        item.setNumeroGuia("ASSINATURA");
+        item.setNumeroVenda("N/A");
+
+        item.setQuantidadeAutorizada(ficha.getQuantidadeAutorizada());
+        item.setUltimaAtividade(ficha.getUpdatedAt());
 
         return item;
     }
