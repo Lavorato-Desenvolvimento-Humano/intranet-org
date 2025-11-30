@@ -21,6 +21,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -39,6 +40,35 @@ public class TicketService {
 
     @Value("${app.upload.dir:/app/uploads")
     private String uploadDir;
+
+    public List<Ticket> getAllTickets(String assigneeIdFilter, String requesterIdFilter, String statusFilter) {
+        User currentUser = getCurrentUser();
+
+        // 1. "Meus Atendimentos" (assigneeId=me)
+        if ("me".equalsIgnoreCase(assigneeIdFilter)) {
+            List<TicketStatus> statuses = parseStatuses(statusFilter);
+            return ticketRepository.findByAssigneeIdAndStatusInOrderByPriorityDesc(currentUser.getId(), statuses);
+        }
+
+        // 2. "Fila da Equipe" (assigneeId=null & status=OPEN)
+        if ("null".equalsIgnoreCase(assigneeIdFilter)) {
+            // Busca os IDs das equipes que o usuário participa
+            List<UUID> myTeamIds = userEquipeRepository.findEquipeIdsByUserId(currentUser.getId());
+
+            if (myTeamIds.isEmpty()) return List.of();
+
+            return ticketRepository.findQueueByTeamIds(myTeamIds);
+        }
+
+        // 3. "Meus Pedidos" (requesterId=me)
+        if ("me".equalsIgnoreCase(requesterIdFilter)) {
+            return ticketRepository.findByRequesterIdOrderByCreatedAtDesc(currentUser.getId());
+        }
+
+        // Default: retorna vazio ou tudo (cuidado com performance aqui)
+        return List.of();
+    }
+
 
     @Transactional
     public Ticket createTicket(TicketCreateRequest dto, MultipartFile file) {
@@ -257,5 +287,15 @@ public class TicketService {
         } catch (IOException e) {
             throw new RuntimeException("Falha ao salvar anexo", e);
         }
+    }
+
+    private List<TicketStatus> parseStatuses(String statusFilter) {
+        if (statusFilter == null || statusFilter.isEmpty()) {
+            return Arrays.asList(TicketStatus.values());
+        }
+        return Arrays.stream(statusFilter.split(","))
+                .map(String::trim)
+                .map(TicketStatus::valueOf)
+                .collect(Collectors.toList());
     }
 }

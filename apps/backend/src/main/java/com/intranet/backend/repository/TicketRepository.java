@@ -25,6 +25,16 @@ public interface TicketRepository extends JpaRepository<Ticket,Long> {
 
     long countByTargetTeamIdAndAssigneeIsNull(UUID targetTeamId);
 
+    // 1. Meus Pedidos (Created By Me)
+    List<Ticket> findByRequesterIdOrderByCreatedAtDesc(UUID requesterId);
+
+    // 2. Meus Atendimentos (Assigned To Me) - Filtrando status
+    List<Ticket> findByAssigneeIdAndStatusInOrderByPriorityDesc(UUID assigneeId, List<TicketStatus> statuses);
+
+    // 3. Fila da Equipe (Queue) - Tickets sem dono para as equipes que eu participo
+    @Query("SELECT t FROM Ticket t WHERE t.assignee IS NULL AND t.status = 'OPEN' AND t.targetTeam.id IN :teamIds ORDER BY t.priority DESC, t.createdAt ASC")
+    List<Ticket> findQueueByTeamIds(@Param("teamIds") List<UUID> teamIds);
+
     // Estatísticas Gerais
     @Query("SELECT COUNT(t) FROM Ticket t WHERE t.status = 'OPEN'")
     long countOpenTickets();

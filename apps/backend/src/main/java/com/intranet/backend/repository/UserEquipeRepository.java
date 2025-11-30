@@ -1,6 +1,8 @@
 // src/main/java/com/intranet/backend/repository/UserEquipeRepository.java
 package com.intranet.backend.repository;
 
+import com.intranet.backend.model.Equipe;
+import com.intranet.backend.model.User;
 import com.intranet.backend.model.UserEquipe;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -27,4 +29,7 @@ public interface UserEquipeRepository extends JpaRepository<UserEquipe, Long> {
     @Modifying
     @Query("DELETE FROM UserEquipe ue WHERE ue.equipe.id = :equipeId")
     void deleteByEquipeId(@Param("equipeId") UUID equipeId);
+
+    @Query("SELECT ue.equipe.id FROM UserEquipe ue WHERE ue.user.id = :userId")
+    List<UUID> findEquipeIdsByUserId(@Param("userId") UUID userId);
 }

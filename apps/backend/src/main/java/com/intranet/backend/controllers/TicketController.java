@@ -11,12 +11,24 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/tickets")
 @RequiredArgsConstructor
 public class TicketController {
 
     private final TicketService ticketService;
+
+    @GetMapping
+    public ResponseEntity<List<Ticket>> getAll(
+            @RequestParam(required = false) String assigneeId,
+            @RequestParam(required = false) String requesterId,
+            @RequestParam(required = false) String status
+    ) {
+        List<Ticket> tickets = ticketService.getAllTickets(assigneeId, requesterId, status);
+        return ResponseEntity.ok(tickets);
+    }
 
     @PostMapping
     public ResponseEntity<Ticket> create(
