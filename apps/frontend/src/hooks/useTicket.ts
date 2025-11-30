@@ -60,9 +60,7 @@ export const useTicket = (ticketId: number) => {
 
   const resolveTicket = async () => {
     try {
-      // Assumindo que criamos este método no service
-      // await ticketService.resolve(ticketId);
-      // Por enquanto, vou simular um refresh, mas você deve implementar o endpoint PATCH /resolve
+      await ticketService.resolve(ticketId);
       toast.success("Chamado resolvido!");
       loadData();
     } catch (error) {
