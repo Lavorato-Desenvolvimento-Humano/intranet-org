@@ -1,5 +1,6 @@
 package com.intranet.backend.service;
 
+import com.intranet.backend.dto.DashboardStatsDto;
 import com.intranet.backend.dto.TicketCreateRequest;
 import com.intranet.backend.dto.TicketRatingRequest;
 import com.intranet.backend.exception.ResourceNotFoundException;
