@@ -2,6 +2,7 @@ package com.intranet.backend.controllers;
 
 import com.intranet.backend.dto.DashboardStatsDto;
 import com.intranet.backend.dto.TicketCreateRequest;
+import com.intranet.backend.dto.TicketRatingRequest;
 import com.intranet.backend.dto.TicketResponseDto;
 import com.intranet.backend.model.Ticket;
 import com.intranet.backend.service.TicketService;
@@ -49,6 +50,19 @@ public class TicketController {
     @GetMapping("/{id}")
     public ResponseEntity<TicketResponseDto> getById(@PathVariable Long id){
         return ResponseEntity.ok(ticketService.getTicketByIdResponse(id));
+    }
+
+    @PatchMapping("/{id}/resolve")
+    public ResponseEntity<TicketResponseDto> resolve(@PathVariable Long id) {
+        return ResponseEntity.ok(ticketService.resolveTicket(id));
+    }
+
+    @PatchMapping("/{id}/rate")
+    public ResponseEntity<TicketResponseDto> rate(
+            @PathVariable Long id,
+            @RequestBody @Valid TicketRatingRequest request
+    ) {
+        return ResponseEntity.ok(ticketService.rateTicket(id, request));
     }
 
     @GetMapping("/dashboard-stats")

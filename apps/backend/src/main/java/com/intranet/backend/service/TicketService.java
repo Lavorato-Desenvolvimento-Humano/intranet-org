@@ -159,25 +159,24 @@ public class TicketService {
     }
 
     @Transactional
-    public Ticket resolveTicket(Long ticketId) {
+    public TicketResponseDto resolveTicket(Long ticketId) {
         Ticket ticket = getTicketById(ticketId);
 
-        // Regra: Só pode resolver se já estiver em atendimento
         if (ticket.getStatus() == TicketStatus.OPEN) {
             throw new IllegalStateException("O ticket precisa ser assumido antes de ser resolvido.");
         }
 
-        ticket.setStatus(TicketStatus.RESOLVED); // Ou CLOSED, dependendo do seu fluxo
+        ticket.setStatus(TicketStatus.RESOLVED);
         ticket.setClosedAt(LocalDateTime.now());
 
         Ticket saved = ticketRepository.save(ticket);
         logSystemEvent(saved, "Ticket marcado como resolvido pelo técnico.");
 
-        return saved;
+        return toDto(saved);
     }
 
     @Transactional
-    public Ticket rateTicket(Long ticketId, TicketRatingRequest request) {
+    public TicketResponseDto rateTicket(Long ticketId, TicketRatingRequest request) {
         Ticket ticket = getTicketById(ticketId);
         User currentUser = getCurrentUser();
 
@@ -199,7 +198,8 @@ public class TicketService {
             logSystemEvent(ticket, "Ticket avaliado e fechado definitivamente pelo usuário. Nota: " + request.rating());
         }
 
-        return ticketRepository.save(ticket);
+        Ticket saved = ticketRepository.save(ticket);
+        return toDto(saved);
     }
 
     public DashboardStatsDto getDashboardStats() {
