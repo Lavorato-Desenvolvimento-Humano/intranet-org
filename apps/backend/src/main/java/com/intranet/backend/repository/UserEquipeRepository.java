@@ -16,7 +16,8 @@ public interface UserEquipeRepository extends JpaRepository<UserEquipe, Long> {
 
     List<UserEquipe> findByUserId(UUID userId);
 
-    boolean existsByUserIdAndEquipeId(UUID userId, UUID equipeId);
+    @Query("SELECT COUNT(ue) > 0 FROM UserEquipe ue WHERE ue.user.id = :userId AND ue.equipe.id = :equipeId")
+    boolean existsByUserIdAndEquipeId(@Param("userId") UUID userId, @Param("equipeId") UUID equipeId);
 
     void deleteByUserIdAndEquipeId(UUID userId, UUID equipeId);
 
