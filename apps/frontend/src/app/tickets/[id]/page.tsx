@@ -99,7 +99,7 @@ export default function TicketDetailsPage() {
   if (!ticket) return null;
 
   // Verifica se sou o dono do ticket
-  const isRequester = user?.id === ticket.requester.id;
+  const isRequester = user?.id === ticket.requesterId;
 
   // Verifica se pode avaliar (Resolvido e sou o dono)
   const canRate = ticket.status === TicketStatus.RESOLVED && isRequester;
@@ -121,16 +121,15 @@ export default function TicketDetailsPage() {
             {getStatusBadge(ticket.status)}
           </div>
           <p className="text-sm text-gray-500 mt-1">
-            Equipe:{" "}
-            <span className="font-medium">{ticket.targetTeam?.nome}</span> •
-            Aberto por:{" "}
-            <span className="font-medium">{ticket.requester.fullName}</span>
+            Equipe: <span className="font-medium">{ticket.targetTeamNome}</span>{" "}
+            • Aberto por:{" "}
+            <span className="font-medium">{ticket.requesterName}</span>
           </p>
         </div>
 
         {/* Botões de Ação */}
         <div className="flex gap-2">
-          {ticket.status === TicketStatus.OPEN && !ticket.assignee && (
+          {ticket.status === TicketStatus.OPEN && !ticket.assigneeId && (
             <button
               onClick={claimTicket}
               className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition">
@@ -264,13 +263,13 @@ export default function TicketDetailsPage() {
                 Atendente Atual
               </span>
               <div className="flex items-center mt-1">
-                {ticket.assignee ? (
+                {ticket.assigneeId ? (
                   <>
                     <div className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-xs mr-2">
-                      {ticket.assignee.fullName.charAt(0)}
+                      {ticket.assigneeName?.charAt(0)}
                     </div>
                     <span className="text-sm font-medium">
-                      {ticket.assignee.fullName}
+                      {ticket.assigneeName}
                     </span>
                   </>
                 ) : (

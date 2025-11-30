@@ -3,6 +3,7 @@ package com.intranet.backend.service;
 import com.intranet.backend.dto.DashboardStatsDto;
 import com.intranet.backend.dto.TicketCreateRequest;
 import com.intranet.backend.dto.TicketRatingRequest;
+import com.intranet.backend.dto.TicketResponseDto;
 import com.intranet.backend.exception.ResourceNotFoundException;
 import com.intranet.backend.model.*;
 import com.intranet.backend.repository.*;
@@ -41,13 +42,14 @@ public class TicketService {
     @Value("${app.upload.dir:/app/uploads")
     private String uploadDir;
 
-    public List<Ticket> getAllTickets(String assigneeIdFilter, String requesterIdFilter, String statusFilter) {
+    public List<TicketResponseDto> getAllTickets(String assigneeIdFilter, String requesterIdFilter, String statusFilter) {
         User currentUser = getCurrentUser();
+        List<Ticket> tickets = List.of();
 
         // 1. "Meus Atendimentos" (assigneeId=me)
         if ("me".equalsIgnoreCase(assigneeIdFilter)) {
             List<TicketStatus> statuses = parseStatuses(statusFilter);
-            return ticketRepository.findByAssigneeIdAndStatusInOrderByPriorityDesc(currentUser.getId(), statuses);
+            tickets = ticketRepository.findByAssigneeIdAndStatusInOrderByPriorityDesc(currentUser.getId(), statuses);
         }
 
         // 2. "Fila da Equipe" (assigneeId=null & status=OPEN)
@@ -57,16 +59,17 @@ public class TicketService {
 
             if (myTeamIds.isEmpty()) return List.of();
 
-            return ticketRepository.findQueueByTeamIds(myTeamIds);
+           tickets = ticketRepository.findQueueByTeamIds(myTeamIds);
         }
 
         // 3. "Meus Pedidos" (requesterId=me)
         if ("me".equalsIgnoreCase(requesterIdFilter)) {
-            return ticketRepository.findByRequesterIdOrderByCreatedAtDesc(currentUser.getId());
+            tickets = ticketRepository.findByRequesterIdOrderByCreatedAtDesc(currentUser.getId());
         }
 
-        // Default: retorna vazio ou tudo (cuidado com performance aqui)
-        return List.of();
+        return tickets.stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
     }
 
 
@@ -235,6 +238,11 @@ public class TicketService {
         return interactionRepository.findByTicketIdOrderByCreatedAtAsc(ticketId);
     }
 
+    public TicketResponseDto getTicketByIdResponse(Long ticketId) {
+        Ticket ticket = getTicketById(ticketId);
+        return toDto(ticket);
+    }
+
     public Ticket getTicketById(Long ticketId) {
         return (ticketRepository.findById(ticketId).orElseThrow(() -> new ResourceNotFoundException("Ticket não encontrado: " + ticketId)));
     }
@@ -297,5 +305,28 @@ public class TicketService {
                 .map(String::trim)
                 .map(TicketStatus::valueOf)
                 .collect(Collectors.toList());
+    }
+
+    private TicketResponseDto toDto(Ticket ticket) {
+        return new TicketResponseDto(
+                ticket.getId(),
+                ticket.getTitle(),
+                ticket.getDescription(),
+                ticket.getPriority(),
+                ticket.getStatus(),
+                ticket.getCreatedAt(),
+                ticket.getDueDate(),
+                ticket.getClosedAt(),
+                ticket.getRating(),
+                ticket.getRatingComment(),
+                // Null checks são importantes aqui
+                ticket.getRequester().getId(),
+                ticket.getRequester().getFullName(),
+                ticket.getRequester().getEmail(),
+                ticket.getAssignee() != null ? ticket.getAssignee().getId() : null,
+                ticket.getAssignee() != null ? ticket.getAssignee().getFullName() : null,
+                ticket.getTargetTeam() != null ? ticket.getTargetTeam().getId() : null,
+                ticket.getTargetTeam() != null ? ticket.getTargetTeam().getNome() : null
+        );
     }
 }

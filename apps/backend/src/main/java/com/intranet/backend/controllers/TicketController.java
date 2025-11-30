@@ -2,6 +2,7 @@ package com.intranet.backend.controllers;
 
 import com.intranet.backend.dto.DashboardStatsDto;
 import com.intranet.backend.dto.TicketCreateRequest;
+import com.intranet.backend.dto.TicketResponseDto;
 import com.intranet.backend.model.Ticket;
 import com.intranet.backend.service.TicketService;
 import jakarta.validation.Valid;
@@ -21,12 +22,12 @@ public class TicketController {
     private final TicketService ticketService;
 
     @GetMapping
-    public ResponseEntity<List<Ticket>> getAll(
+    public ResponseEntity<List<TicketResponseDto>> getAll(
             @RequestParam(required = false) String assigneeId,
             @RequestParam(required = false) String requesterId,
             @RequestParam(required = false) String status
     ) {
-        List<Ticket> tickets = ticketService.getAllTickets(assigneeId, requesterId, status);
+        List<TicketResponseDto> tickets = ticketService.getAllTickets(assigneeId, requesterId, status);
         return ResponseEntity.ok(tickets);
     }
 
@@ -46,8 +47,8 @@ public class TicketController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Ticket> getById(@PathVariable Long id){
-        return ResponseEntity.ok(ticketService.getTicketById(id));
+    public ResponseEntity<TicketResponseDto> getById(@PathVariable Long id){
+        return ResponseEntity.ok(ticketService.getTicketByIdResponse(id));
     }
 
     @GetMapping("/dashboard-stats")

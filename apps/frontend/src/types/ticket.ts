@@ -29,13 +29,21 @@ export interface Ticket {
   description: string;
   priority: TicketPriority;
   status: TicketStatus;
-  requester: UserDto;
-  assignee?: UserDto | null;
-  targetTeam: EquipeDto;
-  dueDate?: string; // ISO Date String
+
   createdAt: string;
-  updatedAt: string;
+  dueDate?: string;
   closedAt?: string;
+
+  // Campos "achatados" (Flattened)
+  requesterId: string;
+  requesterName: string;
+  requesterEmail: string;
+
+  assigneeId?: string | null;
+  assigneeName?: string | null;
+
+  targetTeamId?: string | null;
+  targetTeamNome?: string | null; // Agora o TS vai reconhecer este campo
 
   // CSAT
   rating?: number;

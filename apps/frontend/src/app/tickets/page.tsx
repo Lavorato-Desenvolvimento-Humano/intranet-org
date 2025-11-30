@@ -40,7 +40,7 @@ export default function TicketsPage() {
         <div>
           <div className="font-medium text-gray-900">{val}</div>
           <div className="text-xs text-gray-500 truncate max-w-[300px]">
-            {item.targetTeam?.nome}
+            {item.targetTeamNome}
           </div>
         </div>
       ),
