@@ -1,3 +1,4 @@
+// src/hooks/useTicket.ts
 import { useState, useCallback, useEffect, useRef } from "react";
 import { ticketService } from "@/services/ticket";
 import { Ticket, TicketInteraction } from "@/types/ticket";
@@ -5,14 +6,15 @@ import toast from "@/utils/toast";
 import { useRouter } from "next/navigation";
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
+import { useAuth } from "@/context/AuthContext";
 
 export const useTicket = (ticketId: number) => {
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [interactions, setInteractions] = useState<TicketInteraction[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const { user } = useAuth();
 
-  // Ref para o cliente STOMP
   const stompClientRef = useRef<Client | null>(null);
 
   const loadData = useCallback(async () => {
@@ -38,63 +40,78 @@ export const useTicket = (ticketId: number) => {
     if (ticketId) loadData();
   }, [loadData, ticketId]);
 
-  // --- WEBSOCKET CONNECTION ---
   useEffect(() => {
     if (!ticketId) return;
 
-    const baseUrl =
-      process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
+    let baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+
+    if (
+      typeof window !== "undefined" &&
+      window.location.protocol === "https:"
+    ) {
+      baseUrl = baseUrl.replace("http:", "https:");
+    }
+
     const socketUrl = `${baseUrl}/ws`;
 
+    console.log(`[WebSocket] Conectando em: ${socketUrl}`);
+
     const client = new Client({
-      // Usamos a factory do SockJS para compatibilidade
+      // A factory do SockJS lidará com a troca de http/https para ws/wss internamente
       webSocketFactory: () => new SockJS(socketUrl),
 
-      // Headers opcionais de conexão (ex: token JWT)
-      connectHeaders: {
-        // 'Authorization': `Bearer ${token}`
-      },
+      // Reconectar automaticamente em caso de queda
+      reconnectDelay: 5000,
 
       onConnect: () => {
-        console.log("WebSocket Conectado! ");
+        console.log("[WebSocket] Conectado!");
 
         // Inscreve-se no tópico específico do ticket
         client.subscribe(`/topic/tickets/${ticketId}`, (message) => {
           if (message.body) {
-            const newInteraction: TicketInteraction = JSON.parse(message.body);
+            try {
+              const newInteraction: TicketInteraction = JSON.parse(
+                message.body
+              );
 
-            // Adiciona a nova interação na lista imediatamente
-            setInteractions((prev) => {
-              // Evita duplicatas se o ID já existir (caso o envio HTTP retorne antes do WS)
-              if (prev.some((i) => i.id === newInteraction.id)) return prev;
-              return [...prev, newInteraction];
-            });
+              // Atualiza a lista de interações em tempo real
+              setInteractions((prev) => {
+                // Evita duplicidade (caso o POST HTTP já tenha adicionado)
+                if (prev.some((i) => i.id === newInteraction.id)) return prev;
+                return [...prev, newInteraction];
+              });
 
-            if (newInteraction.type === "SYSTEM_LOG") {
-              ticketService.getById(ticketId).then(setTicket);
+              // Se for log de sistema (mudança de status), atualiza o cabeçalho do ticket
+              if (newInteraction.type === "SYSTEM_LOG") {
+                ticketService.getById(ticketId).then(setTicket);
+              }
+            } catch (e) {
+              console.error("Erro ao processar mensagem do WebSocket", e);
             }
           }
         });
       },
       onStompError: (frame) => {
-        console.error("Broker reported error: " + frame.headers["message"]);
+        console.error(
+          "[WebSocket] Erro no Broker: " + frame.headers["message"]
+        );
       },
     });
 
     client.activate();
     stompClientRef.current = client;
 
-    // Cleanup ao desmontar o componente
+    // Cleanup ao sair da página
     return () => {
-      client.deactivate();
+      if (client.active) {
+        client.deactivate();
+      }
     };
   }, [ticketId]);
 
   // Ações
   const addComment = async (content: string, file?: File | null) => {
     try {
-      // Fazemos a requisição HTTP POST normal
-      // O backend salvará e emitirá o evento WebSocket
       await ticketService.addComment(ticketId, content, file);
 
       return true;
@@ -106,10 +123,9 @@ export const useTicket = (ticketId: number) => {
 
   const claimTicket = async () => {
     try {
-      const updatedTicket = await ticketService.claim(ticketId);
-      setTicket(updatedTicket);
+      await ticketService.claim(ticketId);
       toast.success("Você assumiu este chamado!");
-      // O log de sistema virá pelo WebSocket
+      // Atualização virá pelo WebSocket (System Log)
     } catch (error) {
       toast.error("Erro ao assumir chamado");
     }
@@ -119,9 +135,7 @@ export const useTicket = (ticketId: number) => {
     try {
       await ticketService.resolve(ticketId);
       toast.success("Chamado resolvido!");
-      // Atualiza dados do ticket (cabeçalho)
-      const updatedTicket = await ticketService.getById(ticketId);
-      setTicket(updatedTicket);
+      // Atualização virá pelo WebSocket
     } catch (error) {
       toast.error("Erro ao resolver chamado");
     }
