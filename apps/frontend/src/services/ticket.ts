@@ -110,9 +110,27 @@ export const ticketService = {
     return response.data;
   },
 
-  // Download de anexo (Gera URL assinada ou chama endpoint de download direto)
-  getDownloadUrl: (path: string) => {
-    // Ajuste conforme sua rota de arquivos. Exemplo:
-    return `${api.defaults.baseURL}/files/download?path=${encodeURIComponent(path)}`;
+  downloadAttachment: async (path: string, filename: string) => {
+    try {
+      const response = await api.get("/files/download", {
+        params: { path },
+        responseType: "blob", // Importante: diz ao axios que é um arquivo binário
+      });
+
+      // Cria um link temporário no navegador para forçar o download
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", filename); // Nome que aparecerá para o usuário
+      document.body.appendChild(link);
+      link.click();
+
+      // Limpeza
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Erro ao baixar arquivo:", error);
+      throw error;
+    }
   },
 };

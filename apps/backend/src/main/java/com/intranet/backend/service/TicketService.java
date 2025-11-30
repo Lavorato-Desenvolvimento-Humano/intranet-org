@@ -71,9 +71,8 @@ public class TicketService {
 
 
     @Transactional
-    public Ticket createTicket(TicketCreateRequest dto, MultipartFile file) {
+    public TicketResponseDto createTicket(TicketCreateRequest dto, MultipartFile file) {
         User requester = getCurrentUser();
-
         Equipe targetTeam = equipeRepository.findById(dto.targetTeamId())
                 .orElseThrow(() -> new RuntimeException("Equipe não encontrada com ID: " + dto.targetTeamId()));
 
@@ -91,7 +90,6 @@ public class TicketService {
 
         if (file != null && !file.isEmpty()) {
             String fileName = saveFileLocally(file, savedTicket.getId());
-
             TicketInteraction attachment = TicketInteraction.builder()
                     .ticket(savedTicket)
                     .user(requester)
@@ -99,17 +97,15 @@ public class TicketService {
                     .content("Anexo enviado na abertura do chamado: " + file.getOriginalFilename())
                     .attachmentUrl(fileName)
                     .build();
-
             interactionRepository.save(attachment);
         }
 
-        return savedTicket;
+        return toDto(savedTicket);
     }
 
     @Transactional
-    public Ticket claimTicket(Long ticketId) {
-        Ticket ticket = ticketRepository.findById(ticketId)
-                .orElseThrow(() -> new ResourceNotFoundException("Ticket não encontrado: " + ticketId));
+    public TicketResponseDto claimTicket(Long ticketId) {
+        Ticket ticket = getTicketEntityById(ticketId);
 
         if (ticket.getAssignee() != null) {
             throw new IllegalStateException("Este ticket já está atribuído ao usuário: " + ticket.getAssignee());
@@ -122,11 +118,8 @@ public class TicketService {
                     technician.getId(),
                     ticket.getTargetTeam().getId()
             );
-
             if (!isMember) {
-                throw new AccessDeniedException(
-                        "Você não pertence à equipe " + ticket.getTargetTeam().getNome() + " e não pode assumir este chamado."
-                );
+                throw new AccessDeniedException("Você não pertence à equipe e não pode assumir este chamado.");
             }
         }
 
@@ -134,10 +127,9 @@ public class TicketService {
         ticket.setStatus(TicketStatus.IN_PROGRESS);
 
         Ticket savedTicket = ticketRepository.save(ticket);
-
         logSystemEvent(savedTicket, "Ticket assumido por: " + technician.getFullName());
 
-        return savedTicket;
+        return toDto(savedTicket);
     }
 
     @Transactional
@@ -246,6 +238,11 @@ public class TicketService {
 
     public Ticket getTicketById(Long ticketId) {
         return (ticketRepository.findById(ticketId).orElseThrow(() -> new ResourceNotFoundException("Ticket não encontrado: " + ticketId)));
+    }
+
+    private Ticket getTicketEntityById(Long ticketId) {
+        return ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new ResourceNotFoundException("Ticket não encontrado: " + ticketId));
     }
 
     private User getCurrentUser() {

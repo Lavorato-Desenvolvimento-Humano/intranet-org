@@ -2,10 +2,9 @@
 import React from "react";
 import { TicketInteraction, InteractionType } from "@/types/ticket";
 import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { User, FileText, Bot } from "lucide-react";
-import { useAuth } from "@/context/AuthContext"; // Assumindo contexto de auth
-
+import { User, FileText, Bot, Download } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { ticketService } from "@/services/ticket";
 interface TicketTimelineProps {
   interactions: TicketInteraction[];
 }
@@ -13,7 +12,17 @@ interface TicketTimelineProps {
 export const TicketTimeline: React.FC<TicketTimelineProps> = ({
   interactions,
 }) => {
-  const { user } = useAuth(); // Para alinhar minhas mensagens à direita
+  const { user } = useAuth();
+
+  const handleDownload = async (path: string | undefined, content: string) => {
+    if (!path) return;
+
+    // Tenta extrair um nome de arquivo limpo, ou usa o conteúdo como fallback
+    // O backend gera algo como "uuid_nomeOriginal.pdf"
+    const fileName = path.split("/").pop() || "anexo";
+
+    await ticketService.downloadAttachment(path, fileName);
+  };
 
   return (
     <div className="space-y-6 p-4">
@@ -22,7 +31,7 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({
         const isSystem = item.type === InteractionType.SYSTEM_LOG;
         const isAttachment = item.type === InteractionType.ATTACHMENT;
 
-        // 1. Logs de Sistema (Centralizados, cinza)
+        // 1. Logs de Sistema
         if (isSystem) {
           return (
             <div key={item.id} className="flex justify-center my-4">
@@ -35,7 +44,7 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({
           );
         }
 
-        // 2. Comentários e Anexos (Chat Bubble)
+        // 2. Chat Bubble (Comentários e Anexos)
         return (
           <div
             key={item.id}
@@ -46,7 +55,15 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({
               <div
                 className={`flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-bold
                 ${isMe ? "bg-primary ml-2" : "bg-gray-400 mr-2"}`}>
-                {item.userName?.charAt(0) || <User size={14} />}
+                {item.userProfileImage ? (
+                  <img
+                    src={item.userProfileImage}
+                    alt=""
+                    className="rounded-full h-8 w-8"
+                  />
+                ) : (
+                  item.userName?.charAt(0) || <User size={14} />
+                )}
               </div>
 
               {/* Balão */}
@@ -61,7 +78,7 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({
                 <div
                   className={`flex justify-between items-center mb-1 text-xs ${isMe ? "flex-row-reverse" : ""}`}>
                   <span className="font-bold text-gray-700">
-                    {item.userName}
+                    {item.userName || "Usuário"} {/* Ajustado DTO */}
                   </span>
                   <span className="text-gray-400 mx-2">
                     {format(new Date(item.createdAt), "HH:mm")}
@@ -70,16 +87,26 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({
 
                 {/* Conteúdo */}
                 {isAttachment ? (
-                  <div className="flex items-center p-2 bg-gray-50 border rounded mt-1">
-                    <FileText className="text-primary mr-2" size={20} />
-                    <div className="overflow-hidden">
-                      <p className="font-medium truncate">{item.content}</p>
-                      <a
-                        href={`/api/files/download?path=${item.attachmentUrl}`} // Ajustar rota de download real
-                        target="_blank"
-                        className="text-primary hover:underline text-xs">
-                        Baixar Anexo
-                      </a>
+                  <div className="flex items-center p-2 bg-white border border-gray-200 rounded mt-1 max-w-[250px]">
+                    <div className="bg-primary/10 p-2 rounded mr-3">
+                      <FileText className="text-primary" size={24} />
+                    </div>
+                    <div className="overflow-hidden flex-1">
+                      <p
+                        className="text-xs text-gray-500 mb-1 truncate"
+                        title={item.content}>
+                        {item.content}
+                      </p>
+
+                      <button
+                        onClick={() =>
+                          handleDownload(item.attachmentUrl, item.content)
+                        }
+                        className="text-primary hover:text-primary-dark hover:underline text-xs flex items-center font-medium transition-colors"
+                        type="button">
+                        <Download size={12} className="mr-1" />
+                        Baixar Arquivo
+                      </button>
                     </div>
                   </div>
                 ) : (

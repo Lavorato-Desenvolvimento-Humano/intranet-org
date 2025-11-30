@@ -22,7 +22,7 @@ public class TicketInteractionController {
     public ResponseEntity<List<TicketInteractionResponseDto>> getTimeline(@PathVariable Long ticketId) {
         return ResponseEntity.ok(ticketService.getTicketTimeLine(ticketId));
     }
-    
+
     @PostMapping("/comments")
     public ResponseEntity<TicketInteractionResponseDto> addComent(
             @PathVariable Long ticketId,

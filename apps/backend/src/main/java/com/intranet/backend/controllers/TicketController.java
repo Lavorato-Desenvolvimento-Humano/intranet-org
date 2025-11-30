@@ -33,18 +33,17 @@ public class TicketController {
     }
 
     @PostMapping
-    public ResponseEntity<Ticket> create(
+    public ResponseEntity<TicketResponseDto> create(
             @RequestPart("data") @Valid TicketCreateRequest request,
             @RequestPart(value = "file", required = false) MultipartFile file
     ){
-        Ticket createdTicket = ticketService.createTicket(request, file);
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdTicket);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ticketService.createTicket(request, file));
     }
 
     @PostMapping("/{id}/claim")
-    public ResponseEntity<Ticket> claimTicket(@PathVariable Long id) {
-        Ticket updatedTicket = ticketService.claimTicket(id);
-        return ResponseEntity.ok(updatedTicket);
+    public ResponseEntity<TicketResponseDto> claimTicket(@PathVariable Long id) {
+        return ResponseEntity.ok(ticketService.claimTicket(id));
     }
 
     @GetMapping("/{id}")
