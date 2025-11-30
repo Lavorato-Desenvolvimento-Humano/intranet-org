@@ -79,10 +79,10 @@ export interface DashboardStatsDto {
   ticketsByStatus: Record<string, number>;
   ticketsByPriority: Record<string, number>;
 
-  // Novos Campos
   ticketsAtRisk: TicketDto[];
   lowRatedTickets: TicketDto[];
-  recentTickets: TicketDto[];
+  recentActivity: TicketDto[];
+  recentlyClosed: TicketDto[];
 }
 
 export interface TicketDto {
@@ -94,6 +94,7 @@ export interface TicketDto {
   createdAt: string;
   dueDate?: string;
   closedAt?: string;
+  updatedAt?: string;
   rating?: number;
   ratingComment?: string;
 

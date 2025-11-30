@@ -69,5 +69,8 @@ public interface TicketRepository extends JpaRepository<Ticket,Long> {
     List<Ticket> findLowRatedTickets(@Param("maxRating") Integer maxRating, Pageable pageable);
 
     // 3. Últimos Tickets (Visão Geral)
-    List<Ticket> findTop10ByOrderByCreatedAtDesc();
+    List<Ticket> findTop10ByOrderByUpdatedAtDesc();
+
+    @Query("SELECT t FROM Ticket t WHERE t.status IN ('RESOLVED', 'CLOSED') ORDER BY t.closedAt DESC")
+    List<Ticket> findRecentlyClosedTickets(Pageable pageable);
 }

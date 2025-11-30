@@ -222,7 +222,7 @@ public class TicketService {
     public DashboardStatsDto getDashboardStats() {
         LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
 
-        // 1. Contadores Básicos
+        // 1. Contadores (Mantidos)
         long openTickets = ticketRepository.countOpenTickets();
         long closedToday = ticketRepository.countClosedToday(startOfDay);
         Double avgRating = ticketRepository.getAverageRating();
@@ -231,24 +231,30 @@ public class TicketService {
         long withinSla = ticketRepository.countTicketsWithinSla();
         double slaPercentage = totalClosed > 0 ? ((double) withinSla / totalClosed) * 100 : 100.0;
 
-        // 2. Mapas para Gráficos
+        // 2. Mapas (Mantidos)
         Map<String, Long> byStatus = ticketRepository.countTicketsByStatus().stream()
                 .collect(Collectors.toMap(row -> ((TicketStatus) row[0]).name(), row -> (Long) row[1]));
 
         Map<String, Long> byPriority = ticketRepository.countTicketsByPriority().stream()
                 .collect(Collectors.toMap(row -> ((TicketPriority) row[0]).name(), row -> (Long) row[1]));
 
-        // Risco: Vence nas próximas 48h ou já venceu (limitado a 10)
+        // 3. Listas Detalhadas
+
+        // Risco: Vence nas próximas 48h
         LocalDateTime riskThreshold = LocalDateTime.now().plusHours(48);
         List<TicketResponseDto> ticketsAtRisk = ticketRepository.findTicketsAtRisk(riskThreshold, PageRequest.of(0, 10))
                 .stream().map(this::toDto).collect(Collectors.toList());
 
-        // Baixas Avaliações: Nota 1, 2 ou 3 (limitado a 5)
+        // Baixas Avaliações
         List<TicketResponseDto> lowRated = ticketRepository.findLowRatedTickets(3, PageRequest.of(0, 5))
                 .stream().map(this::toDto).collect(Collectors.toList());
 
-        // Recentes Gerais (limitado a 10)
-        List<TicketResponseDto> recent = ticketRepository.findTop10ByOrderByCreatedAtDesc()
+        // Recentes (Atividade Geral - qualquer status que teve update)
+        List<TicketResponseDto> recentActivity = ticketRepository.findTop10ByOrderByUpdatedAtDesc()
+                .stream().map(this::toDto).collect(Collectors.toList());
+
+        // Recém Fechados (Entregas)
+        List<TicketResponseDto> recentlyClosed = ticketRepository.findRecentlyClosedTickets(PageRequest.of(0, 10))
                 .stream().map(this::toDto).collect(Collectors.toList());
 
         return new DashboardStatsDto(
@@ -260,7 +266,8 @@ public class TicketService {
                 byPriority,
                 ticketsAtRisk,
                 lowRated,
-                recent
+                recentActivity,
+                recentlyClosed
         );
     }
 

@@ -12,5 +12,6 @@ public record DashboardStatsDto(
         Map<String, Long> ticketsByPriority,
         List<TicketResponseDto> ticketsAtRisk,
         List<TicketResponseDto> lowRatedTickets,
-        List<TicketResponseDto> recentTickets
+        List<TicketResponseDto> recentActivity,
+        List<TicketResponseDto> recentlyClosed
 ) {}
