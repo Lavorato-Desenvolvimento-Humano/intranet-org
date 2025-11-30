@@ -40,33 +40,46 @@ export const useTicket = (ticketId: number) => {
     if (ticketId) loadData();
   }, [loadData, ticketId]);
 
+  // --- WEBSOCKET CONNECTION ---
   useEffect(() => {
-    if (!ticketId) return;
+    // 1. Evita erro de SSR e verifica se tem ID
+    if (typeof window === "undefined" || !ticketId) return;
 
-    let baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+    // 2. Monta a URL dinamicamente baseada na barra de endereço do navegador.
+    // Isso garante que funcione tanto em 'localhost' quanto em 'dev.lavorato.app.br'
+    // sem depender de variáveis de ambiente (.env) que podem estar desatualizadas no Docker.
+    const protocol = window.location.protocol === "https:" ? "https:" : "http:";
+    const host = window.location.host; // Inclui domínio e porta (ex: dev.lavorato.app.br ou localhost:3000)
+
+    // Se estiver rodando localmente (localhost), apontamos para a porta 8080.
+    // Se estiver em produção (lavorato.app.br), usamos a mesma origem + /ws (o Nginx redireciona).
+    let socketUrl = `${protocol}//${host}/ws`;
 
     if (
-      typeof window !== "undefined" &&
-      window.location.protocol === "https:"
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1"
     ) {
-      baseUrl = baseUrl.replace("http:", "https:");
+      // Ajuste fino para desenvolvimento local se necessário
+      socketUrl = "http://localhost:8080/ws";
     }
 
-    const socketUrl = `${baseUrl}/ws`;
+    console.log(`[WebSocket] Tentando conectar em: ${socketUrl}`);
 
-    console.log(`[WebSocket] Conectando em: ${socketUrl}`);
-
+    // 3. Configura o Cliente STOMP
     const client = new Client({
-      // A factory do SockJS lidará com a troca de http/https para ws/wss internamente
+      // Usamos a factory do SockJS para compatibilidade e fallback
       webSocketFactory: () => new SockJS(socketUrl),
 
-      // Reconectar automaticamente em caso de queda
+      // Tenta reconectar a cada 5 segundos se cair
       reconnectDelay: 5000,
 
-      onConnect: () => {
-        console.log("[WebSocket] Conectado!");
+      // Opcional: Debug no console (descomente se tiver problemas)
+      // debug: (str) => console.log(str),
 
-        // Inscreve-se no tópico específico do ticket
+      onConnect: () => {
+        console.log("[WebSocket] Conectado com sucesso!");
+
+        // 4. Inscreve-se no tópico do ticket específico
         client.subscribe(`/topic/tickets/${ticketId}`, (message) => {
           if (message.body) {
             try {
@@ -74,36 +87,51 @@ export const useTicket = (ticketId: number) => {
                 message.body
               );
 
-              // Atualiza a lista de interações em tempo real
+              // Atualiza a lista de interações
               setInteractions((prev) => {
-                // Evita duplicidade (caso o POST HTTP já tenha adicionado)
+                // Evita duplicar a mensagem se ela já tiver sido adicionada via POST HTTP
                 if (prev.some((i) => i.id === newInteraction.id)) return prev;
                 return [...prev, newInteraction];
               });
 
-              // Se for log de sistema (mudança de status), atualiza o cabeçalho do ticket
+              // Se for um Log de Sistema (ex: "Ticket Resolvido"),
+              // atualiza também o cabeçalho do ticket (status, prioridade, etc)
               if (newInteraction.type === "SYSTEM_LOG") {
                 ticketService.getById(ticketId).then(setTicket);
               }
+
+              // Se for mensagem de outro usuário, toca um som ou notificação (opcional)
+              // if (newInteraction.user?.id !== user?.id) { playSound(); }
             } catch (e) {
-              console.error("Erro ao processar mensagem do WebSocket", e);
+              console.error(
+                "[WebSocket] Erro ao processar mensagem recebida:",
+                e
+              );
             }
           }
         });
       },
+
       onStompError: (frame) => {
         console.error(
           "[WebSocket] Erro no Broker: " + frame.headers["message"]
         );
+        console.error("[WebSocket] Detalhes: " + frame.body);
+      },
+
+      onWebSocketClose: () => {
+        console.log("[WebSocket] Conexão fechada.");
       },
     });
 
+    // 5. Ativa a conexão
     client.activate();
     stompClientRef.current = client;
 
-    // Cleanup ao sair da página
+    // 6. Cleanup: Desconecta ao sair da página para não vazar memória
     return () => {
       if (client.active) {
+        console.log("[WebSocket] Desconectando...");
         client.deactivate();
       }
     };
