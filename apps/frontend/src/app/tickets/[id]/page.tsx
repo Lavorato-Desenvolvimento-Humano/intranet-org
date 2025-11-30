@@ -1,354 +1,373 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { useTicket } from "@/hooks/useTicket";
+import React, { useEffect, useState, useRef } from "react";
+import { useParams } from "next/navigation";
+import { ticketService } from "@/services/ticket";
+import { Ticket, TicketInteraction, TicketStatus } from "@/types/ticket";
 import { TicketTimeline } from "@/components/tickets/TicketTimeline";
-import { TicketStatus, TicketPriority } from "@/types/ticket";
 import {
   Loader2,
   Send,
-  ArrowLeft,
-  CheckCircle,
-  UserPlus,
-  AlertCircle,
-  Clock,
-  Star,
   Paperclip,
+  CheckCircle,
+  PlayCircle,
   X,
+  Image as ImageIcon, // Novos ícones
 } from "lucide-react";
+import toast from "react-hot-toast";
 import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { useAuth } from "@/context/AuthContext";
-import { RateTicketModal } from "@/components/tickets/RateTicketModal";
+import { RateTicketModal } from "@/components/tickets/RateTicketModal"; // Verifique se o caminho está correto
 
 export default function TicketDetailsPage() {
   const params = useParams();
-  const router = useRouter();
   const ticketId = Number(params.id);
-  const { user } = useAuth();
+
+  const [ticket, setTicket] = useState<Ticket | null>(null);
+  const [interactions, setInteractions] = useState<TicketInteraction[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Estados do Chat
+  const [comment, setComment] = useState("");
+  const [sending, setSending] = useState(false);
+
+  // --- ESTADOS PARA O CTRL + V ---
+  const [attachment, setAttachment] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null); // Referência para o input hidden
+
+  // Modal de Avaliação
   const [isRateModalOpen, setIsRateModalOpen] = useState(false);
 
-  const {
-    ticket,
-    interactions,
-    loading,
-    addComment,
-    claimTicket,
-    resolveTicket,
-    refresh,
-  } = useTicket(ticketId);
-
-  const [commentText, setCommentText] = useState("");
-  const [sending, setSending] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Scroll para o fim do chat ao carregar ou receber msg
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [interactions]);
+    loadData();
+  }, [ticketId]);
 
-  const handleSend = async () => {
-    if (!commentText.trim() && !selectedFile) return;
-
-    const textToSend =
-      commentText.trim() || (selectedFile ? "Enviando anexo..." : "");
-
-    setSending(true);
-    const success = await addComment(textToSend, selectedFile);
-
-    if (success) {
-      setCommentText("");
-      setSelectedFile(null);
+  const loadData = async () => {
+    try {
+      const [ticketData, timelineData] = await Promise.all([
+        ticketService.getById(ticketId),
+        ticketService.getTimeline(ticketId),
+      ]);
+      setTicket(ticketData);
+      setInteractions(timelineData);
+    } catch (error) {
+      console.error(error);
+      toast.error("Erro ao carregar detalhes do chamado");
+    } finally {
+      setLoading(false);
     }
-    setSending(false);
   };
 
+  // --- LÓGICA DO PASTE (CTRL + V) ---
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData.items;
+
+    for (const item of items) {
+      if (item.type.startsWith("image/")) {
+        e.preventDefault(); // Impede colar o binário como texto
+
+        const file = item.getAsFile();
+        if (file) {
+          setAttachment(file);
+          const url = URL.createObjectURL(file);
+          setPreviewUrl(url);
+          toast.success("Imagem colada! Clique em enviar.");
+        }
+        return;
+      }
+    }
+  };
+
+  // Lógica para Upload via Botão (Clipe)
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
+      const file = e.target.files[0];
+      setAttachment(file);
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
     }
   };
 
-  // Funções de UI Auxiliares
-  const getStatusBadge = (status: TicketStatus) => {
-    const styles = {
-      [TicketStatus.OPEN]: "bg-blue-100 text-blue-800",
-      [TicketStatus.IN_PROGRESS]: "bg-purple-100 text-purple-800",
-      [TicketStatus.RESOLVED]: "bg-green-100 text-green-800",
-      [TicketStatus.CLOSED]: "bg-gray-100 text-gray-800",
-      [TicketStatus.WAITING]: "bg-yellow-100 text-yellow-800",
-    };
-    return (
-      <span
-        className={`px-3 py-1 rounded-full text-sm font-semibold ${styles[status] || "bg-gray-100"}`}>
-        {status}
-      </span>
-    );
+  const removeAttachment = () => {
+    setAttachment(null);
+    setPreviewUrl(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // Helper para renderizar estrelas estáticas (leitura)
-  const renderStaticStars = (rating: number) => (
-    <div className="flex space-x-1">
-      {[1, 2, 3, 4, 5].map((star) => (
-        <Star
-          key={star}
-          size={16}
-          className={`${
-            star <= rating
-              ? "fill-yellow-400 text-yellow-400"
-              : "fill-gray-200 text-gray-200"
-          }`}
-        />
-      ))}
-    </div>
-  );
+  const handleSendComment = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!comment.trim() && !attachment) return;
 
-  if (loading) {
+    setSending(true);
+    try {
+      // Envia texto + anexo (se houver)
+      const newInteraction = await ticketService.addComment(
+        ticketId,
+        comment,
+        attachment
+      );
+
+      setInteractions((prev) => [...prev, newInteraction]);
+
+      // Limpa tudo
+      setComment("");
+      removeAttachment();
+      toast.success("Resposta enviada!");
+    } catch (error) {
+      console.error(error);
+      toast.error("Erro ao enviar resposta");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  // Ações de Workflow
+  const handleClaim = async () => {
+    try {
+      const updated = await ticketService.claim(ticketId);
+      setTicket(updated);
+      toast.success("Você assumiu este chamado");
+      loadData(); // Recarrega timeline para ver o log
+    } catch (error) {
+      toast.error("Erro ao assumir chamado");
+    }
+  };
+
+  const handleResolve = async () => {
+    try {
+      const updated = await ticketService.resolve(ticketId);
+      setTicket(updated);
+      toast.success("Chamado resolvido!");
+      loadData();
+    } catch (error) {
+      toast.error("Erro ao resolver chamado");
+    }
+  };
+
+  if (loading)
     return (
-      <div className="flex justify-center items-center h-screen text-primary">
-        <Loader2 className="animate-spin h-8 w-8" />
+      <div className="p-8 flex justify-center">
+        <Loader2 className="animate-spin text-primary" />
       </div>
     );
-  }
+  if (!ticket) return <div className="p-8">Chamado não encontrado</div>;
 
-  if (!ticket) return null;
-
-  // Verifica se sou o dono do ticket
-  const isRequester = user?.id === ticket.requesterId;
-
-  // Verifica se pode avaliar (Resolvido e sou o dono)
-  const canRate = ticket.status === TicketStatus.RESOLVED && isRequester;
+  const isResolved =
+    ticket.status === TicketStatus.RESOLVED ||
+    ticket.status === TicketStatus.CLOSED;
 
   return (
-    <div className="container mx-auto py-6 max-w-5xl h-[calc(100vh-80px)] flex flex-col">
-      {/* 1. Header do Chamado */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border-b border-gray-200 mb-4 flex justify-between items-start">
+    <div className="container mx-auto py-8 px-4 max-w-5xl">
+      {/* Cabeçalho */}
+      <div className="mb-6 flex justify-between items-start">
         <div>
-          <button
-            onClick={() => router.back()}
-            className="text-gray-500 hover:text-gray-700 mb-2 flex items-center text-sm">
-            <ArrowLeft size={16} className="mr-1" /> Voltar
-          </button>
-          <div className="flex items-center gap-3">
-            <h1 className="text-xl font-bold text-gray-800">
+          <div className="flex items-center gap-3 mb-2">
+            <h1 className="text-2xl font-bold text-gray-800">
               #{ticket.id} - {ticket.title}
             </h1>
-            {getStatusBadge(ticket.status)}
+            <span
+              className={`px-2 py-1 rounded text-xs font-bold text-white 
+              ${
+                ticket.status === "OPEN"
+                  ? "bg-blue-500"
+                  : ticket.status === "RESOLVED"
+                    ? "bg-green-500"
+                    : "bg-gray-500"
+              }`}>
+              {ticket.status}
+            </span>
           </div>
-          <p className="text-sm text-gray-500 mt-1">
-            Equipe: <span className="font-medium">{ticket.targetTeamNome}</span>{" "}
-            • Aberto por:{" "}
-            <span className="font-medium">{ticket.requesterName}</span>
+          <p className="text-gray-500">
+            {ticket.requesterName} •{" "}
+            {format(new Date(ticket.createdAt), "dd/MM/yyyy HH:mm")}
           </p>
         </div>
 
-        {/* Botões de Ação */}
+        {/* Botões de Ação (Workflow) */}
         <div className="flex gap-2">
           {ticket.status === TicketStatus.OPEN && !ticket.assigneeId && (
             <button
-              onClick={claimTicket}
-              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition">
-              <UserPlus size={16} className="mr-2" />
-              Assumir Chamado
+              onClick={handleClaim}
+              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+              <PlayCircle size={18} /> Assumir Chamado
             </button>
           )}
 
           {ticket.status === TicketStatus.IN_PROGRESS && (
             <button
-              onClick={resolveTicket}
-              className="flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition">
-              <CheckCircle size={16} className="mr-2" />
-              Resolver
+              onClick={handleResolve}
+              className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition">
+              <CheckCircle size={18} /> Resolver Chamado
             </button>
           )}
 
-          {/* BOTÃO DE AVALIAR (Novo) */}
-          {canRate && (
+          {/* Botão de Avaliar (Para o usuário logado se for o dono) */}
+          {ticket.status === TicketStatus.RESOLVED && (
             <button
               onClick={() => setIsRateModalOpen(true)}
-              className="flex items-center px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition shadow-sm animate-pulse">
-              <Star size={16} className="mr-2 fill-white" />
+              className="flex items-center gap-2 bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition">
               Avaliar Atendimento
             </button>
-          )}
-
-          {/* EXIBIÇÃO DA NOTA (Se já fechado) */}
-          {ticket.status === TicketStatus.CLOSED && ticket.rating && (
-            <div className="flex flex-col items-end mr-2">
-              <span className="text-xs text-gray-500 font-bold uppercase mb-1">
-                Avaliação do Usuário
-              </span>
-              <div className="flex items-center bg-yellow-50 px-3 py-1 rounded-full border border-yellow-100">
-                <span className="font-bold text-yellow-700 mr-2">
-                  {ticket.rating}.0
-                </span>
-                {renderStaticStars(ticket.rating)}
-              </div>
-            </div>
           )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 overflow-hidden">
-        {/* 2. Área Principal (Descrição + Chat) */}
-        <div className="lg:col-span-2 flex flex-col bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
-          {/* Descrição Fixa */}
-          <div className="p-4 bg-gray-50 border-b border-gray-200">
-            <h3 className="text-sm font-semibold text-gray-700 mb-2">
-              Descrição do Problema
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Coluna Principal: Timeline e Chat */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Descrição Original */}
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+            <h3 className="font-semibold text-gray-700 mb-2">
+              Descrição da Solicitação
             </h3>
-            <p className="text-gray-600 text-sm whitespace-pre-wrap">
+            <p className="text-gray-600 whitespace-pre-wrap">
               {ticket.description}
             </p>
           </div>
 
-          {/* Timeline Scrollável */}
-          <div className="flex-1 overflow-y-auto bg-slate-50">
+          {/* Timeline Component */}
+          <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 h-[500px] overflow-y-auto">
             <TicketTimeline interactions={interactions} />
-            <div ref={bottomRef} />
           </div>
 
-          {/* Input de Chat */}
-          {ticket.status !== TicketStatus.CLOSED && (
-            <div className="p-4 bg-white border-t border-gray-200">
-              {/* Preview do Arquivo Selecionado */}
-              {selectedFile && (
-                <div className="mb-2 flex items-center gap-2 bg-gray-100 w-fit px-3 py-1 rounded-full text-sm">
-                  <Paperclip size={14} className="text-gray-500" />
-                  <span className="text-gray-700 max-w-xs truncate">
-                    {selectedFile.name}
-                  </span>
+          {/* Área de Resposta (Input) */}
+          {!isResolved && (
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+              {/* --- PREVIEW DA IMAGEM --- */}
+              {attachment && (
+                <div className="mb-3 p-2 bg-blue-50 border border-blue-100 rounded-lg flex items-center justify-between animate-in fade-in slide-in-from-bottom-2">
+                  <div className="flex items-center gap-3">
+                    <div className="relative group">
+                      {/* Se for imagem mostra o thumb, senão icone */}
+                      {previewUrl ? (
+                        <img
+                          src={previewUrl}
+                          alt="Preview"
+                          className="h-16 w-16 object-cover rounded border border-blue-200 bg-white"
+                        />
+                      ) : (
+                        <Paperclip className="h-10 w-10 text-blue-400 p-2 bg-white rounded border" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-blue-900 truncate max-w-[200px]">
+                        {attachment.name}
+                      </p>
+                      <p className="text-xs text-blue-600">
+                        {(attachment.size / 1024).toFixed(1)} KB
+                      </p>
+                    </div>
+                  </div>
                   <button
-                    onClick={() => setSelectedFile(null)}
-                    className="ml-2 text-gray-400 hover:text-red-500">
-                    <X size={14} />
+                    onClick={removeAttachment}
+                    className="p-1 hover:bg-blue-100 rounded-full text-blue-400 hover:text-red-500 transition-colors">
+                    <X size={20} />
                   </button>
                 </div>
               )}
 
-              <div className="flex gap-2 items-end">
-                {/* Botão de Anexo */}
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileSelect}
-                  className="hidden"
-                />
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="p-3 text-gray-500 hover:text-primary hover:bg-gray-100 rounded-md transition mb-[2px]"
-                  title="Anexar arquivo">
-                  <Paperclip size={20} />
-                </button>
-
+              <form onSubmit={handleSendComment} className="relative">
                 <textarea
-                  value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  placeholder="Escreva um comentário..."
-                  className="flex-1 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent resize-none h-12 md:h-20"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSend();
-                    }
-                  }}
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  onPaste={handlePaste} // <--- EVENTO DE COLAR
+                  placeholder="Escreva uma resposta ou cole uma imagem (Ctrl+V)..."
+                  className="w-full p-4 pr-12 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none h-32"
+                  disabled={sending}
                 />
-                <button
-                  onClick={handleSend}
-                  disabled={sending || (!commentText.trim() && !selectedFile)}
-                  className="px-4 py-3 bg-primary text-white rounded-md hover:bg-primary-dark disabled:opacity-50 flex items-center justify-center mb-[2px]">
-                  {sending ? (
-                    <Loader2 className="animate-spin" />
-                  ) : (
-                    <Send size={20} />
-                  )}
-                </button>
-              </div>
+
+                <div className="absolute bottom-3 right-3 flex items-center gap-2">
+                  {/* Input de Arquivo Escondido */}
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    onChange={handleFileSelect}
+                  />
+
+                  {/* Botão de Anexo (Clipe) */}
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-gray-100 rounded-full transition"
+                    title="Anexar arquivo">
+                    <Paperclip size={20} />
+                  </button>
+
+                  {/* Botão Enviar */}
+                  <button
+                    type="submit"
+                    disabled={sending || (!comment.trim() && !attachment)}
+                    className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition shadow-sm">
+                    {sending ? (
+                      <Loader2 className="animate-spin" size={20} />
+                    ) : (
+                      <Send size={20} />
+                    )}
+                  </button>
+                </div>
+              </form>
+              <p className="text-xs text-gray-400 mt-2 text-right">
+                Dica: Você pode colar prints diretamente na área de texto.
+              </p>
             </div>
           )}
         </div>
 
-        {/* 3. Sidebar (Detalhes Técnicos) */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 h-fit">
-          <h3 className="font-semibold text-gray-800 mb-4 border-b pb-2">
-            Detalhes do SLA
-          </h3>
-
-          <div className="space-y-4">
-            <div>
-              <span className="text-xs text-gray-500 uppercase font-bold block mb-1">
-                Prioridade
-              </span>
-              <span
-                className={`inline-block px-2 py-1 rounded text-xs font-bold border 
-                ${
-                  ticket.priority === TicketPriority.CRITICAL
-                    ? "bg-red-50 text-red-700 border-red-200"
-                    : "bg-gray-50 text-gray-700"
-                }`}>
-                {ticket.priority}
-              </span>
-            </div>
-
-            <div>
-              <span className="text-xs text-gray-500 uppercase font-bold block mb-1">
-                Vencimento (SLA)
-              </span>
-              <div className="flex items-center text-sm text-gray-700">
-                <Clock size={14} className="mr-2 text-gray-400" />
-                {ticket.dueDate
-                  ? format(new Date(ticket.dueDate), "dd/MM/yyyy HH:mm")
-                  : "N/A"}
+        {/* Coluna Lateral: Detalhes */}
+        <div className="space-y-6">
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+            <h3 className="font-semibold text-gray-800 mb-4 border-b pb-2">
+              Detalhes
+            </h3>
+            <div className="space-y-4 text-sm">
+              <div>
+                <span className="text-gray-500 block">Prioridade</span>
+                <span
+                  className={`font-medium ${
+                    ticket.priority === "CRITICAL"
+                      ? "text-red-600"
+                      : ticket.priority === "HIGH"
+                        ? "text-orange-500"
+                        : "text-green-600"
+                  }`}>
+                  {ticket.priority}
+                </span>
               </div>
-            </div>
-
-            <div>
-              <span className="text-xs text-gray-500 uppercase font-bold block mb-1">
-                Atendente Atual
-              </span>
-              <div className="flex items-center mt-1">
-                {ticket.assigneeId ? (
-                  <>
-                    <div className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-xs mr-2">
-                      {ticket.assigneeName?.charAt(0)}
-                    </div>
-                    <span className="text-sm font-medium">
-                      {ticket.assigneeName}
-                    </span>
-                  </>
-                ) : (
-                  <span className="text-sm text-gray-400 italic flex items-center">
-                    <AlertCircle size={14} className="mr-1" />
-                    Aguardando técnico
-                  </span>
-                )}
+              <div>
+                <span className="text-gray-500 block">Equipe Responsável</span>
+                <span className="font-medium text-gray-800">
+                  {ticket.targetTeamNome || "—"}
+                </span>
               </div>
-            </div>
-
-            <div>
-              <span className="text-xs text-gray-500 uppercase font-bold block mb-1">
-                Criado em
-              </span>
-              <span className="text-sm text-gray-600">
-                {format(new Date(ticket.createdAt), "dd/MM/yyyy HH:mm", {
-                  locale: ptBR,
-                })}
-              </span>
+              <div>
+                <span className="text-gray-500 block">Técnico</span>
+                <span className="font-medium text-gray-800">
+                  {ticket.assigneeName || "Não atribuído"}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-500 block">Prazo (SLA)</span>
+                <span
+                  className={`font-medium ${new Date(ticket.dueDate!) < new Date() ? "text-red-500" : "text-gray-800"}`}>
+                  {ticket.dueDate
+                    ? format(new Date(ticket.dueDate), "dd/MM/yyyy HH:mm")
+                    : "-"}
+                </span>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* MODAL DE AVALIAÇÃO */}
+      {/* Modal de Avaliação */}
       <RateTicketModal
-        ticketId={ticket.id}
         isOpen={isRateModalOpen}
         onClose={() => setIsRateModalOpen(false)}
+        ticketId={ticket.id}
         onSuccess={() => {
-          refresh();
+          loadData();
+          setIsRateModalOpen(false);
         }}
       />
     </div>
