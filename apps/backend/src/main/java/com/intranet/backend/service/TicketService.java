@@ -36,7 +36,7 @@ public class TicketService {
     private final TicketInteractionRepository interactionRepository;
     private final UserEquipeRepository userEquipeRepository;
 
-    @Value("${app.upload.dir:/app/uploads")
+    @Value("${app.upload.dir:/app/uploads}")
     private String uploadDir;
 
     public List<TicketResponseDto> getAllTickets(String assigneeIdFilter, String requesterIdFilter, String statusFilter) {
