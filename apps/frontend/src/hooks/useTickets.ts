@@ -1,8 +1,7 @@
-// src/hooks/useTickets.ts
 import { useState, useEffect, useCallback } from "react";
-import { ticketService } from "@/services/ticket"; // Certifique-se que criou este arquivo
+import { ticketService } from "@/services/ticket";
 import { Ticket, TicketStatus, TicketPriority } from "@/types/ticket";
-import toast from "@/utils/toast"; // Assumindo que existe um utilitário de toast padrão
+import toast from "@/utils/toast";
 
 export type TicketViewType = "my_assignments" | "team_queue" | "created_by_me";
 
@@ -18,28 +17,26 @@ export const useTickets = (initialView: TicketViewType = "my_assignments") => {
       setError(null);
       let data: Ticket[] = [];
 
-      // Lógica de filtro baseada na "View" selecionada
+      // O Service já trata o retorno da API, entregando sempre um array de Ticket[]
+      // Não precisamos verificar .content aqui novamente
       switch (viewType) {
         case "my_assignments":
-          const responseMy = await ticketService.getAll({
+          data = await ticketService.getAll({
             assigneeId: "me",
             status: "OPEN,IN_PROGRESS",
           });
-          data = responseMy.content || responseMy; // Suporte a Pageable ou Lista direta
           break;
         case "team_queue":
           // Busca tickets sem dono da minha equipe
-          const responseQueue = await ticketService.getAll({
+          data = await ticketService.getAll({
             assigneeId: "null",
             status: "OPEN",
           });
-          data = responseQueue.content || responseQueue;
           break;
         case "created_by_me":
-          const responseCreated = await ticketService.getAll({
+          data = await ticketService.getAll({
             requesterId: "me",
           });
-          data = responseCreated.content || responseCreated;
           break;
       }
 
