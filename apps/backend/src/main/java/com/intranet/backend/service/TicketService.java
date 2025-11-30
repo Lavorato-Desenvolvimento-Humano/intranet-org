@@ -1,9 +1,6 @@
 package com.intranet.backend.service;
 
-import com.intranet.backend.dto.DashboardStatsDto;
-import com.intranet.backend.dto.TicketCreateRequest;
-import com.intranet.backend.dto.TicketRatingRequest;
-import com.intranet.backend.dto.TicketResponseDto;
+import com.intranet.backend.dto.*;
 import com.intranet.backend.exception.ResourceNotFoundException;
 import com.intranet.backend.model.*;
 import com.intranet.backend.repository.*;
@@ -144,7 +141,7 @@ public class TicketService {
     }
 
     @Transactional
-    public TicketInteraction addComent(Long ticketId, String content) {
+    public TicketInteractionResponseDto addComent(Long ticketId, String content) {
         Ticket ticket = getTicketById(ticketId);
         User currentUser = getCurrentUser();
 
@@ -155,7 +152,8 @@ public class TicketService {
                 .content(content)
                 .build();
 
-        return interactionRepository.save(interaction);
+        TicketInteraction saved = interactionRepository.save(interaction);
+        return toInteractionDto(saved);
     }
 
     @Transactional
@@ -231,11 +229,14 @@ public class TicketService {
         );
     }
 
-    public List<TicketInteraction> getTicketTimeLine(Long ticketId) {
+    public List<TicketInteractionResponseDto> getTicketTimeLine(Long ticketId) {
         if (!ticketRepository.existsById(ticketId)) {
             throw new ResourceNotFoundException("Ticket não encontrado: " + ticketId);
         }
-        return interactionRepository.findByTicketIdOrderByCreatedAtAsc(ticketId);
+        return interactionRepository.findByTicketIdOrderByCreatedAtAsc(ticketId)
+                .stream()
+                .map(this::toInteractionDto)
+                .collect(Collectors.toList());
     }
 
     public TicketResponseDto getTicketByIdResponse(Long ticketId) {
@@ -327,6 +328,21 @@ public class TicketService {
                 ticket.getAssignee() != null ? ticket.getAssignee().getFullName() : null,
                 ticket.getTargetTeam() != null ? ticket.getTargetTeam().getId() : null,
                 ticket.getTargetTeam() != null ? ticket.getTargetTeam().getNome() : null
+        );
+    }
+
+    private TicketInteractionResponseDto toInteractionDto(TicketInteraction interaction) {
+        return new TicketInteractionResponseDto(
+                interaction.getId(),
+                interaction.getTicket().getId(),
+                interaction.getUser() != null ? interaction.getUser().getId() : null,
+                interaction.getUser() != null ? interaction.getUser().getFullName() : "Sistema",
+                interaction.getUser() != null ? interaction.getUser().getEmail() : null,
+                interaction.getUser() != null ? interaction.getUser().getProfileImage() : null,
+                interaction.getType(),
+                interaction.getContent(),
+                interaction.getAttachmentUrl(),
+                interaction.getCreatedAt()
         );
     }
 }

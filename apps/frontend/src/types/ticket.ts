@@ -53,7 +53,12 @@ export interface Ticket {
 export interface TicketInteraction {
   id: number;
   ticketId: number;
-  user?: UserDto | null; // null se for Log de Sistema
+
+  userId?: string | null;
+  userName?: string | null;
+  userEmail?: string | null;
+  userProfileImage?: string | null;
+
   type: InteractionType;
   content: string;
   attachmentUrl?: string;

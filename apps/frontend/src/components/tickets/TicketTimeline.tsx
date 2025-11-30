@@ -18,7 +18,7 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({
   return (
     <div className="space-y-6 p-4">
       {interactions.map((item) => {
-        const isMe = user?.id === item.user?.id;
+        const isMe = user?.id === item.userId;
         const isSystem = item.type === InteractionType.SYSTEM_LOG;
         const isAttachment = item.type === InteractionType.ATTACHMENT;
 
@@ -46,7 +46,7 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({
               <div
                 className={`flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-bold
                 ${isMe ? "bg-primary ml-2" : "bg-gray-400 mr-2"}`}>
-                {item.user?.fullName?.charAt(0) || <User size={14} />}
+                {item.userName?.charAt(0) || <User size={14} />}
               </div>
 
               {/* Balão */}
@@ -61,7 +61,7 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({
                 <div
                   className={`flex justify-between items-center mb-1 text-xs ${isMe ? "flex-row-reverse" : ""}`}>
                   <span className="font-bold text-gray-700">
-                    {item.user?.fullName}
+                    {item.userName}
                   </span>
                   <span className="text-gray-400 mx-2">
                     {format(new Date(item.createdAt), "HH:mm")}

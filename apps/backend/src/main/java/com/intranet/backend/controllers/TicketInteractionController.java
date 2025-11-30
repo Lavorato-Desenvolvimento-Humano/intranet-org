@@ -1,6 +1,7 @@
 package com.intranet.backend.controllers;
 
 import com.intranet.backend.dto.TicketCommentRequest;
+import com.intranet.backend.dto.TicketInteractionResponseDto;
 import com.intranet.backend.model.TicketInteraction;
 import com.intranet.backend.service.TicketService;
 import jakarta.validation.Valid;
@@ -18,16 +19,15 @@ public class TicketInteractionController {
     private final TicketService ticketService;
 
     @GetMapping
-    public ResponseEntity<List<TicketInteraction>> getTimeline(@PathVariable Long ticketId) {
+    public ResponseEntity<List<TicketInteractionResponseDto>> getTimeline(@PathVariable Long ticketId) {
         return ResponseEntity.ok(ticketService.getTicketTimeLine(ticketId));
     }
-
+    
     @PostMapping("/comments")
-    public ResponseEntity<TicketInteraction> addComent(
+    public ResponseEntity<TicketInteractionResponseDto> addComent(
             @PathVariable Long ticketId,
             @RequestBody @Valid TicketCommentRequest request
-            ) {
-        TicketInteraction interaction = ticketService.addComent(ticketId, request.content());
-        return ResponseEntity.ok(interaction);
+    ) {
+        return ResponseEntity.ok(ticketService.addComent(ticketId, request.content()));
     }
 }
