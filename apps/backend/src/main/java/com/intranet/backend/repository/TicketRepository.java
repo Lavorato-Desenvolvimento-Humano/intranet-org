@@ -60,4 +60,14 @@ public interface TicketRepository extends JpaRepository<Ticket,Long> {
 
     @Query("SELECT COUNT(t) FROM Ticket t WHERE t.status IN ('RESOLVED', 'CLOSED')")
     long countTotalClosedTickets();
+
+    @Query("SELECT t FROM Ticket t WHERE t.status NOT IN ('RESOLVED', 'CLOSED') AND t.dueDate <= :limitDate ORDER BY t.dueDate ASC")
+    List<Ticket> findTicketsAtRisk(@Param("limitDate") LocalDateTime limitDate, Pageable pageable);
+
+    // 2. Avaliações Baixas Recentes
+    @Query("SELECT t FROM Ticket t WHERE t.rating IS NOT NULL AND t.rating <= :maxRating ORDER BY t.closedAt DESC")
+    List<Ticket> findLowRatedTickets(@Param("maxRating") Integer maxRating, Pageable pageable);
+
+    // 3. Últimos Tickets (Visão Geral)
+    List<Ticket> findTop10ByOrderByCreatedAtDesc();
 }

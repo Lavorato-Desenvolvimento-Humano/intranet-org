@@ -1,7 +1,4 @@
 // src/types/ticket.ts
-import { UserDto } from "@/services/user";
-import { EquipeDto } from "@/services/equipe";
-
 export enum TicketPriority {
   LOW = "LOW",
   MEDIUM = "MEDIUM",
@@ -74,12 +71,39 @@ export interface TicketCreateData {
   file?: File | null; // Arquivo opcional
 }
 
-// DTO para Estatísticas do Dashboard
 export interface DashboardStatsDto {
   totalOpen: number;
   totalClosedToday: number;
   slaCompliancePercentage: number;
   averageRating: number;
-  ticketsByStatus: Record<string, number>; // ex: { OPEN: 10, RESOLVED: 5 }
+  ticketsByStatus: Record<string, number>;
   ticketsByPriority: Record<string, number>;
+
+  // Novos Campos
+  ticketsAtRisk: TicketDto[];
+  lowRatedTickets: TicketDto[];
+  recentTickets: TicketDto[];
+}
+
+export interface TicketDto {
+  id: number;
+  title: string;
+  description: string;
+  priority: TicketPriority;
+  status: TicketStatus;
+  createdAt: string;
+  dueDate?: string;
+  closedAt?: string;
+  rating?: number;
+  ratingComment?: string;
+
+  requesterId: string;
+  requesterName: string;
+  requesterEmail: string;
+
+  assigneeId?: string | null;
+  assigneeName?: string | null;
+
+  targetTeamId?: string | null;
+  targetTeamNome?: string | null;
 }

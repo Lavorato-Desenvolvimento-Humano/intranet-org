@@ -7,6 +7,7 @@ import com.intranet.backend.repository.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -221,21 +222,34 @@ public class TicketService {
     public DashboardStatsDto getDashboardStats() {
         LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
 
+        // 1. Contadores Básicos
         long openTickets = ticketRepository.countOpenTickets();
         long closedToday = ticketRepository.countClosedToday(startOfDay);
-        Double avgRating = ticketRepository.getAverageRating(); // Pode vir null
+        Double avgRating = ticketRepository.getAverageRating();
 
-        // Cálculo de SLA %
         long totalClosed = ticketRepository.countTotalClosedTickets();
         long withinSla = ticketRepository.countTicketsWithinSla();
         double slaPercentage = totalClosed > 0 ? ((double) withinSla / totalClosed) * 100 : 100.0;
 
-        // Mapas para Gráficos
+        // 2. Mapas para Gráficos
         Map<String, Long> byStatus = ticketRepository.countTicketsByStatus().stream()
                 .collect(Collectors.toMap(row -> ((TicketStatus) row[0]).name(), row -> (Long) row[1]));
 
         Map<String, Long> byPriority = ticketRepository.countTicketsByPriority().stream()
                 .collect(Collectors.toMap(row -> ((TicketPriority) row[0]).name(), row -> (Long) row[1]));
+
+        // Risco: Vence nas próximas 48h ou já venceu (limitado a 10)
+        LocalDateTime riskThreshold = LocalDateTime.now().plusHours(48);
+        List<TicketResponseDto> ticketsAtRisk = ticketRepository.findTicketsAtRisk(riskThreshold, PageRequest.of(0, 10))
+                .stream().map(this::toDto).collect(Collectors.toList());
+
+        // Baixas Avaliações: Nota 1, 2 ou 3 (limitado a 5)
+        List<TicketResponseDto> lowRated = ticketRepository.findLowRatedTickets(3, PageRequest.of(0, 5))
+                .stream().map(this::toDto).collect(Collectors.toList());
+
+        // Recentes Gerais (limitado a 10)
+        List<TicketResponseDto> recent = ticketRepository.findTop10ByOrderByCreatedAtDesc()
+                .stream().map(this::toDto).collect(Collectors.toList());
 
         return new DashboardStatsDto(
                 openTickets,
@@ -243,7 +257,10 @@ public class TicketService {
                 slaPercentage,
                 avgRating != null ? avgRating : 0.0,
                 byStatus,
-                byPriority
+                byPriority,
+                ticketsAtRisk,
+                lowRated,
+                recent
         );
     }
 
