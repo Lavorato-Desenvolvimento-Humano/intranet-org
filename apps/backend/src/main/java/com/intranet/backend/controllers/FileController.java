@@ -13,7 +13,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.File;
 import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -30,7 +29,7 @@ public class FileController {
     @Autowired
     private FileStorageService fileStorageService;
 
-    @Value("${file.upload-dir}")
+    @Value("${app.upload.dir}")
     private String uploadDir;
 
     @GetMapping("/check/{filename}")
@@ -76,18 +75,32 @@ public class FileController {
     @GetMapping("/download")
     public ResponseEntity<Resource> downloadFile(@RequestParam String path) {
         try {
-            // Caminho base configurado no properties
-            Path filePath = Paths.get(uploadDir).resolve(path).normalize();
+            // Normaliza o caminho para evitar directory traversal (../)
+            Path basePath = Paths.get(uploadDir).toAbsolutePath().normalize();
+            Path filePath = basePath.resolve(path).normalize();
+
+            // Segurança: Garante que o arquivo solicitado está DENTRO da pasta de uploads
+            if (!filePath.startsWith(basePath)) {
+                return ResponseEntity.badRequest().build();
+            }
+
             Resource resource = new UrlResource(filePath.toUri());
 
-            if(resource.exists()) {
-                String contentType = "application/octet-stream"; // Ou detecte o tipo automaticamente
+            if (resource.exists() && resource.isReadable()) {
+                // Tenta descobrir o tipo do arquivo (PDF, PNG, etc)
+                String contentType = "application/octet-stream";
+                try {
+                    contentType = Files.probeContentType(filePath);
+                } catch (Exception ex) {
+                    logger.info("Não foi possível determinar o tipo do arquivo.");
+                }
 
                 return ResponseEntity.ok()
                         .contentType(MediaType.parseMediaType(contentType))
                         .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
                         .body(resource);
             } else {
+                logger.error("Arquivo não encontrado: " + filePath);
                 return ResponseEntity.notFound().build();
             }
         } catch (MalformedURLException e) {

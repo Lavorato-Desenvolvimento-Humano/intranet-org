@@ -1,4 +1,5 @@
 // src/services/ticket.ts
+import toast from "react-hot-toast";
 import api from "./api";
 import {
   Ticket,
@@ -114,14 +115,14 @@ export const ticketService = {
     try {
       const response = await api.get("/files/download", {
         params: { path },
-        responseType: "blob", // Importante: diz ao axios que é um arquivo binário
+        responseType: "blob", // Importante para arquivos binários
       });
 
-      // Cria um link temporário no navegador para forçar o download
+      // Cria um link temporário para iniciar o download no browser
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", filename); // Nome que aparecerá para o usuário
+      link.setAttribute("download", filename);
       document.body.appendChild(link);
       link.click();
 
@@ -130,6 +131,7 @@ export const ticketService = {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Erro ao baixar arquivo:", error);
+      toast.error("Erro ao baixar anexo");
       throw error;
     }
   },
