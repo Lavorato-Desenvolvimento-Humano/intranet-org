@@ -11,14 +11,14 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/tickets/{ticketId}/interactions")
+@RequestMapping("/tickets/{ticketId}/interactions")
 @RequiredArgsConstructor
 public class TicketInteractionController {
 
     private final TicketService ticketService;
 
     @GetMapping
-    public ResponseEntity<List<TicketInteraction>> getTimeline(@PathVariable long ticketId) {
+    public ResponseEntity<List<TicketInteraction>> getTimeline(@PathVariable Long ticketId) {
         return ResponseEntity.ok(ticketService.getTicketTimeLine(ticketId));
     }
 
