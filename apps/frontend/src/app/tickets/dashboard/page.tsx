@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { ticketService } from "@/services/ticket";
-import { DashboardStatsDto, TicketStatus } from "@/types/ticket";
+import { DashboardStatsDto } from "@/types/ticket"; // Removi TicketStatus pois não estava sendo usado diretamente nas props
 import {
   Ticket as TicketIcon,
   CheckCircle,
@@ -10,15 +10,13 @@ import {
   TrendingUp,
   Loader2,
   AlertTriangle,
-  Search,
   User,
-  Clock,
   CheckSquare,
   Activity,
 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
-// import { ptBR } from "date-fns/locale"; // Descomente se tiver configurado
+// import { ptBR } from "date-fns/locale";
 
 import {
   Chart as ChartJS,
@@ -64,30 +62,43 @@ export default function TicketDashboard() {
     }
   };
 
-  if (loading)
+  if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <Loader2 className="animate-spin text-blue-600" />
+        <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
       </div>
     );
+  }
+
   if (!stats) return null;
 
-  // Cores
+  // --- SAFE GUARDS (Proteção contra dados undefined) ---
+  // Se o backend antigo for chamado, esses campos virão nulos.
+  // Usamos "|| []" para garantir que sempre sejam arrays.
+  const ticketsAtRisk = stats.ticketsAtRisk || [];
+  const recentActivity = stats.recentActivity || [];
+  const recentlyClosed = stats.recentlyClosed || [];
+  const lowRatedTickets = stats.lowRatedTickets || [];
+
+  const ticketsByStatus = stats.ticketsByStatus || {};
+  const ticketsByPriority = stats.ticketsByPriority || {};
+
+  // --- CORES ---
   const STATUS_COLORS: Record<string, string> = {
-    OPEN: "#3b82f6",
-    IN_PROGRESS: "#a855f7",
-    WAITING: "#eab308",
-    RESOLVED: "#22c55e",
-    CLOSED: "#64748b",
+    OPEN: "#3b82f6", // blue-500
+    IN_PROGRESS: "#a855f7", // purple-500
+    WAITING: "#eab308", // yellow-500
+    RESOLVED: "#22c55e", // green-500
+    CLOSED: "#64748b", // slate-500
   };
 
-  // Dados Gráficos
+  // --- DADOS PARA GRÁFICOS ---
   const pieData = {
-    labels: Object.keys(stats.ticketsByStatus),
+    labels: Object.keys(ticketsByStatus),
     datasets: [
       {
-        data: Object.values(stats.ticketsByStatus),
-        backgroundColor: Object.keys(stats.ticketsByStatus).map(
+        data: Object.values(ticketsByStatus),
+        backgroundColor: Object.keys(ticketsByStatus).map(
           (key) => STATUS_COLORS[key] || "#ccc"
         ),
         borderWidth: 1,
@@ -96,7 +107,7 @@ export default function TicketDashboard() {
   };
 
   const priorityOrder = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
-  const priorityEntries = Object.entries(stats.ticketsByPriority).sort(
+  const priorityEntries = Object.entries(ticketsByPriority).sort(
     (a, b) => priorityOrder.indexOf(a[0]) - priorityOrder.indexOf(b[0])
   );
 
@@ -175,28 +186,28 @@ export default function TicketDashboard() {
         {/* COLUNA ESQUERDA: LISTAS TABULADAS (2/3) */}
         <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col min-h-[500px]">
           {/* Header das Abas */}
-          <div className="flex border-b border-gray-100">
+          <div className="flex border-b border-gray-100 overflow-x-auto">
             <button
               onClick={() => setActiveTab("risk")}
-              className={`flex-1 py-4 text-sm font-medium flex justify-center items-center gap-2 border-b-2 transition-colors ${activeTab === "risk" ? "border-red-500 text-red-600 bg-red-50/50" : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"}`}>
-              <AlertTriangle size={18} /> Em Risco / Atrasados
+              className={`flex-1 min-w-[150px] py-4 text-sm font-medium flex justify-center items-center gap-2 border-b-2 transition-colors ${activeTab === "risk" ? "border-red-500 text-red-600 bg-red-50/50" : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"}`}>
+              <AlertTriangle size={18} /> Em Risco
             </button>
             <button
               onClick={() => setActiveTab("activity")}
-              className={`flex-1 py-4 text-sm font-medium flex justify-center items-center gap-2 border-b-2 transition-colors ${activeTab === "activity" ? "border-blue-500 text-blue-600 bg-blue-50/50" : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"}`}>
-              <Activity size={18} /> Atividade Recente (Todos)
+              className={`flex-1 min-w-[150px] py-4 text-sm font-medium flex justify-center items-center gap-2 border-b-2 transition-colors ${activeTab === "activity" ? "border-blue-500 text-blue-600 bg-blue-50/50" : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"}`}>
+              <Activity size={18} /> Atividade
             </button>
             <button
               onClick={() => setActiveTab("closed")}
-              className={`flex-1 py-4 text-sm font-medium flex justify-center items-center gap-2 border-b-2 transition-colors ${activeTab === "closed" ? "border-green-500 text-green-600 bg-green-50/50" : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"}`}>
-              <CheckSquare size={18} /> Últimos Fechados
+              className={`flex-1 min-w-[150px] py-4 text-sm font-medium flex justify-center items-center gap-2 border-b-2 transition-colors ${activeTab === "closed" ? "border-green-500 text-green-600 bg-green-50/50" : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"}`}>
+              <CheckSquare size={18} /> Entregas
             </button>
           </div>
 
           {/* Conteúdo das Abas */}
           <div className="flex-1 overflow-auto p-0">
             <table className="w-full text-sm text-left">
-              <thead className="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0">
+              <thead className="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0 z-10">
                 <tr>
                   <th className="px-6 py-3">ID</th>
                   <th className="px-6 py-3">Status</th>
@@ -208,14 +219,14 @@ export default function TicketDashboard() {
               <tbody className="divide-y divide-gray-100">
                 {/* 1. EM RISCO */}
                 {activeTab === "risk" &&
-                  (stats.ticketsAtRisk.length === 0 ? (
+                  (ticketsAtRisk.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="p-8 text-center text-gray-500">
                         Tudo sob controle! Nenhum chamado em risco.
                       </td>
                     </tr>
                   ) : (
-                    stats.ticketsAtRisk.map((ticket) => (
+                    ticketsAtRisk.map((ticket) => (
                       <TicketRow
                         key={ticket.id}
                         ticket={ticket}
@@ -226,28 +237,44 @@ export default function TicketDashboard() {
                     ))
                   ))}
 
-                {/* 2. ATIVIDADE RECENTE (MOSTRA QUALQUER UM) */}
+                {/* 2. ATIVIDADE RECENTE */}
                 {activeTab === "activity" &&
-                  stats.recentActivity.map((ticket) => (
-                    <TicketRow
-                      key={ticket.id}
-                      ticket={ticket}
-                      dateLabel={ticket.updatedAt || ticket.createdAt}
-                      dateColor="text-gray-500"
-                      colors={STATUS_COLORS}
-                    />
+                  (recentActivity.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="p-8 text-center text-gray-500">
+                        Nenhuma atividade recente.
+                      </td>
+                    </tr>
+                  ) : (
+                    recentActivity.map((ticket) => (
+                      <TicketRow
+                        key={ticket.id}
+                        ticket={ticket}
+                        dateLabel={ticket.updatedAt || ticket.createdAt}
+                        dateColor="text-gray-500"
+                        colors={STATUS_COLORS}
+                      />
+                    ))
                   ))}
 
                 {/* 3. FECHADOS */}
                 {activeTab === "closed" &&
-                  stats.recentlyClosed.map((ticket) => (
-                    <TicketRow
-                      key={ticket.id}
-                      ticket={ticket}
-                      dateLabel={ticket.closedAt}
-                      dateColor="text-green-600"
-                      colors={STATUS_COLORS}
-                    />
+                  (recentlyClosed.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="p-8 text-center text-gray-500">
+                        Nenhum ticket fechado recentemente.
+                      </td>
+                    </tr>
+                  ) : (
+                    recentlyClosed.map((ticket) => (
+                      <TicketRow
+                        key={ticket.id}
+                        ticket={ticket}
+                        dateLabel={ticket.closedAt}
+                        dateColor="text-green-600"
+                        colors={STATUS_COLORS}
+                      />
+                    ))
                   ))}
               </tbody>
             </table>
@@ -257,11 +284,7 @@ export default function TicketDashboard() {
               href="/tickets"
               className="text-xs text-blue-600 font-medium hover:underline">
               Pesquisar em todos os{" "}
-              {
-                stats.totalOpen +
-                  stats.recentlyClosed.length /* apenas estimativa visual */
-              }{" "}
-              chamados
+              {stats.totalOpen + (recentlyClosed.length || 0)} chamados
             </Link>
           </div>
         </div>
@@ -307,12 +330,12 @@ export default function TicketDashboard() {
               </h4>
             </div>
             <div className="max-h-[300px] overflow-y-auto divide-y divide-gray-100">
-              {stats.lowRatedTickets.length === 0 ? (
+              {lowRatedTickets.length === 0 ? (
                 <div className="p-4 text-xs text-gray-500 text-center">
                   Nenhuma avaliação baixa recente.
                 </div>
               ) : (
-                stats.lowRatedTickets.map((t) => (
+                lowRatedTickets.map((t) => (
                   <div key={t.id} className="p-3 hover:bg-gray-50">
                     <div className="flex justify-between items-start">
                       <Link
@@ -341,7 +364,9 @@ export default function TicketDashboard() {
                         {t.assigneeName || "N/A"}
                       </span>
                       <span className="text-[10px] text-gray-400">
-                        {format(new Date(t.closedAt!), "dd/MM")}
+                        {t.closedAt
+                          ? format(new Date(t.closedAt), "dd/MM")
+                          : ""}
                       </span>
                     </div>
                   </div>
@@ -367,7 +392,7 @@ function TicketRow({ ticket, dateLabel, dateColor, colors }: any) {
       <td className="px-6 py-4">
         <span
           className="px-2 py-1 rounded text-[10px] font-bold text-white shadow-sm"
-          style={{ backgroundColor: colors[ticket.status] }}>
+          style={{ backgroundColor: colors[ticket.status] || "#999" }}>
           {ticket.status}
         </span>
       </td>
@@ -380,7 +405,7 @@ function TicketRow({ ticket, dateLabel, dateColor, colors }: any) {
       </td>
       <td className="px-6 py-4">
         <div className="flex items-center gap-2">
-          <div className="h-6 w-6 rounded-full bg-gray-200 flex items-center justify-center text-[10px] text-gray-500">
+          <div className="h-6 w-6 rounded-full bg-gray-200 flex items-center justify-center text-[10px] text-gray-500 uppercase">
             {ticket.assigneeName ? (
               ticket.assigneeName.charAt(0)
             ) : (
