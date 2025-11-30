@@ -14,6 +14,8 @@ import {
   AlertCircle,
   Clock,
   Star,
+  Paperclip,
+  X,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -39,7 +41,9 @@ export default function TicketDetailsPage() {
 
   const [commentText, setCommentText] = useState("");
   const [sending, setSending] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Scroll para o fim do chat ao carregar ou receber msg
   useEffect(() => {
@@ -47,11 +51,25 @@ export default function TicketDetailsPage() {
   }, [interactions]);
 
   const handleSend = async () => {
-    if (!commentText.trim()) return;
+    if (!commentText.trim() && !selectedFile) return;
+
+    const textToSend =
+      commentText.trim() || (selectedFile ? "Enviando anexo..." : "");
+
     setSending(true);
-    const success = await addComment(commentText);
-    if (success) setCommentText("");
+    const success = await addComment(textToSend, selectedFile);
+
+    if (success) {
+      setCommentText("");
+      setSelectedFile(null);
+    }
     setSending(false);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFile(e.target.files[0]);
+    }
   };
 
   // Funções de UI Auxiliares
@@ -196,11 +214,40 @@ export default function TicketDetailsPage() {
           {/* Input de Chat */}
           {ticket.status !== TicketStatus.CLOSED && (
             <div className="p-4 bg-white border-t border-gray-200">
-              <div className="flex gap-2">
+              {/* Preview do Arquivo Selecionado */}
+              {selectedFile && (
+                <div className="mb-2 flex items-center gap-2 bg-gray-100 w-fit px-3 py-1 rounded-full text-sm">
+                  <Paperclip size={14} className="text-gray-500" />
+                  <span className="text-gray-700 max-w-xs truncate">
+                    {selectedFile.name}
+                  </span>
+                  <button
+                    onClick={() => setSelectedFile(null)}
+                    className="ml-2 text-gray-400 hover:text-red-500">
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+
+              <div className="flex gap-2 items-end">
+                {/* Botão de Anexo */}
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="p-3 text-gray-500 hover:text-primary hover:bg-gray-100 rounded-md transition mb-[2px]"
+                  title="Anexar arquivo">
+                  <Paperclip size={20} />
+                </button>
+
                 <textarea
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
-                  placeholder="Escreva um comentário ou resposta..."
+                  placeholder="Escreva um comentário..."
                   className="flex-1 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent resize-none h-12 md:h-20"
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
@@ -211,8 +258,8 @@ export default function TicketDetailsPage() {
                 />
                 <button
                   onClick={handleSend}
-                  disabled={sending || !commentText.trim()}
-                  className="px-4 bg-primary text-white rounded-md hover:bg-primary-dark disabled:opacity-50 flex items-center justify-center">
+                  disabled={sending || (!commentText.trim() && !selectedFile)}
+                  className="px-4 py-3 bg-primary text-white rounded-md hover:bg-primary-dark disabled:opacity-50 flex items-center justify-center mb-[2px]">
                   {sending ? (
                     <Loader2 className="animate-spin" />
                   ) : (

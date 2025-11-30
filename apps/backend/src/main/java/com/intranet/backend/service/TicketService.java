@@ -7,6 +7,7 @@ import com.intranet.backend.repository.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -35,6 +36,7 @@ public class TicketService {
     private final TicketSlaConfigRepository ticketSlaConfigRepository;
     private final TicketInteractionRepository interactionRepository;
     private final UserEquipeRepository userEquipeRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @Value("${app.upload.dir:/app/uploads}")
     private String uploadDir;
@@ -133,19 +135,43 @@ public class TicketService {
     }
 
     @Transactional
-    public TicketInteractionResponseDto addComent(Long ticketId, String content) {
+    public TicketInteractionResponseDto addComent(Long ticketId, String content, MultipartFile file) {
         Ticket ticket = getTicketById(ticketId);
         User currentUser = getCurrentUser();
 
-        TicketInteraction interaction = TicketInteraction.builder()
+        TicketInteraction commentInteraction = TicketInteraction.builder()
                 .ticket(ticket)
                 .user(currentUser)
                 .type(InteractionType.COMMENT)
                 .content(content)
                 .build();
 
-        TicketInteraction saved = interactionRepository.save(interaction);
-        return toInteractionDto(saved);
+        TicketInteraction savedComment = interactionRepository.save(commentInteraction);
+        TicketInteractionResponseDto commentDto = toInteractionDto(savedComment);
+
+        // --- WEBSOCKET: Envia notificação do comentário ---
+        messagingTemplate.convertAndSend("/topic/tickets/" + ticketId, commentDto);
+
+
+        if (file != null && !file.isEmpty()) {
+            String fileName = saveFileLocally(file, ticket.getId());
+
+            TicketInteraction attachmentInteraction = TicketInteraction.builder()
+                    .ticket(ticket)
+                    .user(currentUser)
+                    .type(InteractionType.ATTACHMENT)
+                    .content("Anexo enviado via chat: " + file.getOriginalFilename())
+                    .attachmentUrl(fileName)
+                    .build();
+
+            TicketInteraction savedAttachment = interactionRepository.save(attachmentInteraction);
+            TicketInteractionResponseDto attachmentDto = toInteractionDto(savedAttachment);
+
+            // --- WEBSOCKET: Envia notificação do anexo ---
+            messagingTemplate.convertAndSend("/topic/tickets/" + ticketId, attachmentDto);
+        }
+
+        return commentDto;
     }
 
     @Transactional
@@ -266,7 +292,10 @@ public class TicketService {
                 .type(InteractionType.SYSTEM_LOG)
                 .content(message)
                 .build();
-        interactionRepository.save(log);
+        TicketInteraction savedLog = interactionRepository.save(log);
+
+        // Envia para o WebSocket
+        messagingTemplate.convertAndSend("/topic/tickets/" + ticket.getId(), toInteractionDto(savedLog));
     }
 
     private String saveFileLocally(MultipartFile file, Long ticketId) {

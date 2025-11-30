@@ -91,16 +91,34 @@ export const ticketService = {
 
   addComment: async (
     ticketId: number,
-    content: string
+    content: string,
+    file?: File | null
   ): Promise<TicketInteraction> => {
+    const formData = new FormData();
+
+    // O backend espera o JSON dentro de uma parte chamada "data"
+    const jsonBlob = new Blob([JSON.stringify({ content })], {
+      type: "application/json",
+    });
+    formData.append("data", jsonBlob);
+
+    if (file) {
+      formData.append("file", file);
+    }
+
     const response = await api.post<TicketInteraction>(
       `/tickets/${ticketId}/interactions/comments`,
+      formData,
       {
-        content,
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
       }
     );
     return response.data;
   },
+
+  // ...
 
   // --- DASHBOARD E HELPERS ---
 

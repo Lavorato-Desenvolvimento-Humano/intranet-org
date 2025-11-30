@@ -6,8 +6,10 @@ import com.intranet.backend.model.TicketInteraction;
 import com.intranet.backend.service.TicketService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -23,11 +25,12 @@ public class TicketInteractionController {
         return ResponseEntity.ok(ticketService.getTicketTimeLine(ticketId));
     }
 
-    @PostMapping("/comments")
+    @PostMapping(value = "/comments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<TicketInteractionResponseDto> addComent(
             @PathVariable Long ticketId,
-            @RequestBody @Valid TicketCommentRequest request
+            @RequestPart("data") @Valid TicketCommentRequest request,
+            @RequestPart(value = "file", required = false) MultipartFile file
     ) {
-        return ResponseEntity.ok(ticketService.addComent(ticketId, request.content()));
+        return ResponseEntity.ok(ticketService.addComent(ticketId, request.content(), file));
     }
 }
