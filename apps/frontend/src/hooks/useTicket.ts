@@ -56,7 +56,7 @@ export const useTicket = (ticketId: number) => {
       },
 
       onConnect: () => {
-        console.log("WebSocket Conectado!");
+        console.log("WebSocket Conectado! ");
 
         // Inscreve-se no tópico específico do ticket
         client.subscribe(`/topic/tickets/${ticketId}`, (message) => {
