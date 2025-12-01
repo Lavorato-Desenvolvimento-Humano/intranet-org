@@ -21,7 +21,7 @@ import toast from "react-hot-toast";
 
 // Importações do WebSocket
 import SockJS from "sockjs-client";
-import { Stomp, CompatClient } from "@stomp/stompjs";
+import { Client, IMessage } from "@stomp/stompjs";
 
 export function FloatingSupportWidget() {
   const pathname = usePathname();
@@ -46,7 +46,7 @@ export function FloatingSupportWidget() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Ref para o cliente WebSocket
-  const stompClientRef = useRef<CompatClient | null>(null);
+  const stompClientRef = useRef<Client | null>(null);
 
   // --- CONTROLE DE VISIBILIDADE ---
   const shouldRender = () => {
@@ -60,7 +60,7 @@ export function FloatingSupportWidget() {
   useEffect(() => {
     if (isOpen && view === "LIST") {
       loadMyOpenTickets();
-      disconnectWebSocket(); // Garante que desconecta se voltar pra lista
+      disconnectWebSocket();
     }
   }, [isOpen, view]);
 
@@ -70,7 +70,7 @@ export function FloatingSupportWidget() {
       loadChat(activeTicketId);
       connectWebSocket(activeTicketId);
     }
-    // Cleanup ao sair do chat
+    // Cleanup ao sair do chat ou desmontar
     return () => disconnectWebSocket();
   }, [activeTicketId, view]);
 
@@ -81,49 +81,67 @@ export function FloatingSupportWidget() {
     }
   }, [interactions, view, previewUrl]);
 
-  // --- LÓGICA DO WEBSOCKET ---
+  // --- LÓGICA DO WEBSOCKET (Baseada no useTicket.ts) ---
   const connectWebSocket = (ticketId: number) => {
-    // Define a URL do WebSocket (ajuste conforme sua env var)
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-    // Remove /api se existir para pegar a raiz, depois adiciona /ws
-    const wsUrl = baseUrl.replace(/\/api$/, "") + "/ws";
+    if (typeof window === "undefined") return;
 
-    const socket = new SockJS(wsUrl);
-    const client = Stomp.over(socket);
+    // Lógica robusta que funciona em produção e localhost
+    const protocol = window.location.protocol === "https:" ? "https:" : "http:";
+    const host = window.location.host;
+    let socketUrl = `${protocol}//${host}/ws`;
 
-    // Desabilita logs de debug no console (opcional)
-    client.debug = () => {};
+    // Override para desenvolvimento local
+    if (
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1"
+    ) {
+      socketUrl = "http://localhost:8080/ws";
+    }
 
-    client.connect(
-      {},
-      () => {
-        // Inscreve no tópico do ticket específico
-        client.subscribe(`/topic/tickets/${ticketId}`, (message) => {
+    // Se já existe conexão ativa, não recria
+    if (stompClientRef.current && stompClientRef.current.active) {
+      return;
+    }
+
+    const client = new Client({
+      webSocketFactory: () => new SockJS(socketUrl),
+      reconnectDelay: 5000,
+
+      onConnect: () => {
+        client.subscribe(`/topic/tickets/${ticketId}`, (message: IMessage) => {
           if (message.body) {
-            const newInteraction: TicketInteraction = JSON.parse(message.body);
+            try {
+              const newInteraction: TicketInteraction = JSON.parse(
+                message.body
+              );
 
-            // Adiciona apenas se já não estiver na lista (prevenção básica de duplicação)
-            setInteractions((prev) => {
-              if (prev.some((i) => i.id === newInteraction.id)) return prev;
-              return [...prev, newInteraction];
-            });
+              setInteractions((prev) => {
+                // Evita duplicatas
+                if (prev.some((i) => i.id === newInteraction.id)) return prev;
+                return [...prev, newInteraction];
+              });
+            } catch (e) {
+              console.error("Erro ao processar mensagem do WebSocket", e);
+            }
           }
         });
       },
-      (error: any) => {
-        console.error("Erro no WebSocket:", error);
-      }
-    );
 
+      // Remove logs excessivos em produção, mas mantém erros críticos
+      onStompError: (frame) => {
+        console.error("Broker error: " + frame.headers["message"]);
+        console.error("Details: " + frame.body);
+      },
+    });
+
+    client.activate();
     stompClientRef.current = client;
   };
 
   const disconnectWebSocket = () => {
     if (stompClientRef.current) {
-      try {
-        stompClientRef.current.disconnect();
-      } catch (e) {
-        // Ignora erro se já estiver desconectado
+      if (stompClientRef.current.active) {
+        stompClientRef.current.deactivate();
       }
       stompClientRef.current = null;
     }
@@ -136,7 +154,6 @@ export function FloatingSupportWidget() {
   ) => {
     if (!path) return;
     try {
-      // Usa o nome original ou extrai do path
       const fileName = originalName || path.split("/").pop() || "arquivo";
       await ticketService.downloadAttachment(path, fileName);
     } catch (error) {
@@ -194,7 +211,7 @@ export function FloatingSupportWidget() {
 
     setSending(true);
     try {
-      // Envia via API (o WebSocket vai receber a notificação e atualizar a UI automaticamente)
+      // Envia via API; o WebSocket vai receber a notificação e atualizar a UI
       await ticketService.addComment(activeTicketId, comment, attachment);
 
       setComment("");
@@ -262,7 +279,7 @@ export function FloatingSupportWidget() {
               </div>
             )}
 
-            {/* VIEW: LISTA */}
+            {/* VIEW: LISTA DE TICKETS */}
             {view === "LIST" && (
               <div className="p-2 space-y-2">
                 {myTickets.length === 0 && !loading ? (
@@ -334,7 +351,6 @@ export function FloatingSupportWidget() {
                             : "bg-white text-gray-700 border border-gray-200 rounded-bl-none"
                         }`}>
                         {msg.type === "ATTACHMENT" ? (
-                          // --- FIX: BOTÃO DE DOWNLOAD ---
                           <div
                             className={`flex items-center gap-3 p-2 rounded cursor-pointer transition-colors ${isMe ? "bg-blue-500 hover:bg-blue-700" : "bg-gray-100 hover:bg-gray-200"}`}
                             onClick={() =>
@@ -375,9 +391,10 @@ export function FloatingSupportWidget() {
             )}
           </div>
 
-          {/* FOOTER */}
+          {/* FOOTER (INPUT DO CHAT) */}
           {view === "CHAT" && (
             <div className="p-3 bg-white border-t border-gray-100">
+              {/* Preview Anexo */}
               {attachment && (
                 <div className="flex items-center justify-between bg-blue-50 p-2 rounded-lg mb-2 text-xs">
                   <div className="flex items-center gap-2 overflow-hidden">
@@ -447,7 +464,7 @@ export function FloatingSupportWidget() {
         </div>
       )}
 
-      {/* FAB */}
+      {/* --- BOTÃO FLUTUANTE (FAB) --- */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`h-14 w-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-110 focus:outline-none focus:ring-4 focus:ring-blue-300 z-[9999]
