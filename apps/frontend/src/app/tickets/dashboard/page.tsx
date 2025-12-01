@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { ticketService } from "@/services/ticket";
-import { DashboardStatsDto } from "@/types/ticket"; // Removi TicketStatus pois não estava sendo usado diretamente nas props
+import { DashboardStatsDto } from "@/types/ticket";
 import {
   Ticket as TicketIcon,
   CheckCircle,
@@ -13,10 +13,12 @@ import {
   User,
   CheckSquare,
   Activity,
+  RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
-// import { ptBR } from "date-fns/locale";
+import { useAuth } from "@/context/AuthContext";
+import toastUtil from "@/utils/toast";
 
 import {
   Chart as ChartJS,
@@ -29,6 +31,9 @@ import {
   Title,
 } from "chart.js";
 import { Pie, Bar } from "react-chartjs-2";
+import toast from "react-hot-toast";
+import CustomButton from "@/components/ui/custom-button";
+import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
 
 ChartJS.register(
   ArcElement,
@@ -46,10 +51,38 @@ export default function TicketDashboard() {
   const [activeTab, setActiveTab] = useState<"risk" | "closed" | "activity">(
     "risk"
   );
+  const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const { user, logout } = useAuth();
+
+  useEffect(() => {
+    const isCanView = user?.roles?.some(
+      (role) => role === "ROLE_ADMIN" || "ROLE_SUPERVISOR" || "ROLE_GERENTE"
+    );
+
+    if (!isCanView) {
+      setError(
+        "Você não tem permissões de administrador para acessar esta página"
+      );
+    } else {
+      setError(null);
+    }
+  }, [user]);
 
   useEffect(() => {
     loadStats();
   }, []);
+
+  const handleReauth = () => {
+    logout();
+    toastUtil.info("Por favor, faça login novamente para continuar.");
+    window.location.href = "/auth/login?callback=/tickets/dashboard";
+  };
+
+  const handleRetry = () => {
+    setRetryCount((prev) => prev + 1);
+    window.location.reload();
+  };
 
   const loadStats = async () => {
     try {
@@ -61,6 +94,35 @@ export default function TicketDashboard() {
       setLoading(false);
     }
   };
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+        <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
+          <div className="flex items-center text-red-500 mb-4">
+            <AlertTriangle className="mr-2" />
+            <h2 className="text-xl font-bold">Erro de Acesso</h2>
+          </div>
+
+          <p className="mb-6 text-gray-700">{error}</p>
+
+          <div className="flex flex-col gap-3">
+            <CustomButton onClick={handleRetry} className="w-full">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Tentar novamente
+            </CustomButton>
+
+            <CustomButton
+              onClick={handleReauth}
+              variant="primary"
+              className="w-full border border-gray-300">
+              Fazer login novamente
+            </CustomButton>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -124,259 +186,272 @@ export default function TicketDashboard() {
   };
 
   return (
-    <div className="container mx-auto py-8 px-4 space-y-8 max-w-7xl">
-      <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800">
-            Centro de Comando
-          </h1>
-          <p className="text-gray-500">Gestão operacional de suporte</p>
-        </div>
-        <div className="flex gap-3">
-          <Link
-            href="/tickets"
-            className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium">
-            Ver Lista Completa
-          </Link>
-          <button
-            onClick={loadStats}
-            className="text-sm text-blue-600 hover:underline">
-            Atualizar
-          </button>
-        </div>
-      </div>
-
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <KpiCard
-          icon={<TicketIcon className="text-blue-600" />}
-          title="Em Aberto"
-          value={stats.totalOpen}
-          bg="bg-blue-50"
-        />
-        <KpiCard
-          icon={<CheckCircle className="text-green-600" />}
-          title="Fechados Hoje"
-          value={stats.totalClosedToday}
-          bg="bg-green-50"
-        />
-        <KpiCard
-          icon={
-            <TrendingUp
-              className={
-                stats.slaCompliancePercentage >= 80
-                  ? "text-teal-600"
-                  : "text-red-600"
-              }
-            />
-          }
-          title="SLA Compliance"
-          value={`${stats.slaCompliancePercentage.toFixed(1)}%`}
-          bg={stats.slaCompliancePercentage >= 80 ? "bg-teal-50" : "bg-red-50"}
-        />
-        <KpiCard
-          icon={<Star className="text-yellow-500" fill="currentColor" />}
-          title="CSAT"
-          value={stats.averageRating.toFixed(1)}
-          bg="bg-yellow-50"
-        />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* COLUNA ESQUERDA: LISTAS TABULADAS (2/3) */}
-        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col min-h-[500px]">
-          {/* Header das Abas */}
-          <div className="flex border-b border-gray-100 overflow-x-auto">
-            <button
-              onClick={() => setActiveTab("risk")}
-              className={`flex-1 min-w-[150px] py-4 text-sm font-medium flex justify-center items-center gap-2 border-b-2 transition-colors ${activeTab === "risk" ? "border-red-500 text-red-600 bg-red-50/50" : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"}`}>
-              <AlertTriangle size={18} /> Em Risco
-            </button>
-            <button
-              onClick={() => setActiveTab("activity")}
-              className={`flex-1 min-w-[150px] py-4 text-sm font-medium flex justify-center items-center gap-2 border-b-2 transition-colors ${activeTab === "activity" ? "border-blue-500 text-blue-600 bg-blue-50/50" : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"}`}>
-              <Activity size={18} /> Atividade
-            </button>
-            <button
-              onClick={() => setActiveTab("closed")}
-              className={`flex-1 min-w-[150px] py-4 text-sm font-medium flex justify-center items-center gap-2 border-b-2 transition-colors ${activeTab === "closed" ? "border-green-500 text-green-600 bg-green-50/50" : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"}`}>
-              <CheckSquare size={18} /> Entregas
-            </button>
+    <ProtectedRoute
+      requiredRoles={["ROLE_ADMIN", "ROLE_SUPERVISOR", "ROLE_GERENTE"]}>
+      <div className="container mx-auto py-8 px-4 space-y-8 max-w-7xl">
+        <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800">
+              Centro de Comando
+            </h1>
+            <p className="text-gray-500">Gestão operacional de suporte</p>
           </div>
-
-          {/* Conteúdo das Abas */}
-          <div className="flex-1 overflow-auto p-0">
-            <table className="w-full text-sm text-left">
-              <thead className="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0 z-10">
-                <tr>
-                  <th className="px-6 py-3">ID</th>
-                  <th className="px-6 py-3">Status</th>
-                  <th className="px-6 py-3">Assunto</th>
-                  <th className="px-6 py-3">Responsável</th>
-                  <th className="px-6 py-3 text-right">Data/Prazo</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {/* 1. EM RISCO */}
-                {activeTab === "risk" &&
-                  (ticketsAtRisk.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="p-8 text-center text-gray-500">
-                        Tudo sob controle! Nenhum chamado em risco.
-                      </td>
-                    </tr>
-                  ) : (
-                    ticketsAtRisk.map((ticket) => (
-                      <TicketRow
-                        key={ticket.id}
-                        ticket={ticket}
-                        dateLabel={ticket.dueDate}
-                        dateColor="text-red-600"
-                        colors={STATUS_COLORS}
-                      />
-                    ))
-                  ))}
-
-                {/* 2. ATIVIDADE RECENTE */}
-                {activeTab === "activity" &&
-                  (recentActivity.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="p-8 text-center text-gray-500">
-                        Nenhuma atividade recente.
-                      </td>
-                    </tr>
-                  ) : (
-                    recentActivity.map((ticket) => (
-                      <TicketRow
-                        key={ticket.id}
-                        ticket={ticket}
-                        dateLabel={ticket.updatedAt || ticket.createdAt}
-                        dateColor="text-gray-500"
-                        colors={STATUS_COLORS}
-                      />
-                    ))
-                  ))}
-
-                {/* 3. FECHADOS */}
-                {activeTab === "closed" &&
-                  (recentlyClosed.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="p-8 text-center text-gray-500">
-                        Nenhum ticket fechado recentemente.
-                      </td>
-                    </tr>
-                  ) : (
-                    recentlyClosed.map((ticket) => (
-                      <TicketRow
-                        key={ticket.id}
-                        ticket={ticket}
-                        dateLabel={ticket.closedAt}
-                        dateColor="text-green-600"
-                        colors={STATUS_COLORS}
-                      />
-                    ))
-                  ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="p-3 border-t border-gray-100 text-center bg-gray-50">
+          <div className="flex gap-3">
             <Link
               href="/tickets"
-              className="text-xs text-blue-600 font-medium hover:underline">
-              Pesquisar em todos os{" "}
-              {stats.totalOpen + (recentlyClosed.length || 0)} chamados
+              className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium">
+              Ver Lista Completa
             </Link>
+            <button
+              onClick={loadStats}
+              className="text-sm text-blue-600 hover:underline">
+              Atualizar
+            </button>
           </div>
         </div>
 
-        {/* COLUNA DIREITA: ANALYTICS (1/3) */}
-        <div className="space-y-6">
-          <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
-            <h4 className="text-sm font-bold text-gray-700 mb-4">
-              Volume por Status
-            </h4>
-            <div className="h-[200px] flex justify-center">
-              <Pie
-                data={pieData}
-                options={{
-                  maintainAspectRatio: false,
-                  plugins: { legend: { position: "right" } },
-                }}
+        {/* KPI Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <KpiCard
+            icon={<TicketIcon className="text-blue-600" />}
+            title="Em Aberto"
+            value={stats.totalOpen}
+            bg="bg-blue-50"
+          />
+          <KpiCard
+            icon={<CheckCircle className="text-green-600" />}
+            title="Fechados Hoje"
+            value={stats.totalClosedToday}
+            bg="bg-green-50"
+          />
+          <KpiCard
+            icon={
+              <TrendingUp
+                className={
+                  stats.slaCompliancePercentage >= 80
+                    ? "text-teal-600"
+                    : "text-red-600"
+                }
               />
+            }
+            title="SLA Compliance"
+            value={`${stats.slaCompliancePercentage.toFixed(1)}%`}
+            bg={
+              stats.slaCompliancePercentage >= 80 ? "bg-teal-50" : "bg-red-50"
+            }
+          />
+          <KpiCard
+            icon={<Star className="text-yellow-500" fill="currentColor" />}
+            title="CSAT"
+            value={stats.averageRating.toFixed(1)}
+            bg="bg-yellow-50"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* COLUNA ESQUERDA: LISTAS TABULADAS (2/3) */}
+          <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col min-h-[500px]">
+            {/* Header das Abas */}
+            <div className="flex border-b border-gray-100 overflow-x-auto">
+              <button
+                onClick={() => setActiveTab("risk")}
+                className={`flex-1 min-w-[150px] py-4 text-sm font-medium flex justify-center items-center gap-2 border-b-2 transition-colors ${activeTab === "risk" ? "border-red-500 text-red-600 bg-red-50/50" : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"}`}>
+                <AlertTriangle size={18} /> Em Risco
+              </button>
+              <button
+                onClick={() => setActiveTab("activity")}
+                className={`flex-1 min-w-[150px] py-4 text-sm font-medium flex justify-center items-center gap-2 border-b-2 transition-colors ${activeTab === "activity" ? "border-blue-500 text-blue-600 bg-blue-50/50" : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"}`}>
+                <Activity size={18} /> Atividade
+              </button>
+              <button
+                onClick={() => setActiveTab("closed")}
+                className={`flex-1 min-w-[150px] py-4 text-sm font-medium flex justify-center items-center gap-2 border-b-2 transition-colors ${activeTab === "closed" ? "border-green-500 text-green-600 bg-green-50/50" : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"}`}>
+                <CheckSquare size={18} /> Entregas
+              </button>
+            </div>
+
+            {/* Conteúdo das Abas */}
+            <div className="flex-1 overflow-auto p-0">
+              <table className="w-full text-sm text-left">
+                <thead className="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0 z-10">
+                  <tr>
+                    <th className="px-6 py-3">ID</th>
+                    <th className="px-6 py-3">Status</th>
+                    <th className="px-6 py-3">Assunto</th>
+                    <th className="px-6 py-3">Responsável</th>
+                    <th className="px-6 py-3 text-right">Data/Prazo</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {/* 1. EM RISCO */}
+                  {activeTab === "risk" &&
+                    (ticketsAtRisk.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={5}
+                          className="p-8 text-center text-gray-500">
+                          Tudo sob controle! Nenhum chamado em risco.
+                        </td>
+                      </tr>
+                    ) : (
+                      ticketsAtRisk.map((ticket) => (
+                        <TicketRow
+                          key={ticket.id}
+                          ticket={ticket}
+                          dateLabel={ticket.dueDate}
+                          dateColor="text-red-600"
+                          colors={STATUS_COLORS}
+                        />
+                      ))
+                    ))}
+
+                  {/* 2. ATIVIDADE RECENTE */}
+                  {activeTab === "activity" &&
+                    (recentActivity.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={5}
+                          className="p-8 text-center text-gray-500">
+                          Nenhuma atividade recente.
+                        </td>
+                      </tr>
+                    ) : (
+                      recentActivity.map((ticket) => (
+                        <TicketRow
+                          key={ticket.id}
+                          ticket={ticket}
+                          dateLabel={ticket.updatedAt || ticket.createdAt}
+                          dateColor="text-gray-500"
+                          colors={STATUS_COLORS}
+                        />
+                      ))
+                    ))}
+
+                  {/* 3. FECHADOS */}
+                  {activeTab === "closed" &&
+                    (recentlyClosed.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={5}
+                          className="p-8 text-center text-gray-500">
+                          Nenhum ticket fechado recentemente.
+                        </td>
+                      </tr>
+                    ) : (
+                      recentlyClosed.map((ticket) => (
+                        <TicketRow
+                          key={ticket.id}
+                          ticket={ticket}
+                          dateLabel={ticket.closedAt}
+                          dateColor="text-green-600"
+                          colors={STATUS_COLORS}
+                        />
+                      ))
+                    ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="p-3 border-t border-gray-100 text-center bg-gray-50">
+              <Link
+                href="/tickets"
+                className="text-xs text-blue-600 font-medium hover:underline">
+                Pesquisar em todos os{" "}
+                {stats.totalOpen + (recentlyClosed.length || 0)} chamados
+              </Link>
             </div>
           </div>
 
-          <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
-            <h4 className="text-sm font-bold text-gray-700 mb-4">
-              Volume por Prioridade
-            </h4>
-            <div className="h-[150px]">
-              <Bar
-                data={barData}
-                options={{
-                  maintainAspectRatio: false,
-                  plugins: { legend: { display: false } },
-                  scales: { x: { display: false } },
-                }}
-              />
-            </div>
-          </div>
-
-          {/* Avaliações Baixas */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-100 bg-orange-50 flex items-center justify-between">
-              <h4 className="text-sm font-bold text-orange-800 flex items-center gap-2">
-                <Star size={16} /> Atenção à Qualidade
+          {/* COLUNA DIREITA: ANALYTICS (1/3) */}
+          <div className="space-y-6">
+            <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+              <h4 className="text-sm font-bold text-gray-700 mb-4">
+                Volume por Status
               </h4>
+              <div className="h-[200px] flex justify-center">
+                <Pie
+                  data={pieData}
+                  options={{
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: "right" } },
+                  }}
+                />
+              </div>
             </div>
-            <div className="max-h-[300px] overflow-y-auto divide-y divide-gray-100">
-              {lowRatedTickets.length === 0 ? (
-                <div className="p-4 text-xs text-gray-500 text-center">
-                  Nenhuma avaliação baixa recente.
-                </div>
-              ) : (
-                lowRatedTickets.map((t) => (
-                  <div key={t.id} className="p-3 hover:bg-gray-50">
-                    <div className="flex justify-between items-start">
-                      <Link
-                        href={`/tickets/${t.id}`}
-                        className="text-xs font-bold text-gray-700 hover:underline">
-                        #{t.id}
-                      </Link>
-                      <div className="flex text-yellow-400">
-                        {[...Array(5)].map((_, i) => (
-                          <Star
-                            key={i}
-                            size={10}
-                            fill={i < (t.rating || 0) ? "currentColor" : "none"}
-                            className={
-                              i < (t.rating || 0) ? "" : "text-gray-200"
-                            }
-                          />
-                        ))}
+
+            <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+              <h4 className="text-sm font-bold text-gray-700 mb-4">
+                Volume por Prioridade
+              </h4>
+              <div className="h-[150px]">
+                <Bar
+                  data={barData}
+                  options={{
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { x: { display: false } },
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Avaliações Baixas */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-100 bg-orange-50 flex items-center justify-between">
+                <h4 className="text-sm font-bold text-orange-800 flex items-center gap-2">
+                  <Star size={16} /> Atenção à Qualidade
+                </h4>
+              </div>
+              <div className="max-h-[300px] overflow-y-auto divide-y divide-gray-100">
+                {lowRatedTickets.length === 0 ? (
+                  <div className="p-4 text-xs text-gray-500 text-center">
+                    Nenhuma avaliação baixa recente.
+                  </div>
+                ) : (
+                  lowRatedTickets.map((t) => (
+                    <div key={t.id} className="p-3 hover:bg-gray-50">
+                      <div className="flex justify-between items-start">
+                        <Link
+                          href={`/tickets/${t.id}`}
+                          className="text-xs font-bold text-gray-700 hover:underline">
+                          #{t.id}
+                        </Link>
+                        <div className="flex text-yellow-400">
+                          {[...Array(5)].map((_, i) => (
+                            <Star
+                              key={i}
+                              size={10}
+                              fill={
+                                i < (t.rating || 0) ? "currentColor" : "none"
+                              }
+                              className={
+                                i < (t.rating || 0) ? "" : "text-gray-200"
+                              }
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-600 mt-1 italic">
+                        "{t.ratingComment || "Sem comentário"}"
+                      </p>
+                      <div className="mt-2 flex justify-between items-center">
+                        <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 rounded text-gray-500">
+                          {t.assigneeName || "N/A"}
+                        </span>
+                        <span className="text-[10px] text-gray-400">
+                          {t.closedAt
+                            ? format(new Date(t.closedAt), "dd/MM")
+                            : ""}
+                        </span>
                       </div>
                     </div>
-                    <p className="text-xs text-gray-600 mt-1 italic">
-                      "{t.ratingComment || "Sem comentário"}"
-                    </p>
-                    <div className="mt-2 flex justify-between items-center">
-                      <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 rounded text-gray-500">
-                        {t.assigneeName || "N/A"}
-                      </span>
-                      <span className="text-[10px] text-gray-400">
-                        {t.closedAt
-                          ? format(new Date(t.closedAt), "dd/MM")
-                          : ""}
-                      </span>
-                    </div>
-                  </div>
-                ))
-              )}
+                  ))
+                )}
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </ProtectedRoute>
   );
 }
 
