@@ -18,15 +18,6 @@ import {
 import { format } from "date-fns";
 import toast from "react-hot-toast";
 
-// Rotas onde o widget NÃO deve aparecer
-const HIDDEN_ROUTES = [
-  "/",
-  "/auth/login",
-  "/auth/register",
-  "/auth/verify-email",
-  "/auth/reset-password",
-];
-
 export function FloatingSupportWidget() {
   const pathname = usePathname();
   const { user } = useAuth();
@@ -48,10 +39,20 @@ export function FloatingSupportWidget() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // 1. Verifica se deve renderizar
-  // Se não tem usuário logado OU está em rota proibida, não mostra.
-  const shouldRender =
-    user && !HIDDEN_ROUTES.some((route) => pathname.startsWith(route));
+  // --- LÓGICA CORRIGIDA DE VISIBILIDADE ---
+  const shouldRender = () => {
+    // 1. Se não tiver usuário logado, não mostra nunca
+    if (!user) return false;
+
+    // 2. Se for exatamente a landing page (raiz), esconde
+    if (pathname === "/") return false;
+
+    // 3. Se for rotas de autenticação, esconde
+    if (pathname.startsWith("/auth")) return false;
+
+    // 4. Caso contrário, mostra
+    return true;
+  };
 
   useEffect(() => {
     if (isOpen && view === "LIST") {
@@ -65,7 +66,6 @@ export function FloatingSupportWidget() {
     }
   }, [activeTicketId, view]);
 
-  // Scroll automático para o fim do chat
   useEffect(() => {
     if (view === "CHAT") {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -75,11 +75,9 @@ export function FloatingSupportWidget() {
   const loadMyOpenTickets = async () => {
     setLoading(true);
     try {
-      // Busca tickets onde sou requerente e status não é fechado
-      // O endpoint precisa suportar filtros, ou filtramos no front se a lista for pequena
       const all = await ticketService.getAll({ requesterId: "me" });
       const openOnly = all.filter(
-        (t) =>
+        (t: Ticket) =>
           t.status !== TicketStatus.CLOSED && t.status !== TicketStatus.RESOLVED
       );
       setMyTickets(openOnly);
@@ -103,7 +101,6 @@ export function FloatingSupportWidget() {
     }
   };
 
-  // --- LÓGICA DE ENVIO E PASTE (Reutilizada) ---
   const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     const items = e.clipboardData.items;
     for (const item of items) {
@@ -152,13 +149,14 @@ export function FloatingSupportWidget() {
     setInteractions([]);
   };
 
-  if (!shouldRender) return null;
+  // Se a função retornar false, não renderiza nada
+  if (!shouldRender()) return null;
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-4 font-sans">
+    <div className="fixed bottom-6 right-6 z-[9999] flex flex-col items-end gap-4 font-sans print:hidden">
       {/* --- JANELA DO WIDGET --- */}
       {isOpen && (
-        <div className="w-[380px] h-[550px] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200">
+        <div className="w-[380px] h-[550px] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200 mb-2">
           {/* HEADER */}
           <div className="bg-blue-600 p-4 text-white flex items-center justify-between shrink-0">
             {view === "CHAT" ? (
@@ -370,16 +368,15 @@ export function FloatingSupportWidget() {
       {/* --- BOTÃO FLUTUANTE (FAB) --- */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`h-14 w-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-110 focus:outline-none focus:ring-4 focus:ring-blue-300 z-50
+        className={`h-14 w-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-110 focus:outline-none focus:ring-4 focus:ring-blue-300 z-[9999]
         ${isOpen ? "bg-gray-700 text-white rotate-90" : "bg-blue-600 text-white"}`}>
         {isOpen ? (
           <X size={24} />
         ) : (
           <div className="relative">
             <MessageCircle size={28} />
-            {/* Badge de Notificação (Mockado por enquanto, mas funcional se tiver tickets) */}
             {myTickets.length > 0 && !isOpen && (
-              <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full border-2 border-blue-600"></span>
+              <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full border-2 border-blue-600 animate-pulse"></span>
             )}
           </div>
         )}
