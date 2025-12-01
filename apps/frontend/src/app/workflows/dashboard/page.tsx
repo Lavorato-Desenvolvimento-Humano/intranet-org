@@ -188,7 +188,13 @@ export default function DashboardPage() {
   useEffect(() => {
     // Verificar se o usuário tem a role de ADMIN
     const isAdmin = user?.roles?.some(
-      (role) => role === "ROLE_ADMIN" || role === "ADMIN"
+      (role) =>
+        role === "ROLE_ADMIN" ||
+        role === "ADMIN" ||
+        role === "ROLE_SUPERVISOR" ||
+        role === "SUPERVISOR" ||
+        role === "ROLE_GERENTE" ||
+        role === "GERENTE"
     );
 
     if (!isAdmin) {
