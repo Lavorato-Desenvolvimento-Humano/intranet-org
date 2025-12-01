@@ -12,11 +12,16 @@ import {
   ChevronLeft,
   Send,
   Paperclip,
-  Image as ImageIcon,
   AlertCircle,
+  Download,
+  FileText,
 } from "lucide-react";
 import { format } from "date-fns";
 import toast from "react-hot-toast";
+
+// Importações do WebSocket
+import SockJS from "sockjs-client";
+import { Stomp, CompatClient } from "@stomp/stompjs";
 
 export function FloatingSupportWidget() {
   const pathname = usePathname();
@@ -36,41 +41,108 @@ export function FloatingSupportWidget() {
   const [attachment, setAttachment] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // --- LÓGICA CORRIGIDA DE VISIBILIDADE ---
+  // Ref para o cliente WebSocket
+  const stompClientRef = useRef<CompatClient | null>(null);
+
+  // --- CONTROLE DE VISIBILIDADE ---
   const shouldRender = () => {
-    // 1. Se não tiver usuário logado, não mostra nunca
     if (!user) return false;
-
-    // 2. Se for exatamente a landing page (raiz), esconde
     if (pathname === "/") return false;
-
-    // 3. Se for rotas de autenticação, esconde
     if (pathname.startsWith("/auth")) return false;
-
-    // 4. Caso contrário, mostra
     return true;
   };
 
+  // 1. Carregar Tickets ao abrir a lista
   useEffect(() => {
     if (isOpen && view === "LIST") {
       loadMyOpenTickets();
+      disconnectWebSocket(); // Garante que desconecta se voltar pra lista
     }
   }, [isOpen, view]);
 
+  // 2. Carregar Chat e Conectar WebSocket ao entrar no ticket
   useEffect(() => {
     if (activeTicketId && view === "CHAT") {
       loadChat(activeTicketId);
+      connectWebSocket(activeTicketId);
     }
+    // Cleanup ao sair do chat
+    return () => disconnectWebSocket();
   }, [activeTicketId, view]);
 
+  // 3. Auto-scroll
   useEffect(() => {
     if (view === "CHAT") {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [interactions, view, previewUrl]);
+
+  // --- LÓGICA DO WEBSOCKET ---
+  const connectWebSocket = (ticketId: number) => {
+    // Define a URL do WebSocket (ajuste conforme sua env var)
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+    // Remove /api se existir para pegar a raiz, depois adiciona /ws
+    const wsUrl = baseUrl.replace(/\/api$/, "") + "/ws";
+
+    const socket = new SockJS(wsUrl);
+    const client = Stomp.over(socket);
+
+    // Desabilita logs de debug no console (opcional)
+    client.debug = () => {};
+
+    client.connect(
+      {},
+      () => {
+        // Inscreve no tópico do ticket específico
+        client.subscribe(`/topic/tickets/${ticketId}`, (message) => {
+          if (message.body) {
+            const newInteraction: TicketInteraction = JSON.parse(message.body);
+
+            // Adiciona apenas se já não estiver na lista (prevenção básica de duplicação)
+            setInteractions((prev) => {
+              if (prev.some((i) => i.id === newInteraction.id)) return prev;
+              return [...prev, newInteraction];
+            });
+          }
+        });
+      },
+      (error: any) => {
+        console.error("Erro no WebSocket:", error);
+      }
+    );
+
+    stompClientRef.current = client;
+  };
+
+  const disconnectWebSocket = () => {
+    if (stompClientRef.current) {
+      try {
+        stompClientRef.current.disconnect();
+      } catch (e) {
+        // Ignora erro se já estiver desconectado
+      }
+      stompClientRef.current = null;
+    }
+  };
+
+  // --- DOWNLOAD DE ANEXO ---
+  const handleDownload = async (
+    path: string | undefined,
+    originalName: string
+  ) => {
+    if (!path) return;
+    try {
+      // Usa o nome original ou extrai do path
+      const fileName = originalName || path.split("/").pop() || "arquivo";
+      await ticketService.downloadAttachment(path, fileName);
+    } catch (error) {
+      toast.error("Erro ao baixar arquivo");
+    }
+  };
 
   const loadMyOpenTickets = async () => {
     setLoading(true);
@@ -122,12 +194,9 @@ export function FloatingSupportWidget() {
 
     setSending(true);
     try {
-      const newInteraction = await ticketService.addComment(
-        activeTicketId,
-        comment,
-        attachment
-      );
-      setInteractions((prev) => [...prev, newInteraction]);
+      // Envia via API (o WebSocket vai receber a notificação e atualizar a UI automaticamente)
+      await ticketService.addComment(activeTicketId, comment, attachment);
+
       setComment("");
       setAttachment(null);
       setPreviewUrl(null);
@@ -149,7 +218,6 @@ export function FloatingSupportWidget() {
     setInteractions([]);
   };
 
-  // Se a função retornar false, não renderiza nada
   if (!shouldRender()) return null;
 
   return (
@@ -188,14 +256,13 @@ export function FloatingSupportWidget() {
 
           {/* BODY */}
           <div className="flex-1 overflow-y-auto bg-gray-50 relative">
-            {/* VIEW: LOADING */}
             {loading && (
               <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-10">
                 <Loader2 className="animate-spin text-blue-600" />
               </div>
             )}
 
-            {/* VIEW: LISTA DE TICKETS */}
+            {/* VIEW: LISTA */}
             {view === "LIST" && (
               <div className="p-2 space-y-2">
                 {myTickets.length === 0 && !loading ? (
@@ -218,7 +285,6 @@ export function FloatingSupportWidget() {
                         <span className="font-semibold text-gray-800 text-sm group-hover:text-blue-600 transition-colors">
                           #{ticket.id} - {ticket.title}
                         </span>
-                        {/* Status Badge Mini */}
                         <div
                           className={`w-2 h-2 rounded-full ${ticket.status === "OPEN" ? "bg-blue-500" : "bg-purple-500"}`}
                         />
@@ -268,13 +334,30 @@ export function FloatingSupportWidget() {
                             : "bg-white text-gray-700 border border-gray-200 rounded-bl-none"
                         }`}>
                         {msg.type === "ATTACHMENT" ? (
-                          <div className="flex items-center gap-2">
-                            <div className="bg-white/20 p-2 rounded">
-                              <Paperclip size={16} />
+                          // --- FIX: BOTÃO DE DOWNLOAD ---
+                          <div
+                            className={`flex items-center gap-3 p-2 rounded cursor-pointer transition-colors ${isMe ? "bg-blue-500 hover:bg-blue-700" : "bg-gray-100 hover:bg-gray-200"}`}
+                            onClick={() =>
+                              handleDownload(msg.attachmentUrl, msg.content)
+                            }
+                            title="Clique para baixar">
+                            <div
+                              className={`p-2 rounded ${isMe ? "bg-white/20" : "bg-white"}`}>
+                              <FileText
+                                size={20}
+                                className={
+                                  isMe ? "text-white" : "text-gray-500"
+                                }
+                              />
                             </div>
-                            <span className="truncate max-w-[150px]">
-                              {msg.content}
-                            </span>
+                            <div className="flex flex-col overflow-hidden">
+                              <span className="truncate font-medium text-xs max-w-[120px]">
+                                {msg.content}
+                              </span>
+                              <span className="text-[10px] flex items-center gap-1 opacity-80">
+                                <Download size={10} /> Baixar
+                              </span>
+                            </div>
                           </div>
                         ) : (
                           <p className="whitespace-pre-wrap">{msg.content}</p>
@@ -292,10 +375,9 @@ export function FloatingSupportWidget() {
             )}
           </div>
 
-          {/* FOOTER (INPUT DO CHAT) */}
+          {/* FOOTER */}
           {view === "CHAT" && (
             <div className="p-3 bg-white border-t border-gray-100">
-              {/* Preview Anexo */}
               {attachment && (
                 <div className="flex items-center justify-between bg-blue-50 p-2 rounded-lg mb-2 text-xs">
                   <div className="flex items-center gap-2 overflow-hidden">
@@ -365,7 +447,7 @@ export function FloatingSupportWidget() {
         </div>
       )}
 
-      {/* --- BOTÃO FLUTUANTE (FAB) --- */}
+      {/* FAB */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`h-14 w-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-110 focus:outline-none focus:ring-4 focus:ring-blue-300 z-[9999]
