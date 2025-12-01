@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/tickets")
@@ -73,8 +74,8 @@ public class TicketController {
 
     @GetMapping("/dashboard-stats")
     @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE', 'SUPERVISOR')")
-    public ResponseEntity<DashboardStatsDto> getStats() {
-        // TODO: Adicionar @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
-        return ResponseEntity.ok(ticketService.getDashboardStats());
-    }
+    public ResponseEntity<DashboardStatsDto> getStats(
+            @RequestParam(required = false) UUID teamId
+    ) {
+        return ResponseEntity.ok(ticketService.getDashboardStats(teamId));    }
 }

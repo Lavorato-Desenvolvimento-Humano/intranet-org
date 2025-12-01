@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { ticketService } from "@/services/ticket";
+import equipeService, { EquipeDto } from "@/services/equipe";
 import { DashboardStatsDto } from "@/types/ticket";
 import {
   Ticket as TicketIcon,
@@ -14,8 +15,10 @@ import {
   CheckSquare,
   Activity,
   RefreshCw,
+  Filter,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { useAuth } from "@/context/AuthContext";
 import toastUtil from "@/utils/toast";
@@ -45,14 +48,31 @@ ChartJS.register(
 );
 
 export default function TicketDashboard() {
+  const router = useRouter();
   const [stats, setStats] = useState<DashboardStatsDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"risk" | "closed" | "activity">(
     "risk"
   );
+
+  const [equipes, setEquipes] = useState<EquipeDto[]>([]);
+  const [selectedTeamId, setSelectedTeamId] = useState<string>("");
+
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const { user, logout } = useAuth();
+
+  useEffect(() => {
+    const loadEquipes = async () => {
+      try {
+        const data = await equipeService.getAllEquipes();
+        setEquipes(data);
+      } catch (err) {
+        console.error("Erro ao carregar equipes", err);
+      }
+    };
+    loadEquipes();
+  }, []);
 
   useEffect(() => {
     const isCanView = user?.roles?.some(
@@ -70,7 +90,7 @@ export default function TicketDashboard() {
 
   useEffect(() => {
     loadStats();
-  }, []);
+  }, [selectedTeamId]);
 
   const handleReauth = () => {
     logout();
@@ -79,13 +99,15 @@ export default function TicketDashboard() {
   };
 
   const handleRetry = () => {
-    setRetryCount((prev) => prev + 1);
     window.location.reload();
   };
 
   const loadStats = async () => {
     try {
-      const data = await ticketService.getDashboardStats();
+      setLoading(true);
+      const data = await ticketService.getDashboardStats(
+        selectedTeamId || undefined
+      );
       setStats(data);
     } catch (error) {
       console.error("Erro ao carregar estatísticas", error);
@@ -195,7 +217,22 @@ export default function TicketDashboard() {
             </h1>
             <p className="text-gray-500">Gestão operacional de suporte</p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3 items-center">
+            <div className="relative">
+              <select
+                value={selectedTeamId}
+                onChange={(e) => setSelectedTeamId(e.target.value)}
+                className="pl-3 pr-8 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none appearance-none cursor-pointer hover:border-blue-400 transition-colors">
+                <option value="">Todas as Equipes</option>
+                {equipes.map((equipe) => (
+                  <option key={equipe.id} value={equipe.id}>
+                    {equipe.nome}
+                  </option>
+                ))}
+              </select>
+              <Filter className="absolute right-2.5 top-2.5 h-4 w-4 text-gray-500 pointer-events-none" />
+            </div>
+
             <Link
               href="/tickets"
               className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium">
@@ -456,6 +493,11 @@ export default function TicketDashboard() {
 
 // Subcomponente de Linha da Tabela
 function TicketRow({ ticket, dateLabel, dateColor, colors }: any) {
+  const router = useRouter();
+
+  const handleRowClick = () => {
+    router.push(`/tickets/${ticket.id}`);
+  };
   return (
     <tr className="bg-white hover:bg-gray-50 transition-colors group">
       <td className="px-6 py-4 font-medium text-gray-900">
@@ -475,6 +517,18 @@ function TicketRow({ ticket, dateLabel, dateColor, colors }: any) {
           className="text-sm text-gray-800 truncate max-w-[180px]"
           title={ticket.title}>
           {ticket.title}
+        </div>
+      </td>
+      <td className="px-6 py-4">
+        <div className="flex items-center gap-2">
+          <div className="h-6 w-6 rounded-full bg-blue-100 flex items-center justify-center text-[10px] text-blue-700 uppercase">
+            {ticket.requesterName ? ticket.requesterName.charAt(0) : "U"}
+          </div>
+          <span
+            className="text-xs text-gray-600 truncate max-w-[120px]"
+            title={ticket.requesterName}>
+            {ticket.requesterName}
+          </span>
         </div>
       </td>
       <td className="px-6 py-4">

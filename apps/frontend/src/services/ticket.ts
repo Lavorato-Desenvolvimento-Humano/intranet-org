@@ -120,9 +120,13 @@ export const ticketService = {
 
   // --- DASHBOARD E HELPERS ---
 
-  getDashboardStats: async (): Promise<DashboardStatsDto> => {
+  getDashboardStats: async (teamId?: string): Promise<DashboardStatsDto> => {
+    const params: any = {};
+    if (teamId) params.teamId = teamId;
+
     const response = await api.get<DashboardStatsDto>(
-      "/tickets/dashboard-stats"
+      "/tickets/dashboard-stats",
+      { params }
     );
     return response.data;
   },

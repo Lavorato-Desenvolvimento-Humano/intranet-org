@@ -73,4 +73,21 @@ public interface TicketRepository extends JpaRepository<Ticket,Long> {
 
     @Query("SELECT t FROM Ticket t WHERE t.status IN ('RESOLVED', 'CLOSED') ORDER BY t.closedAt DESC")
     List<Ticket> findRecentlyClosedTickets(Pageable pageable);
+
+    @Query("SELECT COUNT(t) FROM Ticket t WHERE t.status = 'OPEN' AND t.targetTeam.id = :teamId")
+    long countOpenTicketsByTeam(@Param("teamId") UUID teamId);
+
+    @Query("SELECT COUNT(t) FROM Ticket t WHERE t.closedAt >= :startOfDay AND t.targetTeam.id = :teamId")
+    long countClosedTodayByTeam(@Param("startOfDay") LocalDateTime startOfDay, @Param("teamId") UUID teamId);
+
+    // Group By
+    @Query("SELECT t.status, COUNT(t) FROM Ticket t WHERE t.targetTeam.id = :teamId GROUP BY t.status")
+    List<Object[]> countTicketsByStatusAndTeam(@Param("teamId") UUID teamId);
+
+    // Listas (Exemplo 'Em Risco')
+    @Query("SELECT t FROM Ticket t WHERE t.targetTeam.id = :teamId AND t.status != 'CLOSED' AND t.status != 'RESOLVED' AND t.dueDate <= :threshold ORDER BY t.dueDate ASC")
+    List<Ticket> findTicketsAtRiskByTeam(@Param("teamId") UUID teamId, @Param("threshold") LocalDateTime threshold, Pageable pageable);
+
+    // JPA Derived Query simples
+    List<Ticket> findTop10ByTargetTeamIdOrderByUpdatedAtDesc(UUID targetTeamId);
 }

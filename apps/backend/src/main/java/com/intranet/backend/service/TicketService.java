@@ -219,43 +219,76 @@ public class TicketService {
         return toDto(saved);
     }
 
-    public DashboardStatsDto getDashboardStats() {
+    public DashboardStatsDto getDashboardStats(UUID teamId) {
         LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
-
-        // 1. Contadores (Mantidos)
-        long openTickets = ticketRepository.countOpenTickets();
-        long closedToday = ticketRepository.countClosedToday(startOfDay);
-        Double avgRating = ticketRepository.getAverageRating();
-
-        long totalClosed = ticketRepository.countTotalClosedTickets();
-        long withinSla = ticketRepository.countTicketsWithinSla();
-        double slaPercentage = totalClosed > 0 ? ((double) withinSla / totalClosed) * 100 : 100.0;
-
-        // 2. Mapas (Mantidos)
-        Map<String, Long> byStatus = ticketRepository.countTicketsByStatus().stream()
-                .collect(Collectors.toMap(row -> ((TicketStatus) row[0]).name(), row -> (Long) row[1]));
-
-        Map<String, Long> byPriority = ticketRepository.countTicketsByPriority().stream()
-                .collect(Collectors.toMap(row -> ((TicketPriority) row[0]).name(), row -> (Long) row[1]));
-
-        // 3. Listas Detalhadas
-
-        // Risco: Vence nas próximas 48h
         LocalDateTime riskThreshold = LocalDateTime.now().plusHours(48);
-        List<TicketResponseDto> ticketsAtRisk = ticketRepository.findTicketsAtRisk(riskThreshold, PageRequest.of(0, 10))
-                .stream().map(this::toDto).collect(Collectors.toList());
 
-        // Baixas Avaliações
-        List<TicketResponseDto> lowRated = ticketRepository.findLowRatedTickets(3, PageRequest.of(0, 5))
-                .stream().map(this::toDto).collect(Collectors.toList());
+        long openTickets;
+        long closedToday;
+        Double avgRating;
+        long totalClosed;
+        long withinSla;
+        Map<String, Long> byStatus;
+        Map<String, Long> byPriority;
+        List<TicketResponseDto> ticketsAtRisk;
+        List<TicketResponseDto> lowRated;
+        List<TicketResponseDto> recentActivity;
+        List<TicketResponseDto> recentlyClosed;
 
-        // Recentes (Atividade Geral - qualquer status que teve update)
-        List<TicketResponseDto> recentActivity = ticketRepository.findTop10ByOrderByUpdatedAtDesc()
-                .stream().map(this::toDto).collect(Collectors.toList());
+        if (teamId != null) {
+            openTickets = ticketRepository.countOpenTicketsByTeam(teamId);
+            closedToday = ticketRepository.countClosedTodayByTeam(startOfDay, teamId);
+            avgRating = ticketRepository.getAverageRatingByTeam(teamId);
 
-        // Recém Fechados (Entregas)
-        List<TicketResponseDto> recentlyClosed = ticketRepository.findRecentlyClosedTickets(PageRequest.of(0, 10))
-                .stream().map(this::toDto).collect(Collectors.toList());
+            totalClosed = ticketRepository.countTotalClosedTicketsByTeam(teamId);
+            withinSla = ticketRepository.countTicketsWithinSlaByTeam(teamId);
+
+            byStatus = ticketRepository.countTicketsByStatusAndTeam(teamId).stream()
+                    .collect(Collectors.toMap(row -> ((TicketStatus) row[0]).name(), row -> (Long) row[1]));
+
+            byPriority = ticketRepository.countTicketsByPriorityAndTeam(teamId).stream()
+                    .collect(Collectors.toMap(row -> ((TicketPriority) row[0]).name(), row -> (Long) row[1]));
+
+            ticketsAtRisk = ticketRepository.findTicketsAtRiskByTeam(teamId, riskThreshold, PageRequest.of(0, 10))
+                    .stream().map(this::toDto).collect(Collectors.toList());
+
+            lowRated = ticketRepository.findLowRatedTicketsByTeam(teamId, 3, PageRequest.of(0, 5))
+                    .stream().map(this::toDto).collect(Collectors.toList());
+
+            recentActivity = ticketRepository.findTop10ByTargetTeamIdOrderByUpdatedAtDesc(teamId)
+                    .stream().map(this::toDto).collect(Collectors.toList());
+
+            recentlyClosed = ticketRepository.findRecentlyClosedTicketsByTeam(teamId, PageRequest.of(0, 10))
+                    .stream().map(this::toDto).collect(Collectors.toList());
+
+        } else {
+            openTickets = ticketRepository.countOpenTickets();
+            closedToday = ticketRepository.countClosedToday(startOfDay);
+            avgRating = ticketRepository.getAverageRating();
+
+            totalClosed = ticketRepository.countTotalClosedTickets();
+            withinSla = ticketRepository.countTicketsWithinSla();
+
+            byStatus = ticketRepository.countTicketsByStatus().stream()
+                    .collect(Collectors.toMap(row -> ((TicketStatus) row[0]).name(), row -> (Long) row[1]));
+
+            byPriority = ticketRepository.countTicketsByPriority().stream()
+                    .collect(Collectors.toMap(row -> ((TicketPriority) row[0]).name(), row -> (Long) row[1]));
+
+            ticketsAtRisk = ticketRepository.findTicketsAtRisk(riskThreshold, PageRequest.of(0, 10))
+                    .stream().map(this::toDto).collect(Collectors.toList());
+
+            lowRated = ticketRepository.findLowRatedTickets(3, PageRequest.of(0, 5))
+                    .stream().map(this::toDto).collect(Collectors.toList());
+
+            recentActivity = ticketRepository.findTop10ByOrderByUpdatedAtDesc()
+                    .stream().map(this::toDto).collect(Collectors.toList());
+
+            recentlyClosed = ticketRepository.findRecentlyClosedTickets(PageRequest.of(0, 10))
+                    .stream().map(this::toDto).collect(Collectors.toList());
+        }
+
+        double slaPercentage = totalClosed > 0 ? ((double) withinSla / totalClosed) * 100 : 100.0;
 
         return new DashboardStatsDto(
                 openTickets,
