@@ -41,8 +41,6 @@ export const ticketService = {
   },
 
   getAll: async (params?: any): Promise<Ticket[]> => {
-    // Se o backend usar paginação padrão Spring (Page<T>), use response.data.content
-    // Aqui assumo retorno direto de lista ou array filtrado
     const response = await api.get("/tickets", { params });
     return response.data.content || response.data;
   },
