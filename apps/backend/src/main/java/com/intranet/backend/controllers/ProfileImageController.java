@@ -12,6 +12,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.File;
@@ -35,6 +36,7 @@ public class ProfileImageController {
     private String uploadDir;
 
     @GetMapping("/files/check/{filename:.+}")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<?> checkFileExists(@PathVariable String filename) {
         logger.info("Verificando se o arquivo existe: {}", filename);
 
@@ -46,6 +48,7 @@ public class ProfileImageController {
     }
 
     @GetMapping("/profile-images/{filename:.+}")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<Resource> getProfileImage(@PathVariable String filename) {
         logger.info("Servindo imagem de perfil: {}", filename);
 
@@ -80,6 +83,7 @@ public class ProfileImageController {
     }
 
     @GetMapping("/profile-images/user/{userId}")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<Resource> getProfileImageByUserId(@PathVariable String userId) {
         logger.info("Solicitada imagem de perfil para o usuário: {}", userId);
 

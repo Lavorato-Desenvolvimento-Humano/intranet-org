@@ -56,7 +56,7 @@ public class TabelaValoresController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<TabelaValoresDto> createTabela(@Valid @RequestBody TabelaValoresCreateDto tabelaCreateDto) {
         logger.info("Requisição para criar nova tabela de valores: {}", tabelaCreateDto.getNome());
         TabelaValoresDto createdTabela = tabelaValoresService.createTabela(tabelaCreateDto);
@@ -64,7 +64,7 @@ public class TabelaValoresController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<TabelaValoresDto> updateTabela(
             @PathVariable UUID id,
             @Valid @RequestBody TabelaValoresCreateDto tabelaUpdateDto) {
@@ -74,7 +74,7 @@ public class TabelaValoresController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<Void> deleteTabela(@PathVariable UUID id) {
         logger.info("Requisição para deletar tabela de valores com ID: {}", id);
         tabelaValoresService.deleteTabela(id);

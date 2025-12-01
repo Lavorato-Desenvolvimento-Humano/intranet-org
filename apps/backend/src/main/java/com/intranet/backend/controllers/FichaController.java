@@ -50,7 +50,7 @@ public class FichaController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('ficha:create') or hasAnyRole('ADMIN','GUIAS')")
+    @PreAuthorize("hasAnyAuthority('ficha:create') or hasAnyRole('ADMIN','GUIAS','SUPERVISOR','GERENTE')")
     public ResponseEntity<FichaDto> createFicha(@Valid @RequestBody FichaCreateRequest request) {
         logger.info("Requisição para criar nova ficha para guia: {}", request.getGuiaId());
 
@@ -59,7 +59,7 @@ public class FichaController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ficha:update') or hasAnyRole('ADMIN','GUIAS')")
+    @PreAuthorize("hasAnyAuthority('ficha:update') or hasAnyRole('ADMIN','GUIAS','SUPERVISOR','GERENTE')")
     public ResponseEntity<FichaDto> updateFicha(
             @PathVariable UUID id,
             @Valid @RequestBody FichaUpdateRequest request) {
@@ -70,7 +70,7 @@ public class FichaController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ficha:delete') or hasAnyRole('ADMIN','GUIAS')")
+    @PreAuthorize("hasAnyAuthority('ficha:delete') or hasAnyRole('ADMIN','GUIAS','SUPERVISOR','GERENTE')")
     public ResponseEntity<Void> deleteFicha(@PathVariable UUID id) {
         logger.info("Requisição para deletar ficha com ID: {}", id);
 
@@ -177,7 +177,7 @@ public class FichaController {
     }
 
     @PostMapping("/assinatura")
-    @PreAuthorize("hasAnyAuthority('ficha:assinatura:create') or hasAnyRole('ADMIN','GUIAS')")
+    @PreAuthorize("hasAnyAuthority('ficha:assinatura:create') or hasAnyRole('ADMIN','GUIAS','SUPERVISOR','GERENTE')")
     public ResponseEntity<FichaDto> createFichaAssinatura(
             @Valid @RequestBody FichaAssinaturaCreateRequest request
     ) {
@@ -186,7 +186,7 @@ public class FichaController {
     }
 
     @PatchMapping("/{fichaId}/vincular-guia/{guiaId}")
-    @PreAuthorize("hasAnyAuthority('ficha:update') or hasAnyRole('ADMIN','GUIAS')")
+    @PreAuthorize("hasAnyAuthority('ficha:update') or hasAnyRole('ADMIN','GUIAS','SUPERVISOR','GERENTE')")
     public ResponseEntity<FichaDto> vincularGuia(
             @PathVariable UUID fichaId,
             @PathVariable UUID guiaId) {
@@ -229,7 +229,7 @@ public class FichaController {
     }
 
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasAnyAuthority('ficha:update') or hasAnyRole('ADMIN','GUIAS')")
+    @PreAuthorize("hasAnyAuthority('ficha:update') or hasAnyRole('ADMIN','GUIAS','SUPERVISOR','GERENTE')")
     public ResponseEntity<Map<String, Object>> updateFichaStatus(
             @PathVariable UUID id,
             @Valid @RequestBody StatusChangeRequest request) {

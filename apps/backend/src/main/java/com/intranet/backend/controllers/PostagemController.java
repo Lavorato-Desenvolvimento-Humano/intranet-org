@@ -49,6 +49,7 @@ public class PostagemController {
     private final PostagemRepository postagemRepository;
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<Page<PostagemSummaryDto>> getAllPostagens(
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         logger.info("Requisição para listar todas as postagens");
@@ -57,6 +58,7 @@ public class PostagemController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<PostagemDto> getPostagemById(@PathVariable UUID id) {
         logger.info("Requisição para buscar postagem com ID: {}", id);
         PostagemDto postagem = postagemService.getPostagemById(id);
@@ -71,7 +73,7 @@ public class PostagemController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR') or hasRole('USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<PostagemDto> createPostagem(@Valid @RequestBody PostagemCreateDto postagemCreateDto) {
         logger.info("Requisição para criar nova postagem: {}", postagemCreateDto.getTitle());
         PostagemDto createdPostagem = postagemService.createPostagem(postagemCreateDto);
@@ -79,7 +81,7 @@ public class PostagemController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR') or hasRole('USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<PostagemDto> updatePostagem(
             @PathVariable UUID id,
             @Valid @RequestBody PostagemCreateDto postagemUpdateDto) {
@@ -89,7 +91,7 @@ public class PostagemController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR') or hasRole('USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<Void> deletePostagem(@PathVariable UUID id) {
         logger.info("Requisição para deletar postagem com ID: {}", id);
         postagemService.deletePostagem(id);
@@ -97,7 +99,7 @@ public class PostagemController {
     }
 
     @GetMapping("/admin/todas")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','GERENTE','SUPERVISOR')")
     public ResponseEntity<List<PostagemSummaryDto>> getAllPostagensForAdmin() {
         logger.info("Requisição de administrador para listar TODAS as postagens do sistema");
         List<PostagemSummaryDto> postagens = postagemService.getAllPostagensForAdmin();
@@ -106,7 +108,7 @@ public class PostagemController {
 
     // Endpoints para manipulação de imagens
     @PostMapping(value = "/{id}/imagens", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR') or hasRole('USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<ImagemDto> addImagem(
             @PathVariable UUID id,
             @RequestParam("file") MultipartFile file,
@@ -124,7 +126,7 @@ public class PostagemController {
     }
 
     @DeleteMapping("/imagens/{id}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR') or hasRole('USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<Void> deleteImagem(@PathVariable UUID id) {
         logger.info("Requisição para deletar imagem com ID: {}", id);
         postagemService.deleteImagem(id);
@@ -133,7 +135,7 @@ public class PostagemController {
 
     // Endpoints para manipulação de anexos
     @PostMapping(value = "/{id}/anexos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR') or hasRole('USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<AnexoDto> addAnexo(
             @PathVariable UUID id,
             @RequestParam("file") MultipartFile file) {
@@ -187,7 +189,7 @@ public class PostagemController {
     }
 
     @DeleteMapping("/anexos/{id}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR') or hasRole('USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<Void> deleteAnexo(@PathVariable UUID id) {
         logger.info("Requisição para deletar anexo com ID: {}", id);
         postagemService.deleteAnexo(id);
@@ -203,7 +205,7 @@ public class PostagemController {
 
     // Endpoints para associar uploads temporários a uma postagem
     @PostMapping("/{id}/associar-imagem/{imagemId}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR') or hasRole('USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<ImagemDto> associarImagem(
             @PathVariable UUID id,
             @PathVariable UUID imagemId) {
@@ -247,7 +249,7 @@ public class PostagemController {
     }
 
     @PostMapping("/{id}/associar-anexo/{anexoId}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR') or hasRole('USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<AnexoDto> associarAnexo(
             @PathVariable UUID id,
             @PathVariable UUID anexoId) {

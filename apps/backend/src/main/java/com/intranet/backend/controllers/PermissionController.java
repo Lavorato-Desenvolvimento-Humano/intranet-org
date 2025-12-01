@@ -17,7 +17,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/permissions")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN','GERENTE','SUPERVISOR')")
 public class PermissionController {
 
     private static final Logger logger = LoggerFactory.getLogger(PermissionController.class);

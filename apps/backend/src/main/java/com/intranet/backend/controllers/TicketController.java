@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -23,6 +24,7 @@ public class TicketController {
     private final TicketService ticketService;
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<List<TicketResponseDto>> getAll(
             @RequestParam(required = false) String assigneeId,
             @RequestParam(required = false) String requesterId,
@@ -33,6 +35,7 @@ public class TicketController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<TicketResponseDto> create(
             @RequestPart("data") @Valid TicketCreateRequest request,
             @RequestPart(value = "file", required = false) MultipartFile file
@@ -42,21 +45,25 @@ public class TicketController {
     }
 
     @PostMapping("/{id}/claim")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<TicketResponseDto> claimTicket(@PathVariable Long id) {
         return ResponseEntity.ok(ticketService.claimTicket(id));
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<TicketResponseDto> getById(@PathVariable Long id){
         return ResponseEntity.ok(ticketService.getTicketByIdResponse(id));
     }
 
     @PatchMapping("/{id}/resolve")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<TicketResponseDto> resolve(@PathVariable Long id) {
         return ResponseEntity.ok(ticketService.resolveTicket(id));
     }
 
     @PatchMapping("/{id}/rate")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<TicketResponseDto> rate(
             @PathVariable Long id,
             @RequestBody @Valid TicketRatingRequest request
@@ -65,6 +72,7 @@ public class TicketController {
     }
 
     @GetMapping("/dashboard-stats")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<DashboardStatsDto> getStats() {
         // TODO: Adicionar @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
         return ResponseEntity.ok(ticketService.getDashboardStats());
