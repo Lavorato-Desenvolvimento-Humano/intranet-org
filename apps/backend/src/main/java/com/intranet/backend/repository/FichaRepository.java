@@ -135,10 +135,16 @@ public interface FichaRepository extends JpaRepository<Ficha, UUID> {
         if (unidades != null && !unidades.isEmpty()) {
             fichas = fichas.stream()
                     .filter(ficha -> {
-                        if (ficha.getGuia() == null) return false;
-                        if (ficha.getGuia().getPaciente() == null) return false;
+                        // Busca o paciente da ficha ou da guia
+                        var paciente = ficha.getPaciente();
+                        if (paciente == null && ficha.getGuia() != null) {
+                            paciente = ficha.getGuia().getPaciente();
+                        }
+
+                        if (paciente == null) return false;
+
                         try {
-                            String unidadePaciente = ficha.getGuia().getPaciente().getUnidade().name();
+                            String unidadePaciente = paciente.getUnidade().name();
                             return unidades.contains(unidadePaciente);
                         } catch (Exception e) {
                             return false;
