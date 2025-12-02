@@ -85,6 +85,8 @@ export default function DashboardPage() {
         setUsersWorkload(workloadRes);
       } catch (err) {
         console.error("Erro ao carregar dados base", err);
+      } finally {
+        setLoading((prev) => ({ ...prev, global: false }));
       }
     };
     fetchBaseData();
@@ -127,10 +129,14 @@ export default function DashboardPage() {
     };
 
     if (!loading.global) {
-      // Só roda depois do load inicial
       fetchData();
     }
-  }, [selectedTemplateId, selectedStatusTemplateId, selectedUserId]);
+  }, [
+    selectedTemplateId,
+    selectedStatusTemplateId,
+    selectedUserId,
+    loading.global,
+  ]);
 
   // Função para limpar filtros
   const clearFilters = () => {
