@@ -138,26 +138,24 @@ export default function FichasPage() {
       setLoading(true);
       const query = searchQuery || searchTerm;
 
-      console.log("searchFichas chamado com query:", query); // Debug
+      console.log("searchFichas chamado com query:", query);
 
       if (query.trim() === "") {
         loadFichas();
         return;
       }
 
-      const fichasData = await fichaService.searchByCodigoFicha(
-        query.trim(), // Garantir que não há espaços extras
+      const fichasData = await fichaService.searchFichas(
+        query.trim(),
         currentPage,
         20
       );
 
-      console.log("Resultado da busca:", fichasData); // Debug
+      console.log("Resultado da busca:", fichasData);
       setFichas(fichasData);
     } catch (err) {
       console.error("Erro ao buscar fichas:", err);
       toastUtil.error("Erro ao buscar fichas");
-
-      // Em caso de erro, mostrar lista completa
       loadFichas();
     } finally {
       setLoading(false);
@@ -450,7 +448,7 @@ export default function FichasPage() {
               {/* Busca */}
               <div>
                 <SearchInput
-                  placeholder="Buscar por código da ficha... (pressione Enter)"
+                  placeholder="Buscar por código ou paciente..."
                   value={searchTerm}
                   onChange={handleSearch}
                   onEnterSearch={true}

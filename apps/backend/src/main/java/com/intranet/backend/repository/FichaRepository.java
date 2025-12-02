@@ -261,6 +261,16 @@ public interface FichaRepository extends JpaRepository<Ficha, UUID> {
             @Param("ano") Integer ano
     );
 
+    @Query("SELECT f FROM Ficha f " +
+            "LEFT JOIN f.paciente p " +
+            "LEFT JOIN f.guia g " +
+            "LEFT JOIN g.paciente gp " +
+            "WHERE lower(f.codigoFicha) LIKE lower(concat('%', :termo, '%')) " +
+            "OR lower(p.nome) LIKE lower(concat('%', :termo, '%')) " +
+            "OR lower(gp.nome) LIKE lower(concat('%', :termo, '%')) " +
+            "ORDER BY f.createdAt DESC")
+    Page<Ficha> searchByCodigoOrPacienteNome(@Param("termo") String termo, Pageable pageable);
+
     /**
      * Busca fichas que podem ser reutilizadas (mesmo código)
      */

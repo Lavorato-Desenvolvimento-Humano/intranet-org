@@ -334,7 +334,13 @@ public class FichaServiceImpl implements FichaService {
         return fichasPorStatus;
     }
 
-
+    @Override
+    public Page<FichaSummaryDto> searchFichas(String termo, Pageable pageable) {
+        logger.info("Buscando fichas por termo: {}", termo);
+        Page<Ficha> fichas = fichaRepository.searchByCodigoOrPacienteNome(termo, pageable);
+        return fichas.map(this::mapToFichaSummaryDto);
+    }
+    
     @Override
     public List<FichaDto> getFichasByGuiaId(UUID guiaId) {
         logger.info("Buscando fichas da guia: {}", guiaId);

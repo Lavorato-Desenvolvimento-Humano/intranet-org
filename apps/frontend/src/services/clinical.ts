@@ -303,6 +303,17 @@ export const fichaService = {
     return response.data;
   },
 
+  async searchFichas(
+    termo: string,
+    page: number = 0,
+    size: number = 20
+  ): Promise<PageResponse<FichaSummaryDto>> {
+    const response = await api.get(
+      `/api/fichas/search/general?termo=${encodeURIComponent(termo)}&page=${page}&size=${size}`
+    );
+    return response.data;
+  },
+
   async searchFichasByEspecialidade(
     especialidade: string,
     page: number = 0,

@@ -209,12 +209,21 @@ public class FichaController {
         return ResponseEntity.ok(fichas);
     }
 
-    @GetMapping("/status/status")
+    @GetMapping("/status/{status}")
     public ResponseEntity<Page<FichaSummaryDto>> getFichasByStatus(
-            @RequestParam String status,
+            @PathVariable String status,
             @PageableDefault(size = 20) Pageable pageable) {
         logger.info("Buscando fichas pelo status: {}", status);
         Page<FichaSummaryDto> fichas = fichaService.getFichasByStatus(status, pageable);
+        return ResponseEntity.ok(fichas);
+    }
+
+    @GetMapping("/search/general")
+    public ResponseEntity<Page<FichaSummaryDto>> searchFichasGeneral(
+            @RequestParam String termo,
+            @PageableDefault(size = 20) Pageable pageable) {
+        logger.info("Buscando fichas por termo (código ou paciente): {}", termo);
+        Page<FichaSummaryDto> fichas = fichaService.searchFichas(termo, pageable);
         return ResponseEntity.ok(fichas);
     }
 
