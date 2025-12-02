@@ -961,20 +961,29 @@ public class RelatorioServiceImpl implements RelatorioService {
         item.setStatusNovo(ficha.getStatus());
         item.setStatusAnterior(null);
 
-        // Dados do paciente (via guia ou direto)
-        UUID pacienteId = null;
-        if (ficha.getGuia() != null && ficha.getGuia().getPaciente() != null) {
-            item.setPacienteNome(ficha.getGuia().getPaciente().getNome());
-            pacienteId = ficha.getGuia().getPaciente().getId();
+        Paciente paciente = ficha.getPaciente();
+        if (paciente == null && ficha.getGuia() != null) {
+            paciente = ficha.getGuia().getPaciente();
+        }
+
+        if (paciente != null) {
+            item.setPacienteNome(paciente.getNome());
+            item.setPacienteId(paciente.getId());
 
             try {
-                item.setUnidade(ficha.getGuia().getPaciente().getUnidade().name());
+                if (paciente.getUnidade() != null) {
+                    item.setUnidade(paciente.getUnidade().name());
+                } else {
+                    item.setUnidade("N/A");
+                }
             } catch (Exception e) {
                 logger.warn("Erro ao obter unidade do paciente da ficha {}: {}", ficha.getId(), e.getMessage());
                 item.setUnidade("N/A");
             }
+        } else {
+            item.setPacienteNome("Paciente não identificado");
+            item.setUnidade("N/A");
         }
-        item.setPacienteId(pacienteId);
 
         item.setEspecialidade(ficha.getEspecialidade());
 
