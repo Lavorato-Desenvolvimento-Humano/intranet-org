@@ -166,6 +166,62 @@ const WorkflowStats: React.FC<WorkflowStatsProps> = ({ stats }) => {
           </div>
         </div>
       )}
+
+      {/* Barra de Distribuição de Status (Visualização Rápida) */}
+      <div className="bg-white p-6 rounded-xl shadow-sm mb-6">
+        <h3 className="text-gray-700 font-semibold mb-4">
+          Saúde dos Processos
+        </h3>
+
+        {/* Barra Segmentada */}
+        <div className="h-4 w-full bg-gray-100 rounded-full overflow-hidden flex">
+          <div
+            style={{
+              width: `${(safeStats.completedCount / safeStats.totalWorkflows) * 100}%`,
+            }}
+            className="bg-green-500 h-full"
+            title="Concluídos"></div>
+          <div
+            style={{
+              width: `${(safeStats.inProgressCount / safeStats.totalWorkflows) * 100}%`,
+            }}
+            className="bg-blue-500 h-full"
+            title="Em Andamento"></div>
+          <div
+            style={{
+              width: `${(safeStats.pausedCount / safeStats.totalWorkflows) * 100}%`,
+            }}
+            className="bg-orange-400 h-full"
+            title="Pausados"></div>
+          <div
+            style={{
+              width: `${(safeStats.overdueCount / safeStats.totalWorkflows) * 100}%`,
+            }}
+            className="bg-red-500 h-full"
+            title="Atrasados"></div>
+        </div>
+
+        <div className="flex justify-between mt-2 text-xs text-gray-500">
+          <div className="flex items-center gap-1">
+            <div className="w-2 h-2 rounded-full bg-green-500"></div> Concluídos
+            (
+            {Math.round(
+              (safeStats.completedCount / safeStats.totalWorkflows) * 100
+            ) || 0}
+            %)
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-2 h-2 rounded-full bg-blue-500"></div> Em
+            Andamento
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-2 h-2 rounded-full bg-orange-400"></div> Pausados
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-2 h-2 rounded-full bg-red-500"></div> Atrasados
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

@@ -3,6 +3,7 @@ package com.intranet.backend.service;
 import com.intranet.backend.dto.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -59,6 +60,9 @@ public interface WorkflowService {
     WorkflowStatsDto getUserWorkflowStats(UUID userId);
 
     WorkflowStatsDto getGeneralWorkflowStats();
+
+    @Transactional(readOnly = true)
+    WorkflowStatsDto getStatsWithFilters(UUID templateId, UUID statusTemplateId, UUID userId);
 
     List<UserWorkloadDto> getUsersWorkload();
 

@@ -8,9 +8,13 @@ import { WorkflowSummaryDto } from "@/types/workflow";
 
 interface WorkflowCardProps {
   workflow: WorkflowSummaryDto;
+  compact?: boolean;
 }
 
-const WorkflowCard: React.FC<WorkflowCardProps> = ({ workflow }) => {
+const WorkflowCard: React.FC<WorkflowCardProps> = ({
+  workflow,
+  compact = false,
+}) => {
   const router = useRouter();
 
   // Verificar se workflow está definido
@@ -99,6 +103,44 @@ const WorkflowCard: React.FC<WorkflowCardProps> = ({ workflow }) => {
   const handleClick = () => {
     router.push(`/workflows/${workflow.id}`);
   };
+
+  if (compact) {
+    return (
+      <div
+        className="bg-white rounded border border-gray-200 p-3 cursor-pointer hover:bg-gray-50 transition-colors"
+        onClick={handleClick}>
+        <div className="flex justify-between items-start mb-1">
+          <h4
+            className="font-medium text-sm text-gray-900 line-clamp-1"
+            title={title}>
+            {title}
+          </h4>
+          {isOverdue && (
+            <AlertTriangle size={14} className="text-red-500 flex-shrink-0" />
+          )}
+          {isNearDeadline && !isOverdue && (
+            <Clock size={14} className="text-orange-500 flex-shrink-0" />
+          )}
+        </div>
+
+        <div className="flex justify-between items-center text-xs text-gray-500 mb-2">
+          <span className="truncate max-w-[120px]">
+            {currentAssigneeName || "Sem resp."}
+          </span>
+          <span>{formatDate(deadline)}</span>
+        </div>
+
+        <div className="w-full bg-gray-100 rounded-full h-1.5">
+          <div
+            className="h-1.5 rounded-full"
+            style={{
+              width: `${progressPercentage}%`,
+              backgroundColor: getStatusColor(),
+            }}></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

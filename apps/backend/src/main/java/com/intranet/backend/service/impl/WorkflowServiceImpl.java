@@ -13,7 +13,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -1169,6 +1168,93 @@ public class WorkflowServiceImpl implements WorkflowService {
 
         stats.setTotalWorkflows(stats.getInProgressCount() + stats.getPausedCount() +
                 stats.getCompletedCount() + stats.getCanceledCount() + stats.getArchivedCount());
+
+        return stats;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public WorkflowStatsDto getStatsWithFilters(UUID templateId, UUID statusTemplateId, UUID userId) {
+        logger.info("Obtendo estatísticas filtradas - Template: {}, StatusTemplate: {}, User: {}", templateId, statusTemplateId, userId);
+
+        // Se nenhum filtro for passado, retorna as estatísticas gerais
+        if (templateId == null && statusTemplateId == null && userId == null) {
+            return getGeneralWorkflowStats();
+        }
+
+        // Se apenas o usuário for passado, retorna as estatísticas do usuário (lógica existente)
+        if (templateId == null && statusTemplateId == null && userId != null) {
+            return getUserWorkflowStats(userId);
+        }
+
+        WorkflowStatsDto stats = new WorkflowStatsDto();
+        LocalDateTime now = LocalDateTime.now();
+
+        // CASO 1: Filtro por Template (com ou sem usuário)
+        if (templateId != null) {
+            // Verificar se o template existe
+            templateRepository.findById(templateId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Template não encontrado com o ID: " + templateId));
+
+            if (userId != null) {
+                // Combinação: Template + Usuário
+                stats.setInProgressCount(workflowRepository.countByTemplateIdAndCreatedByIdAndStatus(templateId, userId, "in_progress"));
+                stats.setPausedCount(workflowRepository.countByTemplateIdAndCreatedByIdAndStatus(templateId, userId, "paused"));
+                stats.setCompletedCount(workflowRepository.countByTemplateIdAndCreatedByIdAndStatus(templateId, userId, "completed"));
+                stats.setCanceledCount(workflowRepository.countByTemplateIdAndCreatedByIdAndStatus(templateId, userId, "canceled"));
+                stats.setArchivedCount(workflowRepository.countByTemplateIdAndCreatedByIdAndStatus(templateId, userId, "archived"));
+
+                // Calcular Atrasados
+                stats.setOverdueCount(workflowRepository.countOverdueWorkflowsByTemplateIdAndCreatedById(templateId, userId, now));
+
+                // Estatísticas de Distribuição por Template (Neste caso, é 100% este template)
+                Map<String, Integer> workflowsByTemplate = new HashMap<>();
+                workflowsByTemplate.put(templateRepository.findById(templateId).get().getName(),
+                        stats.getInProgressCount() + stats.getPausedCount() + stats.getCompletedCount() + stats.getCanceledCount() + stats.getArchivedCount());
+                stats.setWorkflowsByTemplate(workflowsByTemplate);
+
+            } else {
+                // Apenas Template (Reusa método existente)
+                return getGeneralWorkflowStatsByTemplate(templateId);
+            }
+        }
+        // CASO 2: Filtro por Template de Status (com ou sem usuário)
+        else if (statusTemplateId != null) {
+            // Verificar se o template de status existe
+            statusTemplateRepository.findById(statusTemplateId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Template de status não encontrado com o ID: " + statusTemplateId));
+
+            if (userId != null) {
+                // Combinação: Status Template + Usuário
+                stats.setInProgressCount(workflowRepository.countByStatusTemplateIdAndCreatedByIdAndStatus(statusTemplateId, userId, "in_progress"));
+                stats.setPausedCount(workflowRepository.countByStatusTemplateIdAndCreatedByIdAndStatus(statusTemplateId, userId, "paused"));
+                stats.setCompletedCount(workflowRepository.countByStatusTemplateIdAndCreatedByIdAndStatus(statusTemplateId, userId, "completed"));
+                stats.setCanceledCount(workflowRepository.countByStatusTemplateIdAndCreatedByIdAndStatus(statusTemplateId, userId, "canceled"));
+                stats.setArchivedCount(workflowRepository.countByStatusTemplateIdAndCreatedByIdAndStatus(statusTemplateId, userId, "archived"));
+
+                // Calcular Atrasados
+                stats.setOverdueCount(workflowRepository.countOverdueWorkflowsByStatusTemplateIdAndCreatedById(statusTemplateId, userId, now));
+            } else {
+                // Apenas Status Template (Reusa método existente)
+                return getGeneralWorkflowStatsByStatusTemplate(statusTemplateId);
+            }
+        }
+
+        // Cálculos Finais (Totais e Taxas) para os casos combinados
+        stats.setTotalWorkflows(stats.getInProgressCount() + stats.getPausedCount() +
+                stats.getCompletedCount() + stats.getCanceledCount() + stats.getArchivedCount());
+
+        // Calcular taxa de conclusão
+        if (stats.getTotalWorkflows() > 0) {
+            double completionRate = (double) stats.getCompletedCount() / stats.getTotalWorkflows() * 100;
+            stats.setCompletionRate(completionRate);
+        } else {
+            stats.setCompletionRate(0);
+        }
+
+        // Definir mapas vazios para evitar NullPointerException no frontend se não foram preenchidos
+        if (stats.getWorkflowsByTemplate() == null) stats.setWorkflowsByTemplate(new HashMap<>());
+        if (stats.getWorkflowsByTeam() == null) stats.setWorkflowsByTeam(new HashMap<>());
 
         return stats;
     }

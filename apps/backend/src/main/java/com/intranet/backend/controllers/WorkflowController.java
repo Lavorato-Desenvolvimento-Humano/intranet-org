@@ -146,11 +146,14 @@ public class WorkflowController {
 
     @GetMapping("/{id}/transitions")
     @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
-    public ResponseEntity<List<WorkflowTransitionDto>> getWorkflowTransitions(@PathVariable UUID id) {
-        logger.info("Buscando histórico de transições do fluxo: {}", id);
-
-        List<WorkflowTransitionDto> transitions = workflowService.getWorkflowTransitions(id);
-        return ResponseEntity.ok(transitions);
+    public ResponseEntity<WorkflowStatsDto> getGeneralWorkflowStats(
+            @RequestParam(required = false) UUID templateId,
+            @RequestParam(required = false) UUID statusTemplateId,
+            @RequestParam(required = false) UUID userId // Novo parâmetro
+    ) {
+        logger.info("Obtendo estatísticas gerais filtradas - User: {}, Template: {}", userId, templateId);
+        WorkflowStatsDto stats = workflowService.getStatsWithFilters(templateId, statusTemplateId, userId);
+        return ResponseEntity.ok(stats);
     }
 
     @GetMapping("/stats")
