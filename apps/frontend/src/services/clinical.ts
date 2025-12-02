@@ -169,7 +169,7 @@ export const guiaService = {
     size: number = 20
   ): Promise<PageResponse<GuiaSummaryDto>> {
     const response = await api.get(
-      `/api/guias/convenios/${convenioId}?page=${page}&size=${size}`
+      `/api/guias/convenio/${convenioId}?page=${page}&size=${size}`
     );
     return response.data;
   },
@@ -227,6 +227,17 @@ export const guiaService = {
   ): Promise<PageResponse<GuiaSummaryDto>> {
     const response = await api.get(
       `/api/guias/search/numero?termo=${numeroGuia}&page=${page}&size=${size}`
+    );
+    return response.data;
+  },
+
+  async searchGuias(
+    termo: string,
+    page: number = 0,
+    size: number = 20
+  ): Promise<PageResponse<GuiaSummaryDto>> {
+    const response = await api.get(
+      `/api/guias/search/general?termo=${encodeURIComponent(termo)}&page=${page}&size=${size}`
     );
     return response.data;
   },
@@ -299,6 +310,17 @@ export const fichaService = {
   ): Promise<PageResponse<FichaSummaryDto>> {
     const response = await api.get(
       `/api/fichas/convenio/${convenioId}?page=${page}&size=${size}`
+    );
+    return response.data;
+  },
+
+  async searchFichas(
+    termo: string,
+    page: number = 0,
+    size: number = 20
+  ): Promise<PageResponse<FichaSummaryDto>> {
+    const response = await api.get(
+      `/api/fichas/search/general?termo=${encodeURIComponent(termo)}&page=${page}&size=${size}`
     );
     return response.data;
   },

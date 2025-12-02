@@ -52,5 +52,7 @@ public interface FichaService {
 
     List<StatusHistoryDto> getHistoricoStatusFicha(UUID fichaId);
 
+    Page<FichaSummaryDto> searchFichas(String termo, Pageable pageable);
+
     Map<String, Long> getFichasPorStatus();
 }
