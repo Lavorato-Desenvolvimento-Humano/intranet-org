@@ -31,7 +31,7 @@ public class WorkflowNotificationController {
     private final UserRepository userRepository;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<Page<WorkflowNotificationDto>> getMyNotifications(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -60,7 +60,7 @@ public class WorkflowNotificationController {
     }
 
     @GetMapping("/unread")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<List<WorkflowNotificationDto>> getUnreadNotifications() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String email = authentication.getName();
@@ -77,7 +77,7 @@ public class WorkflowNotificationController {
     }
 
     @GetMapping("/count-unread")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<Integer> countUnreadNotifications() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String email = authentication.getName();
@@ -94,7 +94,7 @@ public class WorkflowNotificationController {
     }
 
     @PostMapping("/{id}/mark-read")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<Void> markNotificationAsRead(@PathVariable UUID id) {
         logger.info("Marcando notificação como lida: {}", id);
 
@@ -103,7 +103,7 @@ public class WorkflowNotificationController {
     }
 
     @PostMapping("/mark-all-read")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<Void> markAllNotificationsAsRead() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String email = authentication.getName();
@@ -120,7 +120,7 @@ public class WorkflowNotificationController {
     }
 
     @PostMapping("/check-deadlines")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','GERENTE')")
     public ResponseEntity<Void> checkAndSendDeadlineNotifications(
             @RequestParam(defaultValue = "3") int daysThreshold) {
 

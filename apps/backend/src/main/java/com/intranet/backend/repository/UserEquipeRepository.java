@@ -1,6 +1,8 @@
 // src/main/java/com/intranet/backend/repository/UserEquipeRepository.java
 package com.intranet.backend.repository;
 
+import com.intranet.backend.model.Equipe;
+import com.intranet.backend.model.User;
 import com.intranet.backend.model.UserEquipe;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -16,7 +18,8 @@ public interface UserEquipeRepository extends JpaRepository<UserEquipe, Long> {
 
     List<UserEquipe> findByUserId(UUID userId);
 
-    boolean existsByUserIdAndEquipeId(UUID userId, UUID equipeId);
+    @Query("SELECT COUNT(ue) > 0 FROM UserEquipe ue WHERE ue.user.id = :userId AND ue.equipe.id = :equipeId")
+    boolean existsByUserIdAndEquipeId(@Param("userId") UUID userId, @Param("equipeId") UUID equipeId);
 
     void deleteByUserIdAndEquipeId(UUID userId, UUID equipeId);
 
@@ -26,4 +29,7 @@ public interface UserEquipeRepository extends JpaRepository<UserEquipe, Long> {
     @Modifying
     @Query("DELETE FROM UserEquipe ue WHERE ue.equipe.id = :equipeId")
     void deleteByEquipeId(@Param("equipeId") UUID equipeId);
+
+    @Query("SELECT ue.equipe.id FROM UserEquipe ue WHERE ue.user.id = :userId")
+    List<UUID> findEquipeIdsByUserId(@Param("userId") UUID userId);
 }

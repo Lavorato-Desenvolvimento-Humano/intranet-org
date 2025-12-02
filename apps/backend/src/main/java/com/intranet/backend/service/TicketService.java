@@ -1,0 +1,431 @@
+package com.intranet.backend.service;
+
+import com.intranet.backend.dto.*;
+import com.intranet.backend.exception.ResourceNotFoundException;
+import com.intranet.backend.model.*;
+import com.intranet.backend.repository.*;
+import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class TicketService {
+
+    private final TicketRepository ticketRepository;
+    private final UserRepository userRepository;
+    private final EquipeRepository equipeRepository;
+    private final TicketSlaConfigRepository ticketSlaConfigRepository;
+    private final TicketInteractionRepository interactionRepository;
+    private final UserEquipeRepository userEquipeRepository;
+    private final SimpMessagingTemplate messagingTemplate;
+
+    @Value("${app.upload.dir:/app/uploads}")
+    private String uploadDir;
+
+    public List<TicketResponseDto> getAllTickets(String assigneeIdFilter, String requesterIdFilter, String statusFilter) {
+        User currentUser = getCurrentUser();
+        List<Ticket> tickets = List.of();
+
+        // 1. "Meus Atendimentos" (assigneeId=me)
+        if ("me".equalsIgnoreCase(assigneeIdFilter)) {
+            List<TicketStatus> statuses = parseStatuses(statusFilter);
+            tickets = ticketRepository.findByAssigneeIdAndStatusInOrderByPriorityDesc(currentUser.getId(), statuses);
+        }
+
+        // 2. "Fila da Equipe" (assigneeId=null & status=OPEN)
+        if ("null".equalsIgnoreCase(assigneeIdFilter)) {
+            // Busca os IDs das equipes que o usuário participa
+            List<UUID> myTeamIds = userEquipeRepository.findEquipeIdsByUserId(currentUser.getId());
+
+            if (myTeamIds.isEmpty()) return List.of();
+
+           tickets = ticketRepository.findQueueByTeamIds(myTeamIds);
+        }
+
+        // 3. "Meus Pedidos" (requesterId=me)
+        if ("me".equalsIgnoreCase(requesterIdFilter)) {
+            tickets = ticketRepository.findByRequesterIdOrderByCreatedAtDesc(currentUser.getId());
+        }
+
+        return tickets.stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
+    }
+
+
+    @Transactional
+    public TicketResponseDto createTicket(TicketCreateRequest dto, MultipartFile file) {
+        User requester = getCurrentUser();
+        Equipe targetTeam = equipeRepository.findById(dto.targetTeamId())
+                .orElseThrow(() -> new RuntimeException("Equipe não encontrada com ID: " + dto.targetTeamId()));
+
+        Ticket ticket = Ticket.builder()
+                .title(dto.title())
+                .description(dto.description())
+                .priority(dto.priority())
+                .status(TicketStatus.OPEN)
+                .requester(requester)
+                .targetTeam(targetTeam)
+                .dueDate(calculateDueDate(dto.priority()))
+                .build();
+
+        Ticket savedTicket = ticketRepository.save(ticket);
+
+        if (file != null && !file.isEmpty()) {
+            String fileName = saveFileLocally(file, savedTicket.getId());
+            TicketInteraction attachment = TicketInteraction.builder()
+                    .ticket(savedTicket)
+                    .user(requester)
+                    .type(InteractionType.ATTACHMENT)
+                    .content("Anexo enviado na abertura do chamado: " + file.getOriginalFilename())
+                    .attachmentUrl(fileName)
+                    .build();
+            interactionRepository.save(attachment);
+        }
+
+        return toDto(savedTicket);
+    }
+
+    @Transactional
+    public TicketResponseDto claimTicket(Long ticketId) {
+        Ticket ticket = getTicketEntityById(ticketId);
+
+        if (ticket.getAssignee() != null) {
+            throw new IllegalStateException("Este ticket já está atribuído ao usuário: " + ticket.getAssignee());
+        }
+
+        User technician = getCurrentUser();
+
+        if (ticket.getTargetTeam() != null) {
+            boolean isMember = userEquipeRepository.existsByUserIdAndEquipeId(
+                    technician.getId(),
+                    ticket.getTargetTeam().getId()
+            );
+            if (!isMember) {
+                throw new AccessDeniedException("Você não pertence à equipe e não pode assumir este chamado.");
+            }
+        }
+
+        ticket.setAssignee(technician);
+        ticket.setStatus(TicketStatus.IN_PROGRESS);
+
+        Ticket savedTicket = ticketRepository.save(ticket);
+        logSystemEvent(savedTicket, "Ticket assumido por: " + technician.getFullName());
+
+        return toDto(savedTicket);
+    }
+
+    @Transactional
+    public TicketInteractionResponseDto addComent(Long ticketId, String content, MultipartFile file) {
+        Ticket ticket = getTicketById(ticketId);
+        User currentUser = getCurrentUser();
+
+        TicketInteraction commentInteraction = TicketInteraction.builder()
+                .ticket(ticket)
+                .user(currentUser)
+                .type(InteractionType.COMMENT)
+                .content(content)
+                .build();
+
+        TicketInteraction savedComment = interactionRepository.save(commentInteraction);
+        TicketInteractionResponseDto commentDto = toInteractionDto(savedComment);
+
+        // --- WEBSOCKET: Envia notificação do comentário ---
+        messagingTemplate.convertAndSend("/topic/tickets/" + ticketId, commentDto);
+
+
+        if (file != null && !file.isEmpty()) {
+            String fileName = saveFileLocally(file, ticket.getId());
+
+            TicketInteraction attachmentInteraction = TicketInteraction.builder()
+                    .ticket(ticket)
+                    .user(currentUser)
+                    .type(InteractionType.ATTACHMENT)
+                    .content("Anexo enviado via chat: " + file.getOriginalFilename())
+                    .attachmentUrl(fileName)
+                    .build();
+
+            TicketInteraction savedAttachment = interactionRepository.save(attachmentInteraction);
+            TicketInteractionResponseDto attachmentDto = toInteractionDto(savedAttachment);
+
+            // --- WEBSOCKET: Envia notificação do anexo ---
+            messagingTemplate.convertAndSend("/topic/tickets/" + ticketId, attachmentDto);
+        }
+
+        return commentDto;
+    }
+
+    @Transactional
+    public TicketResponseDto resolveTicket(Long ticketId) {
+        Ticket ticket = getTicketById(ticketId);
+
+        if (ticket.getStatus() == TicketStatus.OPEN) {
+            throw new IllegalStateException("O ticket precisa ser assumido antes de ser resolvido.");
+        }
+
+        ticket.setStatus(TicketStatus.RESOLVED);
+        ticket.setClosedAt(LocalDateTime.now());
+
+        Ticket saved = ticketRepository.save(ticket);
+        logSystemEvent(saved, "Ticket marcado como resolvido pelo técnico.");
+
+        return toDto(saved);
+    }
+
+    @Transactional
+    public TicketResponseDto rateTicket(Long ticketId, TicketRatingRequest request) {
+        Ticket ticket = getTicketById(ticketId);
+        User currentUser = getCurrentUser();
+
+        // Segurança: Só o dono do ticket pode avaliar
+        if (!ticket.getRequester().getId().equals(currentUser.getId())) {
+            throw new AccessDeniedException("Apenas o solicitante pode avaliar este ticket.");
+        }
+
+        if (ticket.getStatus() != TicketStatus.RESOLVED && ticket.getStatus() != TicketStatus.CLOSED) {
+            throw new IllegalStateException("O ticket precisa estar resolvido para ser avaliado.");
+        }
+
+        ticket.setRating(request.rating());
+        ticket.setRatingComment(request.comment());
+
+        // Opcional: Se avaliar, já move para CLOSED definitivo
+        if (ticket.getStatus() == TicketStatus.RESOLVED) {
+            ticket.setStatus(TicketStatus.CLOSED);
+            logSystemEvent(ticket, "Ticket avaliado e fechado definitivamente pelo usuário. Nota: " + request.rating());
+        }
+
+        Ticket saved = ticketRepository.save(ticket);
+        return toDto(saved);
+    }
+
+    public DashboardStatsDto getDashboardStats(UUID teamId) {
+        LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
+        LocalDateTime riskThreshold = LocalDateTime.now().plusHours(48);
+
+        long openTickets;
+        long closedToday;
+        Double avgRating;
+        long totalClosed;
+        long withinSla;
+        Map<String, Long> byStatus;
+        Map<String, Long> byPriority;
+        List<TicketResponseDto> ticketsAtRisk;
+        List<TicketResponseDto> lowRated;
+        List<TicketResponseDto> recentActivity;
+        List<TicketResponseDto> recentlyClosed;
+
+        if (teamId != null) {
+            openTickets = ticketRepository.countOpenTicketsByTeam(teamId);
+            closedToday = ticketRepository.countClosedTodayByTeam(startOfDay, teamId);
+            avgRating = ticketRepository.getAverageRatingByTeam(teamId);
+
+            totalClosed = ticketRepository.countTotalClosedTicketsByTeam(teamId);
+            withinSla = ticketRepository.countTicketsWithinSlaByTeam(teamId);
+
+            byStatus = ticketRepository.countTicketsByStatusAndTeam(teamId).stream()
+                    .collect(Collectors.toMap(row -> ((TicketStatus) row[0]).name(), row -> (Long) row[1]));
+
+            byPriority = ticketRepository.countTicketsByPriorityAndTeam(teamId).stream()
+                    .collect(Collectors.toMap(row -> ((TicketPriority) row[0]).name(), row -> (Long) row[1]));
+
+            ticketsAtRisk = ticketRepository.findTicketsAtRiskByTeam(teamId, riskThreshold, PageRequest.of(0, 10))
+                    .stream().map(this::toDto).collect(Collectors.toList());
+
+            lowRated = ticketRepository.findLowRatedTicketsByTeam(teamId, 3, PageRequest.of(0, 5))
+                    .stream().map(this::toDto).collect(Collectors.toList());
+
+            recentActivity = ticketRepository.findTop10ByTargetTeamIdOrderByUpdatedAtDesc(teamId)
+                    .stream().map(this::toDto).collect(Collectors.toList());
+
+            recentlyClosed = ticketRepository.findRecentlyClosedTicketsByTeam(teamId, PageRequest.of(0, 10))
+                    .stream().map(this::toDto).collect(Collectors.toList());
+
+        } else {
+            openTickets = ticketRepository.countOpenTickets();
+            closedToday = ticketRepository.countClosedToday(startOfDay);
+            avgRating = ticketRepository.getAverageRating();
+
+            totalClosed = ticketRepository.countTotalClosedTickets();
+            withinSla = ticketRepository.countTicketsWithinSla();
+
+            byStatus = ticketRepository.countTicketsByStatus().stream()
+                    .collect(Collectors.toMap(row -> ((TicketStatus) row[0]).name(), row -> (Long) row[1]));
+
+            byPriority = ticketRepository.countTicketsByPriority().stream()
+                    .collect(Collectors.toMap(row -> ((TicketPriority) row[0]).name(), row -> (Long) row[1]));
+
+            ticketsAtRisk = ticketRepository.findTicketsAtRisk(riskThreshold, PageRequest.of(0, 10))
+                    .stream().map(this::toDto).collect(Collectors.toList());
+
+            lowRated = ticketRepository.findLowRatedTickets(3, PageRequest.of(0, 5))
+                    .stream().map(this::toDto).collect(Collectors.toList());
+
+            recentActivity = ticketRepository.findTop10ByOrderByUpdatedAtDesc()
+                    .stream().map(this::toDto).collect(Collectors.toList());
+
+            recentlyClosed = ticketRepository.findRecentlyClosedTickets(PageRequest.of(0, 10))
+                    .stream().map(this::toDto).collect(Collectors.toList());
+        }
+
+        double slaPercentage = totalClosed > 0 ? ((double) withinSla / totalClosed) * 100 : 100.0;
+
+        return new DashboardStatsDto(
+                openTickets,
+                closedToday,
+                slaPercentage,
+                avgRating != null ? avgRating : 0.0,
+                byStatus,
+                byPriority,
+                ticketsAtRisk,
+                lowRated,
+                recentActivity,
+                recentlyClosed
+        );
+    }
+
+    public List<TicketInteractionResponseDto> getTicketTimeLine(Long ticketId) {
+        if (!ticketRepository.existsById(ticketId)) {
+            throw new ResourceNotFoundException("Ticket não encontrado: " + ticketId);
+        }
+        return interactionRepository.findByTicketIdOrderByCreatedAtAsc(ticketId)
+                .stream()
+                .map(this::toInteractionDto)
+                .collect(Collectors.toList());
+    }
+
+    public TicketResponseDto getTicketByIdResponse(Long ticketId) {
+        Ticket ticket = getTicketById(ticketId);
+        return toDto(ticket);
+    }
+
+    public Ticket getTicketById(Long ticketId) {
+        return (ticketRepository.findById(ticketId).orElseThrow(() -> new ResourceNotFoundException("Ticket não encontrado: " + ticketId)));
+    }
+
+    private Ticket getTicketEntityById(Long ticketId) {
+        return ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new ResourceNotFoundException("Ticket não encontrado: " + ticketId));
+    }
+
+    private User getCurrentUser() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário logado não encontrado no banco de dados."));
+    }
+
+    private LocalDateTime calculateDueDate(TicketPriority priority) {
+       int hoursToAdd = ticketSlaConfigRepository.findById(priority)
+               .map(TicketSlaConfig::getSlaHours)
+               .orElse(24);
+
+       return LocalDateTime.now().plusHours(hoursToAdd);
+    }
+
+    private void logSystemEvent(Ticket ticket, String message) {
+        TicketInteraction log = TicketInteraction.builder()
+                .ticket(ticket)
+                .user(null)
+                .type(InteractionType.SYSTEM_LOG)
+                .content(message)
+                .build();
+        TicketInteraction savedLog = interactionRepository.save(log);
+
+        // Envia para o WebSocket
+        messagingTemplate.convertAndSend("/topic/tickets/" + ticket.getId(), toInteractionDto(savedLog));
+    }
+
+    private String saveFileLocally(MultipartFile file, Long ticketId) {
+        try {
+            // Cria estrutura /app/uploads/tickets/1001/
+            Path targetDir = Paths.get(uploadDir, "tickets", String.valueOf(ticketId));
+
+            if (!Files.exists(targetDir)) {
+                Files.createDirectories(targetDir);
+            }
+
+            // Sanitiza o nome do arquivo para evitar problemas com caracteres especiais
+            String originalFilename = file.getOriginalFilename();
+            if (originalFilename == null) originalFilename = "arquivo_sem_nome";
+
+            // Gera nome único: uuid_nome-do-arquivo.pdf
+            String fileName = UUID.randomUUID() + "_" + originalFilename;
+            Path targetPath = targetDir.resolve(fileName);
+
+            Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
+
+            // Ex: tickets/1001/uuid_arquivo.pdf
+            return "tickets/" + ticketId + "/" + fileName;
+        } catch (IOException e) {
+            throw new RuntimeException("Falha ao salvar anexo", e);
+        }
+    }
+
+    private List<TicketStatus> parseStatuses(String statusFilter) {
+        if (statusFilter == null || statusFilter.isEmpty()) {
+            return Arrays.asList(TicketStatus.values());
+        }
+        return Arrays.stream(statusFilter.split(","))
+                .map(String::trim)
+                .map(TicketStatus::valueOf)
+                .collect(Collectors.toList());
+    }
+
+    private TicketResponseDto toDto(Ticket ticket) {
+        return new TicketResponseDto(
+                ticket.getId(),
+                ticket.getTitle(),
+                ticket.getDescription(),
+                ticket.getPriority(),
+                ticket.getStatus(),
+                ticket.getCreatedAt(),
+                ticket.getDueDate(),
+                ticket.getClosedAt(),
+                ticket.getRating(),
+                ticket.getRatingComment(),
+                // Null checks são importantes aqui
+                ticket.getRequester().getId(),
+                ticket.getRequester().getFullName(),
+                ticket.getRequester().getEmail(),
+                ticket.getAssignee() != null ? ticket.getAssignee().getId() : null,
+                ticket.getAssignee() != null ? ticket.getAssignee().getFullName() : null,
+                ticket.getTargetTeam() != null ? ticket.getTargetTeam().getId() : null,
+                ticket.getTargetTeam() != null ? ticket.getTargetTeam().getNome() : null
+        );
+    }
+
+    private TicketInteractionResponseDto toInteractionDto(TicketInteraction interaction) {
+        return new TicketInteractionResponseDto(
+                interaction.getId(),
+                interaction.getTicket().getId(),
+                interaction.getUser() != null ? interaction.getUser().getId() : null,
+                interaction.getUser() != null ? interaction.getUser().getFullName() : "Sistema",
+                interaction.getUser() != null ? interaction.getUser().getEmail() : null,
+                interaction.getUser() != null ? interaction.getUser().getProfileImage() : null,
+                interaction.getType(),
+                interaction.getContent(),
+                interaction.getAttachmentUrl(),
+                interaction.getCreatedAt()
+        );
+    }
+}

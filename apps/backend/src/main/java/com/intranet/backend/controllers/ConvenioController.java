@@ -25,6 +25,7 @@ public class ConvenioController {
     private final ConvenioService convenioService;
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<List<ConvenioDto>> getAllConvenios() {
         logger.info("Requisição para listar todos os convênios recebida");
         try {
@@ -38,6 +39,7 @@ public class ConvenioController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<ConvenioDto> getConvenioById(@PathVariable UUID id) {
         logger.info("Requisição para buscar convênio com ID: {}", id);
         ConvenioDto convenio = convenioService.getConvenioById(id);
@@ -45,7 +47,7 @@ public class ConvenioController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<ConvenioDto> createConvenio(@Valid @RequestBody ConvenioCreateDto convenioCreateDto) {
         logger.info("Requisição para criar novo convênio: {}", convenioCreateDto.getName());
         ConvenioDto createdConvenio = convenioService.createConvenio(convenioCreateDto);
@@ -53,7 +55,7 @@ public class ConvenioController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<ConvenioDto> updateConvenio(
             @PathVariable UUID id,
             @Valid @RequestBody ConvenioCreateDto convenioCreateDto) {
@@ -63,7 +65,7 @@ public class ConvenioController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<Void> deleteConvenio(@PathVariable UUID id) {
         logger.info("Requisição para deletar convênio com ID: {}", id);
         convenioService.deleteConvenio(id);
@@ -71,6 +73,7 @@ public class ConvenioController {
     }
 
     @GetMapping("/{id}/postagens")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<List<PostagemSummaryDto>> getPostagensByConvenioId(@PathVariable UUID id) {
         logger.info("Requisição para listar postagens do convênio com ID: {}", id);
         List<PostagemSummaryDto> postagens = convenioService.getPostagensByConvenioId(id);
@@ -78,6 +81,7 @@ public class ConvenioController {
     }
 
     @GetMapping("/{id}/postagens/count")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<Long> countPostagensByConvenioId(@PathVariable UUID id) {
         logger.info("Requisição para contar postagens do convênio com ID: {}", id);
         long count = convenioService.countPostagensByConvenioId(id);

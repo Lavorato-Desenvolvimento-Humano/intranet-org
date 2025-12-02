@@ -19,7 +19,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/roles")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','GERENTE')")
 public class RoleController {
 
     private static final Logger logger = LoggerFactory.getLogger(RoleController.class);

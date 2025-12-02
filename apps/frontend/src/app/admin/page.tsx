@@ -17,7 +17,7 @@ import toastUtil from "@/utils/toast";
 import AdminStatusTab from "@/components/admin/AdminStatusTab";
 
 export default function AdminDashboardPage() {
-  const router = useRouter(); // ✅ Adicionado useRouter
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("users");
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);

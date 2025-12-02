@@ -34,7 +34,7 @@ public class WorkflowStatusTemplateController {
     private final UserRepository userRepository;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<Page<WorkflowStatusTemplateDto>> getAllStatusTemplates(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -51,7 +51,7 @@ public class WorkflowStatusTemplateController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<WorkflowStatusTemplateDto> getStatusTemplateById(@PathVariable UUID id) {
         logger.info("Buscando template de status por ID: {}", id);
 
@@ -60,7 +60,7 @@ public class WorkflowStatusTemplateController {
     }
 
     @GetMapping("/my-templates")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','GERENTE')")
     public ResponseEntity<List<WorkflowStatusTemplateDto>> getMyStatusTemplates() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String email = authentication.getName();
@@ -77,7 +77,7 @@ public class WorkflowStatusTemplateController {
     }
 
     @GetMapping("/available")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<List<WorkflowStatusTemplateDto>> getAvailableStatusTemplates() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String email = authentication.getName();
@@ -94,7 +94,7 @@ public class WorkflowStatusTemplateController {
     }
 
     @GetMapping("/{id}/items")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<List<WorkflowStatusItemDto>> getStatusItems(@PathVariable UUID id) {
         logger.info("Buscando status do template: {}", id);
 
@@ -103,7 +103,7 @@ public class WorkflowStatusTemplateController {
     }
 
     @GetMapping("/{id}/initial-status")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<WorkflowStatusItemDto> getInitialStatus(@PathVariable UUID id) {
         logger.info("Buscando status inicial do template: {}", id);
 
@@ -112,7 +112,7 @@ public class WorkflowStatusTemplateController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','GERENTE')")
     public ResponseEntity<WorkflowStatusTemplateDto> createStatusTemplate(
             @RequestBody WorkflowStatusTemplateCreateDto templateDto) {
 
@@ -131,7 +131,7 @@ public class WorkflowStatusTemplateController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','GERENTE')")
     public ResponseEntity<WorkflowStatusTemplateDto> updateStatusTemplate(
             @PathVariable UUID id,
             @RequestBody WorkflowStatusTemplateCreateDto templateDto) {
@@ -157,7 +157,7 @@ public class WorkflowStatusTemplateController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR','GERENTE')")
     public ResponseEntity<Void> deleteStatusTemplate(@PathVariable UUID id) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String email = authentication.getName();

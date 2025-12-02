@@ -33,7 +33,7 @@ public class TempUploadController {
     private final AnexoRepository anexoRepository;
 
     @PostMapping(value = "/imagens", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR') or hasRole('USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<ImagemDto> addTempImagem(
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "description", required = false) String description) {
@@ -92,7 +92,7 @@ public class TempUploadController {
     }
 
     @PostMapping(value = "/anexos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR') or hasRole('USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<AnexoDto> addTempAnexo(@RequestParam("file") MultipartFile file) {
         logger.info("Requisição para adicionar anexo temporário");
 

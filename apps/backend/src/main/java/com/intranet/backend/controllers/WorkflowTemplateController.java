@@ -35,7 +35,7 @@ public class WorkflowTemplateController {
     private final UserRepository userRepository;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<Page<WorkflowTemplateDto>> getAllTemplates(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -52,7 +52,7 @@ public class WorkflowTemplateController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<WorkflowTemplateDto> getTemplateById(@PathVariable UUID id) {
         logger.info("Buscando template de fluxo por ID: {}", id);
 
@@ -77,7 +77,7 @@ public class WorkflowTemplateController {
     }
 
     @GetMapping("/visible")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<List<WorkflowTemplateDto>> getVisibleTemplates() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String email = authentication.getName();
@@ -93,7 +93,7 @@ public class WorkflowTemplateController {
     }
 
     @GetMapping("/{id}/steps")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<List<WorkflowTemplateStepDto>> getTemplateSteps(@PathVariable UUID id) {
         logger.info("Buscando passos do template: {}", id);
 
@@ -102,7 +102,7 @@ public class WorkflowTemplateController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR','GERENTE')")
     public ResponseEntity<WorkflowTemplateDto> createTemplate(@RequestBody WorkflowTemplateCreateDto templateDto) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String email = authentication.getName();
@@ -118,7 +118,7 @@ public class WorkflowTemplateController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR','GERENTE')")
     public ResponseEntity<WorkflowTemplateDto> updateTemplate(
             @PathVariable UUID id,
             @RequestBody WorkflowTemplateCreateDto templateDto) {
@@ -143,7 +143,7 @@ public class WorkflowTemplateController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR','GERENTE')")
     public ResponseEntity<Void> deleteTemplate(@PathVariable UUID id) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String email = authentication.getName();

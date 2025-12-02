@@ -23,15 +23,20 @@ import {
   BarChart3,
   FilePlus,
   HousePlus,
+  TicketSlash,
+  LaptopIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import NotificationPanel from "@/components/workflow/NotificationPanel";
+import { set } from "date-fns";
+import Home from "@/app/page";
 
 export default function Navbar() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [guiasSubmenuOpen, setGuiasSubmenuOpen] = useState(false);
+  const [ticketsSubmenuOpen, setTicketsSubmenuOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const hasAdminRole = user?.roles?.some(
@@ -76,6 +81,12 @@ export default function Navbar() {
     e.preventDefault();
     e.stopPropagation();
     setGuiasSubmenuOpen(!guiasSubmenuOpen);
+  };
+
+  const toggleTicketsSubmenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setTicketsSubmenuOpen(!ticketsSubmenuOpen);
   };
 
   return (
@@ -147,6 +158,53 @@ export default function Navbar() {
                     <Table className="mr-2" size={16} />
                     <span>Tabelas</span>
                   </Link>
+
+                  {/* Item Tickets com submenu */}
+                  <div className="relative">
+                    <button
+                      className="w-full flex items-center justify-between px-4 py-2 hover:bg-gray-100 text-left"
+                      onClick={toggleTicketsSubmenu}>
+                      <div className="flex items-center">
+                        <HomeIcon className="mr-2" size={16} />
+                        <span>Service Desk</span>
+                      </div>
+                      <ChevronRight
+                        size={16}
+                        className={`transform transition-transform ${ticketsSubmenuOpen ? "rotate-90" : ""}`}
+                      />
+                    </button>
+
+                    {/* Submenu Guias */}
+                    {ticketsSubmenuOpen && (
+                      <div className="ml-4 border-l border-gray-200">
+                        <Link
+                          href="/tickets"
+                          className="flex items-center px-4 py-2 hover:bg-gray-100 text-sm"
+                          onClick={(e: any) => {
+                            e.preventDefault();
+                            navigateTo("/tickets");
+                            setDropdownOpen(false);
+                            setTicketsSubmenuOpen(false);
+                          }}>
+                          <LaptopIcon className="mr-3" size={14} />
+                          <span>Tickets</span>
+                        </Link>
+
+                        <Link
+                          href="/tickets/dashboard"
+                          className="flex items-center px-4 py-2 hover:bg-gray-100 text-sm"
+                          onClick={(e: any) => {
+                            e.preventDefault();
+                            navigateTo("/tickets/dashboard");
+                            setDropdownOpen(false);
+                            setTicketsSubmenuOpen(false);
+                          }}>
+                          <HomeIcon className="mr-3" size={14} />
+                          <span>Dashboard</span>
+                        </Link>
+                      </div>
+                    )}
+                  </div>
 
                   {/* Item Guias com submenu */}
                   <div className="relative">

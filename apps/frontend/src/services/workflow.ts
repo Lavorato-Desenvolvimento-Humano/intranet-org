@@ -16,6 +16,12 @@ import {
   WorkflowStatusItemDto,
 } from "@/types/workflow";
 
+export interface WorkflowStatsFilters {
+  templateId?: string;
+  statusTemplateId?: string;
+  userId?: string;
+}
+
 const workflowService = {
   // Templates
   getAllTemplates: async (page = 0, size = 10) => {
@@ -227,12 +233,42 @@ const workflowService = {
     }
   },
 
-  getGeneralStats: async () => {
+  getGeneralStats: async (filters?: WorkflowStatsFilters) => {
     try {
-      const response = await api.get<WorkflowStatsDto>("/api/workflows/stats");
+      // Construir query string com os filtros
+      const params = new URLSearchParams();
+      if (filters?.templateId) params.append("templateId", filters.templateId);
+      if (filters?.statusTemplateId)
+        params.append("statusTemplateId", filters.statusTemplateId);
+      if (filters?.userId) params.append("userId", filters.userId);
+
+      const queryString = params.toString();
+      const url = `/api/workflows/stats${queryString ? `?${queryString}` : ""}`;
+
+      const response = await api.get<WorkflowStatsDto>(url);
       return response.data;
     } catch (error) {
       console.error("Erro ao buscar estatísticas gerais:", error);
+      throw error;
+    }
+  },
+
+  getStatsWithFilters: async (filters: WorkflowStatsFilters) => {
+    try {
+      const params = new URLSearchParams();
+      if (filters.templateId) params.append("templateId", filters.templateId);
+      if (filters.statusTemplateId)
+        params.append("statusTemplateId", filters.statusTemplateId);
+      if (filters.userId) params.append("userId", filters.userId);
+
+      const queryString = params.toString();
+      // Usa o endpoint /stats que alteramos no backend para aceitar parametros
+      const response = await api.get<WorkflowStatsDto>(
+        `/api/workflows/stats?${queryString}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Erro ao buscar estatísticas filtradas:", error);
       throw error;
     }
   },

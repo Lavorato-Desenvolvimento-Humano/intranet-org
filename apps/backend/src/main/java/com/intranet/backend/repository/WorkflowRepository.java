@@ -175,4 +175,20 @@ public interface WorkflowRepository extends JpaRepository<Workflow, UUID> {
             @Param("searchTerm") String searchTerm,
             @Param("templateId") UUID templateId,
             Pageable pageable);
+
+    // Adicione estes métodos ao WorkflowRepository.java
+
+    // --- Queries para Combinação: Template + Usuário ---
+    @Query("SELECT COUNT(w) FROM Workflow w WHERE w.template.id = :templateId AND w.createdBy.id = :userId AND w.status = :status")
+    int countByTemplateIdAndCreatedByIdAndStatus(@Param("templateId") UUID templateId, @Param("userId") UUID userId, @Param("status") String status);
+
+    @Query("SELECT COUNT(w) FROM Workflow w WHERE w.template.id = :templateId AND w.createdBy.id = :userId AND w.deadline < :date AND w.status = 'in_progress'")
+    int countOverdueWorkflowsByTemplateIdAndCreatedById(@Param("templateId") UUID templateId, @Param("userId") UUID userId, @Param("date") LocalDateTime date);
+
+    // --- Queries para Combinação: Template de Status + Usuário ---
+    @Query("SELECT COUNT(w) FROM Workflow w WHERE w.statusTemplate.id = :statusTemplateId AND w.createdBy.id = :userId AND w.status = :status")
+    int countByStatusTemplateIdAndCreatedByIdAndStatus(@Param("statusTemplateId") UUID statusTemplateId, @Param("userId") UUID userId, @Param("status") String status);
+
+    @Query("SELECT COUNT(w) FROM Workflow w WHERE w.statusTemplate.id = :statusTemplateId AND w.createdBy.id = :userId AND w.deadline < :date AND w.status = 'in_progress'")
+    int countOverdueWorkflowsByStatusTemplateIdAndCreatedById(@Param("statusTemplateId") UUID statusTemplateId, @Param("userId") UUID userId, @Param("date") LocalDateTime date);
 }

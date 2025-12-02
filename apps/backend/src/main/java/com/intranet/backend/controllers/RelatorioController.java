@@ -33,7 +33,7 @@ public class RelatorioController {
      * Gera um novo relatório
      */
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('relatorio:create') or hasAnyRole('USER', 'ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR','GUIAS')")
     public ResponseEntity<RelatorioDto> gerarRelatorio(@Valid @RequestBody RelatorioCreateRequest request) {
         logger.info("Requisição para gerar relatório: {}", request.getTitulo());
 
@@ -45,7 +45,7 @@ public class RelatorioController {
      * Busca relatório por ID
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('relatorio:read') or hasAnyRole('USER', 'ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR','GUIAS')")
     public ResponseEntity<RelatorioDto> getRelatorioById(@PathVariable UUID id) {
         logger.info("Requisição para buscar relatório: {}", id);
 
@@ -68,7 +68,7 @@ public class RelatorioController {
      * Lista relatórios do usuário atual
      */
     @GetMapping("/meus")
-    @PreAuthorize("hasAnyAuthority('relatorio:read') or hasAnyRole('GUIAS', 'ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR','GUIAS')")
     public ResponseEntity<Page<RelatorioSummaryDto>> getMeusRelatorios(
             @PageableDefault(size = 20) Pageable pageable) {
         logger.info("Requisição para listar meus relatórios");
@@ -81,7 +81,7 @@ public class RelatorioController {
      * Lista todos os relatórios (apenas admins/supervisores)
      */
     @GetMapping("/todos")
-    @PreAuthorize("hasAnyAuthority('relatorio:view_all') or hasAnyRole('ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR','GERENTE')")
     public ResponseEntity<Page<RelatorioSummaryDto>> getAllRelatorios(
             @PageableDefault(size = 20) Pageable pageable) {
         logger.info("Requisição para listar todos os relatórios");
@@ -94,7 +94,7 @@ public class RelatorioController {
      * Busca relatórios com filtros
      */
     @GetMapping("/buscar")
-    @PreAuthorize("hasAnyAuthority('relatorio:read') or hasAnyRole('USER', 'ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR','GUIAS')")
     public ResponseEntity<Page<RelatorioSummaryDto>> buscarRelatorios(
             RelatorioFilterRequest filter,
             @PageableDefault(size = 20) Pageable pageable) {
@@ -108,7 +108,7 @@ public class RelatorioController {
      * Obtém dados completos do relatório
      */
     @GetMapping("/{id}/dados")
-    @PreAuthorize("hasAnyAuthority('relatorio:read') or hasAnyRole('USER', 'ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR','GUIAS')")
     public ResponseEntity<RelatorioDataDto> getDadosRelatorio(@PathVariable UUID id) {
         logger.info("Requisição para obter dados do relatório: {}", id);
 
@@ -120,7 +120,7 @@ public class RelatorioController {
      * Compartilha relatório com outro usuário
      */
     @PostMapping("/{id}/compartilhar")
-    @PreAuthorize("hasAnyAuthority('relatorio:share') or hasAnyRole('USER', 'ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR','GUIAS')")
     public ResponseEntity<RelatorioCompartilhamentoDto> compartilharRelatorio(
             @PathVariable UUID id,
             @Valid @RequestBody RelatorioCompartilhamentoRequest request) {
@@ -134,7 +134,7 @@ public class RelatorioController {
      * Lista compartilhamentos recebidos
      */
     @GetMapping("/compartilhamentos/recebidos")
-    @PreAuthorize("hasAnyAuthority('relatorio:read') or hasAnyRole('USER', 'ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR','GUIAS')")
     public ResponseEntity<Page<RelatorioCompartilhamentoDto>> getCompartilhamentosRecebidos(
             @PageableDefault(size = 20) Pageable pageable) {
         logger.info("Requisição para listar compartilhamentos recebidos");
@@ -147,7 +147,7 @@ public class RelatorioController {
      * Lista compartilhamentos enviados
      */
     @GetMapping("/compartilhamentos/enviados")
-    @PreAuthorize("hasAnyAuthority('relatorio:read') or hasAnyRole('USER', 'ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR','GUIAS')")
     public ResponseEntity<Page<RelatorioCompartilhamentoDto>> getCompartilhamentosEnviados(
             @PageableDefault(size = 20) Pageable pageable) {
         logger.info("Requisição para listar compartilhamentos enviados");
@@ -160,7 +160,7 @@ public class RelatorioController {
      * Marca compartilhamento como visualizado
      */
     @PutMapping("/compartilhamentos/{id}/visualizar")
-    @PreAuthorize("hasAnyAuthority('relatorio:read') or hasAnyRole('USER', 'ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR','GUIAS')")
     public ResponseEntity<Void> marcarCompartilhamentoComoVisualizado(@PathVariable UUID id) {
         logger.info("Requisição para marcar compartilhamento como visualizado: {}", id);
 
@@ -172,7 +172,7 @@ public class RelatorioController {
      * Conta compartilhamentos não visualizados
      */
     @GetMapping("/compartilhamentos/nao-visualizados/count")
-    @PreAuthorize("hasAnyAuthority('relatorio:read') or hasAnyRole('USER', 'ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR','GUIAS')")
     public ResponseEntity<Map<String, Long>> countCompartilhamentosNaoVisualizados() {
         logger.info("Requisição para contar compartilhamentos não visualizados");
 
@@ -184,7 +184,7 @@ public class RelatorioController {
      * Exclui relatório
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('relatorio:delete') or hasAnyRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR','GUIAS')")
     public ResponseEntity<Void> excluirRelatorio(@PathVariable UUID id) {
         logger.info("Requisição para excluir relatório: {}", id);
 
@@ -196,7 +196,7 @@ public class RelatorioController {
      * Baixa relatório em PDF
      */
     @GetMapping("/{id}/pdf")
-    @PreAuthorize("hasAnyAuthority('relatorio:download') or hasAnyRole('USER', 'ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR','GUIAS')")
     public ResponseEntity<byte[]> baixarRelatorioPDF(@PathVariable UUID id) {
         logger.info("Requisição para baixar PDF do relatório: {}", id);
 
@@ -231,7 +231,7 @@ public class RelatorioController {
      * Obtém estatísticas de relatórios
      */
     @GetMapping("/estatisticas")
-    @PreAuthorize("hasAnyAuthority('relatorio:read') or hasAnyRole('USER', 'ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR','GUIAS')")
     public ResponseEntity<Map<String, Object>> getEstatisticasRelatorios() {
         logger.info("Requisição para obter estatísticas de relatórios");
 
@@ -243,7 +243,7 @@ public class RelatorioController {
      * Reprocessa um relatório
      */
     @PostMapping("/{id}/reprocessar")
-    @PreAuthorize("hasAnyAuthority('relatorio:create') or hasAnyRole('USER', 'ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR','GUIAS')")
     public ResponseEntity<RelatorioDto> reprocessarRelatorio(@PathVariable UUID id) {
         logger.info("Requisição para reprocessar relatório: {}", id);
 
@@ -255,7 +255,7 @@ public class RelatorioController {
      * Lista logs de um relatório
      */
     @GetMapping("/{id}/logs")
-    @PreAuthorize("hasAnyAuthority('relatorio:read') or hasAnyRole('ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR','GUIAS')")
     public ResponseEntity<List<RelatorioLogDto>> getLogsRelatorio(@PathVariable UUID id) {
         logger.info("Requisição para obter logs do relatório: {}", id);
 
@@ -267,7 +267,7 @@ public class RelatorioController {
      * Endpoint para preview dos dados do relatório antes de gerar
      */
     @PostMapping("/preview")
-    @PreAuthorize("hasAnyAuthority('relatorio:create') or hasAnyRole('USER', 'ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR','GUIAS')")
     public ResponseEntity<Map<String, Object>> previewRelatorio(@Valid @RequestBody RelatorioCreateRequest request) {
         logger.info("Requisição para preview do relatório: {}", request.getTitulo());
 
@@ -292,7 +292,7 @@ public class RelatorioController {
      * Endpoint para obter opções de filtros disponíveis
      */
     @GetMapping("/filtros/opcoes")
-    @PreAuthorize("hasAnyAuthority('relatorio:create') or hasAnyRole('USER', 'ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR','GUIAS')")
     public ResponseEntity<Map<String, Object>> getOpcoesFiltrosa() {
         logger.info("Requisição para obter opções de filtros");
 

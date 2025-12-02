@@ -52,7 +52,7 @@ public class GuiaController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('guia:create') or hasAnyRole('ADMIN','GUIAS')")
+    @PreAuthorize("hasAnyAuthority('guia:create') or hasAnyRole('ADMIN','GUIAS','SUPERVISOR','GERENTE')")
     public ResponseEntity<GuiaDto> createGuia(@Valid @RequestBody GuiaCreateRequest request) {
         logger.info("Requisição para criar nova guia para paciente: {}", request.getPacienteId());
 
@@ -61,7 +61,7 @@ public class GuiaController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('guia:update') or hasAnyRole('ADMIN','GUIAS')")
+    @PreAuthorize("hasAnyAuthority('guia:update') or hasAnyRole('ADMIN','GUIAS','SUPERVISOR','GERENTE')")
     public ResponseEntity<GuiaDto> updateGuia(
             @PathVariable UUID id,
             @Valid @RequestBody GuiaUpdateRequest request) {
@@ -72,7 +72,7 @@ public class GuiaController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('guia:delete') or hasAnyRole('ADMIN','GUIAS')")
+    @PreAuthorize("hasAnyAuthority('guia:delete') or hasAnyRole('ADMIN','GUIAS','SUPERVISOR','GERENTE')")
     public ResponseEntity<Void> deleteGuia(@PathVariable UUID id) {
         logger.info("Requisição para deletar guia com ID: {}", id);
 
@@ -236,7 +236,7 @@ public class GuiaController {
     }
 
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasAnyAuthority('guia:update') or hasAnyRole('ADMIN','GUIAS')")
+    @PreAuthorize("hasAnyAuthority('guia:update') or hasAnyRole('ADMIN','GUIAS','SUPERVISOR','GERENTE')")
     public ResponseEntity<Map<String, Object>> updateGuiaStatus(
             @PathVariable UUID id,
             @Valid @RequestBody StatusChangeRequest request) {

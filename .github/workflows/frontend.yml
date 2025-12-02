@@ -42,8 +42,8 @@ jobs:
           cd apps/frontend
           npm install --package-lock-only
           npm ci
-          npm install lucide-react react-hot-toast axios chart.js react-chartjs-2
-          npm install --save @ckeditor/ckeditor5-react @ckeditor/ckeditor5-build-classic @radix-ui/react-switch
+          npm install lucide-react react-hot-toast axios chart.js react-chartjs-2 
+          npm install --save @ckeditor/ckeditor5-react @ckeditor/ckeditor5-build-classic @radix-ui/react-switch @types/sockjs-client @stomp/stompjs sockjs-client
           npm install -D @tailwindcss/typography
           npm install date-fns
 

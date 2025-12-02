@@ -33,7 +33,7 @@ public class WorkflowController {
     private final UserRepository userRepository;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<Page<WorkflowSummaryDto>> getAllWorkflows(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -50,7 +50,7 @@ public class WorkflowController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<WorkflowDto> getWorkflowById(@PathVariable UUID id) {
         logger.info("Buscando fluxo de trabalho por ID: {}", id);
 
@@ -59,7 +59,7 @@ public class WorkflowController {
     }
 
     @GetMapping("/status/{status}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<Page<WorkflowSummaryDto>> getWorkflowsByStatus(
             @PathVariable String status,
             @RequestParam(defaultValue = "0") int page,
@@ -73,7 +73,7 @@ public class WorkflowController {
     }
 
     @GetMapping("/team/{teamId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<Page<WorkflowSummaryDto>> getWorkflowsByTeam(
             @PathVariable UUID teamId,
             @RequestParam(defaultValue = "0") int page,
@@ -87,7 +87,7 @@ public class WorkflowController {
     }
 
     @GetMapping("/assigned-to-me")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<List<WorkflowSummaryDto>> getWorkflowsAssignedToMe() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String email = authentication.getName();
@@ -104,7 +104,7 @@ public class WorkflowController {
     }
 
     @GetMapping("/visible-to-me")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<Page<WorkflowSummaryDto>> getVisibleWorkflows(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
@@ -125,7 +125,7 @@ public class WorkflowController {
     }
 
     @GetMapping("/overdue")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<List<WorkflowSummaryDto>> getOverdueWorkflows() {
         logger.info("Buscando fluxos de trabalho com prazo vencido");
 
@@ -134,7 +134,7 @@ public class WorkflowController {
     }
 
     @GetMapping("/near-deadline")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<List<WorkflowSummaryDto>> getWorkflowsNearDeadline(
             @RequestParam(defaultValue = "3") int daysThreshold) {
 
@@ -145,16 +145,19 @@ public class WorkflowController {
     }
 
     @GetMapping("/{id}/transitions")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
-    public ResponseEntity<List<WorkflowTransitionDto>> getWorkflowTransitions(@PathVariable UUID id) {
-        logger.info("Buscando histórico de transições do fluxo: {}", id);
-
-        List<WorkflowTransitionDto> transitions = workflowService.getWorkflowTransitions(id);
-        return ResponseEntity.ok(transitions);
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
+    public ResponseEntity<WorkflowStatsDto> getGeneralWorkflowStats(
+            @RequestParam(required = false) UUID templateId,
+            @RequestParam(required = false) UUID statusTemplateId,
+            @RequestParam(required = false) UUID userId // Novo parâmetro
+    ) {
+        logger.info("Obtendo estatísticas gerais filtradas - User: {}, Template: {}", userId, templateId);
+        WorkflowStatsDto stats = workflowService.getStatsWithFilters(templateId, statusTemplateId, userId);
+        return ResponseEntity.ok(stats);
     }
 
     @GetMapping("/stats")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<WorkflowStatsDto> getGeneralWorkflowStats() {
         logger.info("Obtendo estatísticas gerais de fluxos");
 
@@ -163,7 +166,7 @@ public class WorkflowController {
     }
 
     @GetMapping("/stats/my")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<WorkflowStatsDto> getUserWorkflowStats() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String email = authentication.getName();
@@ -180,7 +183,7 @@ public class WorkflowController {
     }
 
     @GetMapping("/users-workload")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<List<UserWorkloadDto>> getUsersWorkload() {
         logger.info("Obtendo carga de trabalho dos usuários");
 
@@ -189,7 +192,7 @@ public class WorkflowController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<WorkflowDto> createWorkflow(@RequestBody WorkflowCreateDto workflowDto) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String email = authentication.getName();
@@ -206,7 +209,7 @@ public class WorkflowController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<WorkflowDto> updateWorkflow(
             @PathVariable UUID id,
             @RequestBody WorkflowCreateDto workflowDto) {
@@ -232,7 +235,7 @@ public class WorkflowController {
     }
 
     @PostMapping("/{id}/next-step")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<WorkflowDto> advanceToNextStep(
             @PathVariable UUID id,
             @RequestParam UUID assignToId,
@@ -259,7 +262,7 @@ public class WorkflowController {
     }
 
     @PostMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<WorkflowDto> updateWorkflowStatus(
             @PathVariable UUID id,
             @RequestParam String newStatus,
@@ -286,7 +289,7 @@ public class WorkflowController {
     }
 
     @PostMapping("/{id}/assign")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<WorkflowAssignmentDto> assignStep(
             @PathVariable UUID id,
             @RequestParam int stepNumber,
@@ -314,7 +317,7 @@ public class WorkflowController {
     }
 
     @PostMapping("/{id}/complete-step")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<WorkflowAssignmentDto> completeStep(
             @PathVariable UUID id,
             @RequestParam int stepNumber,
@@ -341,7 +344,7 @@ public class WorkflowController {
     }
 
     @PostMapping("/{id}/archive")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR','GERENTE')")
     public ResponseEntity<WorkflowDto> archiveWorkflow(@PathVariable UUID id) {
         logger.info("Arquivando fluxo de trabalho: {}", id);
 
@@ -350,7 +353,7 @@ public class WorkflowController {
     }
 
     @PostMapping("/{id}/restore")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR','GERENTE')")
     public ResponseEntity<WorkflowDto> restoreWorkflow(@PathVariable UUID id) {
         logger.info("Restaurando fluxo de trabalho: {}", id);
 
@@ -359,7 +362,7 @@ public class WorkflowController {
     }
 
     @GetMapping("/custom-status/{statusId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<Page<WorkflowSummaryDto>> getWorkflowsByCustomStatus(
             @PathVariable UUID statusId,
             @RequestParam(defaultValue = "0") int page,
@@ -373,7 +376,7 @@ public class WorkflowController {
     }
 
     @GetMapping("/step/{stepNumber}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<Page<WorkflowSummaryDto>> getWorkflowsByStepNumber(
             @PathVariable int stepNumber,
             @RequestParam(defaultValue = "0") int page,
@@ -387,7 +390,7 @@ public class WorkflowController {
     }
 
     @GetMapping("/template/{templateId}/status-counts")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<Map<String, Integer>> getWorkflowCountByCustomStatus(@PathVariable UUID templateId) {
         logger.info("Contando fluxos de trabalho por status personalizado para o template: {}", templateId);
 
@@ -396,7 +399,7 @@ public class WorkflowController {
     }
 
     @PostMapping("/{id}/custom-status")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<WorkflowDto> updateWorkflowCustomStatus(
             @PathVariable UUID id,
             @RequestParam UUID statusId,
@@ -423,7 +426,7 @@ public class WorkflowController {
     }
 
     @GetMapping("/template/{templateId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<Page<WorkflowSummaryDto>> getWorkflowsByTemplate(
             @PathVariable UUID templateId,
             @RequestParam(defaultValue = "0") int page,
@@ -437,7 +440,7 @@ public class WorkflowController {
     }
 
     @GetMapping("/template/{templateId}/status/{status}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<Page<WorkflowSummaryDto>> getWorkflowsByTemplateAndStatus(
             @PathVariable UUID templateId,
             @PathVariable String status,
@@ -452,7 +455,7 @@ public class WorkflowController {
     }
 
     @GetMapping("/search")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<Page<WorkflowSummaryDto>> searchWorkflows(
             @RequestParam String searchTerm,
             @RequestParam(defaultValue = "0") int page,
@@ -488,7 +491,7 @@ public class WorkflowController {
     }
 
     @GetMapping("/search/assigned-to-me")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<List<WorkflowSummaryDto>> searchWorkflowsAssignedToMe(
             @RequestParam String searchTerm,
             @RequestParam(required = false) UUID templateId) {
@@ -515,7 +518,7 @@ public class WorkflowController {
     }
 
     @GetMapping("/assigned-to-me/template/{templateId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<List<WorkflowSummaryDto>> getWorkflowsAssignedToMeByTemplate(@PathVariable UUID templateId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String email = authentication.getName();
@@ -532,7 +535,7 @@ public class WorkflowController {
     }
 
     @GetMapping("/stats/template/{templateId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR','GERENTE')")
     public ResponseEntity<WorkflowStatsDto> getWorkflowStatsByTemplate(@PathVariable UUID templateId) {
         logger.info("Obtendo estatísticas de fluxos para o template: {}", templateId);
 
@@ -541,7 +544,7 @@ public class WorkflowController {
     }
 
     @GetMapping("/stats/status-template/{statusTemplateId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR','GERENTE')")
     public ResponseEntity<WorkflowStatsDto> getWorkflowStatsByStatusTemplate(@PathVariable UUID statusTemplateId) {
         logger.info("Obtendo estatísticas de fluxos para o template de status: {}", statusTemplateId);
 
@@ -550,7 +553,7 @@ public class WorkflowController {
     }
 
     @GetMapping("/grouped-by-status")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<Page<WorkflowSummaryDto>> getAllWorkflowsGroupedByStatus(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
@@ -563,7 +566,7 @@ public class WorkflowController {
     }
 
     @GetMapping("/template/{templateId}/grouped-by-status")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<Page<WorkflowSummaryDto>> getWorkflowsByTemplateGroupedByStatus(
             @PathVariable UUID templateId,
             @RequestParam(defaultValue = "0") int page,
@@ -577,7 +580,7 @@ public class WorkflowController {
     }
 
     @GetMapping("/search/grouped-by-status")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'SUPERVISOR', 'USER')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<Page<WorkflowSummaryDto>> searchWorkflowsGroupedByStatus(
             @RequestParam String searchTerm,
             @RequestParam(defaultValue = "0") int page,

@@ -80,7 +80,7 @@ public class StatusController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR','GERENTE')")
     public ResponseEntity<StatusDto> createStatus(@Valid @RequestBody StatusCreateRequest request) {
         logger.info("Requisição para criar novo status: {}", request.getStatus());
 
@@ -90,7 +90,7 @@ public class StatusController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR','GERENTE')")
     public ResponseEntity<StatusDto> updateStatus(@PathVariable UUID id,
                                                   @Valid @RequestBody StatusUpdateRequest request) {
         logger.info("Requisição para atualizar status com ID: {}", id);
@@ -101,7 +101,7 @@ public class StatusController {
     }
 
     @PatchMapping("/{id}/toggle-ativo")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR','GERENTE')")
     public ResponseEntity<Void> toggleStatusAtivo(@PathVariable UUID id) {
         logger.info("Requisição para alternar status ativo/inativo com ID: {}", id);
 
@@ -111,7 +111,7 @@ public class StatusController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR','GERENTE')")
     public ResponseEntity<Void> deleteStatus(@PathVariable UUID id) {
         logger.info("Requisição para deletar status com ID: {}", id);
 
@@ -121,7 +121,7 @@ public class StatusController {
     }
 
     @PostMapping("/initialize")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR','GERENTE')")
     public ResponseEntity<Map<String, String>> initializeDefaultStatuses() {
         logger.info("Requisição para inicializar status padrão");
 

@@ -54,7 +54,7 @@ public class EquipeController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<EquipeDto> createEquipe(@Valid @RequestBody EquipeCreateDto equipeCreateDto) {
         logger.info("Requisição para criar nova equipe: {}", equipeCreateDto.getNome());
         EquipeDto createdEquipe = equipeService.createEquipe(equipeCreateDto);
@@ -62,7 +62,7 @@ public class EquipeController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<EquipeDto> updateEquipe(
             @PathVariable UUID id,
             @Valid @RequestBody EquipeCreateDto equipeUpdateDto) {
@@ -72,7 +72,7 @@ public class EquipeController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<Void> deleteEquipe(@PathVariable UUID id) {
         logger.info("Requisição para deletar equipe com ID: {}", id);
         equipeService.deleteEquipe(id);
@@ -80,7 +80,7 @@ public class EquipeController {
     }
 
     @PostMapping("/{id}/membros/{userId}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<EquipeDto> addMembro(
             @PathVariable UUID id,
             @PathVariable UUID userId) {
@@ -90,7 +90,7 @@ public class EquipeController {
     }
 
     @DeleteMapping("/{id}/membros/{userId}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR')")
+    @PreAuthorize("hasAnyRole('EDITOR','ADMIN', 'GERENTE', 'SUPERVISOR')")
     public ResponseEntity<EquipeDto> removeMembro(
             @PathVariable UUID id,
             @PathVariable UUID userId) {

@@ -3,13 +3,17 @@ package com.intranet.backend.controllers;
 import com.intranet.backend.service.FileStorageService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.io.Resource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.File;
+import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -17,7 +21,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/files")
+@RequestMapping("/files")
 public class FileController {
 
     private static final Logger logger = LoggerFactory.getLogger(FileController.class);
@@ -25,7 +29,7 @@ public class FileController {
     @Autowired
     private FileStorageService fileStorageService;
 
-    @Value("${file.upload-dir}")
+    @Value("${app.upload.dir}")
     private String uploadDir;
 
     @GetMapping("/check/{filename}")
@@ -66,5 +70,41 @@ public class FileController {
         diagnosticInfo.put("osVersion", System.getProperty("os.version"));
 
         return ResponseEntity.ok(diagnosticInfo);
+    }
+
+    @GetMapping("/download")
+    public ResponseEntity<Resource> downloadFile(@RequestParam String path) {
+        try {
+            // Normaliza o caminho para evitar directory traversal (../)
+            Path basePath = Paths.get(uploadDir).toAbsolutePath().normalize();
+            Path filePath = basePath.resolve(path).normalize();
+
+            // Segurança: Garante que o arquivo solicitado está DENTRO da pasta de uploads
+            if (!filePath.startsWith(basePath)) {
+                return ResponseEntity.badRequest().build();
+            }
+
+            Resource resource = new UrlResource(filePath.toUri());
+
+            if (resource.exists() && resource.isReadable()) {
+                // Tenta descobrir o tipo do arquivo (PDF, PNG, etc)
+                String contentType = "application/octet-stream";
+                try {
+                    contentType = Files.probeContentType(filePath);
+                } catch (Exception ex) {
+                    logger.info("Não foi possível determinar o tipo do arquivo.");
+                }
+
+                return ResponseEntity.ok()
+                        .contentType(MediaType.parseMediaType(contentType))
+                        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
+                        .body(resource);
+            } else {
+                logger.error("Arquivo não encontrado: " + filePath);
+                return ResponseEntity.notFound().build();
+            }
+        } catch (MalformedURLException e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 }

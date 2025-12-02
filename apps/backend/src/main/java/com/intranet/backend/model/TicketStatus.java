@@ -1,0 +1,9 @@
+package com.intranet.backend.model;
+
+public enum TicketStatus {
+    OPEN, //ABERTO NA FILA
+    IN_PROGRESS, //EM ATENDIMENTO
+    WAITING, //AGUARDANDO USUÁRIO/TERCEIRO
+    RESOLVED, //RESOLVIDO TÉCNICO
+    CLOSED //FECHADO DEFINITIVAMENTE
+}

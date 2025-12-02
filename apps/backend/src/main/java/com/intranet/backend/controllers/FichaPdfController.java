@@ -53,7 +53,7 @@ public class FichaPdfController {
      * Gera fichas PDF para um paciente específico
      */
     @PostMapping("/paciente")
-    @PreAuthorize("hasAnyAuthority('ficha:create') or hasAnyRole('GUIAS', 'ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyAuthority('ficha:create') or hasAnyRole('ADMIN','GUIAS','SUPERVISOR','GERENTE')")
     public ResponseEntity<FichaPdfResponseDto> gerarFichasPaciente(@Valid @RequestBody FichaPdfPacienteRequest request) {
         logger.info("Requisição para gerar fichas do paciente: {}", request.getPacienteId());
 
@@ -76,7 +76,7 @@ public class FichaPdfController {
      * Gera fichas PDF para um convênio específico (assíncrono)
      */
     @PostMapping("/convenio")
-    @PreAuthorize("hasAnyAuthority('ficha:create') or hasAnyRole('GUIAS', 'ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyAuthority('ficha:create') or hasAnyRole('ADMIN','GUIAS','SUPERVISOR','GERENTE')")
     public ResponseEntity<Map<String, Object>> gerarFichasConvenio(@Valid @RequestBody FichaPdfConvenioRequest request) {
         logger.info("Requisição para gerar fichas do convênio: {}", request.getConvenioId());
 
@@ -125,7 +125,7 @@ public class FichaPdfController {
      * Gera fichas PDF para múltiplos convênios (batch assíncrono)
      */
     @PostMapping("/lote")
-    @PreAuthorize("hasAnyAuthority('ficha:create') or hasAnyRole('GUIAS', 'ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyAuthority('ficha:create') or hasAnyRole('ADMIN','GUIAS','SUPERVISOR','GERENTE')")
     public ResponseEntity<Map<String, Object>> gerarFichasLote(@Valid @RequestBody FichaPdfLoteRequest request) {
         logger.info("Requisição para gerar fichas em lote para {} convênios", request.getConvenioIds().size());
 
@@ -163,7 +163,7 @@ public class FichaPdfController {
      * Consulta status de uma geração assíncrona
      */
     @GetMapping("/status/{jobId}")
-    @PreAuthorize("hasAnyAuthority('ficha:read') or hasAnyRole('GUIAS', 'ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyAuthority('ficha:read') or hasAnyRole('ADMIN','GUIAS','SUPERVISOR','GERENTE')")
     public ResponseEntity<FichaPdfStatusDto> getStatusGeracao(@PathVariable String jobId) {
         logger.info("Consultando status do job: {}", jobId);
 
@@ -186,7 +186,7 @@ public class FichaPdfController {
      * Lista jobs de geração do usuário atual
      */
     @GetMapping("/jobs")
-    @PreAuthorize("hasAnyAuthority('ficha:read') or hasAnyRole('GUIAS', 'ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyAuthority('ficha:read') or hasAnyRole('ADMIN','GUIAS','SUPERVISOR','GERENTE')")
     public ResponseEntity<List<FichaPdfJobDto>> getJobsUsuario() {
         logger.info("Listando jobs do usuário atual");
 
@@ -203,7 +203,7 @@ public class FichaPdfController {
      * Baixa PDF gerado
      */
     @GetMapping("/download/{jobId}")
-    @PreAuthorize("hasAnyAuthority('ficha:download') or hasAnyRole('GUIAS', 'ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyAuthority('ficha:download') or hasAnyRole('ADMIN','GUIAS','SUPERVISOR','GERENTE')")
     public ResponseEntity<byte[]> baixarPdfGerado(@PathVariable String jobId) {
         logger.info("Requisição para baixar PDF do job: {}", jobId);
 
@@ -232,7 +232,7 @@ public class FichaPdfController {
      * Lista convênios habilitados para geração de PDF
      */
     @GetMapping("/convenios-habilitados")
-    @PreAuthorize("hasAnyAuthority('ficha:read') or hasAnyRole('GUIAS', 'ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyAuthority('ficha:read') or hasAnyRole('ADMIN','GUIAS','SUPERVISOR','GERENTE')")
     public ResponseEntity<List<ConvenioDto>> getConveniosHabilitados() {
         logger.info("Requisição para listar convênios habilitados para fichas PDF");
 
@@ -249,7 +249,7 @@ public class FichaPdfController {
      * Obtém configuração de PDF de um convênio específico
      */
     @GetMapping("/convenios/{convenioId}/config")
-    @PreAuthorize("hasAnyAuthority('ficha:read') or hasAnyRole('GUIAS', 'ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyAuthority('ficha:read') or hasAnyRole('ADMIN','GUIAS','SUPERVISOR','GERENTE')")
     public ResponseEntity<ConvenioFichaPdfConfigDto> getConvenioConfig(@PathVariable UUID convenioId) {
         logger.info("Requisição para obter configuração PDF do convênio: {}", convenioId);
 
@@ -266,7 +266,7 @@ public class FichaPdfController {
      * Habilita/desabilita convênio para geração de PDF (apenas admins)
      */
     @PutMapping("/convenios/{convenioId}/toggle")
-    @PreAuthorize("hasAnyAuthority('ficha:admin') or hasAnyRole('ADMIN', 'GUIAS')")
+    @PreAuthorize("hasAnyAuthority('ficha:admin') or hasAnyRole('ADMIN','GUIAS','SUPERVISOR','GERENTE')")
     public ResponseEntity<Map<String, Object>> toggleConvenioHabilitado(
             @PathVariable UUID convenioId,
             @RequestParam boolean habilitado) {
@@ -301,7 +301,7 @@ public class FichaPdfController {
      * Verifica estatísticas de fichas existentes antes da geração
      */
     @GetMapping("/convenio/{convenioId}/estatisticas-fichas")
-    @PreAuthorize("hasAnyAuthority('ficha:read') or hasAnyRole('GUIAS', 'ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyAuthority('ficha:read') or hasAnyRole('ADMIN','GUIAS','SUPERVISOR','GERENTE')")
     public ResponseEntity<Map<String, Object>> getEstatisticasFichasConvenio(
             @PathVariable UUID convenioId,
             @RequestParam Integer mes,
@@ -328,7 +328,7 @@ public class FichaPdfController {
      * Lista templates disponíveis (apenas admins)
      */
     @GetMapping("/templates-disponiveis")
-    @PreAuthorize("hasAnyAuthority('ficha:admin') or hasAnyRole('ADMIN','GUIAS')")
+    @PreAuthorize("hasAnyAuthority('ficha:admin') or hasAnyRole('ADMIN','GUIAS','SUPERVISOR','GERENTE')")
     public ResponseEntity<List<Map<String, Object>>> getTemplatesDisponiveis() {
         logger.info("Requisição para listar templates disponíveis");
 
@@ -345,7 +345,7 @@ public class FichaPdfController {
      * Atualiza template personalizado de um convênio (apenas admins)
      */
     @PutMapping("/convenios/{convenioId}/template")
-    @PreAuthorize("hasAnyAuthority('ficha:admin') or hasAnyRole('ADMIN','GUIAS')")
+    @PreAuthorize("hasAnyAuthority('ficha:admin') or hasAnyRole('ADMIN','GUIAS','SUPERVISOR','GERENTE')")
     public ResponseEntity<Map<String, Object>> atualizarTemplateConvenio(
             @PathVariable UUID convenioId,
             @RequestParam(required = false) String templatePersonalizado) {
@@ -378,7 +378,7 @@ public class FichaPdfController {
      * Prévia de geração - mostra quantos pacientes serão incluídos
      */
     @PostMapping("/convenio/previa")
-    @PreAuthorize("hasAnyAuthority('ficha:read') or hasAnyRole('GUIAS', 'ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyAuthority('ficha:read') or hasAnyRole('ADMIN','GUIAS','SUPERVISOR','GERENTE')")
     public ResponseEntity<Map<String, Object>> getPreviaGeracaoConvenio(@Valid @RequestBody FichaPdfConvenioRequest request) {
         logger.info("Requisição para prévia de geração do convênio: {} - {}/{}",
                 request.getConvenioId(), request.getMes(), request.getAno());
@@ -527,7 +527,7 @@ public class FichaPdfController {
      * Verifica se paciente específico já possui fichas no mês
      */
     @GetMapping("/paciente/{pacienteId}/verificar-fichas")
-    @PreAuthorize("hasAnyAuthority('ficha:read') or hasAnyRole('GUIAS', 'ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyAuthority('ficha:read') or hasAnyRole('ADMIN','GUIAS','SUPERVISOR','GERENTE')")
     public ResponseEntity<Map<String, Object>> verificarFichasPaciente(
             @PathVariable UUID pacienteId,
             @RequestParam Integer mes,
@@ -593,7 +593,7 @@ public class FichaPdfController {
      * Busca pacientes por nome para seleção em geração de fichas PDF
      */
     @GetMapping("/pacientes/buscar")
-    @PreAuthorize("hasAnyAuthority('ficha:read') or hasAnyRole('GUIAS', 'ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyAuthority('ficha:read') or hasAnyRole('ADMIN','GUIAS','SUPERVISOR','GERENTE')")
     public ResponseEntity<List<PacienteSummaryDto>> buscarPacientesParaFichaPdf(
             @RequestParam String nome,
             @RequestParam(defaultValue = "10") int limit
@@ -619,7 +619,7 @@ public class FichaPdfController {
      * Gera preview de uma ficha (apenas HTML, sem PDF)
      */
     @PostMapping("/preview")
-    @PreAuthorize("hasAnyAuthority('ficha:read') or hasAnyRole('GUIAS', 'ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyAuthority('ficha:read') or hasAnyRole('ADMIN','GUIAS','SUPERVISOR','GERENTE')")
     public ResponseEntity<Map<String, Object>> gerarPreview(@RequestBody FichaPdfItemDto item) {
         logger.info("Requisição para preview de ficha PDF para paciente: {}", item.getPacienteNome());
 
@@ -654,7 +654,7 @@ public class FichaPdfController {
      * Valida parâmetros antes de gerar fichas
      */
     @PostMapping("/validar")
-    @PreAuthorize("hasAnyAuthority('ficha:read') or hasAnyRole('GUIAS', 'ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyAuthority('ficha:read') or hasAnyRole('ADMIN','GUIAS','SUPERVISOR','GERENTE')")
     public ResponseEntity<Map<String, Object>> validarParametros(@RequestBody Map<String, Object> parametros) {
         logger.info("Requisição para validar parâmetros de geração de fichas");
 
@@ -754,7 +754,7 @@ public class FichaPdfController {
      * Obtém estatísticas de fichas geradas
      */
     @GetMapping("/estatisticas")
-    @PreAuthorize("hasAnyAuthority('ficha:read') or hasAnyRole('GUIAS', 'ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyAuthority('ficha:read') or hasAnyRole('ADMIN','GUIAS','SUPERVISOR','GERENTE')")
     public ResponseEntity<Map<String, Object>> getEstatisticas(
             @RequestParam(required = false) Integer mes,
             @RequestParam(required = false) Integer ano) {
@@ -918,7 +918,7 @@ public class FichaPdfController {
      * Verifica saúde do sistema de geração de PDFs
      */
     @GetMapping("/health")
-    @PreAuthorize("hasAnyAuthority('ficha:read') or hasAnyRole('GUIAS', 'ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyAuthority('ficha:read') or hasAnyRole('ADMIN','GUIAS','SUPERVISOR','GERENTE')")
     public ResponseEntity<Map<String, Object>> checkHealth() {
         logger.debug("Verificação de saúde do sistema de fichas PDF");
 
@@ -970,7 +970,7 @@ public class FichaPdfController {
      * Obtém informações detalhadas do sistema
      */
     @GetMapping("/info")
-    @PreAuthorize("hasAnyAuthority('ficha:read') or hasAnyRole('GUIAS', 'ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyAuthority('ficha:read') or hasAnyRole('ADMIN','GUIAS','SUPERVISOR','GERENTE')")
     public ResponseEntity<Map<String, Object>> getInfo() {
         logger.info("Requisição para informações do sistema de fichas PDF");
 
@@ -1077,7 +1077,7 @@ public class FichaPdfController {
      * Testa geração para um paciente específico (modo debug)
      */
     @PostMapping("/teste/{pacienteId}")
-    @PreAuthorize("hasAnyAuthority('ficha:test') or hasAnyRole('ADMIN','GUIAS')")
+    @PreAuthorize("hasAnyAuthority('ficha:test') or hasAnyRole('ADMIN','GUIAS','SUPERVISOR','GERENTE')")
     public ResponseEntity<Map<String, Object>> testarGeracao(
             @PathVariable UUID pacienteId,
             @RequestParam(defaultValue = "1") Integer mes,
@@ -1137,7 +1137,7 @@ public class FichaPdfController {
      * Cancela job em processamento (apenas o próprio usuário ou admin)
      */
     @PostMapping("/cancelar/{jobId}")
-    @PreAuthorize("hasAnyAuthority('ficha:cancel') or hasAnyRole('GUIAS', 'ADMIN', 'SUPERVISOR')")
+    @PreAuthorize("hasAnyAuthority('ficha:cancel') or hasAnyRole('ADMIN','GUIAS','SUPERVISOR','GERENTE')")
     public ResponseEntity<Map<String, Object>> cancelarJob(@PathVariable String jobId) {
         logger.info("Requisição para cancelar job: {}", jobId);
 
@@ -1171,7 +1171,7 @@ public class FichaPdfController {
      * Lista todas as configurações de convênios (apenas admins)
      */
     @GetMapping("/configuracoes")
-    @PreAuthorize("hasAnyAuthority('ficha:admin') or hasAnyRole('ADMIN','GUIAS')")
+    @PreAuthorize("hasAnyAuthority('ficha:admin') or hasAnyRole('ADMIN','GUIAS','SUPERVISOR','GERENTE')")
     public ResponseEntity<Map<String, Object>> getConfiguracoes() {
         logger.info("Requisição para listar configurações de fichas PDF");
 
@@ -1216,7 +1216,7 @@ public class FichaPdfController {
      * Limpa cache de templates e imagens
      */
     @PostMapping("/limpar-cache")
-    @PreAuthorize("hasAnyAuthority('ficha:admin') or hasAnyRole('ADMIN','GUIAS')")
+    @PreAuthorize("hasAnyAuthority('ficha:admin') or hasAnyRole('ADMIN','GUIAS','SUPERVISOR','GERENTE')")
     public ResponseEntity<Map<String, Object>> limparCache() {
         logger.info("Requisição para limpar cache de templates");
 
