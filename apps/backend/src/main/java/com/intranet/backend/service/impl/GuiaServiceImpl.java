@@ -318,6 +318,13 @@ public class GuiaServiceImpl implements GuiaService {
     }
 
     @Override
+    public Page<GuiaSummaryDto> searchGuias(String termo, Pageable pageable) {
+        logger.info("Buscando guias pelo termo geral: {}", termo);
+        Page<Guia> guias = guiaRepository.searchByNumeroOrPacienteNome(termo, pageable);
+        return guias.map(this::mapToGuiaSummaryDto);
+    }
+
+    @Override
     public Page<GuiaSummaryDto> getGuiasByStatus(String status, Pageable pageable) {
         logger.info("Buscando guias com status: {}", status);
 

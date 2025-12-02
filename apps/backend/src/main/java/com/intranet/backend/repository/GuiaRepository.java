@@ -100,6 +100,13 @@ public interface GuiaRepository extends JpaRepository<Guia, UUID> {
             @Param("especialidades") List<String> especialidades
     );
 
+    @Query("SELECT g FROM Guia g " +
+            "LEFT JOIN g.paciente p " +
+            "WHERE lower(g.numeroGuia) LIKE lower(concat('%', :termo, '%')) " +
+            "OR lower(p.nome) LIKE lower(concat('%', :termo, '%')) " +
+            "ORDER BY g.createdAt DESC")
+    Page<Guia> searchByNumeroOrPacienteNome(@Param("termo") String termo, Pageable pageable);
+
     List<Guia> findByPacienteIdAndStatusInOrderByUpdatedAtDesc(UUID pacienteId, List<String> status);
 
     /**

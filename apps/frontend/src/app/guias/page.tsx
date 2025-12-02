@@ -151,8 +151,8 @@ export default function GuiasPage() {
         return;
       }
 
-      // Usar o método correto para buscar por número de guia
-      const guiasData = await guiaService.searchByNumeroGuia(
+      // Usar o método correto para buscar por número de guia e nome
+      const guiasData = await guiaService.searchGuias(
         query.trim(),
         currentPage,
         20
@@ -381,7 +381,7 @@ export default function GuiasPage() {
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
               <SearchInput
-                placeholder="Buscar guias... (pressione Enter)"
+                placeholder="Buscar por número ou paciente..."
                 value={searchTerm}
                 onChange={handleSearch}
                 onEnterSearch={true}

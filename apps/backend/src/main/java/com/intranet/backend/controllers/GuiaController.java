@@ -215,6 +215,15 @@ public class GuiaController {
         }
     }
 
+    @GetMapping("/search/general")
+    public ResponseEntity<Page<GuiaSummaryDto>> searchGuiasGeneral(
+            @RequestParam String termo,
+            @PageableDefault(size = 20) Pageable pageable) {
+        logger.info("Buscando guias por termo (número ou paciente): {}", termo);
+        Page<GuiaSummaryDto> guias = guiaService.searchGuias(termo, pageable);
+        return ResponseEntity.ok(guias);
+    }
+
     @GetMapping("/status/{status}")
     public ResponseEntity<Page<GuiaSummaryDto>> getGuiasByStatus(
             @PathVariable String status,
