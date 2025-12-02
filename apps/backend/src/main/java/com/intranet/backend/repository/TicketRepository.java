@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Repository
-public interface TicketRepository extends JpaRepository<Ticket,Long> {
+public interface TicketRepository extends JpaRepository<Ticket, Long> {
 
     Page<Ticket> findByRequesterId(UUID requesterId, Pageable pageable);
 
@@ -35,7 +35,8 @@ public interface TicketRepository extends JpaRepository<Ticket,Long> {
     @Query("SELECT t FROM Ticket t WHERE t.assignee IS NULL AND t.status = 'OPEN' AND t.targetTeam.id IN :teamIds ORDER BY t.priority DESC, t.createdAt ASC")
     List<Ticket> findQueueByTeamIds(@Param("teamIds") List<UUID> teamIds);
 
-    // Estatísticas Gerais
+    // --- ESTATÍSTICAS GERAIS (GLOBAL) ---
+
     @Query("SELECT COUNT(t) FROM Ticket t WHERE t.status = 'OPEN'")
     long countOpenTickets();
 
@@ -46,7 +47,7 @@ public interface TicketRepository extends JpaRepository<Ticket,Long> {
     @Query("SELECT AVG(t.rating) FROM Ticket t WHERE t.rating IS NOT NULL")
     Double getAverageRating();
 
-    // Contagem por Status (Para o gráfico de Rosca)
+    // Contagem por Status
     @Query("SELECT t.status, COUNT(t) FROM Ticket t GROUP BY t.status")
     List<Object[]> countTicketsByStatus();
 
@@ -64,15 +65,16 @@ public interface TicketRepository extends JpaRepository<Ticket,Long> {
     @Query("SELECT t FROM Ticket t WHERE t.status NOT IN ('RESOLVED', 'CLOSED') AND t.dueDate <= :limitDate ORDER BY t.dueDate ASC")
     List<Ticket> findTicketsAtRisk(@Param("limitDate") LocalDateTime limitDate, Pageable pageable);
 
-    // 2. Avaliações Baixas Recentes
+    // Avaliações Baixas Recentes
     @Query("SELECT t FROM Ticket t WHERE t.rating IS NOT NULL AND t.rating <= :maxRating ORDER BY t.closedAt DESC")
     List<Ticket> findLowRatedTickets(@Param("maxRating") Integer maxRating, Pageable pageable);
 
-    // 3. Últimos Tickets (Visão Geral)
+    // Últimos Tickets (Visão Geral)
     List<Ticket> findTop10ByOrderByUpdatedAtDesc();
 
     @Query("SELECT t FROM Ticket t WHERE t.status IN ('RESOLVED', 'CLOSED') ORDER BY t.closedAt DESC")
     List<Ticket> findRecentlyClosedTickets(Pageable pageable);
+
 
     @Query("SELECT COUNT(t) FROM Ticket t WHERE t.status = 'OPEN' AND t.targetTeam.id = :teamId")
     long countOpenTicketsByTeam(@Param("teamId") UUID teamId);
@@ -80,14 +82,29 @@ public interface TicketRepository extends JpaRepository<Ticket,Long> {
     @Query("SELECT COUNT(t) FROM Ticket t WHERE t.closedAt >= :startOfDay AND t.targetTeam.id = :teamId")
     long countClosedTodayByTeam(@Param("startOfDay") LocalDateTime startOfDay, @Param("teamId") UUID teamId);
 
-    // Group By
+    @Query("SELECT AVG(t.rating) FROM Ticket t WHERE t.rating IS NOT NULL AND t.targetTeam.id = :teamId")
+    Double getAverageRatingByTeam(@Param("teamId") UUID teamId);
+
+    @Query("SELECT COUNT(t) FROM Ticket t WHERE t.status IN ('RESOLVED', 'CLOSED') AND t.targetTeam.id = :teamId")
+    long countTotalClosedTicketsByTeam(@Param("teamId") UUID teamId);
+
+    @Query("SELECT COUNT(t) FROM Ticket t WHERE t.status IN ('RESOLVED', 'CLOSED') AND t.closedAt <= t.dueDate AND t.targetTeam.id = :teamId")
+    long countTicketsWithinSlaByTeam(@Param("teamId") UUID teamId);
+
     @Query("SELECT t.status, COUNT(t) FROM Ticket t WHERE t.targetTeam.id = :teamId GROUP BY t.status")
     List<Object[]> countTicketsByStatusAndTeam(@Param("teamId") UUID teamId);
 
-    // Listas (Exemplo 'Em Risco')
-    @Query("SELECT t FROM Ticket t WHERE t.targetTeam.id = :teamId AND t.status != 'CLOSED' AND t.status != 'RESOLVED' AND t.dueDate <= :threshold ORDER BY t.dueDate ASC")
-    List<Ticket> findTicketsAtRiskByTeam(@Param("teamId") UUID teamId, @Param("threshold") LocalDateTime threshold, Pageable pageable);
+    @Query("SELECT t.priority, COUNT(t) FROM Ticket t WHERE t.targetTeam.id = :teamId GROUP BY t.priority")
+    List<Object[]> countTicketsByPriorityAndTeam(@Param("teamId") UUID teamId);
 
-    // JPA Derived Query simples
+    @Query("SELECT t FROM Ticket t WHERE t.targetTeam.id = :teamId AND t.status NOT IN ('RESOLVED', 'CLOSED') AND t.dueDate <= :limitDate ORDER BY t.dueDate ASC")
+    List<Ticket> findTicketsAtRiskByTeam(@Param("teamId") UUID teamId, @Param("limitDate") LocalDateTime limitDate, Pageable pageable);
+
+    @Query("SELECT t FROM Ticket t WHERE t.targetTeam.id = :teamId AND t.rating IS NOT NULL AND t.rating <= :maxRating ORDER BY t.closedAt DESC")
+    List<Ticket> findLowRatedTicketsByTeam(@Param("teamId") UUID teamId, @Param("maxRating") Integer maxRating, Pageable pageable);
+
     List<Ticket> findTop10ByTargetTeamIdOrderByUpdatedAtDesc(UUID targetTeamId);
+
+    @Query("SELECT t FROM Ticket t WHERE t.targetTeam.id = :teamId AND t.status IN ('RESOLVED', 'CLOSED') ORDER BY t.closedAt DESC")
+    List<Ticket> findRecentlyClosedTicketsByTeam(@Param("teamId") UUID teamId, Pageable pageable);
 }
