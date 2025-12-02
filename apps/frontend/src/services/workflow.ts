@@ -253,6 +253,26 @@ const workflowService = {
     }
   },
 
+  getStatsWithFilters: async (filters: WorkflowStatsFilters) => {
+    try {
+      const params = new URLSearchParams();
+      if (filters.templateId) params.append("templateId", filters.templateId);
+      if (filters.statusTemplateId)
+        params.append("statusTemplateId", filters.statusTemplateId);
+      if (filters.userId) params.append("userId", filters.userId);
+
+      const queryString = params.toString();
+      // Usa o endpoint /stats que alteramos no backend para aceitar parametros
+      const response = await api.get<WorkflowStatsDto>(
+        `/api/workflows/stats?${queryString}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Erro ao buscar estatísticas filtradas:", error);
+      throw error;
+    }
+  },
+
   getUserStats: async () => {
     try {
       const response = await api.get<WorkflowStatsDto>(
