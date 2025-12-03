@@ -4,8 +4,6 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -16,6 +14,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "guias")
@@ -42,15 +41,18 @@ public class Guia {
     @Column(name = "status", nullable = false, length = 100)
     private String status;
 
-//    @JdbcTypeCode(SqlTypes.ARRAY)
-//    @Column(name = "especialidades", columnDefinition = "text[]")
-//    private List<String> especialidades = new ArrayList<>();
-
     @OneToMany(mappedBy = "guia", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<GuiaItem> itens = new ArrayList<>();
 
-    @Column(name = "quantidade_autorizada", nullable = false)
-    private Integer quantidadeAutorizada;
+    public List<String> getNomesEspecialidades() {
+        if (itens == null) return new ArrayList<>();
+        return itens.stream().map(GuiaItem::getEspecialidade).collect(Collectors.toList());
+    }
+
+    public Integer getQuantidadeAutorizadaTotal() {
+        if (itens == null) return 0;
+        return itens.stream().mapToInt(GuiaItem::getQuantidadeAutorizada).sum();
+    }
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "convenio_id", nullable = false)
@@ -91,10 +93,10 @@ public class Guia {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
-      Guia guia = (Guia) o;
-      return id != null && id.equals(guia.id);
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Guia guia = (Guia) o;
+        return id != null && id.equals(guia.id);
     }
 
     @Override
@@ -107,14 +109,10 @@ public class Guia {
     }
 
     public boolean isQuantidadeExcedida() {
-        return quantidadeFaturada > quantidadeAutorizada;
+        return quantidadeFaturada > getQuantidadeAutorizadaTotal();
     }
 
     public Integer getQuantidadeRestante() {
-        return quantidadeAutorizada - quantidadeFaturada;
-    }
-
-    public Integer getQuantidadeTotal() {
-        return itens.stream().mapToInt(GuiaItem::getQuantidadeAutorizada).sum();
+        return getQuantidadeAutorizadaTotal() - quantidadeFaturada;
     }
 }

@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
 import java.util.UUID;
 
 @Entity
@@ -27,7 +28,6 @@ public class GuiaItem {
     @Column(name = "quantidade_autorizada", nullable = false)
     private Integer quantidadeAutorizada;
 
-    // Opcional: Contador de quanto já foi executado desta especialidade específica
     @Column(name = "quantidade_executada")
     private Integer quantidadeExecutada = 0;
 }

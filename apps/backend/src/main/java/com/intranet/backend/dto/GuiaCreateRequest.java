@@ -29,28 +29,9 @@ public class GuiaCreateRequest {
     @NotBlank(message = "O status da guia é obrigatório")
     private String status;
 
-//    @NotEmpty(message = "Pelo menos uma especialidade deve ser informada")
-//    @Size(max = 10, message = "A quantidade máxima de especialidades é 10")
-//    private List<@NotBlank(message = "Especialidade não pode ser vazia") String> especialidades;
-
-    @NotEmpty(message = "A guia deve ter pelo menos um item")
-    @Valid // Importante para validar os objetos internos
+    @NotEmpty(message = "A guia deve conter pelo menos uma especialidade")
+    @Valid
     private List<GuiaItemRequest> itens;
-
-    @Data
-    public static class GuiaItemRequest {
-        @NotBlank(message = "Especialidade é obrigatória")
-        private String especialidade;
-
-        @NotNull(message = "Quantidade é obrigatória")
-        @Min(1)
-        private Integer quantidade;
-    }
-
-    @NotNull(message = "A quantidade autorizada é obrigatória")
-    @Min(value = 1, message = "A quantidade autorizada deve ser pelo menos 1")
-    @Max(value = 999, message = "A quantidade autorizada não pode ser maior que 999")
-    private Integer quantidadeAutorizada;
 
     @NotNull(message = "O convenio é obrigatório")
     private UUID convenioId;
@@ -77,4 +58,16 @@ public class GuiaCreateRequest {
     @DecimalMin(value = "0.0", message = "O valor não pode ser negativo")
     @DecimalMax(value = "999999.99", message = "O valor não pode exceder 999.999,99")
     private BigDecimal valorReais = BigDecimal.ZERO;
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class GuiaItemRequest {
+        @NotBlank(message = "Especialidade é obrigatória")
+        private String especialidade;
+
+        @NotNull(message = "Quantidade autorizada é obrigatória")
+        @Min(value = 1, message = "Quantidade deve ser pelo menos 1")
+        private Integer quantidade;
+    }
 }
