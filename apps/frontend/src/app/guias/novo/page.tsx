@@ -121,10 +121,8 @@ export default function NovaGuiaPage() {
     }
   };
 
-  // --- Lógica para adicionar Item (Especialidade + Quantidade) ---
   const addItem = () => {
     if (newItem.especialidade.trim() && newItem.quantidade > 0) {
-      // Verifica se já existe essa especialidade
       const exists = formData.itens.some(
         (item) => item.especialidade === newItem.especialidade
       );
@@ -134,19 +132,16 @@ export default function NovaGuiaPage() {
         return;
       }
 
-      // --- CORREÇÃO: Mapeia para o formato que o Backend espera ---
       const itemParaSalvar = {
         especialidade: newItem.especialidade,
-        quantidadeAutorizada: newItem.quantidade, // Muda de 'quantidade' para 'quantidadeAutorizada'
+        quantidadeAutorizada: newItem.quantidade,
       };
 
       setFormData((prev) => ({
         ...prev,
-        itens: [...prev.itens, itemParaSalvar], // Usa o objeto corrigido
+        itens: [...prev.itens, itemParaSalvar],
       }));
-      // -----------------------------------------------------------
 
-      // Resetar input mantendo uma quantidade padrão
       setNewItem({ especialidade: "", quantidade: 10 });
 
       if (formErrors.itens) {
