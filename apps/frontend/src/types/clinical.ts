@@ -18,7 +18,7 @@ export enum EntityTypeEnum {
 export interface GuiaItem {
   id?: string;
   especialidade: string;
-  quantidade: number;
+  quantidadeAutorizada: number;
 }
 
 export interface PacienteDto {
@@ -90,8 +90,9 @@ export interface GuiaSummaryDto {
   numeroGuia: string;
   numeroVenda: string;
   pacienteNome: string;
-  especialidades: string[];
-  quantidadeAutorizada: number;
+  // especialidades: string[];
+  // quantidadeAutorizada: number;
+  itens: GuiaItem[];
   convenioNome: string;
   valorReais: number;
   mes: number;

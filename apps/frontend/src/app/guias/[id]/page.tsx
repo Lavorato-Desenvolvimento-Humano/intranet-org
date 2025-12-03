@@ -435,7 +435,7 @@ export default function GuiaDetalhePage() {
                                   {item.especialidade}
                                 </td>
                                 <td className="px-6 py-4 text-sm text-gray-500 text-right font-medium">
-                                  {item.quantidade}
+                                  {item.quantidadeAutorizada}
                                 </td>
                               </tr>
                             ))}
@@ -446,7 +446,8 @@ export default function GuiaDetalhePage() {
                               </td>
                               <td className="px-6 py-3 text-sm font-bold text-gray-900 text-right">
                                 {guia.itens.reduce(
-                                  (acc, curr) => acc + curr.quantidade,
+                                  (acc, curr) =>
+                                    acc + curr.quantidadeAutorizada,
                                   0
                                 )}
                               </td>

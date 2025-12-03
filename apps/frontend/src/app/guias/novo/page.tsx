@@ -134,10 +134,17 @@ export default function NovaGuiaPage() {
         return;
       }
 
+      // --- CORREÇÃO: Mapeia para o formato que o Backend espera ---
+      const itemParaSalvar = {
+        especialidade: newItem.especialidade,
+        quantidadeAutorizada: newItem.quantidade, // Muda de 'quantidade' para 'quantidadeAutorizada'
+      };
+
       setFormData((prev) => ({
         ...prev,
-        itens: [...prev.itens, { ...newItem }],
+        itens: [...prev.itens, itemParaSalvar], // Usa o objeto corrigido
       }));
+      // -----------------------------------------------------------
 
       // Resetar input mantendo uma quantidade padrão
       setNewItem({ especialidade: "", quantidade: 10 });
@@ -478,7 +485,7 @@ export default function NovaGuiaPage() {
                             {item.especialidade}
                           </span>
                           <span className="text-xs text-gray-500">
-                            Qtd: {item.quantidade}
+                            Qtd: {item.quantidadeAutorizada}
                           </span>
                         </div>
                         <button

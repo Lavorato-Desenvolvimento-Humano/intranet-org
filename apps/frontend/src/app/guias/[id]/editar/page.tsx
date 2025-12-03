@@ -156,12 +156,17 @@ export default function EditarGuiaPage() {
         return;
       }
 
+      const novoItemParaSalvar: GuiaItem = {
+        id: undefined,
+        especialidade: newItem.especialidade,
+        quantidadeAutorizada: newItem.quantidade,
+      } as GuiaItem;
+
       setFormData((prev) => ({
         ...prev,
-        itens: [...(prev.itens || []), { ...newItem }],
+        itens: [...(prev.itens || []), novoItemParaSalvar],
       }));
 
-      // Reset com valor padrão
       setNewItem({ especialidade: "", quantidade: 10 });
 
       if (formErrors.itens) {
@@ -407,7 +412,7 @@ export default function EditarGuiaPage() {
                             {item.especialidade}
                           </span>
                           <span className="text-xs text-gray-500">
-                            Qtd: {item.quantidade}
+                            Qtd: {item.quantidadeAutorizada}
                           </span>
                         </div>
                         <button
