@@ -91,7 +91,7 @@ export interface GuiaSummaryDto {
   numeroVenda: string;
   pacienteNome: string;
   // especialidades: string[];
-  // quantidadeAutorizada: number;
+  quantidadeAutorizada: number;
   itens: GuiaItem[];
   convenioNome: string;
   valorReais: number;
