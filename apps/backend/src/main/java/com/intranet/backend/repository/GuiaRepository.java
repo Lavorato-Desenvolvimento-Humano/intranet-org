@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -81,4 +82,24 @@ public interface GuiaRepository extends JpaRepository<Guia, UUID> {
 
     @Query("SELECT g FROM Guia g LEFT JOIN FETCH g.itens WHERE g.paciente.id = :pacienteId AND g.status IN :status")
     List<Guia> findByPacienteIdAndStatusIn(@Param("pacienteId") UUID pacienteId, @Param("status") List<String> status);
+
+    @Query("SELECT DISTINCT g FROM Guia g " +
+            "LEFT JOIN g.itens i " +          
+            "LEFT JOIN g.paciente p " +
+            "WHERE (:usuarioAlvo IS NULL OR g.usuarioResponsavel.id = :usuarioAlvo) " +
+            "AND (cast(:inicio as timestamp) IS NULL OR g.updatedAt >= :inicio) " +
+            "AND (cast(:fim as timestamp) IS NULL OR g.updatedAt <= :fim) " +
+            "AND ((:status) IS NULL OR g.status IN (:status)) " +
+            "AND ((:especialidades) IS NULL OR i.especialidade IN (:especialidades)) " +
+            "AND ((:convenioIds) IS NULL OR g.convenio.id IN (:convenioIds)) " +
+            "AND ((:unidades) IS NULL OR CAST(p.unidade as string) IN (:unidades))")
+    List<Guia> findGuiasForRelatorio(
+            @Param("usuarioAlvo") UUID usuarioAlvo,
+            @Param("inicio") LocalDateTime inicio,
+            @Param("fim") LocalDateTime fim,
+            @Param("status") List<String> status,
+            @Param("especialidades") List<String> especialidades,
+            @Param("convenioIds") List<UUID> convenioIds,
+            @Param("unidades") List<String> unidades
+    );
 }

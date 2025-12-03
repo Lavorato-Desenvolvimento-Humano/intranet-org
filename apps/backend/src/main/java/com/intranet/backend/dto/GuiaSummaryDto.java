@@ -1,5 +1,6 @@
 package com.intranet.backend.dto;
 
+import com.intranet.backend.model.GuiaItem;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -18,7 +19,7 @@ public class GuiaSummaryDto {
     private String numeroGuia;
     private String numeroVenda;
     private String status;
-    private List<String> especialidades;
+    private List<GuiaItem> itens;
     private Integer quantidadeAutorizada;
     private String convenioNome;
     private Integer mes;

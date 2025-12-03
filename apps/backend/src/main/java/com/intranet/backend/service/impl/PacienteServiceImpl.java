@@ -236,13 +236,18 @@ public class PacienteServiceImpl implements PacienteService {
     private GuiaSummaryDto mapToGuiaSummaryDto(Guia guia) {
         long totalFichas = guiaRepository.countFichasByGuiaId(guia.getId());
 
+        int quantidadeTotal = guia.getItens().stream()
+                .mapToInt(item -> item.getQuantidadeAutorizada())
+                .sum();
+
         return new GuiaSummaryDto(
                 guia.getId(),
+                guia.getPaciente().getNome(),
                 guia.getNumeroGuia(),
                 guia.getNumeroVenda(),
                 guia.getStatus(),
-                guia.getPaciente().getNome(),
                 guia.getItens(),
+                quantidadeTotal,
                 guia.getConvenio().getName(),
                 guia.getMes(),
                 guia.getAno(),
@@ -255,5 +260,4 @@ public class PacienteServiceImpl implements PacienteService {
                 guia.isQuantidadeExcedida()
         );
     }
-
 }
