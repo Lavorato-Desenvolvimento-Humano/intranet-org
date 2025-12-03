@@ -1,5 +1,6 @@
 package com.intranet.backend.dto;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -28,9 +29,23 @@ public class GuiaCreateRequest {
     @NotBlank(message = "O status da guia é obrigatório")
     private String status;
 
-    @NotEmpty(message = "Pelo menos uma especialidade deve ser informada")
-    @Size(max = 10, message = "A quantidade máxima de especialidades é 10")
-    private List<@NotBlank(message = "Especialidade não pode ser vazia") String> especialidades;
+//    @NotEmpty(message = "Pelo menos uma especialidade deve ser informada")
+//    @Size(max = 10, message = "A quantidade máxima de especialidades é 10")
+//    private List<@NotBlank(message = "Especialidade não pode ser vazia") String> especialidades;
+
+    @NotEmpty(message = "A guia deve ter pelo menos um item")
+    @Valid // Importante para validar os objetos internos
+    private List<GuiaItemRequest> itens;
+
+    @Data
+    public static class GuiaItemRequest {
+        @NotBlank(message = "Especialidade é obrigatória")
+        private String especialidade;
+
+        @NotNull(message = "Quantidade é obrigatória")
+        @Min(1)
+        private Integer quantidade;
+    }
 
     @NotNull(message = "A quantidade autorizada é obrigatória")
     @Min(value = 1, message = "A quantidade autorizada deve ser pelo menos 1")

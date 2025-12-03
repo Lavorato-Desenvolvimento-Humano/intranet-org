@@ -288,7 +288,6 @@ export default function GuiaDetalhePage() {
                   }`}>
                   Fichas ({fichas?.totalElements || 0})
                 </button>
-                {/* ✅ Nova aba de Histórico */}
                 <button
                   onClick={() => setActiveTab("historico")}
                   className={`px-6 py-3 text-sm font-medium border-b-2 ${
@@ -364,19 +363,12 @@ export default function GuiaDetalhePage() {
                         </h3>
                         <div className="space-y-3">
                           <div>
-                            <p className="text-sm text-gray-600">Valor</p>
+                            <p className="text-sm text-gray-600">Valor Total</p>
                             <p className="font-medium text-xl text-green-600">
                               R$ {guia.valorReais.toFixed(2)}
                             </p>
                           </div>
-                          <div>
-                            <p className="text-sm text-gray-600">
-                              Quantidade Autorizada
-                            </p>
-                            <p className="font-medium">
-                              {guia.quantidadeAutorizada}
-                            </p>
-                          </div>
+                          {/* REMOVIDO: Quantidade Autorizada Global */}
                           <div>
                             <p className="text-sm text-gray-600">
                               Quantidade Faturada
@@ -416,21 +408,57 @@ export default function GuiaDetalhePage() {
                     </div>
                   </div>
 
-                  {/* Especialidades */}
+                  {/* Especialidades e Quantidades (Tabela Nova) */}
                   <div className="bg-gray-50 rounded-lg p-6">
                     <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
                       <Building className="mr-2 h-5 w-5" />
-                      Especialidades
+                      Especialidades Autorizadas
                     </h3>
-                    <div className="flex flex-wrap gap-2">
-                      {guia.especialidades.map((especialidade, index) => (
-                        <span
-                          key={index}
-                          className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                          {especialidade}
-                        </span>
-                      ))}
-                    </div>
+
+                    {guia.itens && guia.itens.length > 0 ? (
+                      <div className="overflow-hidden border border-gray-200 rounded-lg">
+                        <table className="min-w-full divide-y divide-gray-200 bg-white">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Especialidade
+                              </th>
+                              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Qtd. Autorizada
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-200">
+                            {guia.itens.map((item, index) => (
+                              <tr key={index}>
+                                <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                                  {item.especialidade}
+                                </td>
+                                <td className="px-6 py-4 text-sm text-gray-500 text-right font-medium">
+                                  {item.quantidade}
+                                </td>
+                              </tr>
+                            ))}
+                            {/* Linha de Total */}
+                            <tr className="bg-gray-50">
+                              <td className="px-6 py-3 text-sm font-bold text-gray-900">
+                                Total
+                              </td>
+                              <td className="px-6 py-3 text-sm font-bold text-gray-900 text-right">
+                                {guia.itens.reduce(
+                                  (acc, curr) => acc + curr.quantidade,
+                                  0
+                                )}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <p className="text-gray-500 italic">
+                        Nenhuma especialidade registrada.
+                      </p>
+                    )}
                   </div>
 
                   {/* Datas */}
@@ -483,7 +511,7 @@ export default function GuiaDetalhePage() {
                 </div>
               )}
 
-              {/* ✅ Nova aba de Histórico */}
+              {/* Histórico */}
               {activeTab === "historico" && (
                 <div>
                   <h3 className="text-lg font-semibold text-gray-800 mb-6 flex items-center">

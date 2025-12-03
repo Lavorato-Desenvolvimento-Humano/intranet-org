@@ -9,15 +9,17 @@ import { Loading } from "@/components/ui/loading";
 import { CustomButton } from "@/components/ui/custom-button";
 import { guiaService, pacienteService } from "@/services/clinical";
 import convenioService, { ConvenioDto } from "@/services/convenio";
-import {
-  GuiaCreateRequest,
-  PacienteSummaryDto,
-  GuiaDto,
-} from "@/types/clinical";
+import { GuiaCreateRequest, PacienteSummaryDto } from "@/types/clinical";
 import toastUtil from "@/utils/toast";
 import { StatusSelect } from "@/components/clinical/ui/StatusSelect";
 import { useStatus } from "@/hooks/useStatus";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
+
+// Interface auxiliar para o item sendo adicionado
+interface TempItem {
+  especialidade: string;
+  quantidade: number;
+}
 
 export default function NovaGuiaPage() {
   const router = useRouter();
@@ -30,14 +32,12 @@ export default function NovaGuiaPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Estados do formulário
   const [formData, setFormData] = useState<GuiaCreateRequest>({
     pacienteId: "",
     numeroGuia: "",
     numeroVenda: "",
     status: "",
-    especialidades: [],
-    quantidadeAutorizada: 1,
+    itens: [], // Agora usamos itens
     convenioId: "",
     mes: new Date().getMonth() + 1,
     ano: new Date().getFullYear(),
@@ -49,7 +49,12 @@ export default function NovaGuiaPage() {
 
   // Estados de validação e UI
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [especialidadeInput, setEspecialidadeInput] = useState("");
+
+  // Estado para o novo item sendo adicionado
+  const [newItem, setNewItem] = useState<TempItem>({
+    especialidade: "",
+    quantidade: 10, // Valor padrão sugerido
+  });
 
   // Lista de especialidades padronizadas
   const especialidades = [
@@ -101,12 +106,10 @@ export default function NovaGuiaPage() {
   const handleInputChange = (field: keyof GuiaCreateRequest, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
 
-    // Limpar erro do campo quando o usuário começar a digitar
     if (formErrors[field]) {
       setFormErrors((prev) => ({ ...prev, [field]: "" }));
     }
 
-    // Atualizar convênio automaticamente quando selecionar paciente
     if (field === "pacienteId" && value) {
       const pacienteSelecionado = pacientes.find((p) => p.id === value);
       if (pacienteSelecionado) {
@@ -118,62 +121,56 @@ export default function NovaGuiaPage() {
     }
   };
 
-  const addEspecialidade = () => {
-    if (
-      especialidadeInput.trim() &&
-      !formData.especialidades.includes(especialidadeInput.trim())
-    ) {
+  // --- Lógica para adicionar Item (Especialidade + Quantidade) ---
+  const addItem = () => {
+    if (newItem.especialidade.trim() && newItem.quantidade > 0) {
+      // Verifica se já existe essa especialidade
+      const exists = formData.itens.some(
+        (item) => item.especialidade === newItem.especialidade
+      );
+
+      if (exists) {
+        toastUtil.error("Esta especialidade já foi adicionada.");
+        return;
+      }
+
       setFormData((prev) => ({
         ...prev,
-        especialidades: [...prev.especialidades, especialidadeInput.trim()],
+        itens: [...prev.itens, { ...newItem }],
       }));
-      setEspecialidadeInput("");
 
-      // Limpar erro de especialidades
-      if (formErrors.especialidades) {
-        setFormErrors((prev) => ({ ...prev, especialidades: "" }));
+      // Resetar input mantendo uma quantidade padrão
+      setNewItem({ especialidade: "", quantidade: 10 });
+
+      if (formErrors.itens) {
+        setFormErrors((prev) => ({ ...prev, itens: "" }));
       }
     }
   };
 
-  const removeEspecialidade = (index: number) => {
+  const removeItem = (index: number) => {
     setFormData((prev) => ({
       ...prev,
-      especialidades: prev.especialidades.filter((_, i) => i !== index),
+      itens: prev.itens.filter((_, i) => i !== index),
     }));
   };
 
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
 
-    if (!formData.pacienteId) {
-      errors.pacienteId = "Paciente é obrigatório";
-    }
-
-    if (!formData.numeroGuia.trim()) {
+    if (!formData.pacienteId) errors.pacienteId = "Paciente é obrigatório";
+    if (!formData.numeroGuia.trim())
       errors.numeroGuia = "Número da guia é obrigatório";
+    if (!formData.status) errors.status = "Status é obrigatório";
+
+    // Validação da lista de itens
+    if (formData.itens.length === 0) {
+      errors.itens =
+        "Pelo menos uma especialidade com quantidade deve ser adicionada";
     }
 
-    if (!formData.status) {
-      errors.status = "Status é obrigatório";
-    }
-
-    if (formData.especialidades.length === 0) {
-      errors.especialidades = "Pelo menos uma especialidade é obrigatória";
-    }
-
-    if (!formData.quantidadeAutorizada || formData.quantidadeAutorizada <= 0) {
-      errors.quantidadeAutorizada =
-        "Quantidade autorizada deve ser maior que zero";
-    }
-
-    if (!formData.convenioId) {
-      errors.convenioId = "Convênio é obrigatório";
-    }
-
-    if (!formData.validade) {
-      errors.validade = "Data de validade é obrigatória";
-    }
+    if (!formData.convenioId) errors.convenioId = "Convênio é obrigatório";
+    if (!formData.validade) errors.validade = "Data de validade é obrigatória";
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -193,6 +190,7 @@ export default function NovaGuiaPage() {
       const guiaData: GuiaCreateRequest = {
         ...formData,
         valorReais: Number(formData.valorReais),
+        // itens já está no formato correto {especialidade, quantidade}
       };
 
       const novaGuia = await guiaService.createGuia(guiaData);
@@ -200,7 +198,9 @@ export default function NovaGuiaPage() {
       router.push(`/guias/${novaGuia.id}`);
     } catch (err) {
       console.error("Erro ao criar guia:", err);
-      toastUtil.error("Erro ao criar guia");
+      toastUtil.error(
+        "Erro ao criar guia. Verifique se os dados estão corretos."
+      );
     } finally {
       setSaving(false);
     }
@@ -250,7 +250,8 @@ export default function NovaGuiaPage() {
                   Nova Guia
                 </h1>
                 <p className="text-gray-600 mt-1">
-                  Preencha os dados para criar uma nova guia
+                  Preencha os dados e adicione as especialidades com suas
+                  quantidades
                 </p>
               </div>
             </div>
@@ -285,29 +286,6 @@ export default function NovaGuiaPage() {
                       </p>
                     )}
                   </div>
-                  {/* <select
-                    required
-                    value={formData.pacienteId}
-                    onChange={(e) =>
-                      handleInputChange("pacienteId", e.target.value)
-                    }
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 ${
-                      formErrors.pacienteId
-                        ? "border-red-500"
-                        : "border-gray-300"
-                    }`}>
-                    <option value="">Selecione o paciente</option>
-                    {pacientes.map((paciente) => (
-                      <option key={paciente.id} value={paciente.id}>
-                        {paciente.nome} - {paciente.convenioNome}
-                      </option>
-                    ))}
-                  </select> */}
-                  {formErrors.pacienteId && (
-                    <p className="text-red-500 text-xs mt-1">
-                      {formErrors.pacienteId}
-                    </p>
-                  )}
                 </div>
 
                 {/* Convênio */}
@@ -414,86 +392,115 @@ export default function NovaGuiaPage() {
                 </div>
               </div>
 
-              {/* Quantidade Autorizada */}
-              <div>
+              {/* SEÇÃO DE ESPECIALIDADES E QUANTIDADES */}
+              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Quantidade Autorizada *
+                  Especialidades e Quantidades *
                 </label>
-                <input
-                  type="number"
-                  required
-                  min="1"
-                  max="999"
-                  value={formData.quantidadeAutorizada}
-                  onChange={(e) =>
-                    handleInputChange(
-                      "quantidadeAutorizada",
-                      parseInt(e.target.value) || 1
-                    )
-                  }
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 ${
-                    formErrors.quantidadeAutorizada
-                      ? "border-red-500"
-                      : "border-gray-300"
-                  }`}
-                />
-                {formErrors.quantidadeAutorizada && (
-                  <p className="text-red-500 text-xs mt-1">
-                    {formErrors.quantidadeAutorizada}
-                  </p>
-                )}
-              </div>
+                <p className="text-xs text-gray-500 mb-3">
+                  Adicione cada especialidade coberta por esta guia e a
+                  quantidade autorizada para ela.
+                </p>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Especialidades *
-                </label>
+                <div className="flex flex-col md:flex-row gap-3 mb-4 items-end">
+                  {/* Select de Especialidade */}
+                  <div className="flex-1 w-full">
+                    <label className="text-xs text-gray-600 mb-1 block">
+                      Especialidade
+                    </label>
+                    <select
+                      value={newItem.especialidade}
+                      onChange={(e) =>
+                        setNewItem((prev) => ({
+                          ...prev,
+                          especialidade: e.target.value,
+                        }))
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
+                      <option value="">Selecione...</option>
+                      {especialidades
+                        .filter(
+                          (esp) =>
+                            !formData.itens.some(
+                              (item) => item.especialidade === esp
+                            )
+                        )
+                        .map((esp) => (
+                          <option key={esp} value={esp}>
+                            {esp}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
 
-                <div className="flex space-x-2 mb-3">
-                  <select
-                    value={especialidadeInput}
-                    onChange={(e) => setEspecialidadeInput(e.target.value)}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
-                    <option value="">Selecione uma especialidade</option>
-                    {especialidades
-                      .filter((esp) => !formData.especialidades.includes(esp))
-                      .map((esp) => (
-                        <option key={esp} value={esp}>
-                          {esp}
-                        </option>
-                      ))}
-                  </select>
+                  {/* Input de Quantidade */}
+                  <div className="w-full md:w-32">
+                    <label className="text-xs text-gray-600 mb-1 block">
+                      Qtd. Autorizada
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={newItem.quantidade}
+                      onChange={(e) =>
+                        setNewItem((prev) => ({
+                          ...prev,
+                          quantidade: parseInt(e.target.value) || 0,
+                        }))
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  {/* Botão Adicionar */}
                   <CustomButton
                     type="button"
                     variant="primary"
-                    onClick={addEspecialidade}
-                    disabled={!especialidadeInput.trim()}>
-                    <Plus className="h-4 w-4" />
+                    onClick={addItem}
+                    disabled={
+                      !newItem.especialidade.trim() || newItem.quantidade <= 0
+                    }
+                    className="h-[42px]">
+                    <Plus className="h-4 w-4 mr-1" />
+                    Adicionar
                   </CustomButton>
                 </div>
 
-                {/* Lista de especialidades */}
-                {formData.especialidades.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {formData.especialidades.map((especialidade, index) => (
-                      <span
+                {/* Lista de Itens Adicionados */}
+                {formData.itens.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {formData.itens.map((item, index) => (
+                      <div
                         key={index}
-                        className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                        {especialidade}
+                        className="flex items-center justify-between px-3 py-2 bg-white border border-blue-200 rounded-md shadow-sm">
+                        <div className="flex flex-col">
+                          <span className="font-medium text-blue-900">
+                            {item.especialidade}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            Qtd: {item.quantidade}
+                          </span>
+                        </div>
                         <button
                           type="button"
-                          onClick={() => removeEspecialidade(index)}
-                          className="ml-2 inline-flex items-center justify-center w-4 h-4 rounded-full text-blue-400 hover:bg-blue-200 hover:text-blue-600">
-                          <X className="h-3 w-3" />
+                          onClick={() => removeItem(index)}
+                          className="p-1 rounded-full text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+                          title="Remover">
+                          <X className="h-4 w-4" />
                         </button>
-                      </span>
+                      </div>
                     ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-4 bg-white border border-dashed border-gray-300 rounded-md text-gray-400 text-sm">
+                    Nenhuma especialidade adicionada ainda.
                   </div>
                 )}
 
-                {formErrors.especialidades && (
-                  <p className="text-red-500 text-xs mt-1">
-                    {formErrors.especialidades}
+                {formErrors.itens && (
+                  <p className="text-red-500 text-xs mt-2 flex items-center">
+                    <AlertCircle className="h-3 w-3 mr-1" />
+                    {formErrors.itens}
                   </p>
                 )}
               </div>
@@ -502,7 +509,7 @@ export default function NovaGuiaPage() {
                 {/* Valor em Reais */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Valor (R$)
+                    Valor Total (R$)
                   </label>
                   <input
                     type="number"
@@ -549,7 +556,7 @@ export default function NovaGuiaPage() {
                 {/* Mês */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Mês *
+                    Mês de Referência *
                   </label>
                   <select
                     required
@@ -579,7 +586,7 @@ export default function NovaGuiaPage() {
                 {/* Ano */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Ano *
+                    Ano de Referência *
                   </label>
                   <select
                     required
@@ -610,7 +617,7 @@ export default function NovaGuiaPage() {
               {/* DATA DE VALIDADE */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Data de Validade *
+                  Data de Validade da Guia *
                 </label>
                 <input
                   type="date"
@@ -633,7 +640,7 @@ export default function NovaGuiaPage() {
               {/* STATUS */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Status *
+                  Status Inicial *
                 </label>
                 <StatusSelect
                   value={formData.status}

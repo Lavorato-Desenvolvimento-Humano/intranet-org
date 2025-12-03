@@ -42,9 +42,12 @@ public class Guia {
     @Column(name = "status", nullable = false, length = 100)
     private String status;
 
-    @JdbcTypeCode(SqlTypes.ARRAY)
-    @Column(name = "especialidades", columnDefinition = "text[]")
-    private List<String> especialidades = new ArrayList<>();
+//    @JdbcTypeCode(SqlTypes.ARRAY)
+//    @Column(name = "especialidades", columnDefinition = "text[]")
+//    private List<String> especialidades = new ArrayList<>();
+
+    @OneToMany(mappedBy = "guia", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<GuiaItem> itens = new ArrayList<>();
 
     @Column(name = "quantidade_autorizada", nullable = false)
     private Integer quantidadeAutorizada;
@@ -109,5 +112,9 @@ public class Guia {
 
     public Integer getQuantidadeRestante() {
         return quantidadeAutorizada - quantidadeFaturada;
+    }
+
+    public Integer getQuantidadeTotal() {
+        return itens.stream().mapToInt(GuiaItem::getQuantidadeAutorizada).sum();
     }
 }
