@@ -84,7 +84,7 @@ public interface GuiaRepository extends JpaRepository<Guia, UUID> {
     List<Guia> findByPacienteIdAndStatusIn(@Param("pacienteId") UUID pacienteId, @Param("status") List<String> status);
 
     @Query("SELECT DISTINCT g FROM Guia g " +
-            "LEFT JOIN g.itens i " +          
+            "LEFT JOIN g.itens i " +
             "LEFT JOIN g.paciente p " +
             "WHERE (:usuarioAlvo IS NULL OR g.usuarioResponsavel.id = :usuarioAlvo) " +
             "AND (cast(:inicio as timestamp) IS NULL OR g.updatedAt >= :inicio) " +

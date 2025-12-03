@@ -337,9 +337,8 @@ public class GuiaServiceImpl implements GuiaService {
     private GuiaSummaryDto mapToGuiaSummaryDto(Guia guia) {
         long totalFichas = guiaRepository.countFichasByGuiaId(guia.getId());
 
-        List<GuiaItem> itens = guia.getItens();
-        List<String> nomesEspecialidades = itens != null ?
-                itens.stream().map(GuiaItem::getEspecialidade).collect(Collectors.toList()) : new ArrayList<>();
+        int quantidadeTotalGeral = (guia.getItens() != null) ?
+                guia.getItens().stream().mapToInt(GuiaItem::getQuantidadeAutorizada).sum() : 0;
 
         return new GuiaSummaryDto(
                 guia.getId(),
@@ -347,8 +346,8 @@ public class GuiaServiceImpl implements GuiaService {
                 guia.getNumeroGuia(),
                 guia.getNumeroVenda(),
                 guia.getStatus(),
-                nomesEspecialidades, // DTO ainda espera List<String> aqui
-                guia.getQuantidadeAutorizadaTotal(),
+                guia.getItens(),
+                quantidadeTotalGeral,
                 guia.getConvenio().getName(),
                 guia.getMes(),
                 guia.getAno(),
