@@ -98,7 +98,9 @@ export const VincularGuiaModal: React.FC<VincularGuiaModalProps> = ({
   // Verificar se guia é compatível
   const isGuiaCompativel = (guia: GuiaSummaryDto): boolean => {
     const mesmoPaciente = guia.pacienteNome === pacienteNome;
-    const temEspecialidade = guia.especialidades.includes(especialidade);
+    const temEspecialidade = guia.itens?.some(
+      (item) => item.especialidade === especialidade
+    );
     return mesmoPaciente && temEspecialidade;
   };
 
