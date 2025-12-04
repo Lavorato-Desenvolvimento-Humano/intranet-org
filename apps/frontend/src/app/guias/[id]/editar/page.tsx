@@ -147,6 +147,18 @@ export default function EditarGuiaPage() {
     }
   };
 
+  const handleItemChange = (index: number, field: string, value: number) => {
+    if (!formData.itens) return;
+
+    const newItens = [...formData.itens];
+    newItens[index] = {
+      ...newItens[index],
+      [field]: value,
+    };
+
+    setFormData((prev) => ({ ...prev, itens: newItens }));
+  };
+
   const addItem = () => {
     if (newItem.especialidade.trim() && newItem.quantidade > 0) {
       const exists = formData.itens?.some(
@@ -404,31 +416,72 @@ export default function EditarGuiaPage() {
 
                 {/* Lista de Itens Adicionados */}
                 {formData.itens && formData.itens.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 gap-3">
                     {formData.itens.map((item, index) => (
                       <div
                         key={index}
-                        className="flex items-center justify-between px-3 py-2 bg-white border border-blue-200 rounded-md shadow-sm">
-                        <div className="flex flex-col">
-                          <span className="font-medium text-blue-900">
-                            {item.especialidade}
-                          </span>
-                          <span className="text-xs text-gray-500">
-                            Qtd: {item.quantidadeAutorizada}
-                          </span>
+                        className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-md shadow-sm">
+                        {/* Nome da Especialidade */}
+                        <div className="flex-1 font-medium text-blue-900">
+                          {item.especialidade}
                         </div>
+
+                        {/* Inputs de Quantidade */}
+                        <div className="flex items-center space-x-4 mx-4">
+                          {/* Input Autorizada */}
+                          <div className="flex flex-col items-center">
+                            <label className="text-[10px] text-gray-500 mb-1">
+                              Autorizada
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={item.quantidadeAutorizada}
+                              onChange={(e) =>
+                                handleItemChange(
+                                  index,
+                                  "quantidadeAutorizada",
+                                  parseInt(e.target.value) || 0
+                                )
+                              }
+                              className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 text-center"
+                            />
+                          </div>
+
+                          {/* Input Executada (O NOVO CAMPO) */}
+                          <div className="flex flex-col items-center">
+                            <label className="text-[10px] text-gray-500 mb-1">
+                              Executada
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={item.quantidadeExecutada ?? 0}
+                              onChange={(e) =>
+                                handleItemChange(
+                                  index,
+                                  "quantidadeExecutada",
+                                  parseInt(e.target.value) || 0
+                                )
+                              }
+                              className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 text-center bg-gray-50"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Botão Remover */}
                         <button
                           type="button"
                           onClick={() => removeItem(index)}
-                          className="p-1 rounded-full text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"
-                          title="Remover">
-                          <X className="h-4 w-4" />
+                          className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                          title="Remover item">
+                          <X className="h-5 w-5" />
                         </button>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-4 bg-white border border-dashed border-gray-300 rounded-md text-gray-400 text-sm">
+                  <div className="text-center py-8 bg-gray-50 border border-dashed border-gray-300 rounded-md text-gray-500">
                     Nenhuma especialidade adicionada.
                   </div>
                 )}
@@ -583,25 +636,6 @@ export default function EditarGuiaPage() {
                     value={formData.lote}
                     onChange={(e) => handleInputChange("lote", e.target.value)}
                     placeholder="Número do lote (opcional)"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                </div>
-
-                {/* Quantidade Executada */}
-                <div className="w-full md:w-32">
-                  <label className="text-xs text-gray-600 mb-1 block">
-                    Qtd. Executada
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={newItem.quantidadeExecutada}
-                    onChange={(e) =>
-                      setNewItem((prev) => ({
-                        ...prev,
-                        quantidadeExecutada: parseInt(e.target.value) || 0,
-                      }))
-                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
