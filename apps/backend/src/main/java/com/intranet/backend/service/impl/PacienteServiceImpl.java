@@ -245,7 +245,8 @@ public class PacienteServiceImpl implements PacienteService {
                     .map(item -> new GuiaItemDto(
                             item.getId(),
                             item.getEspecialidade(),
-                            item.getQuantidadeAutorizada()
+                            item.getQuantidadeAutorizada(),
+                            item.getQuantidadeExecutada()
                     ))
                     .collect(Collectors.toList());
         }
