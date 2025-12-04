@@ -340,13 +340,24 @@ public class GuiaServiceImpl implements GuiaService {
         int quantidadeTotalGeral = (guia.getItens() != null) ?
                 guia.getItens().stream().mapToInt(GuiaItem::getQuantidadeAutorizada).sum() : 0;
 
+        List<GuiaItemDto> itensDto = new ArrayList<>();
+        if (guia.getItens() != null) {
+            itensDto = guia.getItens().stream()
+                    .map(item -> new GuiaItemDto(
+                            item.getId(),
+                            item.getEspecialidade(),
+                            item.getQuantidadeAutorizada()
+                    ))
+                    .collect(Collectors.toList());
+        }
+
         return new GuiaSummaryDto(
                 guia.getId(),
                 guia.getPaciente().getNome(),
                 guia.getNumeroGuia(),
                 guia.getNumeroVenda(),
                 guia.getStatus(),
-                guia.getItens(),
+                itensDto, // Passando a lista de DTOs convertida
                 quantidadeTotalGeral,
                 guia.getConvenio().getName(),
                 guia.getMes(),

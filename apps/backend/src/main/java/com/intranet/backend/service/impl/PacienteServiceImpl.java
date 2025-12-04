@@ -2,10 +2,7 @@ package com.intranet.backend.service.impl;
 
 import com.intranet.backend.dto.*;
 import com.intranet.backend.exception.ResourceNotFoundException;
-import com.intranet.backend.model.Convenio;
-import com.intranet.backend.model.Guia;
-import com.intranet.backend.model.Paciente;
-import com.intranet.backend.model.User;
+import com.intranet.backend.model.*;
 import com.intranet.backend.repository.ConvenioRepository;
 import com.intranet.backend.repository.GuiaRepository;
 import com.intranet.backend.repository.PacienteRepository;
@@ -22,7 +19,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -236,9 +236,19 @@ public class PacienteServiceImpl implements PacienteService {
     private GuiaSummaryDto mapToGuiaSummaryDto(Guia guia) {
         long totalFichas = guiaRepository.countFichasByGuiaId(guia.getId());
 
-        int quantidadeTotal = guia.getItens().stream()
-                .mapToInt(item -> item.getQuantidadeAutorizada())
-                .sum();
+        int quantidadeTotalGeral = (guia.getItens() != null) ?
+                guia.getItens().stream().mapToInt(GuiaItem::getQuantidadeAutorizada).sum() : 0;
+
+        List<GuiaItemDto> itensDto = new ArrayList<>();
+        if (guia.getItens() != null) {
+            itensDto = guia.getItens().stream()
+                    .map(item -> new GuiaItemDto(
+                            item.getId(),
+                            item.getEspecialidade(),
+                            item.getQuantidadeAutorizada()
+                    ))
+                    .collect(Collectors.toList());
+        }
 
         return new GuiaSummaryDto(
                 guia.getId(),
@@ -246,8 +256,8 @@ public class PacienteServiceImpl implements PacienteService {
                 guia.getNumeroGuia(),
                 guia.getNumeroVenda(),
                 guia.getStatus(),
-                guia.getItens(),
-                quantidadeTotal,
+                itensDto, // Passando a lista de DTOs convertida
+                quantidadeTotalGeral,
                 guia.getConvenio().getName(),
                 guia.getMes(),
                 guia.getAno(),
