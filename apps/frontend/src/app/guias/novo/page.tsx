@@ -134,7 +134,7 @@ export default function NovaGuiaPage() {
 
       const itemParaSalvar = {
         especialidade: newItem.especialidade,
-        quantidadeAutorizada: newItem.quantidade,
+        quantidade: newItem.quantidade,
       };
 
       setFormData((prev) => ({
@@ -480,7 +480,7 @@ export default function NovaGuiaPage() {
                             {item.especialidade}
                           </span>
                           <span className="text-xs text-gray-500">
-                            Qtd: {item.quantidadeAutorizada}
+                            Qtd: {item.quantidade}
                           </span>
                         </div>
                         <button

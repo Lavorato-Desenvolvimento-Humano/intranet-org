@@ -21,6 +21,11 @@ export interface GuiaItem {
   quantidadeAutorizada: number;
 }
 
+export interface GuiaItemRequest {
+  especialidade: string;
+  quantidade: number;
+}
+
 export interface PacienteDto {
   id: string;
   nome: string;
@@ -108,7 +113,7 @@ export interface GuiaCreateRequest {
   numeroGuia: string;
   numeroVenda: string;
   status: string;
-  itens: GuiaItem[];
+  itens: GuiaItemRequest[];
   convenioId: string;
   mes: number;
   ano: number;
