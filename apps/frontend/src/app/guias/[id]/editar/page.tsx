@@ -25,6 +25,7 @@ import { StatusBadge } from "@/components/clinical/ui/StatusBadge";
 interface TempItem {
   especialidade: string;
   quantidade: number;
+  quantidadeExecutada?: number;
 }
 
 export default function EditarGuiaPage() {
@@ -57,6 +58,7 @@ export default function EditarGuiaPage() {
   const [newItem, setNewItem] = useState<TempItem>({
     especialidade: "",
     quantidade: 10,
+    quantidadeExecutada: 0,
   });
 
   // Estados de validação
@@ -585,22 +587,21 @@ export default function EditarGuiaPage() {
                   />
                 </div>
 
-                {/* Quantidade Faturada */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Quantidade Faturada
+                {/* Quantidade Executada */}
+                <div className="w-full md:w-32">
+                  <label className="text-xs text-gray-600 mb-1 block">
+                    Qtd. Executada
                   </label>
                   <input
                     type="number"
                     min="0"
-                    value={formData.quantidadeFaturada}
+                    value={newItem.quantidadeExecutada}
                     onChange={(e) =>
-                      handleInputChange(
-                        "quantidadeFaturada",
-                        parseInt(e.target.value)
-                      )
+                      setNewItem((prev) => ({
+                        ...prev,
+                        quantidadeExecutada: parseInt(e.target.value) || 0,
+                      }))
                     }
-                    placeholder="Quantidade faturada (opcional)"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                 </div>

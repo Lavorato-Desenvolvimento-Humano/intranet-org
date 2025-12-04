@@ -19,6 +19,7 @@ export interface GuiaItem {
   id?: string;
   especialidade: string;
   quantidadeAutorizada: number;
+  quantidadeExecutada?: number;
 }
 
 export interface GuiaItemRequest {

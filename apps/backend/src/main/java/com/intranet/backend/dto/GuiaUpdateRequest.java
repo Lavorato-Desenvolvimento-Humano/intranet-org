@@ -33,5 +33,6 @@ public class GuiaUpdateRequest {
     public static class GuiaItemUpdate {
         private String especialidade;
         private Integer quantidadeAutorizada;
+        private Integer quantidadeExecutada;
     }
 }

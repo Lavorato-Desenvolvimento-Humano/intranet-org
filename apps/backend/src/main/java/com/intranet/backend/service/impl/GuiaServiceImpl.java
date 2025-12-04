@@ -136,7 +136,9 @@ public class GuiaServiceImpl implements GuiaService {
                 item.setGuia(guia);
                 item.setEspecialidade(itemUpdate.getEspecialidade());
                 item.setQuantidadeAutorizada(itemUpdate.getQuantidadeAutorizada());
-                item.setQuantidadeExecutada(0); // Reinicia ou precisa de lógica para manter? Simplificado.
+                item.setQuantidadeExecutada(
+                        itemUpdate.getQuantidadeExecutada() != null ? itemUpdate.getQuantidadeExecutada() : 0
+                );
                 guia.getItens().add(item);
             }
         }
