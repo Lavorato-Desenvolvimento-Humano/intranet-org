@@ -11,5 +11,5 @@ import java.util.UUID;
 public class GuiaItemDto {
     private UUID id;
     private String especialidade;
-    private Integer quantidade;
+    private Integer quantidadeAutorizada;
 }
