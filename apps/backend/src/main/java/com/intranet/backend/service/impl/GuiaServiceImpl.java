@@ -304,7 +304,7 @@ public class GuiaServiceImpl implements GuiaService {
         List<GuiaItemDto> itensDto = new ArrayList<>();
         if (guia.getItens() != null) {
             itensDto = guia.getItens().stream()
-                    .map(i -> new GuiaItemDto(i.getId(), i.getEspecialidade(), i.getQuantidadeAutorizada()))
+                    .map(i -> new GuiaItemDto(i.getId(), i.getEspecialidade(), i.getQuantidadeAutorizada(), i.getQuantidadeExecutada()))
                     .collect(Collectors.toList());
         }
 
@@ -348,7 +348,8 @@ public class GuiaServiceImpl implements GuiaService {
                     .map(item -> new GuiaItemDto(
                             item.getId(),
                             item.getEspecialidade(),
-                            item.getQuantidadeAutorizada()
+                            item.getQuantidadeAutorizada(),
+                            item.getQuantidadeExecutada()
                     ))
                     .collect(Collectors.toList());
         }

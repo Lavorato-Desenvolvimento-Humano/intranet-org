@@ -426,6 +426,9 @@ export default function GuiaDetalhePage() {
                               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Qtd. Autorizada
                               </th>
+                              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Qtd. Executada
+                              </th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-200">
@@ -436,6 +439,9 @@ export default function GuiaDetalhePage() {
                                 </td>
                                 <td className="px-6 py-4 text-sm text-gray-500 text-right font-medium">
                                   {item.quantidadeAutorizada}
+                                </td>
+                                <td className="px-6 py-4 text-sm text-gray-500 text-right font-medium">
+                                  {item.quantidadeExecutada ?? 0}
                                 </td>
                               </tr>
                             ))}
@@ -448,6 +454,13 @@ export default function GuiaDetalhePage() {
                                 {guia.itens.reduce(
                                   (acc, curr) =>
                                     acc + curr.quantidadeAutorizada,
+                                  0
+                                )}
+                              </td>
+                              <td className="px-6 py-3 text-sm font-bold text-gray-900 text-right">
+                                {guia.itens.reduce(
+                                  (acc, curr) =>
+                                    acc + (curr.quantidadeExecutada ?? 0),
                                   0
                                 )}
                               </td>

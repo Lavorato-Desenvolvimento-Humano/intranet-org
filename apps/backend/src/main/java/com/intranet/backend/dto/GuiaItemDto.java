@@ -12,4 +12,5 @@ public class GuiaItemDto {
     private UUID id;
     private String especialidade;
     private Integer quantidadeAutorizada;
+    private Integer quantidadeExecutada;
 }
