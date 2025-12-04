@@ -32,6 +32,6 @@ public class GuiaUpdateRequest {
     @AllArgsConstructor
     public static class GuiaItemUpdate {
         private String especialidade;
-        private Integer quantidade;
+        private Integer quantidadeAutorizada;
     }
 }
