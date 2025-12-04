@@ -1,5 +1,5 @@
 -- 1. Criar a nova tabela de itens
-CREATE TABLE guia_itens (
+CREATE TABLE IF NOT EXISTS guia_itens (
                             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                             guia_id UUID NOT NULL REFERENCES guias(id) ON DELETE CASCADE,
                             especialidade VARCHAR(255) NOT NULL,
