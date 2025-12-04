@@ -1120,9 +1120,9 @@ public class FichaPdfServiceImpl implements FichaPdfService {
 
         // Processar guias
         for (Guia guia : guiasConvenio) {
-            if (guia.getEspecialidades() != null && !guia.getEspecialidades().isEmpty()) {
-                for (String especialidade : guia.getEspecialidades()) {
-                    FichaPdfItemDto item = criarItemFicha(guia, especialidade, mes, ano);
+            if (guia.getItens() != null && !guia.getItens().isEmpty()) {
+                for (GuiaItem guiaItem : guia.getItens()) {
+                    FichaPdfItemDto item = criarItemFicha(guia, guiaItem.getEspecialidade(), mes, ano);
                     String htmlGerado = templateService.gerarHtmlComConfiguracaoConvenio(item, config);
                     item.setHtmlGerado(htmlGerado);
                     todosItens.add(item);
@@ -1292,27 +1292,33 @@ public class FichaPdfServiceImpl implements FichaPdfService {
             logger.info("Após filtro de status: {} guias (status permitidos: {})",
                     guiasFiltradas.size(), statusPermitidos);
 
-            // Filtro 2: Especialidades (mais flexível)
+            // Filtro 2: Especialidades (CORRIGIDO PARA GuiaItem)
             if (especialidades != null && !especialidades.isEmpty()) {
                 List<Guia> guiasAntes = new ArrayList<>(guiasFiltradas);
 
                 guiasFiltradas = guiasFiltradas.stream()
                         .filter(g -> {
-                            // Se guia não tem especialidades definidas, aceitar
-                            if (g.getEspecialidades() == null || g.getEspecialidades().isEmpty()) {
+                            // Se guia não tem itens definidos, aceitar (comportamento padrão)
+                            if (g.getItens() == null || g.getItens().isEmpty()) {
                                 logger.debug("Guia {} aceita: sem especialidades definidas", g.getId());
                                 return true;
                             }
 
-                            // Verificar se alguma especialidade da guia corresponde ao solicitado
-                            boolean match = g.getEspecialidades().stream()
-                                    .anyMatch(esp -> especialidades.stream()
+                            // CORREÇÃO AQUI: Mapear GuiaItem para String antes de comparar
+                            boolean match = g.getItens().stream()
+                                    .map(GuiaItem::getEspecialidade) // Extrai o nome da especialidade
+                                    .filter(Objects::nonNull)        // Previne NullPointerException
+                                    .anyMatch(nomeEsp -> especialidades.stream()
                                             .anyMatch(solicitada ->
-                                                    esp.toLowerCase().contains(solicitada.toLowerCase()) ||
-                                                            solicitada.toLowerCase().contains(esp.toLowerCase())));
+                                                    nomeEsp.toLowerCase().contains(solicitada.toLowerCase()) ||
+                                                            solicitada.toLowerCase().contains(nomeEsp.toLowerCase())));
 
-                            logger.debug("Guia {} especialidades {} vs solicitadas {} = {}",
-                                    g.getId(), g.getEspecialidades(), especialidades, match);
+                            // Log corrigido para não usar g.getEspecialidades() que foi removido
+                            logger.debug("Guia {} possui itens: {} vs solicitadas {} = {}",
+                                    g.getId(),
+                                    g.getItens().stream().map(GuiaItem::getEspecialidade).collect(Collectors.toList()),
+                                    especialidades,
+                                    match);
 
                             return match;
                         })
@@ -1453,9 +1459,9 @@ public class FichaPdfServiceImpl implements FichaPdfService {
             ConvenioFichaPdfConfig config = configOpt.orElse(null);
 
             // Processar cada especialidade da guia (LÓGICA ORIGINAL)
-            if (guia.getEspecialidades() != null && !guia.getEspecialidades().isEmpty()) {
-                for (String especialidade : guia.getEspecialidades()) {
-                    FichaPdfItemDto item = criarItemFicha(guia, especialidade, mes, ano);
+            if (guia.getItens() != null && !guia.getItens().isEmpty()) {
+                for (GuiaItem guiaItem : guia.getItens()) {
+                    FichaPdfItemDto item = criarItemFicha(guia, guiaItem.getEspecialidade(), mes, ano);
 
                     String htmlGerado = templateService.gerarHtmlComConfiguracaoConvenio(item, config);
 
@@ -1543,7 +1549,14 @@ public class FichaPdfServiceImpl implements FichaPdfService {
         } else {
             item.setNumeroVenda("N/A");
         }
-        item.setQuantidadeAutorizada(guia.getQuantidadeAutorizada());
+
+        Integer qtdEspecifica = guia.getItens().stream()
+                        .filter(i -> i.getEspecialidade().equalsIgnoreCase(especialidade))
+                                .findFirst()
+                                        .map(GuiaItem::getQuantidadeAutorizada)
+                                                .orElse(0);
+
+        item.setQuantidadeAutorizada(qtdEspecifica);
         item.setUltimaAtividade(guia.getUpdatedAt());
 
         return item;

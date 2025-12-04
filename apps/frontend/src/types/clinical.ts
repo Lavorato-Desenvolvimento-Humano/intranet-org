@@ -15,6 +15,18 @@ export enum EntityTypeEnum {
   FICHA = "FICHA",
 }
 
+export interface GuiaItem {
+  id?: string;
+  especialidade: string;
+  quantidadeAutorizada: number;
+  quantidadeExecutada?: number;
+}
+
+export interface GuiaItemRequest {
+  especialidade: string;
+  quantidade: number;
+}
+
 export interface PacienteDto {
   id: string;
   nome: string;
@@ -61,8 +73,9 @@ export interface GuiaDto {
   pacienteNome: string;
   numeroGuia: string;
   numeroVenda: string;
-  especialidades: string[];
-  quantidadeAutorizada: number;
+  itens: GuiaItem[];
+  // especialidades: string[];
+  // quantidadeAutorizada: number;
   convenioId: string;
   convenioNome: string;
   mes: number;
@@ -83,8 +96,9 @@ export interface GuiaSummaryDto {
   numeroGuia: string;
   numeroVenda: string;
   pacienteNome: string;
-  especialidades: string[];
+  // especialidades: string[];
   quantidadeAutorizada: number;
+  itens: GuiaItem[];
   convenioNome: string;
   valorReais: number;
   mes: number;
@@ -100,8 +114,7 @@ export interface GuiaCreateRequest {
   numeroGuia: string;
   numeroVenda: string;
   status: string;
-  especialidades: string[];
-  quantidadeAutorizada: number;
+  itens: GuiaItemRequest[];
   convenioId: string;
   mes: number;
   ano: number;
@@ -112,8 +125,9 @@ export interface GuiaCreateRequest {
 }
 
 export interface GuiaUpdateRequest {
-  especialidades?: string[];
-  quantidadeAutorizada?: number;
+  // especialidades?: string[];
+  // quantidadeAutorizada?: number;
+  itens?: GuiaItem[];
   numeroVenda?: string;
   mes?: number;
   ano?: number;

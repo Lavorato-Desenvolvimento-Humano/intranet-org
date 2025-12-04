@@ -1,9 +1,7 @@
 package com.intranet.backend.repository;
 
 import com.intranet.backend.model.Guia;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
+import com.intranet.backend.model.GuiaItem;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -21,145 +19,87 @@ import java.util.stream.Collectors;
 @Repository
 public interface GuiaRepository extends JpaRepository<Guia, UUID> {
 
+    @Query("SELECT g FROM Guia g LEFT JOIN FETCH g.paciente p LEFT JOIN FETCH g.convenio c LEFT JOIN FETCH g.usuarioResponsavel u LEFT JOIN FETCH g.itens WHERE g.id = :id")
+    Optional<Guia> findByIdWithRelations(@Param("id") UUID id);
+
     @Query("SELECT g FROM Guia g WHERE g.paciente.id = :pacienteId ORDER BY g.createdAt DESC")
     Page<Guia> findByPacienteId(@Param("pacienteId") UUID pacienteId, Pageable pageable);
 
     @Query("SELECT g FROM Guia g WHERE g.convenio.id = :convenioId ORDER BY g.createdAt DESC")
     Page<Guia> findByConvenioId(@Param("convenioId") UUID convenioId, Pageable pageable);
 
-    @Query("SELECT g FROM Guia g WHERE g.mes = :mes AND g.ano = :ano ORDER BY g.createdAt DESC")
-    Page<Guia> findByMesAndAno(@Param("mes") Integer mes, @Param("ano") Integer ano, Pageable pageable);
+    Page<Guia> findByMesAndAno(Integer mes, Integer ano, Pageable pageable);
 
-    @Query("SELECT g FROM Guia g WHERE g.validade < CURRENT_DATE ORDER BY g.validade ASC")
+    @Query("SELECT g FROM Guia g WHERE g.validade < CURRENT_DATE")
     Page<Guia> findGuiasVencidas(Pageable pageable);
 
-    @Query("SELECT g FROM Guia g WHERE g.quantidadeFaturada > g.quantidadeAutorizada")
+    @Query("SELECT g FROM Guia g WHERE g.quantidadeFaturada > (SELECT COALESCE(SUM(i.quantidadeAutorizada), 0) FROM GuiaItem i WHERE i.guia = g)")
     Page<Guia> findGuiasComQuantidadeExcedida(Pageable pageable);
 
-    @Query("SELECT g FROM Guia g WHERE g.validade BETWEEN :startDate AND :endDate")
-    Page<Guia> findByValidadeBetween(@Param("startDate") LocalDate startDate,
-                                     @Param("endDate") LocalDate endDate,
-                                     Pageable pageable);
+    Page<Guia> findByValidadeBetween(LocalDate startDate, LocalDate endDate, Pageable pageable);
 
-    @Query("SELECT g FROM Guia g WHERE g.usuarioResponsavel.id = :userId ORDER BY g.createdAt DESC")
-    Page<Guia> findByUsuarioResponsavelId(@Param("userId") UUID userId, Pageable pageable);
+    Page<Guia> findByUsuarioResponsavelId(UUID userId, Pageable pageable);
+
+    @Query("SELECT DISTINCT g FROM Guia g JOIN g.itens i WHERE LOWER(i.especialidade) LIKE LOWER(CONCAT('%', :especialidade, '%'))")
+    Page<Guia> findByEspecialidadesContaining(@Param("especialidade") String especialidade, Pageable pageable);
+
+    @Query("SELECT g FROM Guia g WHERE g.numeroGuia LIKE %:termo% OR g.paciente.nome LIKE %:termo%")
+    Page<Guia> searchByNumeroOrPacienteNome(@Param("termo") String termo, Pageable pageable);
+
+    boolean existsByNumeroGuiaAndMesAndAno(String numeroGuia, Integer mes, Integer ano);
 
     @Query("SELECT COUNT(f) FROM Ficha f WHERE f.guia.id = :guiaId")
     long countFichasByGuiaId(@Param("guiaId") UUID guiaId);
 
-    @Query("SELECT g FROM Guia g LEFT JOIN FETCH g.paciente LEFT JOIN FETCH g.convenio " +
-            "LEFT JOIN FETCH g.usuarioResponsavel WHERE g.id = :id")
-    Optional<Guia> findByIdWithRelations(@Param("id") UUID id);
-
-    @Query(value = "SELECT * FROM guias g WHERE :especialidade = ANY(g.especialidades) ORDER BY g.created_at DESC",
-            countQuery = "SELECT COUNT(*) FROM guias g WHERE :especialidade = ANY(g.especialidades)",
-            nativeQuery = true)
-    Page<Guia> findByEspecialidadesContaining(@Param("especialidade") String especialidade, Pageable pageable);
+    @Query("SELECT g FROM Guia g WHERE g.status = :status ORDER BY g.createdAt DESC")
+    Page<Guia> findGuiaByStatus(@Param("status") String status, Pageable pageable);
 
     Optional<Guia> findByNumeroGuia(String numeroGuia);
-
-    boolean existsByNumeroGuia(String numeroGuia);
 
     @Query("SELECT g FROM Guia g WHERE g.numeroGuia LIKE %:termo%")
     Page<Guia> searchByNumeroGuia(@Param("termo") String termo, Pageable pageable);
 
-    @Query("SELECT g FROM Guia g WHERE g.status LIKE %:status% ORDER BY g.createdAt DESC")
-    Page<Guia> findGuiaByStatus(@Param("status") String status, Pageable pageable);
+    List<Guia> findByConvenioIdAndStatusIn(UUID convenioId, List<String> status);
 
-    @Query("SELECT COUNT(g) > 0 FROM Guia g WHERE g.numeroGuia = :numero AND g.mes = :mes AND g.ano = :ano")
-    boolean existsByNumeroGuiaAndMesAndAno(@Param("numero") String numeroGuia, @Param("mes") Integer mes, @Param("ano") Integer ano);
+    default List<Guia> findGuiasAtivasParaFichas(UUID pacienteId, List<String> status, List<String> especialidadesSolicitadas) {
+        List<Guia> guias = findByPacienteIdAndStatusIn(pacienteId, status);
 
-    @Query("SELECT DISTINCT g FROM Guia g " +
-            "LEFT JOIN FETCH g.paciente p " +
-            "LEFT JOIN FETCH g.convenio c " +
-            "LEFT JOIN FETCH g.usuarioResponsavel u " +
-            "WHERE (:usuarioResponsavel IS NULL OR g.usuarioResponsavel.id = :usuarioResponsavel) " +
-            "AND (g.createdAt BETWEEN :periodoInicio AND :periodoFim " +
-            "     OR g.updatedAt BETWEEN :periodoInicio AND :periodoFim) " +
-            "AND (:status IS NULL OR g.status IN :status) " +
-            "AND (:convenioIds IS NULL OR g.convenio.id IN :convenioIds) " +
-            "ORDER BY g.updatedAt DESC")
-    List<Guia> findGuiasForRelatorioBase(
-            @Param("usuarioResponsavel") UUID usuarioResponsavel,
-            @Param("periodoInicio") LocalDateTime periodoInicio,
-            @Param("periodoFim") LocalDateTime periodoFim,
-            @Param("status") List<String> status,
-            @Param("convenioIds") List<UUID> convenioIds
-    );
-
-    /**
-     * Busca guias ativas para geração de fichas
-     */
-    @Query("SELECT DISTINCT g FROM Guia g " +
-            "WHERE g.paciente.id = :pacienteId " +
-            "AND g.status IN :statusPermitidos " +
-            "ORDER BY g.updatedAt DESC")
-    List<Guia> findGuiasAtivasParaFichas(
-            @Param("pacienteId") UUID pacienteId,
-            @Param("statusPermitidos") List<String> statusPermitidos,
-            @Param("especialidades") List<String> especialidades
-    );
-
-    @Query("SELECT g FROM Guia g " +
-            "LEFT JOIN g.paciente p " +
-            "WHERE lower(g.numeroGuia) LIKE lower(concat('%', :termo, '%')) " +
-            "OR lower(p.nome) LIKE lower(concat('%', :termo, '%')) " +
-            "ORDER BY g.createdAt DESC")
-    Page<Guia> searchByNumeroOrPacienteNome(@Param("termo") String termo, Pageable pageable);
-
-    List<Guia> findByPacienteIdAndStatusInOrderByUpdatedAtDesc(UUID pacienteId, List<String> status);
-
-    /**
-     * Conta guias ativas por paciente
-     */
-    @Query("SELECT COUNT(g) FROM Guia g WHERE g.paciente.id = :pacienteId AND g.status IN :statusAtivos")
-    long countGuiasAtivasPorPaciente(
-            @Param("pacienteId") UUID pacienteId,
-            @Param("statusAtivos") List<String> statusAtivos
-    );
-
-    /**
-     * Busca guias por convênio e status
-     */
-    @Query("SELECT g FROM Guia g JOIN FETCH g.paciente p WHERE g.convenio.id = :convenioId AND g.status IN :status ORDER BY p.nome ASC")
-    List<Guia> findByConvenioIdAndStatusIn(@Param("convenioId") UUID convenioId, @Param("status") List<String> status);
-
-    default List<Guia> findGuiasForRelatorio(UUID usuarioResponsavel,
-                                             LocalDateTime periodoInicio,
-                                             LocalDateTime periodoFim,
-                                             List<String> status,
-                                             List<String> especialidades,
-                                             List<UUID> convenioIds,
-                                             List<String> unidades) {
-
-        List<Guia> guias = findGuiasForRelatorioBase(
-                usuarioResponsavel, periodoInicio, periodoFim, status, convenioIds
-        );
-
-        // Aplicar filtros de especialidades
-        if (especialidades != null && !especialidades.isEmpty()) {
-            guias = guias.stream()
-                    .filter(guia -> guia.getEspecialidades() != null &&
-                            guia.getEspecialidades().stream()
-                                    .anyMatch(especialidades::contains))
-                    .collect(Collectors.toList());
+        if (especialidadesSolicitadas == null || especialidadesSolicitadas.isEmpty()) {
+            return guias;
         }
 
-        // Aplicar filtros de unidades
-        if (unidades != null && !unidades.isEmpty()) {
-            guias = guias.stream()
-                    .filter(guia -> {
-                        if (guia.getPaciente() == null) return false;
-                        try {
-                            String unidadePaciente = guia.getPaciente().getUnidade().name();
-                            return unidades.contains(unidadePaciente);
-                        } catch (Exception e) {
-                            return false;
-                        }
-                    })
-                    .collect(Collectors.toList());
-        }
+        return guias.stream()
+                .filter(guia -> {
+                    if (guia.getItens() == null || guia.getItens().isEmpty()) return true;
 
-        return guias;
+                    return guia.getItens().stream()
+                            .anyMatch(item -> especialidadesSolicitadas.stream()
+                                    .anyMatch(solicitada -> item.getEspecialidade().toLowerCase().contains(solicitada.toLowerCase()) ||
+                                            solicitada.toLowerCase().contains(item.getEspecialidade().toLowerCase())));
+                })
+                .collect(Collectors.toList());
     }
+
+    @Query("SELECT g FROM Guia g LEFT JOIN FETCH g.itens WHERE g.paciente.id = :pacienteId AND g.status IN :status")
+    List<Guia> findByPacienteIdAndStatusIn(@Param("pacienteId") UUID pacienteId, @Param("status") List<String> status);
+
+    @Query("SELECT DISTINCT g FROM Guia g " +
+            "LEFT JOIN g.itens i " +
+            "LEFT JOIN g.paciente p " +
+            "WHERE (:usuarioAlvo IS NULL OR g.usuarioResponsavel.id = :usuarioAlvo) " +
+            "AND (cast(:inicio as timestamp) IS NULL OR g.updatedAt >= :inicio) " +
+            "AND (cast(:fim as timestamp) IS NULL OR g.updatedAt <= :fim) " +
+            "AND ((:status) IS NULL OR g.status IN (:status)) " +
+            "AND ((:especialidades) IS NULL OR i.especialidade IN (:especialidades)) " +
+            "AND ((:convenioIds) IS NULL OR g.convenio.id IN (:convenioIds)) " +
+            "AND ((:unidades) IS NULL OR CAST(p.unidade as string) IN (:unidades))")
+    List<Guia> findGuiasForRelatorio(
+            @Param("usuarioAlvo") UUID usuarioAlvo,
+            @Param("inicio") LocalDateTime inicio,
+            @Param("fim") LocalDateTime fim,
+            @Param("status") List<String> status,
+            @Param("especialidades") List<String> especialidades,
+            @Param("convenioIds") List<UUID> convenioIds,
+            @Param("unidades") List<String> unidades
+    );
 }

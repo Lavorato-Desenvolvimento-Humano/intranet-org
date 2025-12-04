@@ -899,51 +899,46 @@ public class RelatorioServiceImpl implements RelatorioService {
 
         item.setStatus(guia.getStatus());
         item.setStatusNovo(guia.getStatus());
-        item.setStatusAnterior(null);
 
-        // Dados do paciente
         if (guia.getPaciente() != null) {
             item.setPacienteNome(guia.getPaciente().getNome());
             item.setPacienteId(guia.getPaciente().getId());
-
             try {
                 item.setUnidade(guia.getPaciente().getUnidade().name());
             } catch (Exception e) {
-                logger.warn("Erro ao obter unidade do paciente da guia {}: {}", guia.getId(), e.getMessage());
+                logger.warn("Erro ao obter unidade: {}", e.getMessage());
                 item.setUnidade("N/A");
             }
         }
 
-        // Dados do convênio
         if (guia.getConvenio() != null) {
-            try {
-                item.setConvenioNome(guia.getConvenio().getName());
-            } catch (Exception e) {
-                logger.warn("Erro ao obter nome do convênio da guia {}: {}", guia.getId(), e.getMessage());
-                item.setConvenioNome("N/A");
-            }
+            item.setConvenioNome(guia.getConvenio().getName());
         }
 
-        if (guia.getEspecialidades() != null && !guia.getEspecialidades().isEmpty()) {
-            item.setEspecialidade(guia.getEspecialidades().get(0));
+        if (guia.getItens() != null && !guia.getItens().isEmpty()) {
+
+            String especialidades = guia.getItens().stream()
+                    .map(i -> i.getEspecialidade()) // Verifique se o getter no GuiaItem é getEspecialidade() ou getNomeEspecialidade()
+                    .distinct()
+                    .collect(Collectors.joining(", "));
+            item.setEspecialidade(especialidades);
+
+            int totalAutorizado = guia.getItens().stream()
+                    .mapToInt(i -> i.getQuantidadeAutorizada())
+                    .sum();
+            item.setQuantidadeAutorizada(totalAutorizado);
+        } else {
+            item.setQuantidadeAutorizada(0);
         }
 
-         item.setMes(guia.getMes());
-         item.setAno(guia.getAno());
+        item.setMes(guia.getMes());
+        item.setAno(guia.getAno());
 
-        if (guia.getQuantidadeAutorizada() != null) {
-            item.setQuantidadeAutorizada(guia.getQuantidadeAutorizada());
-        }
-
-        // Usuário responsável
         if (guia.getUsuarioResponsavel() != null) {
             item.setUsuarioResponsavelNome(guia.getUsuarioResponsavel().getFullName());
         }
 
-        // Data de atualização
         item.setDataAtualizacao(guia.getUpdatedAt());
-        item.setDataMudancaStatus(null);
-        item.setMotivoMudanca(null);
 
         return item;
     }

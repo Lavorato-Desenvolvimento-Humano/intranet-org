@@ -18,13 +18,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
-/**
- * Implementação refatorada do GuiaService usando Event-Driven Architecture
- * Remove dependências circulares publicando eventos em vez de chamar diretamente o StatusHistoryService
- */
 @Service
 @RequiredArgsConstructor
 public class GuiaServiceImpl implements GuiaService {
@@ -37,14 +35,11 @@ public class GuiaServiceImpl implements GuiaService {
     private final UserRepository userRepository;
     private final FichaRepository fichaRepository;
     private final StatusHistoryService statusHistoryService;
-    
-    // Event Publisher para desacoplar mudanças de status
     private final StatusEventPublisher statusEventPublisher;
-    
+
     @Override
     public Page<GuiaSummaryDto> getAllGuias(Pageable pageable) {
         logger.info("Buscando todas as guias - página: {}, tamanho: {}", pageable.getPageNumber(), pageable.getPageSize());
-
         Page<Guia> guias = guiaRepository.findAll(pageable);
         return guias.map(this::mapToGuiaSummaryDto);
     }
@@ -52,10 +47,8 @@ public class GuiaServiceImpl implements GuiaService {
     @Override
     public GuiaDto getGuiaById(UUID id) {
         logger.info("Buscando guia com ID: {}", id);
-
         Guia guia = guiaRepository.findByIdWithRelations(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Guia não encontrada com ID: " + id));
-
         return mapToGuiaDto(guia);
     }
 
@@ -82,8 +75,6 @@ public class GuiaServiceImpl implements GuiaService {
         guia.setStatus(request.getStatus());
         guia.setPaciente(paciente);
         guia.setConvenio(convenio);
-        guia.setEspecialidades(request.getEspecialidades());
-        guia.setQuantidadeAutorizada(request.getQuantidadeAutorizada());
         guia.setMes(request.getMes());
         guia.setAno(request.getAno());
         guia.setValidade(request.getValidade());
@@ -92,14 +83,27 @@ public class GuiaServiceImpl implements GuiaService {
         guia.setValorReais(request.getValorReais());
         guia.setUsuarioResponsavel(currentUser);
 
+        // Processar itens (Especialidade + Quantidade)
+        if (request.getItens() != null) {
+            List<GuiaItem> itens = new ArrayList<>();
+            for (GuiaCreateRequest.GuiaItemRequest itemRequest : request.getItens()) {
+                GuiaItem item = new GuiaItem();
+                item.setGuia(guia);
+                item.setEspecialidade(itemRequest.getEspecialidade());
+                item.setQuantidadeAutorizada(itemRequest.getQuantidade());
+                item.setQuantidadeExecutada(0);
+                itens.add(item);
+            }
+            guia.setItens(itens);
+        }
+
         Guia savedGuia = guiaRepository.save(guia);
         logger.info("Guia criada com sucesso. ID: {}", savedGuia.getId());
 
-        // Publicar evento de mudança de status (criação)
         try {
             statusEventPublisher.publishGuiaStatusChange(
                     savedGuia.getId(),
-                    null, // status anterior
+                    null,
                     request.getStatus(),
                     "Criação da guia",
                     "Status inicial definido na criação",
@@ -117,59 +121,36 @@ public class GuiaServiceImpl implements GuiaService {
     public GuiaDto updateGuia(UUID id, GuiaUpdateRequest request) {
         logger.info("Atualizando guia com ID: {}", id);
 
-        Guia guia = guiaRepository.findById(id)
+        Guia guia = guiaRepository.findByIdWithRelations(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Guia não encontrada com ID: " + id));
 
-        User currentUser = getCurrentUser();
+        if (request.getNumeroGuia() != null) guia.setNumeroGuia(request.getNumeroGuia());
+        if (request.getNumeroVenda() != null) guia.setNumeroVenda(request.getNumeroVenda());
 
-        if (request.getNumeroGuia() != null) {
-            guia.setNumeroGuia(request.getNumeroGuia());
+        // Atualização de itens
+        if (request.getItens() != null) {
+            guia.getItens().clear();
+
+            for (GuiaUpdateRequest.GuiaItemUpdate itemUpdate : request.getItens()) {
+                GuiaItem item = new GuiaItem();
+                item.setGuia(guia);
+                item.setEspecialidade(itemUpdate.getEspecialidade());
+                item.setQuantidadeAutorizada(itemUpdate.getQuantidadeAutorizada());
+                item.setQuantidadeExecutada(
+                        itemUpdate.getQuantidadeExecutada() != null ? itemUpdate.getQuantidadeExecutada() : 0
+                );
+                guia.getItens().add(item);
+            }
         }
 
-        if (request.getNumeroVenda() != null) {
-            guia.setNumeroVenda(request.getNumeroVenda());
-        }
-
-        if (request.getEspecialidades() != null) {
-            guia.setEspecialidades(request.getEspecialidades());
-        }
-
-        if (request.getQuantidadeAutorizada() != null) {
-            guia.setQuantidadeAutorizada(request.getQuantidadeAutorizada());
-        }
-
-        if (request.getConvenioId() != null) {
-            Convenio convenio = convenioRepository.findById(request.getConvenioId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Convênio não encontrado com ID: " + request.getConvenioId()));
-            guia.setConvenio(convenio);
-        }
-
-        if (request.getMes() != null) {
-            guia.setMes(request.getMes());
-        }
-
-        if (request.getAno() != null) {
-            guia.setAno(request.getAno());
-        }
-
-        if (request.getValidade() != null) {
-            guia.setValidade(request.getValidade());
-        }
-
-        if (request.getLote() != null) {
-            guia.setLote(request.getLote());
-        }
-
-        if (request.getQuantidadeFaturada() != null) {
-            guia.setQuantidadeFaturada(request.getQuantidadeFaturada());
-        }
-
-        if (request.getValorReais() != null) {
-            guia.setValorReais(request.getValorReais());
-        }
+        if (request.getMes() != null) guia.setMes(request.getMes());
+        if (request.getAno() != null) guia.setAno(request.getAno());
+        if (request.getValidade() != null) guia.setValidade(request.getValidade());
+        if (request.getLote() != null) guia.setLote(request.getLote());
+        if (request.getQuantidadeFaturada() != null) guia.setQuantidadeFaturada(request.getQuantidadeFaturada());
+        if (request.getValorReais() != null) guia.setValorReais(request.getValorReais());
 
         Guia updatedGuia = guiaRepository.save(guia);
-
         logger.info("Guia atualizada com sucesso. ID: {}", updatedGuia.getId());
         return mapToGuiaDto(updatedGuia);
     }
@@ -192,7 +173,6 @@ public class GuiaServiceImpl implements GuiaService {
         guia.setStatus(novoStatus);
         Guia updatedGuia = guiaRepository.save(guia);
 
-        // Publicar evento de mudança de status
         try {
             statusEventPublisher.publishGuiaStatusChange(
                     id,
@@ -205,168 +185,110 @@ public class GuiaServiceImpl implements GuiaService {
         } catch (Exception e) {
             logger.error("Erro ao publicar evento de mudança de status: {}", e.getMessage(), e);
         }
-        
-        logger.info("Guia atualizada com sucesso. ID: {}", updatedGuia.getId());
+
         return mapToGuiaDto(updatedGuia);
     }
 
     @Override
     @Transactional
     public void deleteGuia(UUID id) {
-        logger.info("Excluindo guia com ID: {}", id);
-
         if (!guiaRepository.existsById(id)) {
             throw new ResourceNotFoundException("Guia não encontrada com ID: " + id);
         }
-
-        // Verificar se há fichas associadas
         long totalFichas = guiaRepository.countFichasByGuiaId(id);
         if (totalFichas > 0) {
             throw new IllegalStateException("Não é possível excluir guia que possui fichas associadas");
         }
-
         guiaRepository.deleteById(id);
-        logger.info("Guia excluída com sucesso. ID: {}", id);
     }
 
     @Override
     public Page<GuiaSummaryDto> getGuiasByPaciente(UUID pacienteId, Pageable pageable) {
-        logger.info("Buscando guias do paciente: {}", pacienteId);
-
-        Page<Guia> guias = guiaRepository.findByPacienteId(pacienteId, pageable);
-        return guias.map(this::mapToGuiaSummaryDto);
+        return guiaRepository.findByPacienteId(pacienteId, pageable).map(this::mapToGuiaSummaryDto);
     }
 
     @Override
     public Page<GuiaSummaryDto> getGuiasByConvenio(UUID convenioId, Pageable pageable) {
-        logger.info("Buscando guias do convênio: {}", convenioId);
-
-        Page<Guia> guias = guiaRepository.findByConvenioId(convenioId, pageable);
-        return guias.map(this::mapToGuiaSummaryDto);
+        return guiaRepository.findByConvenioId(convenioId, pageable).map(this::mapToGuiaSummaryDto);
     }
 
     @Override
     public Page<GuiaSummaryDto> getGuiasByMesEAno(Integer mes, Integer ano, Pageable pageable) {
-        logger.info("Buscando guias do mês {} de {}", mes, ano);
-
-        Page<Guia> guias = guiaRepository.findByMesAndAno(mes, ano, pageable);
-        return guias.map(this::mapToGuiaSummaryDto);
+        return guiaRepository.findByMesAndAno(mes, ano, pageable).map(this::mapToGuiaSummaryDto);
     }
 
     @Override
     public Page<GuiaSummaryDto> getGuiasVencidas(Pageable pageable) {
-        logger.info("Buscando guias vencidas");
-
-        Page<Guia> guias = guiaRepository.findGuiasVencidas(pageable);
-        return guias.map(this::mapToGuiaSummaryDto);
+        return guiaRepository.findGuiasVencidas(pageable).map(this::mapToGuiaSummaryDto);
     }
 
     @Override
     public Page<GuiaSummaryDto> getGuiasComQuantidadeExcedida(Pageable pageable) {
-        logger.info("Buscando guias com quantidade excedida");
-
-        Page<Guia> guias = guiaRepository.findGuiasComQuantidadeExcedida(pageable);
-        return guias.map(this::mapToGuiaSummaryDto);
+        return guiaRepository.findGuiasComQuantidadeExcedida(pageable).map(this::mapToGuiaSummaryDto);
     }
 
     @Override
     public Page<GuiaSummaryDto> getGuiasByValidade(LocalDate startDate, LocalDate endDate, Pageable pageable) {
-        logger.info("Buscando guias com validade entre {} e {}", startDate, endDate);
-
-        Page<Guia> guias = guiaRepository.findByValidadeBetween(startDate, endDate, pageable);
-        return guias.map(this::mapToGuiaSummaryDto);
+        return guiaRepository.findByValidadeBetween(startDate, endDate, pageable).map(this::mapToGuiaSummaryDto);
     }
 
     @Override
     public Page<GuiaSummaryDto> getGuiasByUsuarioResponsavel(UUID userId, Pageable pageable) {
-        logger.info("Buscando guias do usuário responsável: {}", userId);
-
-        Page<Guia> guias = guiaRepository.findByUsuarioResponsavelId(userId, pageable);
-        return guias.map(this::mapToGuiaSummaryDto);
+        return guiaRepository.findByUsuarioResponsavelId(userId, pageable).map(this::mapToGuiaSummaryDto);
     }
 
     @Override
     public Page<GuiaSummaryDto> getGuiasByEspecialidade(String especialidade, Pageable pageable) {
-        logger.info("Buscando guias da especialidade: {}", especialidade);
-
-        Page<Guia> guias = guiaRepository.findByEspecialidadesContaining(especialidade, pageable);
-        return guias.map(this::mapToGuiaSummaryDto);
+        return guiaRepository.findByEspecialidadesContaining(especialidade, pageable).map(this::mapToGuiaSummaryDto);
     }
 
     @Override
     public Page<FichaSummaryDto> getFichasByGuiaId(UUID guiaId, Pageable pageable) {
-        logger.info("Buscando fichas da guia: {}", guiaId);
-
         if (!guiaRepository.existsById(guiaId)) {
             throw new ResourceNotFoundException("Guia não encontrada com ID: " + guiaId);
         }
-
         List<Ficha> fichas = fichaRepository.findByGuiaId(guiaId);
-
-        // Converter lista para página manualmente
         int start = (int) pageable.getOffset();
         int end = Math.min((start + pageable.getPageSize()), fichas.size());
-
         return new org.springframework.data.domain.PageImpl<>(
-                fichas.subList(start, end)
-                        .stream()
-                        .map(this::mapToFichaSummaryDto)
-                        .collect(java.util.stream.Collectors.toList()),
-                pageable,
-                fichas.size()
+                fichas.subList(start, end).stream().map(this::mapToFichaSummaryDto).collect(Collectors.toList()),
+                pageable, fichas.size()
         );
     }
 
     @Override
     public Page<GuiaSummaryDto> searchGuias(String termo, Pageable pageable) {
-        logger.info("Buscando guias pelo termo geral: {}", termo);
-        Page<Guia> guias = guiaRepository.searchByNumeroOrPacienteNome(termo, pageable);
-        return guias.map(this::mapToGuiaSummaryDto);
+        return guiaRepository.searchByNumeroOrPacienteNome(termo, pageable).map(this::mapToGuiaSummaryDto);
     }
 
     @Override
     public Page<GuiaSummaryDto> getGuiasByStatus(String status, Pageable pageable) {
-        logger.info("Buscando guias com status: {}", status);
-
-        Page<Guia> guias = guiaRepository.findGuiaByStatus(status, pageable);
-        return guias.map(this::mapToGuiaSummaryDto);
+        return guiaRepository.findGuiaByStatus(status, pageable).map(this::mapToGuiaSummaryDto);
     }
 
     @Override
-    public long countTotalGuias() {
-        return guiaRepository.count();
-    }
+    public long countTotalGuias() { return guiaRepository.count(); }
 
     @Override
-    public long countGuiasVencidas() {
-        return guiaRepository.findGuiasVencidas(Pageable.unpaged()).getTotalElements();
-    }
+    public long countGuiasVencidas() { return guiaRepository.findGuiasVencidas(Pageable.unpaged()).getTotalElements(); }
 
     @Override
-    public long countGuiasComQuantidadeExcedida() {
-        return guiaRepository.findGuiasComQuantidadeExcedida(Pageable.unpaged()).getTotalElements();
-    }
+    public long countGuiasComQuantidadeExcedida() { return guiaRepository.findGuiasComQuantidadeExcedida(Pageable.unpaged()).getTotalElements(); }
 
     @Override
     public GuiaDto findByNumeroGuia(String numeroGuia) {
         Guia guia = guiaRepository.findByNumeroGuia(numeroGuia)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Guia não encontrada com número: " + numeroGuia
-                ));
+                .orElseThrow(() -> new ResourceNotFoundException("Guia não encontrada: " + numeroGuia));
         return mapToGuiaDto(guia);
     }
 
     @Override
     public Page<GuiaSummaryDto> searchByNumeroGuia(String termo, Pageable pageable) {
-        logger.info("Buscando guias pelo termo: {}", termo);
-
-        Page<Guia> guias = guiaRepository.searchByNumeroGuia(termo, pageable);
-        return guias.map(this::mapToGuiaSummaryDto);
+        return guiaRepository.searchByNumeroGuia(termo, pageable).map(this::mapToGuiaSummaryDto);
     }
 
     @Override
     public List<StatusHistoryDto> getHistoricoStatusGuia(UUID guiaId) {
-        logger.info("Buscando histórico de status para guia ID: {}", guiaId);
         return statusHistoryService.getHistoricoEntidade(StatusHistory.EntityType.GUIA, guiaId);
     }
 
@@ -379,6 +301,13 @@ public class GuiaServiceImpl implements GuiaService {
     private GuiaDto mapToGuiaDto(Guia guia) {
         long totalFichas = guiaRepository.countFichasByGuiaId(guia.getId());
 
+        List<GuiaItemDto> itensDto = new ArrayList<>();
+        if (guia.getItens() != null) {
+            itensDto = guia.getItens().stream()
+                    .map(i -> new GuiaItemDto(i.getId(), i.getEspecialidade(), i.getQuantidadeAutorizada(), i.getQuantidadeExecutada()))
+                    .collect(Collectors.toList());
+        }
+
         return new GuiaDto(
                 guia.getId(),
                 guia.getNumeroGuia(),
@@ -386,8 +315,8 @@ public class GuiaServiceImpl implements GuiaService {
                 guia.getStatus(),
                 guia.getPaciente().getId(),
                 guia.getPaciente().getNome(),
-                guia.getEspecialidades(),
-                guia.getQuantidadeAutorizada(),
+                itensDto,
+                guia.getQuantidadeAutorizadaTotal(), // Retorna total para compatibilidade
                 guia.getConvenio().getId(),
                 guia.getConvenio().getName(),
                 guia.getMes(),
@@ -410,14 +339,29 @@ public class GuiaServiceImpl implements GuiaService {
     private GuiaSummaryDto mapToGuiaSummaryDto(Guia guia) {
         long totalFichas = guiaRepository.countFichasByGuiaId(guia.getId());
 
+        int quantidadeTotalGeral = (guia.getItens() != null) ?
+                guia.getItens().stream().mapToInt(GuiaItem::getQuantidadeAutorizada).sum() : 0;
+
+        List<GuiaItemDto> itensDto = new ArrayList<>();
+        if (guia.getItens() != null) {
+            itensDto = guia.getItens().stream()
+                    .map(item -> new GuiaItemDto(
+                            item.getId(),
+                            item.getEspecialidade(),
+                            item.getQuantidadeAutorizada(),
+                            item.getQuantidadeExecutada()
+                    ))
+                    .collect(Collectors.toList());
+        }
+
         return new GuiaSummaryDto(
                 guia.getId(),
                 guia.getPaciente().getNome(),
                 guia.getNumeroGuia(),
                 guia.getNumeroVenda(),
                 guia.getStatus(),
-                guia.getEspecialidades(),
-                guia.getQuantidadeAutorizada(),
+                itensDto, // Passando a lista de DTOs convertida
+                quantidadeTotalGeral,
                 guia.getConvenio().getName(),
                 guia.getMes(),
                 guia.getAno(),

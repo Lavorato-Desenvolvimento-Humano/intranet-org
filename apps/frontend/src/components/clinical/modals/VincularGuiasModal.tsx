@@ -98,7 +98,9 @@ export const VincularGuiaModal: React.FC<VincularGuiaModalProps> = ({
   // Verificar se guia é compatível
   const isGuiaCompativel = (guia: GuiaSummaryDto): boolean => {
     const mesmoPaciente = guia.pacienteNome === pacienteNome;
-    const temEspecialidade = guia.especialidades.includes(especialidade);
+    const temEspecialidade = guia.itens?.some(
+      (item) => item.especialidade === especialidade
+    );
     return mesmoPaciente && temEspecialidade;
   };
 
@@ -261,21 +263,26 @@ export const VincularGuiaModal: React.FC<VincularGuiaModalProps> = ({
                           </div>
                           <div>
                             <p className="text-gray-600">Especialidades:</p>
-                            <p className="font-medium">
-                              {guia.especialidades.map((esp, index) => (
-                                <React.Fragment key={esp}>
-                                  {index > 0 && ", "}
-                                  <span
-                                    className={
-                                      esp === especialidade
-                                        ? "text-green-700 font-semibold"
-                                        : ""
-                                    }>
-                                    {esp}
-                                  </span>
-                                </React.Fragment>
-                              ))}
-                            </p>
+                            <div>
+                              <p className="text-gray-600">Especialidades:</p>
+                              <p className="font-medium">
+                                {/* Proteção (guia.itens || []) caso venha nulo */}
+                                {(guia.itens || []).map((item, index) => (
+                                  <React.Fragment key={index}>
+                                    {index > 0 && ", "}
+                                    <span
+                                      className={
+                                        // Compara item.especialidade com a prop especialidade
+                                        item.especialidade === especialidade
+                                          ? "text-green-700 font-semibold"
+                                          : ""
+                                      }>
+                                      {item.especialidade}
+                                    </span>
+                                  </React.Fragment>
+                                ))}
+                              </p>
+                            </div>
                           </div>
                           <div>
                             <p className="text-gray-600">Validade:</p>

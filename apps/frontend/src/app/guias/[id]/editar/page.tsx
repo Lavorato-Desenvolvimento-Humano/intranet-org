@@ -1,4 +1,3 @@
-// apps/frontend/src/app/guias/[id]/editar/page.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -15,11 +14,19 @@ import {
   GuiaUpdateRequest,
   StatusChangeRequest,
   PacienteSummaryDto,
+  GuiaItem,
 } from "@/types/clinical";
 import { formatDate } from "@/utils/dateUtils";
 import toastUtil from "@/utils/toast";
 import { StatusSelect } from "@/components/clinical/ui/StatusSelect";
 import { StatusBadge } from "@/components/clinical/ui/StatusBadge";
+
+// Interface auxiliar para o item sendo adicionado
+interface TempItem {
+  especialidade: string;
+  quantidade: number;
+  quantidadeExecutada?: number;
+}
 
 export default function EditarGuiaPage() {
   const router = useRouter();
@@ -36,9 +43,8 @@ export default function EditarGuiaPage() {
 
   // Estados do formulário
   const [formData, setFormData] = useState<GuiaUpdateRequest>({
-    especialidades: [] as string[],
+    itens: [] as GuiaItem[],
     numeroVenda: "",
-    quantidadeAutorizada: 1,
     mes: new Date().getMonth() + 1,
     ano: new Date().getFullYear(),
     validade: "",
@@ -48,13 +54,17 @@ export default function EditarGuiaPage() {
     quantidadeFaturada: 0,
   });
 
-  // Estados para especialidades
-  const [especialidadeInput, setEspecialidadeInput] = useState("");
+  // Estado para o novo item
+  const [newItem, setNewItem] = useState<TempItem>({
+    especialidade: "",
+    quantidade: 10,
+    quantidadeExecutada: 0,
+  });
 
   // Estados de validação
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
-  // ✅ Estados para mudança de status
+  // Estados para mudança de status
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [statusChangeData, setStatusChangeData] = useState({
     motivo: "",
@@ -66,11 +76,15 @@ export default function EditarGuiaPage() {
   const especialidades = [
     "Fisioterapia",
     "Fonoaudiologia",
-    "Terapia Ocupacional",
-    "Psicologia",
+    "Terapia ocupacional",
+    "Psicoterapia",
     "Nutrição",
     "Psicopedagogia",
     "Psicomotricidade",
+    "Musicoterapia",
+    "Avaliação neuropsicológica",
+    "Arteterapia",
+    "Terapia ABA",
   ];
 
   // Carregar dados iniciais
@@ -87,19 +101,18 @@ export default function EditarGuiaPage() {
 
       const [guiaData, pacientesData, conveniosData] = await Promise.all([
         guiaService.getGuiaById(guiaId),
-        pacienteService.getAllPacientes(0, 1000), // Buscar todos para o select
+        pacienteService.getAllPacientes(0, 1000),
         convenioService.getAllConvenios(),
       ]);
 
       setGuia(guiaData);
       setPacientes(pacientesData.content);
       setConvenios(conveniosData);
-      setStatusAnterior(guiaData.status); // ✅ Armazenar status anterior
+      setStatusAnterior(guiaData.status);
 
       // Preencher formulário com dados da guia
       setFormData({
-        especialidades: [...guiaData.especialidades],
-        quantidadeAutorizada: guiaData.quantidadeAutorizada,
+        itens: guiaData.itens || [],
         numeroVenda: guiaData.numeroVenda,
         mes: guiaData.mes,
         ano: guiaData.ano,
@@ -120,15 +133,12 @@ export default function EditarGuiaPage() {
   const handleInputChange = (field: keyof GuiaUpdateRequest, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
 
-    // Limpar erro do campo
     if (formErrors[field]) {
       setFormErrors((prev) => ({ ...prev, [field]: "" }));
     }
   };
 
-  // ✅ Handler específico para mudança de status
   const handleStatusChange = (newStatus: string) => {
-    // Se o status mudou, mostrar modal para motivo
     if (newStatus !== statusAnterior && newStatus !== "") {
       setFormData((prev) => ({ ...prev, status: newStatus }));
       setShowStatusModal(true);
@@ -137,38 +147,60 @@ export default function EditarGuiaPage() {
     }
   };
 
-  const addEspecialidade = () => {
-    if (
-      especialidadeInput.trim() &&
-      !formData.especialidades?.includes(especialidadeInput.trim())
-    ) {
+  const handleItemChange = (index: number, field: string, value: number) => {
+    if (!formData.itens) return;
+
+    const newItens = [...formData.itens];
+    newItens[index] = {
+      ...newItens[index],
+      [field]: value,
+    };
+
+    setFormData((prev) => ({ ...prev, itens: newItens }));
+  };
+
+  const addItem = () => {
+    if (newItem.especialidade.trim() && newItem.quantidade > 0) {
+      const exists = formData.itens?.some(
+        (item) => item.especialidade === newItem.especialidade
+      );
+
+      if (exists) {
+        toastUtil.error("Esta especialidade já foi adicionada.");
+        return;
+      }
+
+      const novoItemParaSalvar: GuiaItem = {
+        id: undefined,
+        especialidade: newItem.especialidade,
+        quantidadeAutorizada: newItem.quantidade,
+      } as GuiaItem;
+
       setFormData((prev) => ({
         ...prev,
-        especialidades: [
-          ...(prev.especialidades || []),
-          especialidadeInput.trim(),
-        ],
+        itens: [...(prev.itens || []), novoItemParaSalvar],
       }));
-      setEspecialidadeInput("");
+
+      setNewItem({ especialidade: "", quantidade: 10 });
+
+      if (formErrors.itens) {
+        setFormErrors((prev) => ({ ...prev, itens: "" }));
+      }
     }
   };
 
-  const removeEspecialidade = (index: number) => {
+  const removeItem = (index: number) => {
     setFormData((prev) => ({
       ...prev,
-      especialidades: prev.especialidades?.filter((_, i) => i !== index) || [],
+      itens: prev.itens?.filter((_, i) => i !== index) || [],
     }));
   };
 
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
 
-    if (!formData.especialidades?.length) {
-      errors.especialidades = "Pelo menos uma especialidade é obrigatória";
-    }
-
-    if (!formData.quantidadeAutorizada || formData.quantidadeAutorizada <= 0) {
-      errors.quantidadeAutorizada = "Quantidade deve ser maior que zero";
+    if (!formData.itens?.length) {
+      errors.itens = "Pelo menos uma especialidade é obrigatória";
     }
 
     if (!formData.mes || formData.mes < 1 || formData.mes > 12) {
@@ -202,11 +234,9 @@ export default function EditarGuiaPage() {
     try {
       setSaving(true);
 
-      // ✅ Verificar se o status mudou
       const statusChanged = formData.status !== statusAnterior;
 
       if (statusChanged) {
-        // ✅ Se o status mudou, usar endpoint específico para mudança de status
         const statusRequest: StatusChangeRequest = {
           novoStatus: formData.status!,
           motivo:
@@ -218,8 +248,7 @@ export default function EditarGuiaPage() {
       }
 
       const updateRequest: GuiaUpdateRequest = {
-        especialidades: formData.especialidades,
-        quantidadeAutorizada: formData.quantidadeAutorizada,
+        itens: formData.itens,
         numeroVenda: formData.numeroVenda,
         mes: formData.mes,
         ano: formData.ano,
@@ -311,88 +340,161 @@ export default function EditarGuiaPage() {
           {/* Formulário */}
           <div className="bg-white rounded-lg shadow-md">
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
-              {/* Especialidades */}
-              <div>
+              {/* SEÇÃO DE ESPECIALIDADES E QUANTIDADES */}
+              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Especialidades *
+                  Especialidades e Quantidades *
                 </label>
+                <p className="text-xs text-gray-500 mb-3">
+                  Gerencie as especialidades cobertas por esta guia e suas
+                  respectivas quantidades.
+                </p>
 
-                <div className="flex space-x-2 mb-3">
-                  <select
-                    value={especialidadeInput}
-                    onChange={(e) => setEspecialidadeInput(e.target.value)}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
-                    <option value="">Selecione uma especialidade</option>
-                    {especialidades
-                      .filter((esp) => !formData.especialidades?.includes(esp))
-                      .map((esp) => (
-                        <option key={esp} value={esp}>
-                          {esp}
-                        </option>
-                      ))}
-                  </select>
+                <div className="flex flex-col md:flex-row gap-3 mb-4 items-end">
+                  {/* Select de Especialidade */}
+                  <div className="flex-1 w-full">
+                    <label className="text-xs text-gray-600 mb-1 block">
+                      Especialidade
+                    </label>
+                    <select
+                      value={newItem.especialidade}
+                      onChange={(e) =>
+                        setNewItem((prev) => ({
+                          ...prev,
+                          especialidade: e.target.value,
+                        }))
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
+                      <option value="">Selecione...</option>
+                      {especialidades
+                        .filter(
+                          (esp) =>
+                            !formData.itens?.some(
+                              (item) => item.especialidade === esp
+                            )
+                        )
+                        .map((esp) => (
+                          <option key={esp} value={esp}>
+                            {esp}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+
+                  {/* Input de Quantidade */}
+                  <div className="w-full md:w-32">
+                    <label className="text-xs text-gray-600 mb-1 block">
+                      Qtd. Autorizada
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={newItem.quantidade}
+                      onChange={(e) =>
+                        setNewItem((prev) => ({
+                          ...prev,
+                          quantidade: parseInt(e.target.value) || 0,
+                        }))
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  {/* Botão Adicionar */}
                   <CustomButton
                     type="button"
                     variant="primary"
-                    onClick={addEspecialidade}
-                    disabled={!especialidadeInput.trim()}>
-                    <Plus className="h-4 w-4" />
+                    onClick={addItem}
+                    disabled={
+                      !newItem.especialidade.trim() || newItem.quantidade <= 0
+                    }
+                    className="h-[42px]">
+                    <Plus className="h-4 w-4 mr-1" />
+                    Adicionar
                   </CustomButton>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
-                  {formData.especialidades?.map((especialidade, index) => (
-                    <span
-                      key={index}
-                      className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                      {especialidade}
-                      <button
-                        type="button"
-                        onClick={() => removeEspecialidade(index)}
-                        className="ml-2 text-blue-600 hover:text-blue-800">
-                        <X className="h-3 w-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
+                {/* Lista de Itens Adicionados */}
+                {formData.itens && formData.itens.length > 0 ? (
+                  <div className="grid grid-cols-1 gap-3">
+                    {formData.itens.map((item, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-md shadow-sm">
+                        {/* Nome da Especialidade */}
+                        <div className="flex-1 font-medium text-blue-900">
+                          {item.especialidade}
+                        </div>
 
-                {formErrors.especialidades && (
-                  <p className="text-red-500 text-xs mt-1">
-                    {formErrors.especialidades}
+                        {/* Inputs de Quantidade */}
+                        <div className="flex items-center space-x-4 mx-4">
+                          {/* Input Autorizada */}
+                          <div className="flex flex-col items-center">
+                            <label className="text-[10px] text-gray-500 mb-1">
+                              Autorizada
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={item.quantidadeAutorizada}
+                              onChange={(e) =>
+                                handleItemChange(
+                                  index,
+                                  "quantidadeAutorizada",
+                                  parseInt(e.target.value) || 0
+                                )
+                              }
+                              className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 text-center"
+                            />
+                          </div>
+
+                          {/* Input Executada (O NOVO CAMPO) */}
+                          <div className="flex flex-col items-center">
+                            <label className="text-[10px] text-gray-500 mb-1">
+                              Executada
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={item.quantidadeExecutada ?? 0}
+                              onChange={(e) =>
+                                handleItemChange(
+                                  index,
+                                  "quantidadeExecutada",
+                                  parseInt(e.target.value) || 0
+                                )
+                              }
+                              className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 text-center bg-gray-50"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Botão Remover */}
+                        <button
+                          type="button"
+                          onClick={() => removeItem(index)}
+                          className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                          title="Remover item">
+                          <X className="h-5 w-5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 bg-gray-50 border border-dashed border-gray-300 rounded-md text-gray-500">
+                    Nenhuma especialidade adicionada.
+                  </div>
+                )}
+
+                {formErrors.itens && (
+                  <p className="text-red-500 text-xs mt-2 flex items-center">
+                    <AlertCircle className="h-3 w-3 mr-1" />
+                    {formErrors.itens}
                   </p>
                 )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Quantidade Autorizada */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Quantidade Autorizada *
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    required
-                    value={formData.quantidadeAutorizada}
-                    onChange={(e) =>
-                      handleInputChange(
-                        "quantidadeAutorizada",
-                        parseInt(e.target.value)
-                      )
-                    }
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 ${
-                      formErrors.quantidadeAutorizada
-                        ? "border-red-500"
-                        : "border-gray-300"
-                    }`}
-                  />
-                  {formErrors.quantidadeAutorizada && (
-                    <p className="text-red-500 text-xs mt-1">
-                      {formErrors.quantidadeAutorizada}
-                    </p>
-                  )}
-                </div>
-
                 {/* Número da Venda */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -559,7 +661,7 @@ export default function EditarGuiaPage() {
                 </div>
               </div>
 
-              {/* ✅ Status em linha separada */}
+              {/* Status em linha separada */}
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-sm font-medium text-gray-700">
@@ -625,7 +727,7 @@ export default function EditarGuiaPage() {
           </div>
         </div>
 
-        {/* ✅ Modal para mudança de status */}
+        {/* Modal para mudança de status */}
         {showStatusModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
@@ -688,7 +790,7 @@ export default function EditarGuiaPage() {
                     setFormData((prev) => ({
                       ...prev,
                       status: statusAnterior,
-                    })); // Reverter status
+                    }));
                   }}>
                   Cancelar
                 </CustomButton>

@@ -237,9 +237,13 @@ export default function GuiasPage() {
     },
     {
       header: "Especialidades",
-      accessor: ((guia: GuiaSummaryDto) =>
-        guia.especialidades.slice(0, 2).join(", ") +
-        (guia.especialidades.length > 2 ? "..." : "")) as any,
+      accessor: ((guia: GuiaSummaryDto) => {
+        const itens = guia.itens || [];
+
+        const nomes = itens.map((item: any) => item.especialidade);
+
+        return nomes.slice(0, 2).join(", ") + (nomes.length > 2 ? "..." : "");
+      }) as any,
     },
     {
       header: "Status",

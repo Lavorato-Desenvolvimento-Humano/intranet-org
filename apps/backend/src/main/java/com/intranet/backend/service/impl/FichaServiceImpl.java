@@ -82,9 +82,10 @@ public class FichaServiceImpl implements FichaService {
             throw new IllegalArgumentException("Já existe uma ficha para esta guia com a especialidade: " + request.getEspecialidade());
         }
 
-        if (!guia.getEspecialidades().contains(request.getEspecialidade())) {
-            throw new IllegalArgumentException("A especialidade informada não está presente nas especialidades da guia");
-        }
+        GuiaItem guiaItem = guia.getItens().stream()
+                .filter(item -> item.getEspecialidade().equalsIgnoreCase(request.getEspecialidade()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("A especialidade informada não está presente nas especialidades da guia"));
 
         String codigoFicha = generateUniqueCode();
         User currentUser = getCurrentUser();
@@ -92,8 +93,8 @@ public class FichaServiceImpl implements FichaService {
         Ficha ficha = new Ficha();
         ficha.setCodigoFicha(codigoFicha);
         ficha.setGuia(guia);
-        ficha.setEspecialidade(request.getEspecialidade());
-        ficha.setQuantidadeAutorizada(request.getQuantidadeAutorizada());
+        ficha.setEspecialidade(guiaItem.getEspecialidade());
+        ficha.setQuantidadeAutorizada(guiaItem.getQuantidadeAutorizada());
         ficha.setConvenio(convenio);
         ficha.setMes(request.getMes());
         ficha.setAno(request.getAno());
@@ -103,11 +104,11 @@ public class FichaServiceImpl implements FichaService {
         Ficha savedFicha = fichaRepository.save(ficha);
         logger.info("Ficha criada com sucesso. ID: {}", savedFicha.getId());
 
-        // Publicar evento de mudança de status (criação)
+        // Publicar evento
         try {
             statusEventPublisher.publishFichaStatusChange(
                     savedFicha.getId(),
-                    null, // status anterior
+                    null,
                     request.getStatus(),
                     "Criação da ficha",
                     "Status inicial definido na criação",
@@ -214,18 +215,27 @@ public class FichaServiceImpl implements FichaService {
 
         // Atualizar campos se fornecidos
         if (request.getEspecialidade() != null) {
-            // Verificar se a nova especialidade está disponível na guia (apenas se ficha tiver guia)
-            if (ficha.getGuia() != null && !ficha.getGuia().getEspecialidades().contains(request.getEspecialidade())) {
-                throw new IllegalArgumentException("A especialidade informada não está presente nas especialidades da guia");
-            }
+            if (ficha.getGuia() != null) {
+                GuiaItem guiaItem = ficha.getGuia().getItens().stream()
+                        .filter(item -> item.getEspecialidade().equalsIgnoreCase(request.getEspecialidade()))
+                        .findFirst()
+                        .orElseThrow(() -> new IllegalArgumentException("A especialidade informada não está presente nas especialidades da guia"));
 
-            // Verificar se não existe outra ficha com a mesma especialidade na mesma guia
-            if (ficha.getGuia() != null && !ficha.getEspecialidade().equals(request.getEspecialidade()) &&
-                    fichaRepository.existsByGuiaIdAndEspecialidade(ficha.getGuia().getId(), request.getEspecialidade())) {
-                throw new IllegalArgumentException("Já existe uma ficha para esta guia com a especialidade: " + request.getEspecialidade());
-            }
+                if (!ficha.getEspecialidade().equalsIgnoreCase(request.getEspecialidade())) {
+                    // Verificar duplicidade
+                    if (fichaRepository.existsByGuiaIdAndEspecialidade(ficha.getGuia().getId(), guiaItem.getEspecialidade())) {
+                        throw new IllegalArgumentException("Já existe uma ficha para esta guia com a especialidade: " + request.getEspecialidade());
+                    }
 
-            ficha.setEspecialidade(request.getEspecialidade());
+                    // Atualiza a especialidade
+                    ficha.setEspecialidade(guiaItem.getEspecialidade());
+
+                    ficha.setQuantidadeAutorizada(guiaItem.getQuantidadeAutorizada());
+                }
+            } else {
+                // Caso a ficha não tenha guia (ex: avulsa), apenas atualiza o texto
+                ficha.setEspecialidade(request.getEspecialidade());
+            }
         }
 
         if (request.getQuantidadeAutorizada() != null) {

@@ -20,8 +20,8 @@ public class GuiaDto {
     private String status;
     private UUID pacienteId;
     private String pacienteNome;
-    private List<String> especialidades;
-    private Integer quantidadeAutorizada;
+    private List<GuiaItemDto> itens;
+    private Integer quantidadeAutorizada; // Mantém como total para compatibilidade visual simples
     private UUID convenioId;
     private String convenioNome;
     private Integer mes;
