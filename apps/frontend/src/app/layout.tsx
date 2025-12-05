@@ -4,6 +4,7 @@ import { Metadata } from "next";
 import { AuthProvider } from "@/context/AuthContext";
 import ToastProvider from "@/providers/ToastProvider";
 import { FloatingSupportWidget } from "@/components/layout/FloatingSupportWidget";
+import BrowserNotificationListener from "@/components/tickets/BrowserNotificationListener";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -27,6 +28,7 @@ export default function RootLayout({
     <html lang="pt-BR">
       <body className={inter.className}>
         <AuthProvider>
+          <BrowserNotificationListener />
           <ToastProvider>{children}</ToastProvider>
           <FloatingSupportWidget />
         </AuthProvider>

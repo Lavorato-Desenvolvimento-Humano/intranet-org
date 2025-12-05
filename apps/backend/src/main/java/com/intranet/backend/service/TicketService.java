@@ -42,6 +42,12 @@ public class TicketService {
     @Value("${app.upload.dir:/app/uploads}")
     private String uploadDir;
 
+    private void sendNotificationToUser(UUID userId, String title, String message, Long ticketId) {
+        String destination = "/topic/user/" + userId + "/notifications";
+        NotificationMessage payload = new NotificationMessage(title, message, ticketId, "TICKET_UPDATE");
+        messagingTemplate.convertAndSend(destination, payload);
+    }
+
     public List<TicketResponseDto> getAllTickets(String assigneeIdFilter, String requesterIdFilter, String statusFilter) {
         User currentUser = getCurrentUser();
         List<Ticket> tickets = List.of();
@@ -140,6 +146,19 @@ public class TicketService {
         Ticket ticket = getTicketById(ticketId);
         User currentUser = getCurrentUser();
 
+        User targetUser = currentUser.getId().equals(ticket.getRequester().getId())
+                ? ticket.getAssignee()
+                : ticket.getRequester();
+
+        if (targetUser != null) {
+            sendNotificationToUser(
+                    targetUser.getId(),
+                    "Nova interação",
+                    "Novo comentário no chamado #" + ticket.getId(),
+                    ticket.getId()
+            );
+        }
+
         TicketInteraction commentInteraction = TicketInteraction.builder()
                 .ticket(ticket)
                 .user(currentUser)
@@ -188,6 +207,13 @@ public class TicketService {
 
         Ticket saved = ticketRepository.save(ticket);
         logSystemEvent(saved, "Ticket marcado como resolvido pelo técnico.");
+
+        sendNotificationToUser(
+                saved.getRequester().getId(),
+                "Chamado Resolvido",
+                "Seu chamado #" + saved.getId() + " foi resolvido.",
+                saved.getId()
+        );
 
         return toDto(saved);
     }
