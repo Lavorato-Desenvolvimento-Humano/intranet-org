@@ -1,14 +1,14 @@
-// src/app/tickets/page.tsx
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react"; // Adicionado useState e useEffect
 import { useRouter } from "next/navigation";
 import { DataTable, Column } from "@/components/ui/data-table";
 import { useTickets, TicketViewType } from "@/hooks/useTickets";
 import { Ticket } from "@/types/ticket";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { LayoutList, Inbox, UserCheck, PlusCircle } from "lucide-react";
+import { LayoutList, Inbox, UserCheck, PlusCircle, Bell } from "lucide-react";
+import toastUtil from "@/utils/toast";
 
 export default function TicketsPage() {
   const router = useRouter();
@@ -23,7 +23,41 @@ export default function TicketsPage() {
     getStatusLabel,
   } = useTickets("my_assignments");
 
-  // Definição das colunas para o DataTable
+  const [notificationPermission, setNotificationPermission] =
+    useState<NotificationPermission>("default");
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && "Notification" in window) {
+      setNotificationPermission(Notification.permission);
+    }
+  }, []);
+
+  const handleEnableNotifications = async () => {
+    if (!("Notification" in window)) {
+      toastUtil.error("Este navegador não suporta notificações.");
+      return;
+    }
+
+    try {
+      const permission = await Notification.requestPermission();
+      setNotificationPermission(permission);
+
+      if (permission === "granted") {
+        // Toca um som de teste (o mesmo usado no listener)
+        new Audio("/sounds/i_phone__toquecelular.com_.mp3")
+          .play()
+          .catch(() => {});
+        // Envia notificação de teste
+        new Notification("Notificações Ativadas", {
+          body: "Agora você será alertado sobre novos chamados.",
+          icon: "/icon.png",
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao solicitar permissão:", error);
+    }
+  };
+
   const columns: Column<Ticket>[] = [
     {
       key: "id",
@@ -104,7 +138,6 @@ export default function TicketsPage() {
     },
   ];
 
-  // Componente de Abas para Filtragem
   const TabButton = ({
     type,
     label,
@@ -137,15 +170,26 @@ export default function TicketsPage() {
           <p className="text-gray-500">Gerencie seus chamados e atendimentos</p>
         </div>
 
-        <button
-          onClick={() => router.push("/tickets/novo")}
-          className="flex items-center bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-md transition-colors shadow-sm">
-          <PlusCircle size={18} className="mr-2" />
-          Novo Chamado
-        </button>
+        <div className="flex gap-2">
+          {notificationPermission === "default" && (
+            <button
+              onClick={handleEnableNotifications}
+              className="flex items-center bg-yellow-100 hover:bg-yellow-200 text-yellow-800 border border-yellow-200 px-4 py-2 rounded-md transition-colors shadow-sm"
+              title="Ativar notificações na área de trabalho">
+              <Bell size={18} className="mr-2" />
+              Ativar Alertas
+            </button>
+          )}
+
+          <button
+            onClick={() => router.push("/tickets/novo")}
+            className="flex items-center bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-md transition-colors shadow-sm">
+            <PlusCircle size={18} className="mr-2" />
+            Novo Chamado
+          </button>
+        </div>
       </div>
 
-      {/* Abas de Navegação */}
       <div className="flex border-b border-gray-200 mb-4">
         <TabButton type="team_queue" label="Fila da Equipe" icon={Inbox} />
         <TabButton
