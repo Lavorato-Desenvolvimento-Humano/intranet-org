@@ -26,7 +26,7 @@ public interface FichaRepository extends JpaRepository<Ficha, UUID> {
     @Query("SELECT f FROM Ficha f WHERE f.guia.id = :guiaId ORDER BY f.especialidade ASC")
     List<Ficha> findByGuiaId(@Param("guiaId") UUID guiaId);
 
-    @Query("SELECT f FROM Ficha f WHERE f.guia.paciente.id = :pacienteId ORDER BY f.createdAt DESC")
+    @Query("SELECT f FROM Ficha f WHERE (f.paciente.id = :pacienteId OR f.guia.paciente.id = :pacienteId) ORDER BY f.createdAt DESC")
     Page<Ficha> findByPacienteId(@Param("pacienteId") UUID pacienteId, Pageable pageable);
 
     @Query("SELECT f FROM Ficha f WHERE f.convenio.id = :convenioId ORDER BY f.createdAt DESC")
