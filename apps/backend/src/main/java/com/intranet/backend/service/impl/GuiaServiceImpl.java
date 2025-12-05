@@ -25,6 +25,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Transactional (readOnly = true)
 public class GuiaServiceImpl implements GuiaService {
 
     private static final Logger logger = LoggerFactory.getLogger(GuiaServiceImpl.class);
@@ -284,7 +285,7 @@ public class GuiaServiceImpl implements GuiaService {
 
     @Override
     public Page<GuiaSummaryDto> searchByNumeroGuia(String termo, Pageable pageable) {
-        return guiaRepository.searchByNumeroGuia(termo, pageable).map(this::mapToGuiaSummaryDto);
+        return guiaRepository.searchByNumeroOrPacienteNome(termo, pageable).map(this::mapToGuiaSummaryDto);
     }
 
     @Override

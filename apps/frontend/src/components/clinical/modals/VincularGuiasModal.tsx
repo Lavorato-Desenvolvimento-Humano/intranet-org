@@ -162,7 +162,7 @@ export const VincularGuiaModal: React.FC<VincularGuiaModalProps> = ({
           {/* Busca */}
           <div className="mb-6">
             <SearchInput
-              placeholder="Buscar por número da guia..."
+              placeholder="Buscar por número da guia ou nome do paciente..."
               value={searchTerm}
               onChange={handleSearch}
               //   disabled={loading || vinculando}
