@@ -49,8 +49,14 @@ export const VincularGuiaModal: React.FC<VincularGuiaModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       resetModal();
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen) {
       loadGuias();
     }
+    // Adicione um debounce aqui se desejar otimizar as chamadas de API no futuro
   }, [isOpen, searchTerm, currentPage]);
 
   const resetModal = () => {
