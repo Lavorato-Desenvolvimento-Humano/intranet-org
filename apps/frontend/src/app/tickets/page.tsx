@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react"; // Adicionado useState e useEffect
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { DataTable, Column } from "@/components/ui/data-table";
 import { useTickets, TicketViewType } from "@/hooks/useTickets";

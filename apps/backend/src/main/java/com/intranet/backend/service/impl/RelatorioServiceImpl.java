@@ -85,7 +85,18 @@ public class RelatorioServiceImpl implements RelatorioService {
             logger.info("Relatório criado com ID: {}", relatorio.getId());
 
             try {
-                RelatorioDataDto dados = processarDadosRelatorioEstadoAtual(request, usuarioAlvo);
+                RelatorioDataDto dados;
+
+                boolean isRelatorioAuditoria = request.getTitulo().toLowerCase().contains("histórico")
+                        || request.getTitulo().toLowerCase().contains("mudança");
+
+                if (isRelatorioAuditoria) {
+                    // Nova lógica: Busca quem mudou o status
+                    dados = processarDadosRelatorioAuditoria(request);
+                } else {
+                    // Lógica antiga: Busca o estado atual
+                    dados = processarDadosRelatorioEstadoAtual(request, usuarioAlvo);
+                }
 
                 // Armazenar dados do relatório
                 ObjectMapper mapper = new ObjectMapper();
@@ -352,10 +363,11 @@ public class RelatorioServiceImpl implements RelatorioService {
             PdfWriter writer = new PdfWriter(baos);
             PdfDocument pdf = new PdfDocument(writer);
 
+            // Configuração da página (A4 Paisagem para caber mais colunas)
             Document document = new Document(pdf, PageSize.A4.rotate());
-
             document.setMargins(15, 15, 15, 15);
 
+            // 1. Título e Cabeçalho Geral (Igual para todos)
             document.add(new Paragraph(dados.getTitulo())
                     .setFontSize(14)
                     .setBold()
@@ -374,8 +386,9 @@ public class RelatorioServiceImpl implements RelatorioService {
                     .setFontSize(8)
                     .setMarginBottom(10));
 
+            // 2. Resumo de Status (Igual para todos)
             if (dados.getDistribuicaoPorStatus() != null && !dados.getDistribuicaoPorStatus().isEmpty()) {
-                StringBuilder statusInfo = new StringBuilder("Status: ");
+                StringBuilder statusInfo = new StringBuilder("Resumo: ");
                 dados.getDistribuicaoPorStatus().forEach((status, count) ->
                         statusInfo.append(status).append("(").append(count).append(") "));
 
@@ -385,6 +398,7 @@ public class RelatorioServiceImpl implements RelatorioService {
                         .setMarginBottom(8));
             }
 
+            // 3. Tabela de Dados (AQUI ESTÁ A MUDANÇA PRINCIPAL)
             if (dados.getItens() != null && !dados.getItens().isEmpty()) {
                 document.add(new Paragraph("Dados dos Itens:")
                         .setBold()
@@ -392,66 +406,96 @@ public class RelatorioServiceImpl implements RelatorioService {
                         .setMarginTop(5)
                         .setMarginBottom(5));
 
-                Table table = new Table(UnitValue.createPercentArray(new float[]{
-                        2.2f,  // Nome do Paciente
-                        1.5f,  // Convênio
-                        1.0f,  // Número/Código
-                        1.2f,  // Status
-                        2.0f,  // Especialidade
-                        0.8f,  // Unidade
-                        0.7f,  // Mês
-                        0.8f,  // Qtd. Autorizada
-                        1.0f,  // Atualização
-                        0.8f   // Tipo
-                }));
-                table.setWidth(UnitValue.createPercentValue(100));
+                // LÓGICA DE DECISÃO:
+                // Verifica se o título contém palavras-chave de auditoria para mudar o layout
+                boolean isAuditoria = dados.getTitulo() != null &&
+                        (dados.getTitulo().toLowerCase().contains("auditoria") ||
+                                dados.getTitulo().toLowerCase().contains("histórico"));
 
-                table.addHeaderCell(createCompactHeaderCell("Paciente"));
-                table.addHeaderCell(createCompactHeaderCell("Convênio"));
-                table.addHeaderCell(createCompactHeaderCell("Nº/Código"));
-                table.addHeaderCell(createCompactHeaderCell("Status"));
-                table.addHeaderCell(createCompactHeaderCell("Especialidade"));
-                table.addHeaderCell(createCompactHeaderCell("Unidade"));
-                table.addHeaderCell(createCompactHeaderCell("Mês"));
-                table.addHeaderCell(createCompactHeaderCell("Qtd."));
-                table.addHeaderCell(createCompactHeaderCell("Atualização"));
-                table.addHeaderCell(createCompactHeaderCell("Tipo"));
+                Table table;
 
-                dados.getItens().stream()
-                        .limit(500)
-                        .forEach(item -> {
-                            String nomeFormatado = truncateText(item.getPacienteNome(), 25);
-                            table.addCell(createCompactDataCell(nomeFormatado));
+                if (isAuditoria) {
+                    table = new Table(UnitValue.createPercentArray(new float[]{
+                            2.0f,  // Alterado Por (Usuário)
+                            1.5f,  // Paciente
+                            1.0f,  // Item (Guia/Ficha)
+                            1.2f,  // De (Status Antigo)
+                            1.2f,  // Para (Status Novo)
+                            1.5f,  // Data da Mudança
+                            1.6f   // Motivo/Observação
+                    }));
+                    table.setWidth(UnitValue.createPercentValue(100));
 
-                            String convenioFormatado = truncateText(item.getConvenioNome(), 18);
-                            table.addCell(createCompactDataCell(convenioFormatado));
+                    // Cabeçalhos Específicos de Auditoria
+                    table.addHeaderCell(createCompactHeaderCell("Alterado Por"));
+                    table.addHeaderCell(createCompactHeaderCell("Paciente"));
+                    table.addHeaderCell(createCompactHeaderCell("Item"));
+                    table.addHeaderCell(createCompactHeaderCell("De (Anterior)"));
+                    table.addHeaderCell(createCompactHeaderCell("Para (Novo)"));
+                    table.addHeaderCell(createCompactHeaderCell("Data"));
+                    table.addHeaderCell(createCompactHeaderCell("Motivo"));
 
-                            String numeroOuCodigo = getNumeroOuCodigoPDF(item);
-                            table.addCell(createCompactDataCell(numeroOuCodigo));
+                    // Preenchimento dos dados de Auditoria
+                    dados.getItens().stream().limit(500).forEach(item -> {
+                        table.addCell(createCompactDataCell(truncateText(item.getUsuarioResponsavelNome(), 25)));
 
-                            table.addCell(createCompactDataCell(item.getStatus()));
+                        table.addCell(createCompactDataCell(truncateText(item.getPacienteNome(), 20)));
 
-                            table.addCell(createCompactDataCell(item.getEspecialidade()));
+                        String idItem = "GUIA".equals(item.getTipoEntidade()) ? item.getNumeroGuia() : item.getCodigoFicha();
+                        table.addCell(createCompactDataCell(idItem));
 
-                            table.addCell(createCompactDataCell(getUnidadeFormatadaPDF(item)));
+                        table.addCell(createCompactDataCell(item.getStatusAnterior()));
+                        table.addCell(createCompactDataCell(item.getStatusNovo()));
 
-                            String mesFormatado = getMesFormatadoPDF(item);
-                            table.addCell(createCompactDataCell(mesFormatado));
+                        String dataMudanca = item.getDataAtualizacao() != null ?
+                                item.getDataAtualizacao().format(DateTimeFormatter.ofPattern("dd/MM/yy HH:mm")) : "-";
+                        table.addCell(createCompactDataCell(dataMudanca));
 
-                            String quantidade = getQuantidadeFormatadaPDF(item);
-                            table.addCell(createCompactDataCell(quantidade));
+                        table.addCell(createCompactDataCell(truncateText(item.getMotivoMudanca(), 30)));
+                    });
 
-                            String dataAtualizacao = item.getDataAtualizacao() != null ?
-                                    item.getDataAtualizacao().format(DateTimeFormatter.ofPattern("dd/MM HH:mm")) : "-";
-                            table.addCell(createCompactDataCell(dataAtualizacao));
+                } else {
+                    table = new Table(UnitValue.createPercentArray(new float[]{
+                            2.2f, 1.5f, 1.0f, 1.2f, 2.0f, 0.8f, 0.7f, 0.8f, 1.0f, 0.8f
+                    }));
+                    table.setWidth(UnitValue.createPercentValue(100));
 
-                            table.addCell(createCompactDataCell(item.getTipoEntidade()));
-                        });
+                    // Cabeçalhos Padrão
+                    table.addHeaderCell(createCompactHeaderCell("Paciente"));
+                    table.addHeaderCell(createCompactHeaderCell("Convênio"));
+                    table.addHeaderCell(createCompactHeaderCell("Nº/Código"));
+                    table.addHeaderCell(createCompactHeaderCell("Status"));
+                    table.addHeaderCell(createCompactHeaderCell("Especialidade"));
+                    table.addHeaderCell(createCompactHeaderCell("Unidade"));
+                    table.addHeaderCell(createCompactHeaderCell("Mês"));
+                    table.addHeaderCell(createCompactHeaderCell("Qtd."));
+                    table.addHeaderCell(createCompactHeaderCell("Atualização"));
+                    table.addHeaderCell(createCompactHeaderCell("Tipo"));
 
+                    // Preenchimento dos dados Padrão
+                    dados.getItens().stream().limit(500).forEach(item -> {
+                        table.addCell(createCompactDataCell(truncateText(item.getPacienteNome(), 25)));
+                        table.addCell(createCompactDataCell(truncateText(item.getConvenioNome(), 18)));
+                        table.addCell(createCompactDataCell(getNumeroOuCodigoPDF(item)));
+                        table.addCell(createCompactDataCell(item.getStatus()));
+                        table.addCell(createCompactDataCell(item.getEspecialidade()));
+                        table.addCell(createCompactDataCell(getUnidadeFormatadaPDF(item)));
+                        table.addCell(createCompactDataCell(getMesFormatadoPDF(item)));
+                        table.addCell(createCompactDataCell(getQuantidadeFormatadaPDF(item)));
+
+                        String dataAtualizacao = item.getDataAtualizacao() != null ?
+                                item.getDataAtualizacao().format(DateTimeFormatter.ofPattern("dd/MM HH:mm")) : "-";
+                        table.addCell(createCompactDataCell(dataAtualizacao));
+
+                        table.addCell(createCompactDataCell(item.getTipoEntidade()));
+                    });
+                }
+
+                // Adiciona a tabela ao documento (seja ela A ou B)
                 document.add(table);
 
                 if (dados.getItens().size() > 500) {
-                    document.add(new Paragraph("+ " + (dados.getItens().size() - 500) + " itens")
+                    document.add(new Paragraph("+ " + (dados.getItens().size() - 500) + " itens (limite de exibição)")
                             .setFontSize(7)
                             .setItalic()
                             .setMarginTop(5));
@@ -613,6 +657,82 @@ public class RelatorioServiceImpl implements RelatorioService {
 
         List<RelatorioLog> logs = logRepository.findByRelatorioId(relatorioId);
         return logs.stream().map(this::mapToLogDto).collect(Collectors.toList());
+    }
+
+    private RelatorioDataDto processarDadosRelatorioAuditoria(RelatorioCreateRequest request) {
+        logger.info("Processando relatório de Auditoria de Status");
+
+        RelatorioDataDto dados = new RelatorioDataDto();
+        dados.setTitulo("Auditoria de Mudanças de Status - " + request.getTitulo());
+        dados.setUsuarioGerador(getCurrentUser().getFullName());
+        dados.setPeriodoInicio(request.getPeriodoInicio());
+        dados.setPeriodoFim(request.getPeriodoFim());
+        dados.setDataGeracao(LocalDateTime.now());
+
+        // 1. Define o tipo de entidade (GUIA ou FICHA)
+        StatusHistory.EntityType entityType = null;
+        if ("GUIA".equalsIgnoreCase(request.getTipoEntidade())) {
+            entityType = StatusHistory.EntityType.GUIA;
+        } else if ("FICHA".equalsIgnoreCase(request.getTipoEntidade())) {
+            entityType = StatusHistory.EntityType.FICHA;
+        }
+        // Se for NULL, o repository trará ambos, o que pode ser desejado
+
+        // 2. Busca no repositório de histórico (StatusHistoryRepository)
+        // Nota: O request.getUsuarioResponsavelId() aqui será usado como "QUEM ALTEROU"
+        Page<StatusHistory> historicoPage = statusHistoryRepository.findWithFilters(
+                entityType,
+                null, // entityId (nulo para trazer de todas as guias)
+                null, // statusNovo (pode filtrar se o request.getStatus() tiver apenas 1 item)
+                request.getUsuarioResponsavelId(), // IMPORTANTE: Filtra pelo usuário que fez a ação!
+                request.getPeriodoInicio(),
+                request.getPeriodoFim(),
+                Pageable.unpaged() // Traz tudo para o relatório
+        );
+
+        List<StatusHistory> historico = historicoPage.getContent();
+
+        // 3. Mapeia para o DTO do relatório
+        List<RelatorioItemDto> itens = historico.stream()
+                .map(h -> {
+                    RelatorioItemDto item = new RelatorioItemDto();
+
+                    // Dados da mudança
+                    item.setEntidadeId(h.getEntityId());
+                    item.setTipoEntidade(h.getEntityType().name());
+                    item.setStatusAnterior(h.getStatusAnterior());
+                    item.setStatusNovo(h.getStatusNovo());
+                    item.setDataAtualizacao(h.getDataAlteracao()); // A data exata da mudança
+                    item.setMotivoMudanca(h.getMotivo());
+
+                    // O MAIS IMPORTANTE: Quem fez a alteração
+                    if (h.getAlteradoPor() != null) {
+                        item.setUsuarioResponsavelNome(h.getAlteradoPor().getFullName());
+                    }
+
+                    // Tenta buscar informações extras da Guia/Ficha para enriquecer o relatório
+                    // (Isso pode custar performance, idealmente faça um join na query,
+                    // mas para MVP pode buscar aqui)
+                    enrichItemWithEntityData(item, h.getEntityType(), h.getEntityId());
+
+                    return item;
+                })
+                .collect(Collectors.toList());
+
+        dados.setItens(itens);
+        dados.setTotalRegistros(itens.size());
+
+        // Gera estatísticas de quantas mudanças cada usuário fez
+        Map<String, Long> mudancasPorUsuario = itens.stream()
+                .collect(Collectors.groupingBy(
+                        i -> i.getUsuarioResponsavelNome() != null ? i.getUsuarioResponsavelNome() : "Desconhecido",
+                        Collectors.counting()
+                ));
+
+        // Você pode usar o campo de distribuição por status para mostrar mudanças por usuário neste tipo de relatório
+        dados.setDistribuicaoPorStatus(mudancasPorUsuario);
+
+        return dados;
     }
 
     private RelatorioDataDto processarDadosRelatorioEstadoAtual(RelatorioCreateRequest request, UUID usuarioAlvo) {
@@ -1215,5 +1335,20 @@ public class RelatorioServiceImpl implements RelatorioService {
         }
 
         return request;
+    }
+
+    private void enrichItemWithEntityData(RelatorioItemDto item, StatusHistory.EntityType type, UUID id) {
+        if (type == StatusHistory.EntityType.GUIA) {
+            guiaRepository.findById(id).ifPresent(g -> {
+                item.setNumeroGuia(g.getNumeroGuia());
+                if (g.getPaciente() != null) item.setPacienteNome(g.getPaciente().getNome());
+                if (g.getConvenio() != null) item.setConvenioNome(g.getConvenio().getName());
+            });
+        } else if (type == StatusHistory.EntityType.FICHA) {
+            fichaRepository.findById(id).ifPresent(f -> {
+                item.setCodigoFicha(f.getCodigoFicha());
+                if (f.getPaciente() != null) item.setPacienteNome(f.getPaciente().getNome());
+            });
+        }
     }
 }
