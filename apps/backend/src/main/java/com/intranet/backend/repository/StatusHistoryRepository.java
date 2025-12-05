@@ -102,8 +102,8 @@ public interface StatusHistoryRepository extends JpaRepository<StatusHistory, UU
             "AND (:entityId IS NULL OR sh.entityId = :entityId) " +
             "AND (:statusNovo IS NULL OR sh.statusNovo = :statusNovo) " +
             "AND (:userId IS NULL OR sh.alteradoPor.id = :userId) " +
-            "AND (:startDate IS NULL OR sh.dataAlteracao >= CAST(:startDate AS timestamp)) " +
-            "AND (:endDate IS NULL OR sh.dataAlteracao <= CAST(:endDate AS timestamp)) " +
+            "AND (:startDate IS NULL OR sh.dataAlteracao >= :startDate) " +
+            "AND (:endDate IS NULL OR sh.dataAlteracao <= :endDate) " +
             "ORDER BY sh.dataAlteracao DESC")
     Page<StatusHistory> findWithFilters(
             @Param("entityType") StatusHistory.EntityType entityType,
