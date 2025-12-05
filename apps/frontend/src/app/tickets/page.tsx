@@ -147,12 +147,12 @@ export default function TicketsPage() {
 
       {/* Abas de Navegação */}
       <div className="flex border-b border-gray-200 mb-4">
+        <TabButton type="team_queue" label="Fila da Equipe" icon={Inbox} />
         <TabButton
           type="my_assignments"
           label="Meus Atendimentos"
           icon={UserCheck}
         />
-        <TabButton type="team_queue" label="Fila da Equipe" icon={Inbox} />
         <TabButton
           type="created_by_me"
           label="Meus Pedidos"
