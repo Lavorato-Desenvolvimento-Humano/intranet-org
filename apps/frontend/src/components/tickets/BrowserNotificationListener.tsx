@@ -10,31 +10,56 @@ export default function BrowserNotificationListener() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
+    // Inicializa o áudio, mas não tenta tocar automaticamente sem interação
     audioRef.current = new Audio("/sounds/i_phone__toquecelular.com_.mp3");
 
-    // 2. Solicitar permissão do navegador ao carregar
-    if ("Notification" in window && Notification.permission !== "granted") {
-      Notification.requestPermission();
+    // Se já tiver permissão (você já concedeu), ótimo.
+    // Se não, deixamos quieto para não bloquear o navegador com prompts automáticos.
+    if ("Notification" in window && Notification.permission === "default") {
+      // Opcional: Você pode tentar pedir aqui, mas o ideal é via botão como conversamos.
+      // Notification.requestPermission();
     }
   }, []);
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id || typeof window === "undefined") return;
 
-    // 3. Configurar conexão WebSocket
-    const socket = new SockJS(`${process.env.NEXT_PUBLIC_API_URL}/ws`);
+    // --- Lógica robusta de URL (igual ao useTicket) ---
+    const protocol = window.location.protocol === "https:" ? "https:" : "http:";
+    const host = window.location.host;
+    let socketUrl = `${protocol}//${host}/ws`;
+
+    // Ajuste específico para desenvolvimento local (se o backend roda na 8080)
+    if (
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1"
+    ) {
+      socketUrl = "http://localhost:8080/ws";
+    }
+
+    console.log(`[NotificationListener] Conectando em: ${socketUrl}`);
+
+    const socket = new SockJS(socketUrl);
     const stompClient = new Client({
       webSocketFactory: () => socket,
-      debug: (str) => console.log(str),
+      debug: (str) => console.log(`[NotificationListener Debug] ${str}`),
       reconnectDelay: 5000,
       onConnect: () => {
-        // 4. Inscrever no tópico pessoal do usuário definido no backend
+        console.log("[NotificationListener] Conectado e ouvindo notificações.");
+
         stompClient.subscribe(
           `/topic/user/${user.id}/notifications`,
           (message) => {
-            const notification = JSON.parse(message.body);
-            handleNewNotification(notification);
+            if (message.body) {
+              const notification = JSON.parse(message.body);
+              handleNewNotification(notification);
+            }
           }
+        );
+      },
+      onStompError: (frame) => {
+        console.error(
+          "[NotificationListener] Erro no Broker: " + frame.headers["message"]
         );
       },
     });
@@ -51,24 +76,30 @@ export default function BrowserNotificationListener() {
     message: string;
     ticketId: number;
   }) => {
+    console.log("Recebendo notificação:", data);
+
     // A. Tocar Som
     if (audioRef.current) {
-      audioRef.current
-        .play()
-        .catch((e) => console.error("Erro ao tocar som:", e));
+      const playPromise = audioRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((error) => {
+          // Auto-play policy pode bloquear se o usuário não interagiu com a página ainda
+          console.log("Autoplay de áudio bloqueado:", error);
+        });
+      }
     }
 
-    // B. Mostrar Notificação do Navegador (System Notification)
+    // B. Mostrar Notificação do Navegador
     if ("Notification" in window && Notification.permission === "granted") {
       const notification = new Notification(data.title, {
         body: data.message,
-        icon: "/icon.png", // Ícone da sua aplicação
-        tag: `ticket-${data.ticketId}`, // Evita spam de notificações duplicadas
+        icon: "/icon.png",
+        tag: `ticket-${data.ticketId}`,
       });
 
       notification.onclick = () => {
         window.focus();
-        // Redirecionar para o ticket, se necessário
+        // Ajuste o caminho conforme sua rota real
         window.location.href = `/tickets/${data.ticketId}`;
       };
     }
