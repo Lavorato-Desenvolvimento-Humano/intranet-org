@@ -43,7 +43,7 @@ public interface GuiaRepository extends JpaRepository<Guia, UUID> {
     @Query("SELECT DISTINCT g FROM Guia g JOIN g.itens i WHERE LOWER(i.especialidade) LIKE LOWER(CONCAT('%', :especialidade, '%'))")
     Page<Guia> findByEspecialidadesContaining(@Param("especialidade") String especialidade, Pageable pageable);
 
-    @Query("SELECT g FROM Guia g WHERE g.numeroGuia LIKE %:termo% OR g.paciente.nome LIKE %:termo%")
+    @Query("SELECT g FROM Guia g WHERE LOWER(g.numeroGuia) LIKE LOWER(CONCAT('%', :termo, '%')) OR LOWER(g.paciente.nome) LIKE LOWER(CONCAT('%', :termo, '%'))")
     Page<Guia> searchByNumeroOrPacienteNome(@Param("termo") String termo, Pageable pageable);
 
     boolean existsByNumeroGuiaAndMesAndAno(String numeroGuia, Integer mes, Integer ano);

@@ -270,7 +270,6 @@ export const VincularGuiaModal: React.FC<VincularGuiaModalProps> = ({
                           <div>
                             <p className="text-gray-600">Especialidades:</p>
                             <div>
-                              <p className="text-gray-600">Especialidades:</p>
                               <p className="font-medium">
                                 {/* Proteção (guia.itens || []) caso venha nulo */}
                                 {(guia.itens || []).map((item, index) => (
