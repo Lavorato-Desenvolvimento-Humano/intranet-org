@@ -19,7 +19,11 @@ import convenioService, { ConvenioDto } from "@/services/convenio";
 import { pacienteService } from "@/services/clinical";
 import { useAuth } from "@/context/AuthContext";
 import { useStatus } from "@/hooks/useStatus";
-import { RelatorioCreateRequest, RelatorioDto } from "@/types/relatorio";
+import {
+  RelatorioCreateRequest,
+  RelatorioDto,
+  RelatorioTipo,
+} from "@/types/relatorio";
 import { PacienteSummaryDto } from "@/types/clinical";
 import toastUtil from "@/utils/toast";
 
@@ -37,6 +41,7 @@ interface FormData {
   incluirGraficos: boolean;
   incluirEstatisticas: boolean;
   formatoSaida: string;
+  tipoRelatorio: RelatorioTipo;
 }
 
 interface FormErrors {
@@ -63,6 +68,7 @@ export default function NovoRelatorioPage() {
     incluirGraficos: true,
     incluirEstatisticas: true,
     formatoSaida: "PDF",
+    tipoRelatorio: RelatorioTipo.ESTADO_ATUAL,
   });
 
   const [formErrors, setFormErrors] = useState<FormErrors>({});
@@ -232,6 +238,7 @@ export default function NovoRelatorioPage() {
         tipoEntidade: formData.tipoEntidade,
         incluirGraficos: formData.incluirGraficos,
         incluirEstatisticas: formData.incluirEstatisticas,
+        tipoRelatorio: formData.tipoRelatorio,
         formatoSaida: formData.formatoSaida,
       };
 
@@ -292,6 +299,61 @@ export default function NovoRelatorioPage() {
 
           {/* Formulário */}
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* --- NOVO CAMPO: TIPO DE RELATÓRIO --- */}
+            <div className="bg-white p-4 rounded-lg shadow-sm border">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Tipo de Relatório
+              </label>
+              <div className="flex gap-4">
+                {/* Opção 1: Estado Atual */}
+                <label
+                  className={`flex items-center space-x-2 border p-3 rounded cursor-pointer flex-1 transition-colors ${formData.tipoRelatorio === "ESTADO_ATUAL" ? "bg-blue-50 border-blue-500" : "hover:bg-gray-50 border-gray-200"}`}>
+                  <input
+                    type="radio"
+                    name="tipoRelatorio" // Importante para agrupar
+                    value="ESTADO_ATUAL"
+                    checked={formData.tipoRelatorio === "ESTADO_ATUAL"}
+                    onChange={() =>
+                      handleInputChange("tipoRelatorio", "ESTADO_ATUAL")
+                    }
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                  />
+                  <div>
+                    <span className="font-bold block text-gray-800">
+                      Estado Atual (Retrato)
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      Ex: Listar guias pendentes hoje, Fichas ativas.
+                    </span>
+                  </div>
+                </label>
+
+                {/* Opção 2: Histórico */}
+                <label
+                  className={`flex items-center space-x-2 border p-3 rounded cursor-pointer flex-1 transition-colors ${formData.tipoRelatorio === "HISTORICO_MUDANCAS" ? "bg-blue-50 border-blue-500" : "hover:bg-gray-50 border-gray-200"}`}>
+                  <input
+                    type="radio"
+                    name="tipoRelatorio"
+                    value="HISTORICO_MUDANCAS"
+                    checked={formData.tipoRelatorio === "HISTORICO_MUDANCAS"}
+                    onChange={() =>
+                      handleInputChange("tipoRelatorio", "HISTORICO_MUDANCAS")
+                    }
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                  />
+                  <div>
+                    <span className="font-bold block text-gray-800">
+                      Auditoria (Histórico)
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      Ex: Quem alterou o status, quando e por que.
+                    </span>
+                  </div>
+                </label>
+              </div>
+            </div>
+            {/* ------------------------------------- */}
+
             {/* Informações Básicas */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-lg font-semibold text-gray-800 mb-4">
