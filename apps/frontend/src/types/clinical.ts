@@ -5,6 +5,11 @@ export enum UnidadeEnum {
   SENIOR = "SENIOR",
 }
 
+export enum RelatorioTipo {
+  ESTADO_ATUAL = "ESTADO_ATUAL",
+  HISTORICO_MUDANCAS = "HISTORICO_MUDANCAS",
+}
+
 export enum TipoFichaEnum {
   COM_GUIA = "COM_GUIA",
   ASSINATURA = "ASSINATURA",

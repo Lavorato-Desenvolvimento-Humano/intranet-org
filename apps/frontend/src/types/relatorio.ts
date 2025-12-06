@@ -7,6 +7,11 @@ export enum StatusRelatorioEnum {
   CANCELADO = "CANCELADO",
 }
 
+export enum RelatorioTipo {
+  ESTADO_ATUAL = "ESTADO_ATUAL",
+  HISTORICO_MUDANCAS = "HISTORICO_MUDANCAS",
+}
+
 export interface RelatorioDto {
   id: string;
   titulo: string;
@@ -21,6 +26,7 @@ export interface RelatorioDto {
   statusRelatorio: StatusRelatorioEnum;
   createdAt: string;
   updatedAt: string;
+  tipoRelatorio: RelatorioTipo;
 }
 
 export interface RelatorioCreateRequest {
@@ -37,6 +43,7 @@ export interface RelatorioCreateRequest {
   incluirGraficos?: boolean;
   incluirEstatisticas?: boolean;
   formatoSaida?: string; // PDF, EXCEL
+  tipoRelatorio: RelatorioTipo;
 }
 
 export interface RelatorioFilterRequest {

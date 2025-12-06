@@ -116,6 +116,19 @@ public class TicketService {
     public TicketResponseDto claimTicket(Long ticketId) {
         Ticket ticket = getTicketEntityById(ticketId);
 
+        User targetUser = getCurrentUser().getId().equals(ticket.getRequester().getId())
+                ? ticket.getAssignee()
+                : ticket.getRequester();
+
+        if (targetUser != null) {
+            sendNotificationToUser(
+                    targetUser.getId(),
+                    "Nova interação",
+                    "Uma pessoa assumiu o seu chamado #" + ticket.getId(),
+                    ticket.getId()
+            );
+        }
+
         if (ticket.getAssignee() != null) {
             throw new IllegalStateException("Este ticket já está atribuído ao usuário: " + ticket.getAssignee());
         }
