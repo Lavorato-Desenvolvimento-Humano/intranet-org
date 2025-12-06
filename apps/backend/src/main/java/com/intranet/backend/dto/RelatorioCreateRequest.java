@@ -1,5 +1,6 @@
 package com.intranet.backend.dto;
 
+import com.intranet.backend.model.RelatorioTipo;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
@@ -33,4 +34,6 @@ public class RelatorioCreateRequest {
     private Boolean incluirGraficos = true;
     private Boolean incluirEstatisticas = true;
     private String formatoSaida = "PDF"; // PDF, EXCEL (futuro)
+
+    private RelatorioTipo tipoRelatorio;
 }

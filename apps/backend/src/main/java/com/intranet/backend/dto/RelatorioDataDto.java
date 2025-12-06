@@ -31,4 +31,5 @@ public class RelatorioDataDto {
 
     // Dados para gráficos
     private List<GraficoTimelineDto> timelineData;
+    private String tipoRelatorio;
 }
