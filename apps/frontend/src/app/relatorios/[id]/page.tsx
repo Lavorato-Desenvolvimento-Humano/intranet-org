@@ -19,6 +19,8 @@ import {
   PieChart,
   Eye,
   FileText,
+  History,
+  ArrowRight,
 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
@@ -32,6 +34,7 @@ import {
   RelatorioItemDto,
   StatusRelatorioEnum,
   RelatorioLogDto,
+  RelatorioTipo,
 } from "@/types/relatorio";
 import { formatDate, formatDateTime } from "@/utils/dateUtils";
 import toastUtil from "@/utils/toast";
@@ -59,7 +62,7 @@ ChartJS.register(
   ArcElement
 );
 
-// Componente para badge de status
+// Componente para badge de status do RELATÓRIO (Processando/Concluido)
 const StatusBadge = ({ status }: { status: StatusRelatorioEnum }) => {
   const getStatusConfig = (status: StatusRelatorioEnum) => {
     switch (status) {
@@ -136,6 +139,14 @@ export default function RelatorioDetalhesPage() {
   useEffect(() => {
     if (
       activeTab === "dados" &&
+      !dadosRelatorio &&
+      relatorio?.statusRelatorio === StatusRelatorioEnum.CONCLUIDO
+    ) {
+      loadDadosRelatorio();
+    }
+    // Gráficos também precisam dos dados
+    if (
+      activeTab === "graficos" &&
       !dadosRelatorio &&
       relatorio?.statusRelatorio === StatusRelatorioEnum.CONCLUIDO
     ) {
@@ -222,22 +233,25 @@ export default function RelatorioDetalhesPage() {
     }
   };
 
-  // Colunas para tabela de dados
-  const dadosColumns = [
+  // --- DEFINIÇÃO DE COLUNAS ---
+
+  // Colunas Padrão (Estado Atual)
+  const columnsEstadoAtual = [
     {
-      header: "Nome do Paciente",
+      header: "Paciente",
       accessor: "pacienteNome" as keyof RelatorioItemDto,
-      className: "font-medium",
+      className: "font-medium text-sm",
+    },
+    {
+      header: "Nº/Código",
+      accessor: ((item: RelatorioItemDto) =>
+        item.numeroGuia || item.codigoFicha || "-") as any,
+      className: "font-mono text-xs",
     },
     {
       header: "Convênio",
       accessor: "convenioNome" as keyof RelatorioItemDto,
-    },
-    {
-      header: "Número/Código",
-      accessor: ((item: RelatorioItemDto) =>
-        item.numeroGuia || item.codigoFicha || "-") as any,
-      className: "font-mono text-sm",
+      className: "text-xs truncate max-w-[150px]",
     },
     {
       header: "Status",
@@ -248,22 +262,13 @@ export default function RelatorioDetalhesPage() {
     {
       header: "Especialidade",
       accessor: "especialidade" as keyof RelatorioItemDto,
+      className: "text-xs",
     },
     {
-      header: "Mês",
-      accessor: ((item: RelatorioItemDto) => {
-        if (item.mes && item.ano) {
-          return `${item.mes.toString().padStart(2, "0")}/${item.ano}`;
-        }
-        return "-";
-      }) as any,
-      className: "text-center",
-    },
-    {
-      header: "Qtd. Autorizada",
+      header: "Qtd.",
       accessor: ((item: RelatorioItemDto) =>
         item.quantidadeAutorizada?.toString() || "-") as any,
-      className: "text-center",
+      className: "text-center text-xs",
     },
     {
       header: "Unidade",
@@ -285,13 +290,13 @@ export default function RelatorioDetalhesPage() {
       header: "Atualização",
       accessor: ((item: RelatorioItemDto) =>
         formatDateTime(item.dataAtualizacao)) as any,
-      className: "text-sm",
+      className: "text-xs",
     },
     {
       header: "Tipo",
       accessor: ((item: RelatorioItemDto) => (
         <span
-          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+          className={`inline-flex px-2 py-1 text-[10px] font-semibold rounded-full ${
             item.tipoEntidade === "GUIA"
               ? "bg-purple-100 text-purple-800"
               : "bg-indigo-100 text-indigo-800"
@@ -302,6 +307,76 @@ export default function RelatorioDetalhesPage() {
       className: "text-center",
     },
   ];
+
+  // Colunas para Histórico/Auditoria
+  const columnsHistorico = [
+    {
+      header: "Alterado Por",
+      accessor: ((item: RelatorioItemDto) =>
+        item.usuarioResponsavelNome || "Sistema") as any,
+      className: "font-medium text-sm text-blue-700",
+    },
+    {
+      header: "Data Mudança",
+      accessor: ((item: RelatorioItemDto) =>
+        formatDateTime(item.dataAtualizacao)) as any,
+      className: "text-xs font-medium",
+    },
+    {
+      header: "Paciente",
+      accessor: "pacienteNome" as keyof RelatorioItemDto,
+      className: "text-sm",
+    },
+    {
+      header: "Item ID",
+      accessor: ((item: RelatorioItemDto) =>
+        item.numeroGuia || item.codigoFicha || "-") as any,
+      className: "font-mono text-xs",
+    },
+    {
+      header: "Transição",
+      accessor: ((item: RelatorioItemDto) => (
+        <div className="flex items-center space-x-2 text-xs">
+          <span className="text-gray-500">{item.statusAnterior || "N/A"}</span>
+          <ArrowRight className="w-3 h-3 text-gray-400" />
+          <span className="font-bold text-gray-700">
+            {item.statusNovo || item.status}
+          </span>
+        </div>
+      )) as any,
+    },
+    {
+      header: "Motivo / Obs",
+      accessor: "motivoMudanca" as keyof RelatorioItemDto,
+      className: "text-xs text-gray-600 italic max-w-[200px] truncate",
+    },
+    {
+      header: "Tipo",
+      accessor: ((item: RelatorioItemDto) => (
+        <span
+          className={`inline-flex px-2 py-1 text-[10px] font-semibold rounded-full ${
+            item.tipoEntidade === "GUIA"
+              ? "bg-purple-100 text-purple-800"
+              : "bg-indigo-100 text-indigo-800"
+          }`}>
+          {item.tipoEntidade}
+        </span>
+      )) as any,
+      className: "text-center",
+    },
+  ];
+
+  // Seleciona colunas baseado no tipo
+  const getActiveColumns = () => {
+    // Verificação segura: relatorio ou dadosRelatorio podem informar o tipo
+    const isHistorico =
+      relatorio?.tipoRelatorio === "HISTORICO_MUDANCAS" ||
+      dadosRelatorio?.tipoRelatorio === "HISTORICO_MUDANCAS" ||
+      (relatorio?.titulo || "").toLowerCase().includes("histórico") ||
+      (relatorio?.titulo || "").toLowerCase().includes("auditoria");
+
+    return isHistorico ? columnsHistorico : columnsEstadoAtual;
+  };
 
   // Colunas para tabela de logs
   const logsColumns = [
@@ -329,12 +404,15 @@ export default function RelatorioDetalhesPage() {
   const getChartData = () => {
     if (!dadosRelatorio) return null;
 
-    // Gráfico de distribuição por status
+    // CORREÇÃO: Usar || {} para evitar erro "Cannot convert undefined or null to object"
+    // Isso acontece porque no relatório de Auditoria, algumas distribuições podem vir nulas do backend.
+
+    // Gráfico de distribuição por status (ou Usuário no caso de auditoria)
     const statusData = {
-      labels: Object.keys(dadosRelatorio.distribuicaoPorStatus),
+      labels: Object.keys(dadosRelatorio.distribuicaoPorStatus || {}),
       datasets: [
         {
-          data: Object.values(dadosRelatorio.distribuicaoPorStatus),
+          data: Object.values(dadosRelatorio.distribuicaoPorStatus || {}),
           backgroundColor: [
             "#10B981", // verde
             "#F59E0B", // amarelo
@@ -349,13 +427,18 @@ export default function RelatorioDetalhesPage() {
       ],
     };
 
-    // Gráfico de distribuição por especialidade
+    // Gráfico de distribuição por especialidade (Pode estar vazio em auditoria)
+    const especialidadeLabels = Object.keys(
+      dadosRelatorio.distribuicaoPorEspecialidade || {}
+    );
     const especialidadeData = {
-      labels: Object.keys(dadosRelatorio.distribuicaoPorEspecialidade),
+      labels: especialidadeLabels,
       datasets: [
         {
           label: "Quantidade",
-          data: Object.values(dadosRelatorio.distribuicaoPorEspecialidade),
+          data: Object.values(
+            dadosRelatorio.distribuicaoPorEspecialidade || {}
+          ),
           backgroundColor: "#3B82F6",
           borderColor: "#1D4ED8",
           borderWidth: 1,
@@ -363,7 +446,11 @@ export default function RelatorioDetalhesPage() {
       ],
     };
 
-    return { statusData, especialidadeData };
+    return {
+      statusData,
+      especialidadeData,
+      hasEspecialidadeData: especialidadeLabels.length > 0,
+    };
   };
 
   if (loading) {
@@ -395,6 +482,8 @@ export default function RelatorioDetalhesPage() {
   }
 
   const chartData = getChartData();
+  const activeColumns = getActiveColumns();
+  const isHistorico = relatorio.tipoRelatorio === "HISTORICO_MUDANCAS";
 
   return (
     <ProtectedRoute>
@@ -417,9 +506,17 @@ export default function RelatorioDetalhesPage() {
                   <FileBarChart className="mr-2 h-6 w-6" />
                   {relatorio.titulo}
                 </h1>
-                <p className="text-gray-600 mt-1">
-                  Detalhes e dados do relatório
-                </p>
+                <div className="flex items-center mt-1 space-x-2">
+                  {isHistorico && (
+                    <span className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full flex items-center">
+                      <History className="w-3 h-3 mr-1" />
+                      Histórico de Mudanças
+                    </span>
+                  )}
+                  <p className="text-gray-600 text-sm">
+                    Detalhes e dados do relatório
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -648,54 +745,79 @@ export default function RelatorioDetalhesPage() {
                     <Loading message="Carregando dados do relatório..." />
                   ) : dadosRelatorio ? (
                     <div className="space-y-6">
-                      {/* Resumo estatístico */}
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="bg-blue-50 p-4 rounded-lg">
-                          <p className="text-sm text-blue-600 font-medium">
-                            Total de Itens
-                          </p>
-                          <p className="text-2xl font-bold text-blue-900">
-                            {dadosRelatorio.itens?.length || 0}
-                          </p>
+                      {/* Resumo estatístico - Renderização condicional baseada no tipo */}
+                      {!isHistorico ? (
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="bg-blue-50 p-4 rounded-lg">
+                            <p className="text-sm text-blue-600 font-medium">
+                              Total de Itens
+                            </p>
+                            <p className="text-2xl font-bold text-blue-900">
+                              {dadosRelatorio.itens?.length || 0}
+                            </p>
+                          </div>
+                          <div className="bg-green-50 p-4 rounded-lg">
+                            <p className="text-sm text-green-600 font-medium">
+                              Status Únicos
+                            </p>
+                            <p className="text-2xl font-bold text-green-900">
+                              {
+                                Object.keys(
+                                  dadosRelatorio.distribuicaoPorStatus || {}
+                                ).length
+                              }
+                            </p>
+                          </div>
+                          <div className="bg-purple-50 p-4 rounded-lg">
+                            <p className="text-sm text-purple-600 font-medium">
+                              Especialidades
+                            </p>
+                            <p className="text-2xl font-bold text-purple-900">
+                              {
+                                Object.keys(
+                                  dadosRelatorio.distribuicaoPorEspecialidade ||
+                                    {}
+                                ).length
+                              }
+                            </p>
+                          </div>
+                          <div className="bg-orange-50 p-4 rounded-lg">
+                            <p className="text-sm text-orange-600 font-medium">
+                              Convênios
+                            </p>
+                            <p className="text-2xl font-bold text-orange-900">
+                              {
+                                Object.keys(
+                                  dadosRelatorio.distribuicaoPorConvenio || {}
+                                ).length
+                              }
+                            </p>
+                          </div>
                         </div>
-                        <div className="bg-green-50 p-4 rounded-lg">
-                          <p className="text-sm text-green-600 font-medium">
-                            Status Únicos
-                          </p>
-                          <p className="text-2xl font-bold text-green-900">
-                            {
-                              Object.keys(
-                                dadosRelatorio.distribuicaoPorStatus || {}
-                              ).length
-                            }
-                          </p>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="bg-blue-50 p-4 rounded-lg">
+                            <p className="text-sm text-blue-600 font-medium">
+                              Total de Alterações
+                            </p>
+                            <p className="text-2xl font-bold text-blue-900">
+                              {dadosRelatorio.itens?.length || 0}
+                            </p>
+                          </div>
+                          <div className="bg-indigo-50 p-4 rounded-lg">
+                            <p className="text-sm text-indigo-600 font-medium">
+                              Usuários Envolvidos
+                            </p>
+                            <p className="text-2xl font-bold text-indigo-900">
+                              {
+                                Object.keys(
+                                  dadosRelatorio.distribuicaoPorStatus || {}
+                                ).length
+                              }
+                            </p>
+                          </div>
                         </div>
-                        <div className="bg-purple-50 p-4 rounded-lg">
-                          <p className="text-sm text-purple-600 font-medium">
-                            Especialidades
-                          </p>
-                          <p className="text-2xl font-bold text-purple-900">
-                            {
-                              Object.keys(
-                                dadosRelatorio.distribuicaoPorEspecialidade ||
-                                  {}
-                              ).length
-                            }
-                          </p>
-                        </div>
-                        <div className="bg-orange-50 p-4 rounded-lg">
-                          <p className="text-sm text-orange-600 font-medium">
-                            Convênios
-                          </p>
-                          <p className="text-2xl font-bold text-orange-900">
-                            {
-                              Object.keys(
-                                dadosRelatorio.distribuicaoPorConvenio || {}
-                              ).length
-                            }
-                          </p>
-                        </div>
-                      </div>
+                      )}
 
                       {/* Tabela de dados */}
                       <div className="bg-white border rounded-lg">
@@ -717,7 +839,7 @@ export default function RelatorioDetalhesPage() {
                               first: true,
                               last: true,
                             }}
-                            columns={dadosColumns}
+                            columns={activeColumns}
                             loading={false}
                             onPageChange={() => {}}
                           />
@@ -741,11 +863,13 @@ export default function RelatorioDetalhesPage() {
                   ) : chartData ? (
                     <div className="space-y-8">
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        {/* Gráfico de pizza - Status */}
+                        {/* Gráfico de pizza - Status/Usuários */}
                         <div className="bg-white border rounded-lg p-6">
                           <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
                             <PieChart className="h-5 w-5 mr-2" />
-                            Distribuição por Status
+                            {isHistorico
+                              ? "Alterações por Usuário"
+                              : "Distribuição por Status"}
                           </h3>
                           <div className="h-64">
                             <Pie
@@ -763,108 +887,112 @@ export default function RelatorioDetalhesPage() {
                           </div>
                         </div>
 
-                        {/* Gráfico de barras - Especialidades */}
-                        <div className="bg-white border rounded-lg p-6">
-                          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                            <BarChart3 className="h-5 w-5 mr-2" />
-                            Distribuição por Especialidade
-                          </h3>
-                          <div className="h-64">
-                            <Bar
-                              data={chartData.especialidadeData}
-                              options={{
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                plugins: {
-                                  legend: {
-                                    display: false,
-                                  },
-                                },
-                                scales: {
-                                  y: {
-                                    beginAtZero: true,
-                                    ticks: {
-                                      precision: 0,
+                        {/* Gráfico de barras - Especialidades (Só exibe se houver dados) */}
+                        {chartData.hasEspecialidadeData && (
+                          <div className="bg-white border rounded-lg p-6">
+                            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                              <BarChart3 className="h-5 w-5 mr-2" />
+                              Distribuição por Especialidade
+                            </h3>
+                            <div className="h-64">
+                              <Bar
+                                data={chartData.especialidadeData}
+                                options={{
+                                  responsive: true,
+                                  maintainAspectRatio: false,
+                                  plugins: {
+                                    legend: {
+                                      display: false,
                                     },
                                   },
-                                },
-                              }}
-                            />
+                                  scales: {
+                                    y: {
+                                      beginAtZero: true,
+                                      ticks: {
+                                        precision: 0,
+                                      },
+                                    },
+                                  },
+                                }}
+                              />
+                            </div>
                           </div>
-                        </div>
+                        )}
                       </div>
 
-                      {/* Tabelas de distribuição */}
-                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        {/* Distribuição por Status */}
-                        <div className="bg-white border rounded-lg p-4">
-                          <h4 className="font-semibold text-gray-800 mb-3">
-                            Por Status
-                          </h4>
-                          <div className="space-y-2">
-                            {Object.entries(
-                              dadosRelatorio?.distribuicaoPorStatus || {}
-                            ).map(([status, count]) => (
-                              <div
-                                key={status}
-                                className="flex justify-between">
-                                <span className="text-sm text-gray-600">
-                                  {status}
-                                </span>
-                                <span className="text-sm font-medium">
-                                  {count}
-                                </span>
-                              </div>
-                            ))}
+                      {/* Tabelas de distribuição - Condicionais */}
+                      {!isHistorico && (
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                          {/* Distribuição por Status */}
+                          <div className="bg-white border rounded-lg p-4">
+                            <h4 className="font-semibold text-gray-800 mb-3">
+                              Por Status
+                            </h4>
+                            <div className="space-y-2">
+                              {Object.entries(
+                                dadosRelatorio?.distribuicaoPorStatus || {}
+                              ).map(([status, count]) => (
+                                <div
+                                  key={status}
+                                  className="flex justify-between">
+                                  <span className="text-sm text-gray-600">
+                                    {status}
+                                  </span>
+                                  <span className="text-sm font-medium">
+                                    {count}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                        </div>
 
-                        {/* Distribuição por Convênio */}
-                        <div className="bg-white border rounded-lg p-4">
-                          <h4 className="font-semibold text-gray-800 mb-3">
-                            Por Convênio
-                          </h4>
-                          <div className="space-y-2">
-                            {Object.entries(
-                              dadosRelatorio?.distribuicaoPorConvenio || {}
-                            ).map(([convenio, count]) => (
-                              <div
-                                key={convenio}
-                                className="flex justify-between">
-                                <span className="text-sm text-gray-600 truncate">
-                                  {convenio}
-                                </span>
-                                <span className="text-sm font-medium">
-                                  {count}
-                                </span>
-                              </div>
-                            ))}
+                          {/* Distribuição por Convênio */}
+                          <div className="bg-white border rounded-lg p-4">
+                            <h4 className="font-semibold text-gray-800 mb-3">
+                              Por Convênio
+                            </h4>
+                            <div className="space-y-2">
+                              {Object.entries(
+                                dadosRelatorio?.distribuicaoPorConvenio || {}
+                              ).map(([convenio, count]) => (
+                                <div
+                                  key={convenio}
+                                  className="flex justify-between">
+                                  <span className="text-sm text-gray-600 truncate">
+                                    {convenio}
+                                  </span>
+                                  <span className="text-sm font-medium">
+                                    {count}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                        </div>
 
-                        {/* Distribuição por Unidade */}
-                        <div className="bg-white border rounded-lg p-4">
-                          <h4 className="font-semibold text-gray-800 mb-3">
-                            Por Unidade
-                          </h4>
-                          <div className="space-y-2">
-                            {Object.entries(
-                              dadosRelatorio?.distribuicaoPorUnidade || {}
-                            ).map(([unidade, count]) => (
-                              <div
-                                key={unidade}
-                                className="flex justify-between">
-                                <span className="text-sm text-gray-600">
-                                  {unidade}
-                                </span>
-                                <span className="text-sm font-medium">
-                                  {count}
-                                </span>
-                              </div>
-                            ))}
+                          {/* Distribuição por Unidade */}
+                          <div className="bg-white border rounded-lg p-4">
+                            <h4 className="font-semibold text-gray-800 mb-3">
+                              Por Unidade
+                            </h4>
+                            <div className="space-y-2">
+                              {Object.entries(
+                                dadosRelatorio?.distribuicaoPorUnidade || {}
+                              ).map(([unidade, count]) => (
+                                <div
+                                  key={unidade}
+                                  className="flex justify-between">
+                                  <span className="text-sm text-gray-600">
+                                    {unidade}
+                                  </span>
+                                  <span className="text-sm font-medium">
+                                    {count}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   ) : (
                     <div className="text-center py-8">
