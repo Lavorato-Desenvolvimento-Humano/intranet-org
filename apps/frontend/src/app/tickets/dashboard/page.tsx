@@ -314,6 +314,7 @@ export default function TicketDashboard() {
                     <th className="px-6 py-3">ID</th>
                     <th className="px-6 py-3">Status</th>
                     <th className="px-6 py-3">Assunto</th>
+                    <th className="px-6 py-3">Solicitante</th>
                     <th className="px-6 py-3">Responsável</th>
                     <th className="px-6 py-3 text-right">Data/Prazo</th>
                   </tr>

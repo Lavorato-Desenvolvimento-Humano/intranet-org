@@ -57,11 +57,11 @@ public class RelatorioServiceImpl implements RelatorioService {
     @Override
     @Transactional
     public RelatorioDto gerarRelatorio(RelatorioCreateRequest request) {
-        logger.info("Iniciando geração de relatório: {} - Nova regra: estado atual", request.getTitulo());
+        logger.info("Iniciando geração de relatório: {} - Tipo: {}", request.getTitulo(), request.getTipoRelatorio());
 
         User currentUser = getCurrentUser();
 
-        // Verificar se o usuário pode gerar relatório para outro usuário
+        // 1. Tratamento de permissões (Lógica existente)
         UUID usuarioAlvo = request.getUsuarioResponsavelId() != null ?
                 request.getUsuarioResponsavelId() : currentUser.getId();
 
@@ -69,15 +69,23 @@ public class RelatorioServiceImpl implements RelatorioService {
             throw new IllegalArgumentException("Usuário não tem permissão para gerar relatórios de outros usuários");
         }
 
+        // 2. Fallback para compatibilidade (se o front não enviar o tipo)
+        if (request.getTipoRelatorio() == null) {
+            request.setTipoRelatorio(RelatorioTipo.ESTADO_ATUAL);
+        }
+
         try {
-            // Criar o registro do relatório
+            // 3. Criação da entidade Relatório
             Relatorio relatorio = new Relatorio();
             relatorio.setTitulo(request.getTitulo());
             relatorio.setDescricao(request.getDescricao());
             relatorio.setUsuarioGerador(currentUser);
             relatorio.setPeriodoInicio(request.getPeriodoInicio());
             relatorio.setPeriodoFim(request.getPeriodoFim());
+
+            // Salva os filtros incluindo o Tipo, para poder reprocessar depois
             relatorio.setFiltros(buildFiltrosJson(request));
+
             relatorio.gerarHashCompartilhamento();
             relatorio.setStatusRelatorio(Relatorio.StatusRelatorio.PROCESSANDO);
 
@@ -87,18 +95,18 @@ public class RelatorioServiceImpl implements RelatorioService {
             try {
                 RelatorioDataDto dados;
 
-                boolean isRelatorioAuditoria = request.getTitulo().toLowerCase().contains("histórico")
-                        || request.getTitulo().toLowerCase().contains("mudança");
-
-                if (isRelatorioAuditoria) {
-                    // Nova lógica: Busca quem mudou o status
+                // 4. Decisão de qual processamento usar baseada no ENUM
+                if (RelatorioTipo.HISTORICO_MUDANCAS.equals(request.getTipoRelatorio())) {
                     dados = processarDadosRelatorioAuditoria(request);
+                    // Marca o tipo no DTO para o PDF ler depois
+                    dados.setTipoRelatorio(RelatorioTipo.HISTORICO_MUDANCAS.name());
                 } else {
-                    // Lógica antiga: Busca o estado atual
+                    // Padrão: Estado Atual
                     dados = processarDadosRelatorioEstadoAtual(request, usuarioAlvo);
+                    dados.setTipoRelatorio(RelatorioTipo.ESTADO_ATUAL.name());
                 }
 
-                // Armazenar dados do relatório
+                // 5. Finalização e salvamento dos dados JSON
                 ObjectMapper mapper = new ObjectMapper();
                 mapper.registerModule(new JavaTimeModule());
                 String dadosJson = mapper.writeValueAsString(dados);
@@ -108,19 +116,16 @@ public class RelatorioServiceImpl implements RelatorioService {
                 relatorio.setStatusRelatorio(Relatorio.StatusRelatorio.CONCLUIDO);
 
                 relatorio = relatorioRepository.save(relatorio);
-
                 registrarLog(RelatorioLog.gerado(relatorio, currentUser, getClientIpAddress()));
 
-                logger.info("Relatório processado com sucesso. Total de registros: {}", dados.getTotalRegistros());
+                return mapToDto(relatorio);
 
             } catch (Exception e) {
-                logger.error("Erro ao processar relatório {}: {}", relatorio.getId(), e.getMessage(), e);
+                logger.error("Erro ao processar dados do relatório {}: {}", relatorio.getId(), e.getMessage(), e);
                 relatorio.setStatusRelatorio(Relatorio.StatusRelatorio.ERRO);
                 relatorioRepository.save(relatorio);
                 throw e;
             }
-
-            return mapToDto(relatorio);
 
         } catch (Exception e) {
             logger.error("Erro ao gerar relatório: {}", e.getMessage(), e);
@@ -357,17 +362,17 @@ public class RelatorioServiceImpl implements RelatorioService {
     }
 
     private byte[] generatePDF(RelatorioDataDto dados) {
-        logger.info("Gerando PDF para relatório: {}", dados.getTitulo());
+        logger.info("Gerando PDF para relatório: {} - Tipo: {}", dados.getTitulo(), dados.getTipoRelatorio());
 
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             PdfWriter writer = new PdfWriter(baos);
             PdfDocument pdf = new PdfDocument(writer);
 
-            // Configuração da página (A4 Paisagem para caber mais colunas)
+            // A4 Paisagem
             Document document = new Document(pdf, PageSize.A4.rotate());
             document.setMargins(15, 15, 15, 15);
 
-            // 1. Título e Cabeçalho Geral (Igual para todos)
+            // 1. Título e Cabeçalho
             document.add(new Paragraph(dados.getTitulo())
                     .setFontSize(14)
                     .setBold()
@@ -382,63 +387,40 @@ public class RelatorioServiceImpl implements RelatorioService {
                     dados.getDataGeracao().format(DateTimeFormatter.ofPattern("dd/MM/yy HH:mm"))
             );
 
-            document.add(new Paragraph(infoGeral)
-                    .setFontSize(8)
-                    .setMarginBottom(10));
+            document.add(new Paragraph(infoGeral).setFontSize(8).setMarginBottom(10));
 
-            // 2. Resumo de Status (Igual para todos)
-            if (dados.getDistribuicaoPorStatus() != null && !dados.getDistribuicaoPorStatus().isEmpty()) {
-                StringBuilder statusInfo = new StringBuilder("Resumo: ");
-                dados.getDistribuicaoPorStatus().forEach((status, count) ->
-                        statusInfo.append(status).append("(").append(count).append(") "));
-
-                document.add(new Paragraph(statusInfo.toString())
-                        .setFontSize(7)
-                        .setItalic()
-                        .setMarginBottom(8));
-            }
-
-            // 3. Tabela de Dados (AQUI ESTÁ A MUDANÇA PRINCIPAL)
+            // 2. Tabela de Dados (Decisão baseada no Tipo)
             if (dados.getItens() != null && !dados.getItens().isEmpty()) {
-                document.add(new Paragraph("Dados dos Itens:")
-                        .setBold()
-                        .setFontSize(10)
-                        .setMarginTop(5)
-                        .setMarginBottom(5));
 
-                // LÓGICA DE DECISÃO:
-                // Verifica se o título contém palavras-chave de auditoria para mudar o layout
-                boolean isAuditoria = dados.getTitulo() != null &&
-                        (dados.getTitulo().toLowerCase().contains("auditoria") ||
-                                dados.getTitulo().toLowerCase().contains("histórico"));
+                // Verificação Robusta usando o campo que gravamos no passo anterior
+                boolean isAuditoria = RelatorioTipo.HISTORICO_MUDANCAS.name().equals(dados.getTipoRelatorio())
+                        || (dados.getTitulo() != null && dados.getTitulo().toLowerCase().contains("auditoria"));
 
                 Table table;
 
                 if (isAuditoria) {
+                    // --- CONFIGURAÇÃO TABELA AUDITORIA ---
                     table = new Table(UnitValue.createPercentArray(new float[]{
-                            2.0f,  // Alterado Por (Usuário)
+                            2.0f,  // Alterado Por (Quem mudou)
                             1.5f,  // Paciente
-                            1.0f,  // Item (Guia/Ficha)
-                            1.2f,  // De (Status Antigo)
-                            1.2f,  // Para (Status Novo)
-                            1.5f,  // Data da Mudança
-                            1.6f   // Motivo/Observação
+                            1.0f,  // Item (ID)
+                            1.2f,  // De
+                            1.2f,  // Para
+                            1.5f,  // Data
+                            1.6f   // Motivo
                     }));
                     table.setWidth(UnitValue.createPercentValue(100));
 
-                    // Cabeçalhos Específicos de Auditoria
                     table.addHeaderCell(createCompactHeaderCell("Alterado Por"));
                     table.addHeaderCell(createCompactHeaderCell("Paciente"));
-                    table.addHeaderCell(createCompactHeaderCell("Item"));
-                    table.addHeaderCell(createCompactHeaderCell("De (Anterior)"));
-                    table.addHeaderCell(createCompactHeaderCell("Para (Novo)"));
-                    table.addHeaderCell(createCompactHeaderCell("Data"));
-                    table.addHeaderCell(createCompactHeaderCell("Motivo"));
+                    table.addHeaderCell(createCompactHeaderCell("Item / ID"));
+                    table.addHeaderCell(createCompactHeaderCell("Status Anterior"));
+                    table.addHeaderCell(createCompactHeaderCell("Status Novo"));
+                    table.addHeaderCell(createCompactHeaderCell("Data Mudança"));
+                    table.addHeaderCell(createCompactHeaderCell("Motivo / Obs"));
 
-                    // Preenchimento dos dados de Auditoria
                     dados.getItens().stream().limit(500).forEach(item -> {
                         table.addCell(createCompactDataCell(truncateText(item.getUsuarioResponsavelNome(), 25)));
-
                         table.addCell(createCompactDataCell(truncateText(item.getPacienteNome(), 20)));
 
                         String idItem = "GUIA".equals(item.getTipoEntidade()) ? item.getNumeroGuia() : item.getCodigoFicha();
@@ -455,12 +437,12 @@ public class RelatorioServiceImpl implements RelatorioService {
                     });
 
                 } else {
+                    // --- CONFIGURAÇÃO TABELA PADRÃO (ESTADO ATUAL) ---
                     table = new Table(UnitValue.createPercentArray(new float[]{
                             2.2f, 1.5f, 1.0f, 1.2f, 2.0f, 0.8f, 0.7f, 0.8f, 1.0f, 0.8f
                     }));
                     table.setWidth(UnitValue.createPercentValue(100));
 
-                    // Cabeçalhos Padrão
                     table.addHeaderCell(createCompactHeaderCell("Paciente"));
                     table.addHeaderCell(createCompactHeaderCell("Convênio"));
                     table.addHeaderCell(createCompactHeaderCell("Nº/Código"));
@@ -472,12 +454,11 @@ public class RelatorioServiceImpl implements RelatorioService {
                     table.addHeaderCell(createCompactHeaderCell("Atualização"));
                     table.addHeaderCell(createCompactHeaderCell("Tipo"));
 
-                    // Preenchimento dos dados Padrão
                     dados.getItens().stream().limit(500).forEach(item -> {
                         table.addCell(createCompactDataCell(truncateText(item.getPacienteNome(), 25)));
                         table.addCell(createCompactDataCell(truncateText(item.getConvenioNome(), 18)));
                         table.addCell(createCompactDataCell(getNumeroOuCodigoPDF(item)));
-                        table.addCell(createCompactDataCell(item.getStatus()));
+                        table.addCell(createCompactDataCell(item.getStatus())); // Status atual
                         table.addCell(createCompactDataCell(item.getEspecialidade()));
                         table.addCell(createCompactDataCell(getUnidadeFormatadaPDF(item)));
                         table.addCell(createCompactDataCell(getMesFormatadoPDF(item)));
@@ -491,15 +472,14 @@ public class RelatorioServiceImpl implements RelatorioService {
                     });
                 }
 
-                // Adiciona a tabela ao documento (seja ela A ou B)
                 document.add(table);
 
                 if (dados.getItens().size() > 500) {
-                    document.add(new Paragraph("+ " + (dados.getItens().size() - 500) + " itens (limite de exibição)")
-                            .setFontSize(7)
-                            .setItalic()
-                            .setMarginTop(5));
+                    document.add(new Paragraph("+ " + (dados.getItens().size() - 500) + " itens não exibidos (limite de página)")
+                            .setFontSize(7).setItalic());
                 }
+            } else {
+                document.add(new Paragraph("Nenhum dado encontrado para os filtros selecionados.").setItalic());
             }
 
             document.close();
@@ -660,34 +640,40 @@ public class RelatorioServiceImpl implements RelatorioService {
     }
 
     private RelatorioDataDto processarDadosRelatorioAuditoria(RelatorioCreateRequest request) {
-        logger.info("Processando relatório de Auditoria de Status");
+        logger.info("Processando relatório de Auditoria/Histórico de Status");
 
         RelatorioDataDto dados = new RelatorioDataDto();
-        dados.setTitulo("Auditoria de Mudanças de Status - " + request.getTitulo());
+        dados.setTitulo(request.getTitulo());
         dados.setUsuarioGerador(getCurrentUser().getFullName());
         dados.setPeriodoInicio(request.getPeriodoInicio());
         dados.setPeriodoFim(request.getPeriodoFim());
         dados.setDataGeracao(LocalDateTime.now());
 
-        // 1. Define o tipo de entidade (GUIA ou FICHA)
+        // Define explicitamente o tipo nos dados para o PDF
+        dados.setTipoRelatorio(RelatorioTipo.HISTORICO_MUDANCAS.name());
+
+        // 1. Identificar Entidade (Guia ou Ficha)
         StatusHistory.EntityType entityType = null;
         if ("GUIA".equalsIgnoreCase(request.getTipoEntidade())) {
             entityType = StatusHistory.EntityType.GUIA;
         } else if ("FICHA".equalsIgnoreCase(request.getTipoEntidade())) {
             entityType = StatusHistory.EntityType.FICHA;
         }
-        // Se for NULL, o repository trará ambos, o que pode ser desejado
 
-        // 2. Busca no repositório de histórico (StatusHistoryRepository)
-        // Nota: O request.getUsuarioResponsavelId() aqui será usado como "QUEM ALTEROU"
+        // 2. Busca no repositório de histórico
+        // OBS: Aqui ajustamos para buscar TUDO no período, independente de quem alterou.
+        // Se o requisito for "ver o histórico das guias DO usuário X", seria necessário
+        // buscar os IDs das guias dele primeiro e passar para o repository (findWithEntityIds),
+        // mas assumindo a busca geral por período/tipo:
+
         Page<StatusHistory> historicoPage = statusHistoryRepository.findWithFilters(
                 entityType,
-                null, // entityId (nulo para trazer de todas as guias)
-                null, // statusNovo (pode filtrar se o request.getStatus() tiver apenas 1 item)
-                request.getUsuarioResponsavelId(), // IMPORTANTE: Filtra pelo usuário que fez a ação!
+                null, // entityId (null = todas as entidades desse tipo)
+                null, // statusNovo (null = todas as mudanças)
+                null, // usuarioResponsavelId (null = traz mudanças feitas por QUALQUER um, não apenas pelo logado)
                 request.getPeriodoInicio(),
                 request.getPeriodoFim(),
-                Pageable.unpaged() // Traz tudo para o relatório
+                Pageable.unpaged()
         );
 
         List<StatusHistory> historico = historicoPage.getContent();
@@ -697,40 +683,41 @@ public class RelatorioServiceImpl implements RelatorioService {
                 .map(h -> {
                     RelatorioItemDto item = new RelatorioItemDto();
 
-                    // Dados da mudança
+                    // Dados básicos da mudança
                     item.setEntidadeId(h.getEntityId());
                     item.setTipoEntidade(h.getEntityType().name());
                     item.setStatusAnterior(h.getStatusAnterior());
                     item.setStatusNovo(h.getStatusNovo());
-                    item.setDataAtualizacao(h.getDataAlteracao()); // A data exata da mudança
+                    item.setDataAtualizacao(h.getDataAlteracao());
                     item.setMotivoMudanca(h.getMotivo());
 
-                    // O MAIS IMPORTANTE: Quem fez a alteração
+                    // Quem realizou a alteração (Auditoria)
                     if (h.getAlteradoPor() != null) {
                         item.setUsuarioResponsavelNome(h.getAlteradoPor().getFullName());
+                    } else {
+                        item.setUsuarioResponsavelNome("Sistema/Automático");
                     }
 
-                    // Tenta buscar informações extras da Guia/Ficha para enriquecer o relatório
-                    // (Isso pode custar performance, idealmente faça um join na query,
-                    // mas para MVP pode buscar aqui)
+                    // Enriquecer com dados da Guia/Ficha (Paciente, Código, etc)
                     enrichItemWithEntityData(item, h.getEntityType(), h.getEntityId());
 
                     return item;
                 })
+                // Ordenar por data (mais recente primeiro)
+                .sorted((a, b) -> b.getDataAtualizacao().compareTo(a.getDataAtualizacao()))
                 .collect(Collectors.toList());
 
         dados.setItens(itens);
         dados.setTotalRegistros(itens.size());
 
-        // Gera estatísticas de quantas mudanças cada usuário fez
+        // 4. Gera estatísticas úteis para auditoria
+        // Ex: Quantas mudanças cada usuário fez
         Map<String, Long> mudancasPorUsuario = itens.stream()
                 .collect(Collectors.groupingBy(
                         i -> i.getUsuarioResponsavelNome() != null ? i.getUsuarioResponsavelNome() : "Desconhecido",
                         Collectors.counting()
                 ));
-
-        // Você pode usar o campo de distribuição por status para mostrar mudanças por usuário neste tipo de relatório
-        dados.setDistribuicaoPorStatus(mudancasPorUsuario);
+        dados.setDistribuicaoPorStatus(mudancasPorUsuario); // Reutilizando campo map para exibir estatística
 
         return dados;
     }
