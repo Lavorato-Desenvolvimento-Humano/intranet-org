@@ -97,8 +97,8 @@ public class RelatorioServiceImpl implements RelatorioService {
 
                 // 4. Decisão de qual processamento usar baseada no ENUM
                 if (RelatorioTipo.HISTORICO_MUDANCAS.equals(request.getTipoRelatorio())) {
-                    dados = processarDadosRelatorioAuditoria(request);
-                    // Marca o tipo no DTO para o PDF ler depois
+                    dados = processarDadosRelatorioAuditoria(request, usuarioAlvo);
+
                     dados.setTipoRelatorio(RelatorioTipo.HISTORICO_MUDANCAS.name());
                 } else {
                     // Padrão: Estado Atual
@@ -639,7 +639,7 @@ public class RelatorioServiceImpl implements RelatorioService {
         return logs.stream().map(this::mapToLogDto).collect(Collectors.toList());
     }
 
-    private RelatorioDataDto processarDadosRelatorioAuditoria(RelatorioCreateRequest request) {
+    private RelatorioDataDto processarDadosRelatorioAuditoria(RelatorioCreateRequest request, UUID usuarioAlvo) {
         logger.info("Processando relatório de Auditoria/Histórico de Status");
 
         RelatorioDataDto dados = new RelatorioDataDto();
@@ -670,7 +670,7 @@ public class RelatorioServiceImpl implements RelatorioService {
                 entityType,
                 null, // entityId (null = todas as entidades desse tipo)
                 null, // statusNovo (null = todas as mudanças)
-                null, // usuarioResponsavelId (null = traz mudanças feitas por QUALQUER um, não apenas pelo logado)
+                usuarioAlvo,
                 request.getPeriodoInicio(),
                 request.getPeriodoFim(),
                 Pageable.unpaged()
