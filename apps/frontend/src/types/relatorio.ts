@@ -69,6 +69,7 @@ export interface RelatorioDataDto {
   distribuicaoPorConvenio: Record<string, number>;
   distribuicaoPorUnidade: Record<string, number>;
   timelineData: GraficoTimelineDto[];
+  tipoRelatorio: RelatorioTipo;
 }
 
 export interface RelatorioSummaryDto {
