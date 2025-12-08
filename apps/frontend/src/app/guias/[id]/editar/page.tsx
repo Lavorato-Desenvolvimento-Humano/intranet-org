@@ -25,6 +25,7 @@ import { formatDate } from "@/utils/dateUtils";
 import toastUtil from "@/utils/toast";
 import { StatusSelect } from "@/components/clinical/ui/StatusSelect";
 import { StatusBadge } from "@/components/clinical/ui/StatusBadge";
+import { set } from "date-fns";
 
 // Interface auxiliar para o item sendo adicionado
 interface TempItem {
@@ -107,17 +108,19 @@ export default function EditarGuiaPage() {
       setLoading(true);
       setError(null);
 
-      const [guiaData, pacientesData, conveniosData] = await Promise.all([
-        guiaService.getGuiaById(guiaId),
-        pacienteService.getAllPacientes(0, 1000),
-        convenioService.getAllConvenios(),
-        especialidadeService.getAll(),
-      ]);
+      const [guiaData, pacientesData, conveniosData, especialidadesData] =
+        await Promise.all([
+          guiaService.getGuiaById(guiaId),
+          pacienteService.getAllPacientes(0, 1000),
+          convenioService.getAllConvenios(),
+          especialidadeService.getAll(),
+        ]);
 
       setGuia(guiaData);
       setPacientes(pacientesData.content);
       setConvenios(conveniosData);
       setStatusAnterior(guiaData.status);
+      setListaEspecialidades(especialidadesData);
 
       // Preencher formulário com dados da guia
       setFormData({
