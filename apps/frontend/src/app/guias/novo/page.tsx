@@ -7,9 +7,17 @@ import Navbar from "@/components/layout/Navbar";
 import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
 import { Loading } from "@/components/ui/loading";
 import { CustomButton } from "@/components/ui/custom-button";
-import { guiaService, pacienteService } from "@/services/clinical";
+import {
+  guiaService,
+  pacienteService,
+  especialidadeService,
+} from "@/services/clinical";
 import convenioService, { ConvenioDto } from "@/services/convenio";
-import { GuiaCreateRequest, PacienteSummaryDto } from "@/types/clinical";
+import {
+  GuiaCreateRequest,
+  PacienteSummaryDto,
+  EspecialidadeDto,
+} from "@/types/clinical";
 import toastUtil from "@/utils/toast";
 import { StatusSelect } from "@/components/clinical/ui/StatusSelect";
 import { useStatus } from "@/hooks/useStatus";
@@ -31,6 +39,9 @@ export default function NovaGuiaPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [listaEspecialidades, setListaEspecialidades] = useState<
+    EspecialidadeDto[]
+  >([]);
 
   const [formData, setFormData] = useState<GuiaCreateRequest>({
     pacienteId: "",
@@ -57,19 +68,19 @@ export default function NovaGuiaPage() {
   });
 
   // Lista de especialidades padronizadas
-  const especialidades = [
-    "Fisioterapia",
-    "Fonoaudiologia",
-    "Terapia ocupacional",
-    "Psicoterapia",
-    "Nutrição",
-    "Psicopedagogia",
-    "Psicomotricidade",
-    "Musicoterapia",
-    "Avaliação neuropsicológica",
-    "Arteterapia",
-    "Terapia ABA",
-  ];
+  // const especialidades = [
+  //   "Fisioterapia",
+  //   "Fonoaudiologia",
+  //   "Terapia ocupacional",
+  //   "Psicoterapia",
+  //   "Nutrição",
+  //   "Psicopedagogia",
+  //   "Psicomotricidade",
+  //   "Musicoterapia",
+  //   "Avaliação neuropsicológica",
+  //   "Arteterapia",
+  //   "Terapia ABA",
+  // ];
 
   // Carregar dados iniciais
   useEffect(() => {
@@ -81,13 +92,16 @@ export default function NovaGuiaPage() {
       setLoading(true);
       setError(null);
 
-      const [pacientesData, conveniosData] = await Promise.all([
-        pacienteService.getAllPacientes(0, 1000),
-        convenioService.getAllConvenios(),
-      ]);
+      const [pacientesData, conveniosData, especialidadesData] =
+        await Promise.all([
+          pacienteService.getAllPacientes(0, 1000),
+          convenioService.getAllConvenios(),
+          especialidadeService.getAtivas(),
+        ]);
 
       setPacientes(pacientesData.content);
       setConvenios(conveniosData);
+      setListaEspecialidades(especialidadesData);
     } catch (err) {
       console.error("Erro ao carregar dados:", err);
       setError("Erro ao carregar dados necessários");
@@ -420,16 +434,16 @@ export default function NovaGuiaPage() {
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
                       <option value="">Selecione...</option>
-                      {especialidades
+                      {listaEspecialidades
                         .filter(
                           (esp) =>
                             !formData.itens.some(
-                              (item) => item.especialidade === esp
+                              (item) => item.especialidade === esp.nome
                             )
                         )
                         .map((esp) => (
-                          <option key={esp} value={esp}>
-                            {esp}
+                          <option key={esp.id} value={esp.nome}>
+                            {esp.nome}
                           </option>
                         ))}
                     </select>

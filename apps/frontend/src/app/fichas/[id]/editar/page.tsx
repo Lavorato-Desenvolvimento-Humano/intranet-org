@@ -9,12 +9,13 @@ import { Loading } from "@/components/ui/loading";
 import { CustomButton } from "@/components/ui/custom-button";
 import { StatusSelect } from "@/components/clinical/ui/StatusSelect";
 import { StatusBadge } from "@/components/clinical/ui/StatusBadge";
-import { fichaService } from "@/services/clinical";
+import { fichaService, especialidadeService } from "@/services/clinical";
 import convenioService, { ConvenioDto } from "@/services/convenio";
 import {
   FichaDto,
   FichaUpdateRequest,
   StatusChangeRequest,
+  EspecialidadeDto,
 } from "@/types/clinical";
 import toastUtil from "@/utils/toast";
 
@@ -49,17 +50,20 @@ export default function EditarFichaPage() {
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
   const [convenios, setConvenios] = useState<ConvenioDto[]>([]);
+  const [listaEspecialidades, setListaEspecialidades] = useState<
+    EspecialidadeDto[]
+  >([]);
 
   // Lista de especialidades disponíveis
-  const especialidades = [
-    "Fisioterapia",
-    "Fonoaudiologia",
-    "Terapia Ocupacional",
-    "Psicologia",
-    "Nutrição",
-    "Psicopedagogia",
-    "Psicomotricidade",
-  ];
+  // const especialidades = [
+  //   "Fisioterapia",
+  //   "Fonoaudiologia",
+  //   "Terapia Ocupacional",
+  //   "Psicologia",
+  //   "Nutrição",
+  //   "Psicopedagogia",
+  //   "Psicomotricidade",
+  // ];
 
   // Carregar dados da ficha
   useEffect(() => {
@@ -77,8 +81,12 @@ export default function EditarFichaPage() {
     try {
       setLoadingData(true);
 
-      const fichaData = await fichaService.getFichaById(fichaId);
+      const [fichaData, especialidadesData] = await Promise.all([
+        fichaService.getFichaById(fichaId),
+        especialidadeService.getAll(),
+      ]);
       setFicha(fichaData);
+      setListaEspecialidades(especialidadesData);
 
       // Preencher formulário com dados da ficha
       setFormData({
@@ -275,9 +283,9 @@ export default function EditarFichaPage() {
                         : "border-gray-300"
                     }`}>
                     <option value="">Selecione uma especialidade</option>
-                    {especialidades.map((esp) => (
-                      <option key={esp} value={esp}>
-                        {esp}
+                    {listaEspecialidades.map((esp) => (
+                      <option key={esp.id} value={esp.nome}>
+                        {esp.nome}
                       </option>
                     ))}
                   </select>

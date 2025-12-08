@@ -7,7 +7,11 @@ import Navbar from "@/components/layout/Navbar";
 import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
 import { Loading } from "@/components/ui/loading";
 import { CustomButton } from "@/components/ui/custom-button";
-import { guiaService, pacienteService } from "@/services/clinical";
+import {
+  guiaService,
+  pacienteService,
+  especialidadeService,
+} from "@/services/clinical";
 import convenioService, { ConvenioDto } from "@/services/convenio";
 import {
   GuiaDto,
@@ -15,6 +19,7 @@ import {
   StatusChangeRequest,
   PacienteSummaryDto,
   GuiaItem,
+  EspecialidadeDto,
 } from "@/types/clinical";
 import { formatDate } from "@/utils/dateUtils";
 import toastUtil from "@/utils/toast";
@@ -40,6 +45,9 @@ export default function EditarGuiaPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [listaEspecialidades, setListaEspecialidades] = useState<
+    EspecialidadeDto[]
+  >([]);
 
   // Estados do formulário
   const [formData, setFormData] = useState<GuiaUpdateRequest>({
@@ -73,19 +81,19 @@ export default function EditarGuiaPage() {
   const [statusAnterior, setStatusAnterior] = useState("");
 
   // Lista de especialidades disponíveis
-  const especialidades = [
-    "Fisioterapia",
-    "Fonoaudiologia",
-    "Terapia ocupacional",
-    "Psicoterapia",
-    "Nutrição",
-    "Psicopedagogia",
-    "Psicomotricidade",
-    "Musicoterapia",
-    "Avaliação neuropsicológica",
-    "Arteterapia",
-    "Terapia ABA",
-  ];
+  // const especialidades = [
+  //   "Fisioterapia",
+  //   "Fonoaudiologia",
+  //   "Terapia ocupacional",
+  //   "Psicoterapia",
+  //   "Nutrição",
+  //   "Psicopedagogia",
+  //   "Psicomotricidade",
+  //   "Musicoterapia",
+  //   "Avaliação neuropsicológica",
+  //   "Arteterapia",
+  //   "Terapia ABA",
+  // ];
 
   // Carregar dados iniciais
   useEffect(() => {
@@ -103,6 +111,7 @@ export default function EditarGuiaPage() {
         guiaService.getGuiaById(guiaId),
         pacienteService.getAllPacientes(0, 1000),
         convenioService.getAllConvenios(),
+        especialidadeService.getAll(),
       ]);
 
       setGuia(guiaData);
@@ -366,16 +375,16 @@ export default function EditarGuiaPage() {
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
                       <option value="">Selecione...</option>
-                      {especialidades
+                      {listaEspecialidades
                         .filter(
                           (esp) =>
                             !formData.itens?.some(
-                              (item) => item.especialidade === esp
+                              (item) => item.especialidade === esp.nome
                             )
                         )
                         .map((esp) => (
-                          <option key={esp} value={esp}>
-                            {esp}
+                          <option key={esp.id} value={esp.nome}>
+                            {esp.nome}
                           </option>
                         ))}
                     </select>
