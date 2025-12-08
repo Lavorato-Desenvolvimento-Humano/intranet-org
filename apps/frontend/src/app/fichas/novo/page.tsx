@@ -11,6 +11,7 @@ import {
   fichaService,
   guiaService,
   pacienteService,
+  especialidadeService,
 } from "@/services/clinical";
 import convenioService, { ConvenioDto } from "@/services/convenio";
 import {
@@ -20,6 +21,7 @@ import {
   PacienteSummaryDto,
   TipoFichaEnum,
   FichaDto,
+  EspecialidadeDto,
 } from "@/types/clinical";
 import toastUtil from "@/utils/toast";
 import { StatusSelect } from "@/components/clinical/ui/StatusSelect";
@@ -78,21 +80,24 @@ function NovaFichaContent() {
   const [pacientes, setPacientes] = useState<PacienteSummaryDto[]>([]);
   const [convenios, setConvenios] = useState<ConvenioDto[]>([]);
   const [ficha, setFicha] = useState<FichaDto | null>(null);
+  const [listaEspecialidades, setListaEspecialidades] = useState<
+    EspecialidadeDto[]
+  >([]);
 
   // Lista de especialidades disponíveis
-  const especialidades = [
-    "Fisioterapia",
-    "Fonoaudiologia",
-    "Terapia ocupacional",
-    "Psicoterapia",
-    "Nutrição",
-    "Psicopedagogia",
-    "Psicomotricidade",
-    "Musicoterapia",
-    "Avaliação neuropsicológica",
-    "Arteterapia",
-    "Terapia ABA",
-  ];
+  // const especialidades = [
+  //   "Fisioterapia",
+  //   "Fonoaudiologia",
+  //   "Terapia ocupacional",
+  //   "Psicoterapia",
+  //   "Nutrição",
+  //   "Psicopedagogia",
+  //   "Psicomotricidade",
+  //   "Musicoterapia",
+  //   "Avaliação neuropsicológica",
+  //   "Arteterapia",
+  //   "Terapia ABA",
+  // ];
 
   // Carregar dados iniciais
   useEffect(() => {
@@ -118,15 +123,18 @@ function NovaFichaContent() {
     try {
       setLoadingData(true);
 
-      const [guiasData, pacientesData, conveniosData] = await Promise.all([
-        guiaService.getAllGuias(0, 1000),
-        pacienteService.getAllPacientes(0, 1000),
-        convenioService.getAllConvenios(),
-      ]);
+      const [guiasData, pacientesData, conveniosData, especialidadesData] =
+        await Promise.all([
+          guiaService.getAllGuias(0, 1000),
+          pacienteService.getAllPacientes(0, 1000),
+          convenioService.getAllConvenios(),
+          especialidadeService.getAtivas(),
+        ]);
 
       setGuias(guiasData.content);
       setPacientes(pacientesData.content);
       setConvenios(conveniosData);
+      setListaEspecialidades(especialidadesData);
     } catch (err) {
       console.error("Erro ao carregar dados:", err);
       toastUtil.error("Erro ao carregar dados do formulário");
@@ -503,9 +511,9 @@ function NovaFichaContent() {
                         : "border-gray-300"
                     }`}>
                     <option value="">Selecione uma especialidade</option>
-                    {especialidades.map((esp) => (
-                      <option key={esp} value={esp}>
-                        {esp}
+                    {listaEspecialidades.map((esp) => (
+                      <option key={esp.id} value={esp.nome}>
+                        {esp.nome}
                       </option>
                     ))}
                   </select>

@@ -16,7 +16,7 @@ import { Loading } from "@/components/ui/loading";
 import { CustomButton } from "@/components/ui/custom-button";
 import relatorioService from "@/services/relatorio";
 import convenioService, { ConvenioDto } from "@/services/convenio";
-import { pacienteService } from "@/services/clinical";
+import { pacienteService, especialidadeService } from "@/services/clinical";
 import { useAuth } from "@/context/AuthContext";
 import { useStatus } from "@/hooks/useStatus";
 import {
@@ -24,7 +24,7 @@ import {
   RelatorioDto,
   RelatorioTipo,
 } from "@/types/relatorio";
-import { PacienteSummaryDto } from "@/types/clinical";
+import { PacienteSummaryDto, EspecialidadeDto } from "@/types/clinical";
 import toastUtil from "@/utils/toast";
 
 interface FormData {
@@ -78,17 +78,20 @@ export default function NovoRelatorioPage() {
   // Dados auxiliares
   const [convenios, setConvenios] = useState<ConvenioDto[]>([]);
   const [usuarios, setUsuarios] = useState<PacienteSummaryDto[]>([]);
+  const [listaEspecialidades, setListaEspecialidades] = useState<
+    EspecialidadeDto[]
+  >([]);
 
   // Opções disponíveis
-  const especialidades = [
-    "Fisioterapia",
-    "Fonoaudiologia",
-    "Terapia Ocupacional",
-    "Psicologia",
-    "Nutrição",
-    "Psicopedagogia",
-    "Psicomotricidade",
-  ];
+  // const especialidades = [
+  //   "Fisioterapia",
+  //   "Fonoaudiologia",
+  //   "Terapia Ocupacional",
+  //   "Psicologia",
+  //   "Nutrição",
+  //   "Psicopedagogia",
+  //   "Psicomotricidade",
+  // ];
 
   const unidadesOptions = [
     { value: "KIDS", label: "KIDS" },
@@ -114,8 +117,12 @@ export default function NovoRelatorioPage() {
         setLoadingData(true);
 
         // Carregar convênios
-        const conveniosData = await convenioService.getAllConvenios();
+        const [conveniosData, especialidadesData] = await Promise.all([
+          convenioService.getAllConvenios(),
+          especialidadeService.getAtivas(),
+        ]);
         setConvenios(conveniosData);
+        setListaEspecialidades(especialidadesData);
 
         // Definir período padrão (último mês)
         const hoje = new Date();
@@ -518,25 +525,22 @@ export default function NovoRelatorioPage() {
                   Especialidades (Deixe vazio para incluir todas)
                 </label>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {especialidades.map((especialidade) => (
-                    <label key={especialidade} className="flex items-center">
+                  {listaEspecialidades.map((esp) => (
+                    <label key={esp.id} className="flex items-center">
                       <input
                         type="checkbox"
-                        checked={formData.especialidades.includes(
-                          especialidade
-                        )}
+                        // Verifica se o NOME está no array de selecionados
+                        checked={formData.especialidades.includes(esp.nome)}
                         onChange={(e) =>
                           handleArrayInputChange(
                             "especialidades",
-                            especialidade,
+                            esp.nome, // Salva o nome
                             e.target.checked
                           )
                         }
                         className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                       />
-                      <span className="text-sm text-gray-700">
-                        {especialidade}
-                      </span>
+                      <span className="text-sm text-gray-700">{esp.nome}</span>
                     </label>
                   ))}
                 </div>

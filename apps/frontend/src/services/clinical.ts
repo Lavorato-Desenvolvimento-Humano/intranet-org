@@ -24,6 +24,8 @@ import {
   StatusHistorySummaryDto,
   StatusStatsDto,
   StatusInitializeResponse,
+  EspecialidadeDto,
+  EspecialidadeCreateRequest,
 } from "@/types/clinical";
 
 export const pacienteService = {
@@ -566,5 +568,45 @@ export const clinicalStatsService = {
       totalFichas: fichasStats.totalFichas || 0,
       fichasPorStatus: fichasStats.fichasPorStatus || {},
     };
+  },
+};
+
+export const especialidadeService = {
+  getAll: async (): Promise<EspecialidadeDto[]> => {
+    const response = await api.get("/especialidades");
+    return response.data;
+  },
+
+  getAtivas: async (): Promise<EspecialidadeDto[]> => {
+    const response = await api.get("/especialidades/ativas");
+    return response.data;
+  },
+
+  getById: async (id: string): Promise<EspecialidadeDto> => {
+    const response = await api.get(`/especialidades/${id}`);
+    return response.data;
+  },
+
+  create: async (
+    data: EspecialidadeCreateRequest
+  ): Promise<EspecialidadeDto> => {
+    const response = await api.post("/especialidades", data);
+    return response.data;
+  },
+
+  update: async (
+    id: string,
+    data: EspecialidadeCreateRequest
+  ): Promise<EspecialidadeDto> => {
+    const response = await api.put(`/especialidades/${id}`, data);
+    return response.data;
+  },
+
+  toggleAtivo: async (id: string): Promise<void> => {
+    await api.patch(`/especialidades/${id}/toggle-ativo`);
+  },
+
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/especialidades/${id}`);
   },
 };
