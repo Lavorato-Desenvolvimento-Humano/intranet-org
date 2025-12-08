@@ -314,6 +314,7 @@ export default function TicketDashboard() {
                     <th className="px-6 py-3">ID</th>
                     <th className="px-6 py-3">Status</th>
                     <th className="px-6 py-3">Assunto</th>
+                    <th className="px-6 py-3">Equipe</th>
                     <th className="px-6 py-3">Solicitante</th>
                     <th className="px-6 py-3">Responsável</th>
                     <th className="px-6 py-3 text-right">Data/Prazo</th>
@@ -325,7 +326,7 @@ export default function TicketDashboard() {
                     (ticketsAtRisk.length === 0 ? (
                       <tr>
                         <td
-                          colSpan={5}
+                          colSpan={7}
                           className="p-8 text-center text-gray-500">
                           Tudo sob controle! Nenhum chamado em risco.
                         </td>
@@ -347,7 +348,7 @@ export default function TicketDashboard() {
                     (recentActivity.length === 0 ? (
                       <tr>
                         <td
-                          colSpan={5}
+                          colSpan={7}
                           className="p-8 text-center text-gray-500">
                           Nenhuma atividade recente.
                         </td>
@@ -519,6 +520,13 @@ function TicketRow({ ticket, dateLabel, dateColor, colors }: any) {
           title={ticket.title}>
           {ticket.title}
         </div>
+      </td>
+      <td className="px-6 py-4">
+        <span
+          className="text-xs text-gray-600 truncate max-w-[120px]"
+          title={ticket.targetTeamNome || "Não atribuída"}>
+          {ticket.targetTeamNome || "—"}
+        </span>
       </td>
       <td className="px-6 py-4">
         <div className="flex items-center gap-2">
