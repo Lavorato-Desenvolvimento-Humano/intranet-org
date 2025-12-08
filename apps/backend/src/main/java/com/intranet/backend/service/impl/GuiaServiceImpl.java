@@ -263,6 +263,47 @@ public class GuiaServiceImpl implements GuiaService {
     }
 
     @Override
+    @Transactional
+    public void updateGuiasStatusBulk(List<UUID> ids, String novoStatus, String motivo, String observacoes) {
+        logger.info("Iniciando atualização em massa para {} guias. Novo status: {}", ids.size(), novoStatus);
+
+        User currentUser = getCurrentUser();
+
+        if (!StatusEnum.isValid(novoStatus)) {
+            throw new IllegalArgumentException("Status inválido: " + novoStatus);
+        }
+
+        List<Guia> guias = guiaRepository.findAllById(ids);
+
+        if (guias.size() != ids.size()) {
+            logger.warn("Algumas guias não foram encontradas. Solicitado: {}, Encontrado: {}", ids.size(), guias.size());
+        }
+
+        for (Guia guia : guias) {
+            String statusAnterior = guia.getStatus();
+
+            if (!statusAnterior.equals(novoStatus)) {
+                guia.setStatus(novoStatus);
+                guiaRepository.save(guia);
+
+                try {
+                    statusEventPublisher.publishGuiaStatusChange(
+                            guia.getId(),
+                            statusAnterior,
+                            novoStatus,
+                            motivo,
+                            observacoes,
+                            currentUser.getId()
+                    );
+                } catch (Exception e) {
+                    logger.error("Erro ao publicar evento de status para guia {}: {}", guia.getId(), e.getMessage());
+                }
+            }
+        }
+        logger.info("Atualização em massa concluída com sucesso.");
+    }
+
+    @Override
     public Page<GuiaSummaryDto> getGuiasByStatus(String status, Pageable pageable) {
         return guiaRepository.findGuiaByStatus(status, pageable).map(this::mapToGuiaSummaryDto);
     }

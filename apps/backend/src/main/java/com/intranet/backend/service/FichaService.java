@@ -55,4 +55,6 @@ public interface FichaService {
     Page<FichaSummaryDto> searchFichas(String termo, Pageable pageable);
 
     Map<String, Long> getFichasPorStatus();
+
+    void updateFichasStatusBulk(List<UUID> ids, String novoStatus, String motivo, String observacoes);
 }

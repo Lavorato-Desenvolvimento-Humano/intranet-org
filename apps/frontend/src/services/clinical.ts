@@ -243,6 +243,15 @@ export const guiaService = {
     );
     return response.data;
   },
+
+  async updateGuiasStatusBulk(data: {
+    ids: string[];
+    novoStatus: string;
+    motivo?: string;
+    observacoes?: string;
+  }): Promise<void> {
+    await api.patch("/api/guias/status/bulk", data);
+  },
 };
 
 export const fichaService = {

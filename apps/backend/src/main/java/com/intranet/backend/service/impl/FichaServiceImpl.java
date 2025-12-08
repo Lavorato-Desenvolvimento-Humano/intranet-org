@@ -345,6 +345,45 @@ public class FichaServiceImpl implements FichaService {
     }
 
     @Override
+    @Transactional
+    public void updateFichasStatusBulk(List<UUID> ids, String novoStatus, String motivo, String observacoes) {
+        User currentUser = getCurrentUser(); // Método auxiliar existente para pegar usuário logado
+
+        if (!StatusEnum.isValid(novoStatus)) {
+            throw new IllegalArgumentException("Status inválido: " + novoStatus);
+        }
+
+        // Busca todas as fichas de uma vez para melhor performance
+        List<Ficha> fichas = fichaRepository.findAllById(ids);
+
+        for (Ficha ficha : fichas) {
+            String statusAnterior = ficha.getStatus();
+
+            // Verifica se o status realmente mudou para evitar duplicidade no histórico
+            if (!statusAnterior.equals(novoStatus)) {
+                // 1. Atualiza a entidade Ficha
+                ficha.setStatus(novoStatus);
+                fichaRepository.save(ficha);
+
+                // 2. Publica o evento para registrar histórico e disparar efeitos colaterais
+                try {
+                    statusEventPublisher.publishFichaStatusChange(
+                            ficha.getId(),
+                            statusAnterior,
+                            novoStatus,
+                            motivo,
+                            observacoes,
+                            currentUser.getId()
+                    );
+                } catch (Exception e) {
+                    logger.error("Erro ao publicar evento de status para ficha {}: {}", ficha.getId(), e.getMessage());
+                }
+            }
+        }
+        logger.info("Atualização em massa de fichas concluída. Total: {}", ids.size());
+    }
+
+    @Override
     public Page<FichaSummaryDto> searchFichas(String termo, Pageable pageable) {
         logger.info("Buscando fichas por termo: {}", termo);
         Page<Ficha> fichas = fichaRepository.searchByCodigoOrPacienteNome(termo, pageable);

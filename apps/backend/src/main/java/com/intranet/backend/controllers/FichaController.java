@@ -154,6 +154,21 @@ public class FichaController {
         return ResponseUtil.success(stats);
     }
 
+    @PatchMapping("/status/bulk")
+    @PreAuthorize("hasAnyAuthority('ficha:update') or hasAnyRole('ADMIN','GUIAS','SUPERVISOR','GERENTE')")
+    public ResponseEntity<Void> updateFichasStatusBulk(@Valid @RequestBody BulkStatusChangeRequest request) {
+        logger.info("Requisição para atualização em massa de {} fichas para status {}", request.getIds().size(), request.getNovoStatus());
+
+        fichaService.updateFichasStatusBulk(
+                request.getIds(),
+                request.getNovoStatus(),
+                request.getMotivo(),
+                request.getObservacoes()
+        );
+
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/guia/{guiaId}/count")
     public ResponseEntity<Map<String, Long>> countFichasByGuia(@PathVariable UUID guiaId) {
         logger.info("Requisição para contar fichas da guia: {}", guiaId);
