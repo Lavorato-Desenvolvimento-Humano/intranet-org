@@ -12,7 +12,7 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 }
 
 export default function Input({
-  icon: Icon, // Renomeie para Icon (com I maiúsculo) para usar como componente
+  icon: Icon, 
   label,
   error,
   className = "",

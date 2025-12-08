@@ -172,7 +172,7 @@ export function DataTable<T>({
         className={`overflow-x-auto ${enableScrolling ? "overflow-y-auto" : ""}`}
         style={enableScrolling ? { maxHeight } : undefined}>
         <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50 sticky top-0 z-10">
+          <thead className="bg-gray-50 sticky top-0 z-0">
             <tr>
               {columns.map((column) => (
                 <th
