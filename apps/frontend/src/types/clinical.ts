@@ -325,3 +325,18 @@ export interface StatusInitializeResponse {
   statusesExistentes: number;
   detalhes: string[];
 }
+
+export interface EspecialidadeDto {
+  id: string;
+  nome: string;
+  descricao?: string;
+  ativo: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EspecialidadeCreateRequest {
+  nome: string;
+  descricao?: string;
+  ativo: boolean;
+}

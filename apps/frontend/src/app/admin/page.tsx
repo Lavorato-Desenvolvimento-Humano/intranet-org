@@ -10,11 +10,18 @@ import AdminUsersTab from "@/components/admin/AdminUsersTab";
 import AdminRolesTab from "@/components/admin/AdminRolesTab";
 import AdminPermissionsTab from "@/components/admin/AdminPermissionsTab";
 import AdminPendingUsersTab from "@/components/admin/AdminPendingUsersTab";
-import { AlertTriangle, RefreshCw, Settings, Plus } from "lucide-react";
+import {
+  AlertTriangle,
+  RefreshCw,
+  Settings,
+  Plus,
+  Stethoscope,
+} from "lucide-react";
 import { CustomButton } from "@/components/ui/custom-button";
 import { useAuth } from "@/context/AuthContext";
 import toastUtil from "@/utils/toast";
 import AdminStatusTab from "@/components/admin/AdminStatusTab";
+import AdminEspecialidadesTab from "@/components/admin/AdminEspecialidadesTab";
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -148,6 +155,18 @@ export default function AdminDashboardPage() {
                   <Settings className="mr-2 h-4 w-4" />
                   Status
                 </TabsTrigger>
+
+                <TabsTrigger
+                  value="specialties"
+                  onClick={() => setActiveTab("specialties")}
+                  className={`flex items-center px-4 py-2 rounded-md transition-colors ${
+                    activeTab === "specialties"
+                      ? "bg-primary text-white"
+                      : "hover:bg-gray-200"
+                  }`}>
+                  <Stethoscope className="mr-2 h-4 w-4" />
+                  Especialidades
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="users">
@@ -168,6 +187,10 @@ export default function AdminDashboardPage() {
 
               <TabsContent value="status">
                 <AdminStatusTab key={`status-${retryCount}`} />
+              </TabsContent>
+
+              <TabsContent value="specialties">
+                <AdminEspecialidadesTab key={`specialties-${retryCount}`} />
               </TabsContent>
             </Tabs>
           </div>
