@@ -405,6 +405,15 @@ export const fichaService = {
     );
     return response.data;
   },
+
+  async updateFichasStatusBulk(data: {
+    ids: string[];
+    novoStatus: string;
+    motivo?: string;
+    observacoes?: string;
+  }): Promise<void> {
+    await api.patch("/api/fichas/status/bulk", data);
+  },
 };
 
 export const statusService = {

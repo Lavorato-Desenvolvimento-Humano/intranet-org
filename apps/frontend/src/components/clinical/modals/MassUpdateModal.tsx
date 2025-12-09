@@ -8,13 +8,23 @@ import {
   AlertCircle,
   Loader2,
 } from "lucide-react";
-import { GuiaSummaryDto, StatusDto } from "@/types/clinical";
-import { guiaService, statusService } from "@/services/clinical";
+import { StatusDto } from "@/types/clinical";
+import { fichaService, guiaService, statusService } from "@/services/clinical";
 import { toast } from "react-hot-toast";
+
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: () => void; // Callback para recarregar a lista pai
+  onSave: () => void;
+}
+
+interface ClinicalItem {
+  id: string;
+  code: string;
+  patientName: string;
+  status: string;
+  type: "GUIA" | "FICHA";
+  date?: string;
 }
 
 export const MassUpdateModal: React.FC<ModalProps> = ({
@@ -23,7 +33,8 @@ export const MassUpdateModal: React.FC<ModalProps> = ({
   onSave,
 }) => {
   const [inputValue, setInputValue] = useState("");
-  const [guides, setGuides] = useState<GuiaSummaryDto[]>([]);
+  // Estado unificado para itens (Guias e Fichas)
+  const [items, setItems] = useState<ClinicalItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [targetStatus, setTargetStatus] = useState<string>("");
   const [availableStatuses, setAvailableStatuses] = useState<StatusDto[]>([]);
@@ -34,7 +45,6 @@ export const MassUpdateModal: React.FC<ModalProps> = ({
 
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Carregar status e focar no input ao abrir
   useEffect(() => {
     if (isOpen) {
       loadStatuses();
@@ -47,7 +57,6 @@ export const MassUpdateModal: React.FC<ModalProps> = ({
   const loadStatuses = async () => {
     try {
       const statuses = await statusService.getAllStatusesAtivos();
-      // Ordenar status se necessário (assumindo que StatusDto tem ordemExibicao)
       statuses.sort((a, b) => (a.ordemExibicao || 0) - (b.ordemExibicao || 0));
       setAvailableStatuses(statuses);
     } catch (err) {
@@ -58,86 +67,108 @@ export const MassUpdateModal: React.FC<ModalProps> = ({
 
   const resetState = () => {
     setInputValue("");
-    setGuides([]);
+    setItems([]);
     setSelectedIds(new Set());
     setTargetStatus("");
     setError(null);
     setProcessing(false);
   };
 
-  const handleAddGuide = async () => {
+  const handleAddItems = async () => {
     if (!inputValue.trim()) return;
     setLoading(true);
     setError(null);
 
     const codes = inputValue.split(/[\s,]+/).filter(Boolean);
-    const currentIds = new Set(guides.map((g) => g.id));
-    const newGuides: GuiaSummaryDto[] = [];
+    // Usa 'items' aqui para verificar duplicatas
+    const currentCodes = new Set(items.map((i) => i.code));
+
+    const newItems: ClinicalItem[] = [];
     const notFoundCodes: string[] = [];
 
-    try {
-      // Busca cada guia sequencialmente (pode ser otimizado com Promise.all se a API aguentar)
-      for (const code of codes) {
-        // Verifica se já está na lista atual para evitar chamadas desnecessárias
-        const alreadyAdded = guides.some((g) => g.numeroGuia === code);
-        if (alreadyAdded) continue;
+    // Processamento sequencial
+    for (const code of codes) {
+      if (currentCodes.has(code)) continue; // Pula se já estiver na lista
 
+      let found = false;
+
+      // 1. Tenta buscar como GUIA
+      try {
+        const guiaRes = await guiaService.searchByNumeroGuia(code, 0, 5);
+        const guia = guiaRes.content.find((g) => g.numeroGuia === code);
+
+        if (guia) {
+          newItems.push({
+            id: guia.id,
+            code: guia.numeroGuia,
+            patientName: guia.pacienteNome,
+            status: guia.status,
+            type: "GUIA",
+            date: guia.validade,
+          });
+          found = true;
+        }
+      } catch (e) {
+        console.error(e);
+      }
+
+      // 2. Se não achou guia, tenta buscar como FICHA
+      if (!found) {
         try {
-          // Usa o serviço de busca existente
-          const response = await guiaService.searchByNumeroGuia(code, 0, 5);
+          const fichaRes = await fichaService.searchByCodigoFicha(code, 0, 5);
+          const ficha = fichaRes.content.find((f) => f.codigoFicha === code);
 
-          // Encontra a correspondência exata do número
-          const exactMatch = response.content.find(
-            (g) => g.numeroGuia === code
-          );
-
-          if (exactMatch && !currentIds.has(exactMatch.id)) {
-            newGuides.push(exactMatch);
-            currentIds.add(exactMatch.id); // Evita duplicatas no mesmo lote de inserção
-          } else if (!exactMatch) {
-            notFoundCodes.push(code);
+          if (ficha) {
+            newItems.push({
+              id: ficha.id,
+              code: ficha.codigoFicha,
+              patientName: ficha.pacienteNome,
+              status: ficha.status,
+              type: "FICHA",
+              date: ficha.createdAt,
+            });
+            found = true;
           }
-        } catch (err) {
-          console.error(`Erro ao buscar guia ${code}`, err);
-          notFoundCodes.push(code);
+        } catch (e) {
+          console.error(e);
         }
       }
 
-      if (notFoundCodes.length > 0) {
-        setError(`Guias não encontradas: ${notFoundCodes.join(", ")}`);
-      }
-
-      if (newGuides.length > 0) {
-        setGuides((prev) => [...prev, ...newGuides]);
-        // Auto-selecionar as novas
-        setSelectedIds((prev) => {
-          const next = new Set(prev);
-          newGuides.forEach((g) => next.add(g.id));
-          return next;
-        });
-        setInputValue("");
-      } else if (notFoundCodes.length === 0 && codes.length > 0) {
-        setError("As guias informadas já estão na lista.");
-      }
-    } catch (err) {
-      setError("Erro ao processar as guias.");
-    } finally {
-      setLoading(false);
+      if (!found) notFoundCodes.push(code);
     }
+
+    if (newItems.length > 0) {
+      setItems((prev) => [...prev, ...newItems]);
+      // Auto-selecionar novos itens
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        newItems.forEach((i) => next.add(i.id));
+        return next;
+      });
+      setInputValue("");
+    }
+
+    if (notFoundCodes.length > 0) {
+      setError(`Não encontrado: ${notFoundCodes.join(", ")}`);
+    } else if (newItems.length === 0 && codes.length > 0) {
+      setError("Os códigos informados já estão na lista.");
+    }
+
+    setLoading(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      handleAddGuide();
+      handleAddItems();
     }
   };
 
   const toggleSelectAll = () => {
-    if (selectedIds.size === guides.length && guides.length > 0) {
+    if (selectedIds.size === items.length && items.length > 0) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(guides.map((g) => g.id)));
+      setSelectedIds(new Set(items.map((i) => i.id)));
     }
   };
 
@@ -152,28 +183,52 @@ export const MassUpdateModal: React.FC<ModalProps> = ({
   };
 
   const handleRemoveSelected = () => {
-    setGuides((prev) => prev.filter((g) => !selectedIds.has(g.id)));
+    setItems((prev) => prev.filter((i) => !selectedIds.has(i.id)));
     setSelectedIds(new Set());
   };
 
   const handleSave = async () => {
-    if (selectedIds.size === 0 || !targetStatus) return;
-
     setProcessing(true);
-    try {
-      await guiaService.updateGuiasStatusBulk({
-        ids: Array.from(selectedIds),
-        novoStatus: targetStatus,
-        motivo: "Atualização em massa via interface",
-        observacoes: `Alteração em lote para ${targetStatus}`,
-      });
 
-      toast.success(`${selectedIds.size} guias enviadas para atualização!`);
+    const selectedItems = items.filter((i) => selectedIds.has(i.id));
+    const guiasIds = selectedItems
+      .filter((i) => i.type === "GUIA")
+      .map((i) => i.id);
+    const fichasIds = selectedItems
+      .filter((i) => i.type === "FICHA")
+      .map((i) => i.id);
+
+    try {
+      const promises = [];
+
+      if (guiasIds.length > 0) {
+        promises.push(
+          guiaService.updateGuiasStatusBulk({
+            ids: guiasIds,
+            novoStatus: targetStatus,
+            motivo: "Atualização em massa",
+            observacoes: "Via Painel",
+          })
+        );
+      }
+
+      if (fichasIds.length > 0) {
+        promises.push(
+          fichaService.updateFichasStatusBulk({
+            ids: fichasIds,
+            novoStatus: targetStatus,
+            motivo: "Atualização em massa",
+            observacoes: "Via Painel",
+          })
+        );
+      }
+
+      await Promise.all(promises);
+      toast.success("Atualização realizada com sucesso!");
       onSave();
       onClose();
     } catch (err) {
-      console.error(err);
-      setError("Erro ao processar atualização em massa.");
+      setError("Erro ao atualizar. Tente novamente.");
     } finally {
       setProcessing(false);
     }
@@ -181,9 +236,9 @@ export const MassUpdateModal: React.FC<ModalProps> = ({
 
   if (!isOpen) return null;
 
-  const allSelected = guides.length > 0 && selectedIds.size === guides.length;
+  const allSelected = items.length > 0 && selectedIds.size === items.length;
   const isIndeterminate =
-    selectedIds.size > 0 && selectedIds.size < guides.length;
+    selectedIds.size > 0 && selectedIds.size < items.length;
 
   return (
     <div
@@ -191,19 +246,17 @@ export const MassUpdateModal: React.FC<ModalProps> = ({
       aria-labelledby="modal-title"
       role="dialog"
       aria-modal="true">
-      {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+        className="absolute inset-0 bg-neutral-dark/60 backdrop-blur-sm transition-opacity"
         onClick={!processing ? onClose : undefined}></div>
 
-      {/* Modal Content */}
       <div className="relative w-full max-w-4xl bg-white rounded-xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden transform transition-all duration-200">
-        {/* Header */}
-        <div className="bg-blue-600 px-6 py-4 flex items-center justify-between shadow-md z-10">
+        {/* Header - Cor Primária */}
+        <div className="bg-primary px-6 py-4 flex items-center justify-between shadow-md z-10">
           <h2
             className="text-xl font-semibold text-white tracking-wide"
             id="modal-title">
-            Atualização em Massa de Guias
+            Atualização em Massa
           </h2>
           {!processing && (
             <button
@@ -214,18 +267,18 @@ export const MassUpdateModal: React.FC<ModalProps> = ({
           )}
         </div>
 
-        {/* Body */}
         <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
           {/* Input Section */}
-          <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              Adicionar Guias
+          <div className="bg-neutral-light/10 p-4 rounded-lg border border-neutral-light/30">
+            <label className="block text-sm font-medium text-neutral-dark mb-2">
+              Adicionar Guias ou Fichas
             </label>
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="h-5 w-5 text-slate-400" />
+                  <Search className="h-5 w-5 text-neutral-medium" />
                 </div>
+                {/* Correção de COR DO TEXTO aqui (text-neutral-dark) */}
                 <input
                   ref={inputRef}
                   type="text"
@@ -233,14 +286,14 @@ export const MassUpdateModal: React.FC<ModalProps> = ({
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyDown={handleKeyDown}
                   disabled={loading || processing}
-                  placeholder="Digite os números das guias (separe por vírgula ou espaço)..."
-                  className="block w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-md leading-5 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-shadow shadow-sm disabled:opacity-60"
+                  placeholder="Digite números de guias ou códigos de fichas..."
+                  className="block w-full pl-10 pr-3 py-2.5 border border-neutral-light/50 rounded-md leading-5 bg-white text-neutral-dark placeholder-neutral-medium focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm transition-shadow shadow-sm disabled:opacity-60"
                 />
               </div>
               <button
-                onClick={handleAddGuide}
+                onClick={handleAddItems}
                 disabled={loading || processing || !inputValue.trim()}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary shadow-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
                 {loading ? (
                   <Loader2 size={18} className="animate-spin mr-1.5" />
                 ) : (
@@ -250,7 +303,7 @@ export const MassUpdateModal: React.FC<ModalProps> = ({
               </button>
             </div>
             {error && (
-              <div className="mt-2 flex items-center text-red-600 text-sm animate-pulse">
+              <div className="mt-2 flex items-center text-red-500 text-sm animate-pulse">
                 <AlertCircle size={16} className="mr-1.5" />
                 {error}
               </div>
@@ -260,10 +313,10 @@ export const MassUpdateModal: React.FC<ModalProps> = ({
           {/* Table Section */}
           <div className="flex-1 flex flex-col min-h-[300px]">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-slate-700 font-medium flex items-center gap-2">
-                Guias na Lista
-                <span className="bg-slate-200 text-slate-700 text-xs px-2 py-0.5 rounded-full">
-                  {guides.length}
+              <h3 className="text-neutral-dark font-medium flex items-center gap-2">
+                Itens na Lista
+                <span className="bg-neutral-light/20 text-neutral-dark text-xs px-2 py-0.5 rounded-full">
+                  {items.length}
                 </span>
               </h3>
 
@@ -277,16 +330,16 @@ export const MassUpdateModal: React.FC<ModalProps> = ({
               )}
             </div>
 
-            <div className="border border-slate-200 rounded-lg overflow-hidden flex-1 relative bg-white shadow-sm">
-              {guides.length === 0 ? (
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 opacity-60">
+            <div className="border border-neutral-light/30 rounded-lg overflow-hidden flex-1 relative bg-white shadow-sm">
+              {items.length === 0 ? (
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-neutral-medium opacity-60">
                   <Search size={48} strokeWidth={1} className="mb-2" />
-                  <p>Nenhuma guia adicionada ainda.</p>
+                  <p>Nenhum item adicionado ainda.</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto h-full max-h-[400px]">
-                  <table className="min-w-full divide-y divide-slate-200">
-                    <thead className="bg-slate-50 sticky top-0 z-10">
+                  <table className="min-w-full divide-y divide-neutral-light/20">
+                    <thead className="bg-neutral-light/10 sticky top-0 z-10">
                       <tr>
                         <th scope="col" className="px-6 py-3 text-left w-12">
                           <input
@@ -297,40 +350,47 @@ export const MassUpdateModal: React.FC<ModalProps> = ({
                               if (input) input.indeterminate = isIndeterminate;
                             }}
                             onChange={toggleSelectAll}
-                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300 rounded cursor-pointer disabled:opacity-50"
+                            className="h-4 w-4 text-primary focus:ring-primary border-neutral-medium rounded cursor-pointer disabled:opacity-50"
                           />
                         </th>
                         <th
                           scope="col"
-                          className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                          Código da Guia
+                          className="px-6 py-3 text-left text-xs font-semibold text-neutral-dark uppercase tracking-wider">
+                          Tipo
                         </th>
                         <th
                           scope="col"
-                          className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider hidden sm:table-cell">
+                          className="px-6 py-3 text-left text-xs font-semibold text-neutral-dark uppercase tracking-wider">
+                          Código
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-left text-xs font-semibold text-neutral-dark uppercase tracking-wider hidden sm:table-cell">
                           Paciente
                         </th>
                         <th
                           scope="col"
-                          className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider hidden md:table-cell">
-                          Validade
+                          className="px-6 py-3 text-left text-xs font-semibold text-neutral-dark uppercase tracking-wider hidden md:table-cell">
+                          Data Ref.
                         </th>
                         <th
                           scope="col"
-                          className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                          className="px-6 py-3 text-left text-xs font-semibold text-neutral-dark uppercase tracking-wider">
                           Status Atual
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-slate-100">
-                      {guides.map((guide) => {
-                        const isSelected = selectedIds.has(guide.id);
+                    <tbody className="bg-white divide-y divide-neutral-light/20">
+                      {items.map((item) => {
+                        const isSelected = selectedIds.has(item.id);
                         return (
                           <tr
-                            key={guide.id}
-                            className={`hover:bg-blue-50 transition-colors cursor-pointer ${isSelected ? "bg-blue-50/60" : ""}`}
+                            key={item.id}
+                            className={`hover:bg-primary/5 transition-colors cursor-pointer ${
+                              isSelected ? "bg-primary/10" : ""
+                            }`}
                             onClick={() =>
-                              !processing && toggleSelectOne(guide.id)
+                              !processing && toggleSelectOne(item.id)
                             }>
                             <td
                               className="px-6 py-4 whitespace-nowrap"
@@ -339,27 +399,37 @@ export const MassUpdateModal: React.FC<ModalProps> = ({
                                 type="checkbox"
                                 checked={isSelected}
                                 disabled={processing}
-                                onChange={() => toggleSelectOne(guide.id)}
-                                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300 rounded cursor-pointer disabled:opacity-50"
+                                onChange={() => toggleSelectOne(item.id)}
+                                className="h-4 w-4 text-primary focus:ring-primary border-neutral-medium rounded cursor-pointer disabled:opacity-50"
                               />
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
-                              {guide.numeroGuia}
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {item.type === "GUIA" ? (
+                                <span className="bg-primary/10 text-primary border border-primary/20 text-xs px-2 py-1 rounded-full font-medium">
+                                  GUIA
+                                </span>
+                              ) : (
+                                <span className="bg-neutral-light/20 text-neutral-dark border border-neutral-medium/20 text-xs px-2 py-1 rounded-full font-medium">
+                                  FICHA
+                                </span>
+                              )}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 hidden sm:table-cell">
-                              {guide.pacienteNome}
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-neutral-dark">
+                              {item.code}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 hidden md:table-cell">
-                              {/* Formatação simples de data se vier ISO */}
-                              {guide.validade
-                                ? new Date(guide.validade).toLocaleDateString(
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-medium hidden sm:table-cell">
+                              {item.patientName}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-medium hidden md:table-cell">
+                              {item.date
+                                ? new Date(item.date).toLocaleDateString(
                                     "pt-BR"
                                   )
                                 : "-"}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-slate-100 text-slate-800 border border-slate-200">
-                                {guide.status}
+                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-neutral-light/10 text-neutral-dark border border-neutral-light/30">
+                                {item.status}
                               </span>
                             </td>
                           </tr>
@@ -374,15 +444,15 @@ export const MassUpdateModal: React.FC<ModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="bg-slate-50 border-t border-slate-200 px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4 z-10">
-          <div className="w-full sm:w-auto flex items-center gap-2 text-sm text-slate-500">
+        <div className="bg-neutral-light/5 border-t border-neutral-light/30 px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4 z-10">
+          <div className="w-full sm:w-auto flex items-center gap-2 text-sm text-neutral-medium">
             {selectedIds.size > 0 ? (
               <span>
-                <strong>{selectedIds.size}</strong> guias selecionadas para
+                <strong>{selectedIds.size}</strong> itens selecionados para
                 alteração.
               </span>
             ) : (
-              <span>Selecione as guias que deseja alterar.</span>
+              <span>Selecione os itens que deseja alterar.</span>
             )}
           </div>
 
@@ -392,7 +462,7 @@ export const MassUpdateModal: React.FC<ModalProps> = ({
                 value={targetStatus}
                 onChange={(e) => setTargetStatus(e.target.value)}
                 disabled={processing}
-                className="block w-full pl-3 pr-10 py-2.5 text-base border-slate-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md text-slate-900 shadow-sm bg-white disabled:opacity-60">
+                className="block w-full pl-3 pr-10 py-2.5 text-base border-neutral-light/50 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md text-neutral-dark shadow-sm bg-white disabled:opacity-60">
                 <option value="" disabled>
                   Selecione o novo status
                 </option>
@@ -407,7 +477,7 @@ export const MassUpdateModal: React.FC<ModalProps> = ({
             <button
               onClick={handleSave}
               disabled={selectedIds.size === 0 || !targetStatus || processing}
-              className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-2.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+              className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-2.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed transition-all">
               {processing ? (
                 <>
                   <Loader2 size={18} className="animate-spin mr-2" />
