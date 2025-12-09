@@ -42,16 +42,16 @@ jobs:
 
       - name: Verificar Linting (com tratamento de erro)
         run: |
-          # Executa direto da raiz
-          npm run lint --workspace=my-app || (echo "⚠️ Linting falhou..." && true)
+          # Rodando da raiz, o npm encontra o workspace 'my-app' corretamente
+          npm run lint --workspace=my-app || (echo "⚠️ Linting falhou, mas continuando com o build" && true)
 
       - name: Verificar e Executar Testes (se existirem)
         run: |
           # Verifica se o script existe no package.json específico sem mudar de diretório
           if grep -q '"test":' apps/frontend/package.json; then
-             npm test --workspace=my-app || (echo "⚠️ Testes falharam..." && true)
+             npm test --workspace=my-app || (echo "⚠️ Testes falharam, mas continuando com o build" && true)
           else
-             echo "Nenhum script de teste encontrado."
+             echo "Nenhum script de teste encontrado no package.json. Pulando etapa de testes."
           fi
 
       - name: Construir o Frontend
