@@ -34,37 +34,29 @@ jobs:
         with:
           node-version: "18"
           cache: "npm"
-          cache-dependency-path: apps/frontend/package-lock.json
+          cache-dependency-path: package-lock.json
 
-      - name: Instalar dependências com legacy-peer-deps
+      - name: Instalar dependências (Monorepo)
         run: |
           npm install
-          cd apps/frontend
-          npm install --package-lock-only
-          npm ci
-          npm install lucide-react react-hot-toast axios chart.js react-chartjs-2 
-          npm install --save @ckeditor/ckeditor5-react @ckeditor/ckeditor5-build-classic @radix-ui/react-switch @types/sockjs-client @stomp/stompjs sockjs-client
-          npm install -D @tailwindcss/typography
-          npm install date-fns
 
       - name: Verificar Linting (com tratamento de erro)
         run: |
-          cd apps/frontend
-          npm run lint || (echo "⚠️ Linting falhou, mas continuando com o build" && true)
+          # Executa direto da raiz
+          npm run lint --workspace=my-app || (echo "⚠️ Linting falhou..." && true)
 
       - name: Verificar e Executar Testes (se existirem)
         run: |
-          cd apps/frontend
-          if grep -q '"test":' package.json; then
-            npm test || (echo "⚠️ Testes falharam, mas continuando com o build" && true)
+          # Verifica se o script existe no package.json específico sem mudar de diretório
+          if grep -q '"test":' apps/frontend/package.json; then
+             npm test --workspace=my-app || (echo "⚠️ Testes falharam..." && true)
           else
-            echo "Nenhum script de teste encontrado no package.json. Pulando etapa de testes."
+             echo "Nenhum script de teste encontrado."
           fi
 
       - name: Construir o Frontend
         run: |
-          cd apps/frontend
-          npm run build
+          npx turbo run build --filter=my-app
 
       - name: Autenticar no GitHub Container Registry (GHCR)
         if: github.event_name != 'pull_request'
