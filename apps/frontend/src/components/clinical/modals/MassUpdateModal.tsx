@@ -11,6 +11,7 @@ import {
 import { StatusDto } from "@/types/clinical";
 import { fichaService, guiaService, statusService } from "@/services/clinical";
 import { toast } from "react-hot-toast";
+import logger from "@/utils/logger";
 
 interface ModalProps {
   isOpen: boolean;
@@ -227,8 +228,16 @@ export const MassUpdateModal: React.FC<ModalProps> = ({
       toast.success("Atualização realizada com sucesso!");
       onSave();
       onClose();
-    } catch (err) {
-      setError("Erro ao atualizar. Tente novamente.");
+    } catch (err: any) {
+      logger.error("Erro ao salvar atualizações em massa", err);
+
+      const serverMessage = err.response?.data?.message;
+
+      if (serverMessage) {
+        toast.error(serverMessage);
+      } else {
+        toast.error("Erro ao atualizar. Tente novamente.");
+      }
     } finally {
       setProcessing(false);
     }

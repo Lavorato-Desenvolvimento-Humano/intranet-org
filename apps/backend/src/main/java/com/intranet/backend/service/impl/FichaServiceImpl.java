@@ -359,7 +359,7 @@ public class FichaServiceImpl implements FichaService {
         for (Ficha ficha : fichas) {
 
             if (ficha.getTipoFicha() == Ficha.TipoFicha.COM_GUIA) {
-                throw new RuntimeException("Não é possível alterar o status de uma guia vinculada a ficha");
+                throw new IllegalArgumentException("Não é possível alterar o status de uma guia vinculada a ficha");
             }
 
             String statusAnterior = ficha.getStatus();

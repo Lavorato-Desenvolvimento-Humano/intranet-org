@@ -100,6 +100,13 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorDetails, status);
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorDetails> handleIllegalArgumentException(
+            IllegalArgumentException exception, WebRequest request, HttpServletRequest httpRequest) {
+        return createErrorResponse(exception, request, httpRequest,
+                HttpStatus.BAD_REQUEST, "Regra de negócio inválida");
+    }
+
     /**
      * Método para registrar detalhes do erro no log
      */
