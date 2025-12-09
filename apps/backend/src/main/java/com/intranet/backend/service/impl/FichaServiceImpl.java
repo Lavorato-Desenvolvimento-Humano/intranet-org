@@ -347,7 +347,7 @@ public class FichaServiceImpl implements FichaService {
     @Override
     @Transactional
     public void updateFichasStatusBulk(List<UUID> ids, String novoStatus, String motivo, String observacoes) {
-        User currentUser = getCurrentUser(); // Método auxiliar existente para pegar usuário logado
+        User currentUser = getCurrentUser();
 
         if (!StatusEnum.isValid(novoStatus)) {
             throw new IllegalArgumentException("Status inválido: " + novoStatus);
@@ -357,6 +357,11 @@ public class FichaServiceImpl implements FichaService {
         List<Ficha> fichas = fichaRepository.findAllById(ids);
 
         for (Ficha ficha : fichas) {
+
+            if (ficha.getTipoFicha() == Ficha.TipoFicha.COM_GUIA) {
+                throw new RuntimeException("Não é possível alterar o status de uma guia vinculada a ficha");
+            }
+
             String statusAnterior = ficha.getStatus();
 
             // Verifica se o status realmente mudou para evitar duplicidade no histórico
