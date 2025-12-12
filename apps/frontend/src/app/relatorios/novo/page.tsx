@@ -55,9 +55,9 @@ export default function NovoRelatorioPage() {
   const { statuses } = useStatus();
 
   const isAdminOrSupervisor =
-    user?.roles?.includes("ADMIN") ||
-    user?.roles?.includes("SUPERVISOR") ||
-    user?.roles?.includes("GUIAS");
+    user?.roles?.includes("ROLE_ADMIN") ||
+    user?.roles?.includes("ROLE_SUPERVISOR") ||
+    user?.roles?.includes("ROLE_GUIAS");
 
   // Estados principais
   const [formData, setFormData] = useState<FormData>({
