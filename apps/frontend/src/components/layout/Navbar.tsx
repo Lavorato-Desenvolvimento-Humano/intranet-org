@@ -25,9 +25,11 @@ import {
   HousePlus,
   TicketSlash,
   LaptopIcon,
+  ListChecks,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import NotificationPanel from "@/components/workflow/NotificationPanel";
+import { MassUpdateModal } from "../clinical/modals/MassUpdateModal";
 import { set } from "date-fns";
 import Home from "@/app/page";
 
@@ -37,6 +39,7 @@ export default function Navbar() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [guiasSubmenuOpen, setGuiasSubmenuOpen] = useState(false);
   const [ticketsSubmenuOpen, setTicketsSubmenuOpen] = useState(false);
+  const [massUpdateModalOpen, setMassUpdateModalOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const hasAdminRole = user?.roles?.some(
@@ -288,6 +291,20 @@ export default function Navbar() {
                           <FilePlus className="mr-3" size={14} />
                           <span>Fichas PDF</span>
                         </Link>
+
+                        <button
+                          className="w-full flex items-center px-4 py-2 hover:bg-gray-100 text-sm text-left text-gray-800"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setMassUpdateModalOpen(true);
+                            // Fecha o menu principal
+                            setDropdownOpen(false);
+                            setGuiasSubmenuOpen(false);
+                          }}>
+                          <ListChecks className="mr-3" size={14} />
+                          <span>Atualização em Massa</span>
+                        </button>
                       </div>
                     )}
                   </div>
@@ -369,6 +386,21 @@ export default function Navbar() {
           </div>
         </div>
       </div>
+
+      {/* Renderização do Modal */}
+      <MassUpdateModal
+        isOpen={massUpdateModalOpen}
+        onClose={() => setMassUpdateModalOpen(false)}
+        onSave={() => {
+          // Se o usuário estiver na tela de guias, recarregamos para atualizar a lista
+          if (
+            typeof window !== "undefined" &&
+            window.location.pathname.includes("/guias")
+          ) {
+            window.location.reload();
+          }
+        }}
+      />
     </nav>
   );
 }

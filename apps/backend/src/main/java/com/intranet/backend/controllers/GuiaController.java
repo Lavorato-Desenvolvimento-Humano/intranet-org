@@ -215,6 +215,21 @@ public class GuiaController {
         }
     }
 
+    @PatchMapping("/status/bulk")
+    @PreAuthorize("hasAnyAuthority('guia:update') or hasAnyRole('ADMIN','GUIAS','SUPERVISOR','GERENTE')")
+    public ResponseEntity<Void> updateGuiasStatusBulk(@Valid @RequestBody BulkStatusChangeRequest request) {
+        logger.info("Requisição para atualização em massa de {} guias para status {}", request.getIds().size(), request.getNovoStatus());
+
+        guiaService.updateGuiasStatusBulk(
+                request.getIds(),
+                request.getNovoStatus(),
+                request.getMotivo(),
+                request.getObservacoes()
+        );
+
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/search/general")
     public ResponseEntity<Page<GuiaSummaryDto>> searchGuiasGeneral(
             @RequestParam String termo,

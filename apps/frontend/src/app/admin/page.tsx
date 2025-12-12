@@ -16,12 +16,14 @@ import {
   Settings,
   Plus,
   Stethoscope,
+  Bell,
 } from "lucide-react";
 import { CustomButton } from "@/components/ui/custom-button";
 import { useAuth } from "@/context/AuthContext";
 import toastUtil from "@/utils/toast";
 import AdminStatusTab from "@/components/admin/AdminStatusTab";
 import AdminEspecialidadesTab from "@/components/admin/AdminEspecialidadesTab";
+import AdminAvisosTab from "@/components/admin/AdminAvisosTab";
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -167,6 +169,18 @@ export default function AdminDashboardPage() {
                   <Stethoscope className="mr-2 h-4 w-4" />
                   Especialidades
                 </TabsTrigger>
+
+                <TabsTrigger
+                  value="avisos"
+                  onClick={() => setActiveTab("avisos")}
+                  className={`flex items-center px-4 py-2 rounded-md transition-colors ${
+                    activeTab === "avisos"
+                      ? "bg-primary text-white"
+                      : "hover:bg-gray-200"
+                  }`}>
+                  <Bell className="mr-2 h-4 w-4" />
+                  Avisos
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="users">
@@ -191,6 +205,10 @@ export default function AdminDashboardPage() {
 
               <TabsContent value="specialties">
                 <AdminEspecialidadesTab key={`specialties-${retryCount}`} />
+              </TabsContent>
+
+              <TabsContent value="avisos">
+                <AdminAvisosTab key={`avisos-${retryCount}`} />
               </TabsContent>
             </Tabs>
           </div>

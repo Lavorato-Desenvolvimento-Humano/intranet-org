@@ -243,6 +243,15 @@ export const guiaService = {
     );
     return response.data;
   },
+
+  async updateGuiasStatusBulk(data: {
+    ids: string[];
+    novoStatus: string;
+    motivo?: string;
+    observacoes?: string;
+  }): Promise<void> {
+    await api.patch("/api/guias/status/bulk", data);
+  },
 };
 
 export const fichaService = {
@@ -395,6 +404,15 @@ export const fichaService = {
       `/api/fichas/${fichaId}/vincular-guia/${guiaId}`
     );
     return response.data;
+  },
+
+  async updateFichasStatusBulk(data: {
+    ids: string[];
+    novoStatus: string;
+    motivo?: string;
+    observacoes?: string;
+  }): Promise<void> {
+    await api.patch("/api/fichas/status/bulk", data);
   },
 };
 

@@ -54,5 +54,7 @@ public interface GuiaService {
 
     Page<GuiaSummaryDto> searchGuias(String termo, Pageable pageable);
 
+    void updateGuiasStatusBulk(List<UUID> ids, String novoStatus, String motivo, String observacoes);
+
     List<StatusHistoryDto> getHistoricoStatusGuia(UUID guiaId);
 }

@@ -21,10 +21,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -97,6 +94,19 @@ public class TicketService {
 
         Ticket savedTicket = ticketRepository.save(ticket);
 
+        Set<UserEquipe> membrosTeam = targetTeam.getMembros();
+
+        for (UserEquipe membro: membrosTeam) {
+            if (!membro.getUser().getId().equals(requester.getId())) {
+                sendNotificationToUser(
+                        membro.getUser().getId(),
+                        "Novo chamado",
+                        "Veja os detalhes do chamados",
+                        ticket.getId()
+                );
+            }
+        }
+
         if (file != null && !file.isEmpty()) {
             String fileName = saveFileLocally(file, savedTicket.getId());
             TicketInteraction attachment = TicketInteraction.builder()
@@ -162,6 +172,10 @@ public class TicketService {
         User targetUser = currentUser.getId().equals(ticket.getRequester().getId())
                 ? ticket.getAssignee()
                 : ticket.getRequester();
+
+        if (ticket.getAssignee() == null) {
+            throw new IllegalArgumentException("Não é possível responder um chamado sem assumir ele antes!");
+        }
 
         if (targetUser != null) {
             sendNotificationToUser(
