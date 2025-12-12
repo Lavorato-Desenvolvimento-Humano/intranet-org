@@ -23,6 +23,7 @@ import {
 import toast from "react-hot-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import logger from "@/utils/logger";
 
 export default function TicketDetailsPage() {
   const params = useParams();
@@ -90,18 +91,24 @@ export default function TicketDetailsPage() {
   };
 
   const handleSend = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    if (!commentText.trim() && !selectedFile) return;
+    try {
+      e?.preventDefault();
+      if (!commentText.trim() && !selectedFile) return;
 
-    setSending(true);
-    // Usa a função do Hook
-    const success = await addComment(commentText, selectedFile);
+      setSending(true);
+      // Usa a função do Hook
+      const success = await addComment(commentText, selectedFile);
 
-    if (success) {
-      setCommentText("");
-      removeAttachment();
+      if (success) {
+        setCommentText("");
+        removeAttachment();
+      }
+      setSending(false);
+    } catch (err: any) {
+      logger.error("Erro ao enviar comentário:", err);
+      toast.error(err?.response?.data?.message || "Erro ao enviar comentário");
+      setSending(false);
     }
-    setSending(false);
   };
 
   // Helper de UI

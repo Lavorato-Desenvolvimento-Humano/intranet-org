@@ -3,10 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/services/api";
-import Button from "@/components/ui/custom-button"; 
-import Input from "@/components/ui/input"; 
+import Button from "@/components/ui/custom-button";
+import Input from "@/components/ui/input";
 import SimpleRichEditor from "@/components/ui/simple-rich-editor";
-import toast from "@/utils/toast"; 
+import toast from "@/utils/toast";
 import { ArrowLeft, Save } from "lucide-react";
 import Link from "next/link";
 
