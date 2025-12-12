@@ -3,7 +3,7 @@ WORKDIR /app
 
 # 1. Copiar APENAS arquivos de dependência primeiro
 # Ajuste os caminhos conforme a estrutura da raiz do seu monorepo se necessário
-COPY apps/frontend/package.json apps/frontend/package-lock.json ./
+COPY apps/frontend/package.json ./
 
 # 2. Instalar dependências (Isso agora será cacheado se package.json não mudar)
 RUN npm install
