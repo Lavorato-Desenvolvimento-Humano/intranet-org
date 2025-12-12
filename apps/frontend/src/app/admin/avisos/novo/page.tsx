@@ -9,6 +9,7 @@ import SimpleRichEditor from "@/components/ui/simple-rich-editor";
 import toast from "@/utils/toast";
 import { ArrowLeft, Save } from "lucide-react";
 import Link from "next/link";
+import postagemService from "@/services/postagem";
 
 export default function NovoAvisoPage() {
   const router = useRouter();
@@ -23,6 +24,17 @@ export default function NovoAvisoPage() {
     active: true,
   });
 
+  const handleImageUpload = async (file: File): Promise<string> => {
+    try {
+      const imagem = await postagemService.addTempImagem(file);
+      return imagem.url;
+    } catch (error) {
+      console.error("Erro ao fazer upload da imagem:", error);
+      toast.error("Erro ao fazer upload da imagem");
+      throw error;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -35,7 +47,7 @@ export default function NovoAvisoPage() {
     try {
       await api.post("/notifications", formData);
       toast.success("Aviso cadastrado com sucesso!");
-      router.push("/admin"); // Ou para uma lista de avisos se criar
+      router.push("/admin");
     } catch (error) {
       console.error(error);
       toast.error("Erro ao cadastrar aviso");
@@ -102,6 +114,7 @@ export default function NovoAvisoPage() {
             <SimpleRichEditor
               value={formData.content}
               onChange={(html) => setFormData({ ...formData, content: html })}
+              onImageUpload={handleImageUpload}
             />
           </div>
           <p className="text-xs text-gray-500 mt-1">

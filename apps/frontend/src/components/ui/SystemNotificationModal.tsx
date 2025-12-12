@@ -124,9 +124,10 @@ export function SystemNotificationModal() {
             </div>
           )}
 
-          <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap">
-            {currentNotification.content}
-          </div>
+          <div
+            className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap break-words"
+            dangerouslySetInnerHTML={{ __html: currentNotification.content }}
+          />
 
           {currentNotification.actionUrl && (
             <div className="mt-4 pt-2 border-t border-gray-100">
