@@ -7,6 +7,7 @@ import com.intranet.backend.repository.SystemNotificationRepository;
 import com.intranet.backend.repository.UserNotificationReadRepository;
 import com.intranet.backend.repository.UserRepository; // Import do repositório de usuários
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -28,7 +29,14 @@ public class SystemNotificationController {
     private UserNotificationReadRepository readRepository;
 
     @Autowired
-    private UserRepository userRepository; // Injetado diretamente
+    private UserRepository userRepository;
+
+    @GetMapping
+    public ResponseEntity<List<SystemNotification>> getAll() {
+        return ResponseEntity.ok(notificationRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt")));
+    }
+
+
 
     @GetMapping("/pending")
     public ResponseEntity<List<SystemNotification>> getPending(@AuthenticationPrincipal UserDetails userDetails) {
