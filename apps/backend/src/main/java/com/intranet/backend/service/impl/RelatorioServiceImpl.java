@@ -61,12 +61,26 @@ public class RelatorioServiceImpl implements RelatorioService {
 
         User currentUser = getCurrentUser();
 
-        // 1. Tratamento de permissões (Lógica existente)
-        UUID usuarioAlvo = request.getUsuarioResponsavelId() != null ?
-                request.getUsuarioResponsavelId() : currentUser.getId();
+        // 1. Tratamento de permissões e definição do usuário alvo
+        UUID usuarioAlvo;
 
-        if (!usuarioAlvo.equals(currentUser.getId()) && !isUserAdminOrSupervisor(currentUser)) {
-            throw new IllegalArgumentException("Usuário não tem permissão para gerar relatórios de outros usuários");
+        if (RelatorioTipo.RELATORIO_GERAL.equals(request.getTipoRelatorio())) {
+            // Apenas Admins/Supervisores podem gerar relatório geral (sem restrição de usuário)
+            if (!isUserAdminOrSupervisor(currentUser)) {
+                throw new IllegalArgumentException("Apenas administradores e supervisores podem gerar o Relatório Geral.");
+            }
+            // Para o relatório geral, permitimos que usuarioAlvo seja NULL (indicando "todos")
+            // ou um ID específico vindo do filtro do request
+            usuarioAlvo = request.getUsuarioResponsavelId();
+
+        } else {
+            // Lógica original para os outros tipos de relatório
+            usuarioAlvo = request.getUsuarioResponsavelId() != null ?
+                    request.getUsuarioResponsavelId() : currentUser.getId();
+
+            if (!usuarioAlvo.equals(currentUser.getId()) && !isUserAdminOrSupervisor(currentUser)) {
+                throw new IllegalArgumentException("Usuário não tem permissão para gerar relatórios de outros usuários");
+            }
         }
 
         // 2. Fallback para compatibilidade (se o front não enviar o tipo)
@@ -98,10 +112,15 @@ public class RelatorioServiceImpl implements RelatorioService {
                 // 4. Decisão de qual processamento usar baseada no ENUM
                 if (RelatorioTipo.HISTORICO_MUDANCAS.equals(request.getTipoRelatorio())) {
                     dados = processarDadosRelatorioAuditoria(request, usuarioAlvo);
-
                     dados.setTipoRelatorio(RelatorioTipo.HISTORICO_MUDANCAS.name());
+
+                } else if (RelatorioTipo.RELATORIO_GERAL.equals(request.getTipoRelatorio())) {
+                    // Reutiliza a lógica de Estado Atual, mas o usuarioAlvo pode ser null aqui
+                    dados = processarDadosRelatorioEstadoAtual(request, usuarioAlvo);
+                    dados.setTipoRelatorio(RelatorioTipo.RELATORIO_GERAL.name());
+
                 } else {
-                    // Padrão: Estado Atual
+                    // Padrão: Estado Atual (usuarioAlvo sempre definido)
                     dados = processarDadosRelatorioEstadoAtual(request, usuarioAlvo);
                     dados.setTipoRelatorio(RelatorioTipo.ESTADO_ATUAL.name());
                 }
@@ -902,7 +921,7 @@ public class RelatorioServiceImpl implements RelatorioService {
     private boolean isUserAdminOrSupervisor(User user) {
         try {
             List<String> roleNames = userRepository.findRoleNamesByUserId(user.getId());
-            return roleNames.contains("ADMIN") || roleNames.contains("SUPERVISOR");
+            return roleNames.contains("ADMIN") || roleNames.contains("SUPERVISOR") || roleNames.contains("GUIAS") ;
         } catch (Exception e) {
             logger.warn("Erro ao verificar roles do usuário {}: {}", user.getId(), e.getMessage());
             return false;
