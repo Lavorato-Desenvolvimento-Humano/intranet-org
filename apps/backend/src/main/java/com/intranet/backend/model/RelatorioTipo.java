@@ -2,5 +2,6 @@ package com.intranet.backend.model;
 
 public enum RelatorioTipo {
     ESTADO_ATUAL,
-    HISTORICO_MUDANCAS
+    HISTORICO_MUDANCAS,
+    RELATORIO_GERAL
 }

@@ -9,6 +9,7 @@ import {
   Calendar,
   Filter,
   AlertCircle,
+  Globe,
 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
@@ -52,6 +53,11 @@ export default function NovoRelatorioPage() {
   const router = useRouter();
   const { user } = useAuth();
   const { statuses } = useStatus();
+
+  const isAdminOrSupervisor =
+    user?.roles?.includes("ROLE_ADMIN") ||
+    user?.roles?.includes("ROLE_SUPERVISOR") ||
+    user?.roles?.includes("ROLE_GUIAS");
 
   // Estados principais
   const [formData, setFormData] = useState<FormData>({
@@ -357,6 +363,38 @@ export default function NovoRelatorioPage() {
                     </span>
                   </div>
                 </label>
+
+                {isAdminOrSupervisor && (
+                  <label
+                    className={`flex items-center space-x-2 border p-3 rounded cursor-pointer flex-1 min-w-[200px] transition-colors ${formData.tipoRelatorio === RelatorioTipo.RELATORIO_GERAL ? "bg-purple-50 border-purple-500" : "hover:bg-gray-50 border-gray-200"}`}>
+                    <input
+                      type="radio"
+                      name="tipoRelatorio"
+                      value={RelatorioTipo.RELATORIO_GERAL}
+                      checked={
+                        formData.tipoRelatorio === RelatorioTipo.RELATORIO_GERAL
+                      }
+                      onChange={() =>
+                        handleInputChange(
+                          "tipoRelatorio",
+                          RelatorioTipo.RELATORIO_GERAL
+                        )
+                      }
+                      className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center">
+                        <Globe className="h-4 w-4 mr-1 text-purple-600" />
+                        <span className="font-bold block text-gray-800">
+                          Relatório Geral
+                        </span>
+                      </div>
+                      <span className="text-xs text-gray-500">
+                        Todos os usuários e unidades.
+                      </span>
+                    </div>
+                  </label>
+                )}
               </div>
             </div>
             {/* ------------------------------------- */}

@@ -10,6 +10,7 @@ export enum StatusRelatorioEnum {
 export enum RelatorioTipo {
   ESTADO_ATUAL = "ESTADO_ATUAL",
   HISTORICO_MUDANCAS = "HISTORICO_MUDANCAS",
+  RELATORIO_GERAL = "RELATORIO_GERAL",
 }
 
 export interface RelatorioDto {
