@@ -19,7 +19,7 @@ import {
   Redo,
   Quote,
 } from "lucide-react";
-import { cn } from "@/utils/cn"; // Supondo que você tenha essa função utilitária, se não, use clsx ou template strings
+import { cn } from "@/utils/cn";
 
 interface SimpleRichEditorProps {
   value: string;
