@@ -813,17 +813,36 @@ public class RelatorioServiceImpl implements RelatorioService {
     }
 
     private List<RelatorioItemDto> buscarGuiasComEstadoAtual(RelatorioCreateRequest request, UUID usuarioAlvo) {
-        logger.info("Buscando guias com estado atual para relatório");
+        logger.info("Buscando guias com estado atual para relatório. Tipo: {}", request.getTipoRelatorio());
 
-        List<Guia> guias = guiaRepository.findGuiasForRelatorio(
-                usuarioAlvo,
-                request.getPeriodoInicio(),
-                request.getPeriodoFim(),
-                request.getStatus(),
-                request.getEspecialidades(),
-                request.getConvenioIds(),
-                request.getUnidades()
-        );
+        List<Guia> guias;
+
+        // SE FOR RELATORIO_GERAL, FILTRA POR MÊS/ANO DE COMPETÊNCIA
+        if (RelatorioTipo.RELATORIO_GERAL.equals(request.getTipoRelatorio())) {
+            int startPeriod = request.getPeriodoInicio().getYear() * 12 + request.getPeriodoInicio().getMonthValue();
+            int endPeriod = request.getPeriodoFim().getYear() * 12 + request.getPeriodoFim().getMonthValue();
+
+            guias = guiaRepository.findGuiasForRelatorioByPeriodo(
+                    usuarioAlvo,
+                    startPeriod,
+                    endPeriod,
+                    request.getStatus(),
+                    request.getEspecialidades(),
+                    request.getConvenioIds(),
+                    request.getUnidades()
+            );
+        } else {
+            // COMPORTAMENTO PADRÃO (ESTADO_ATUAL): Filtra por Data de Atualização (updatedAt)
+            guias = guiaRepository.findGuiasForRelatorio(
+                    usuarioAlvo,
+                    request.getPeriodoInicio(),
+                    request.getPeriodoFim(),
+                    request.getStatus(),
+                    request.getEspecialidades(),
+                    request.getConvenioIds(),
+                    request.getUnidades()
+            );
+        }
 
         return guias.stream()
                 .map(this::mapGuiaToRelatorioItem)
@@ -831,17 +850,36 @@ public class RelatorioServiceImpl implements RelatorioService {
     }
 
     private List<RelatorioItemDto> buscarFichasComEstadoAtual(RelatorioCreateRequest request, UUID usuarioAlvo) {
-        logger.info("Buscando fichas com estado atual para relatório");
+        logger.info("Buscando fichas com estado atual para relatório. Tipo: {}", request.getTipoRelatorio());
 
-        List<Ficha> fichas = fichaRepository.findFichasForRelatorio(
-                usuarioAlvo,
-                request.getPeriodoInicio(),
-                request.getPeriodoFim(),
-                request.getStatus(),
-                request.getEspecialidades(),
-                request.getConvenioIds(),
-                request.getUnidades()
-        );
+        List<Ficha> fichas;
+
+        // SE FOR RELATORIO_GERAL, FILTRA POR MÊS/ANO DE COMPETÊNCIA
+        if (RelatorioTipo.RELATORIO_GERAL.equals(request.getTipoRelatorio())) {
+            int startPeriod = request.getPeriodoInicio().getYear() * 12 + request.getPeriodoInicio().getMonthValue();
+            int endPeriod = request.getPeriodoFim().getYear() * 12 + request.getPeriodoFim().getMonthValue();
+
+            fichas = fichaRepository.findFichasForRelatorioByPeriodo(
+                    usuarioAlvo,
+                    startPeriod,
+                    endPeriod,
+                    request.getStatus(),
+                    request.getEspecialidades(),
+                    request.getConvenioIds(),
+                    request.getUnidades()
+            );
+        } else {
+            // COMPORTAMENTO PADRÃO (ESTADO_ATUAL): Filtra por Data de Criação/Atualização
+            fichas = fichaRepository.findFichasForRelatorio(
+                    usuarioAlvo,
+                    request.getPeriodoInicio(),
+                    request.getPeriodoFim(),
+                    request.getStatus(),
+                    request.getEspecialidades(),
+                    request.getConvenioIds(),
+                    request.getUnidades()
+            );
+        }
 
         return fichas.stream()
                 .map(this::mapFichaToRelatorioItem)

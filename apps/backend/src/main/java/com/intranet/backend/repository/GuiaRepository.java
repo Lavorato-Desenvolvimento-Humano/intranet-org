@@ -102,4 +102,24 @@ public interface GuiaRepository extends JpaRepository<Guia, UUID> {
             @Param("convenioIds") List<UUID> convenioIds,
             @Param("unidades") List<String> unidades
     );
+
+    @Query("SELECT DISTINCT g FROM Guia g " +
+            "LEFT JOIN g.itens i " +
+            "LEFT JOIN g.paciente p " +
+            "WHERE (:usuarioAlvo IS NULL OR g.usuarioResponsavel.id = :usuarioAlvo) " +
+            "AND ((g.ano * 12 + g.mes) >= :startPeriod) " +
+            "AND ((g.ano * 12 + g.mes) <= :endPeriod) " +
+            "AND ((:status) IS NULL OR g.status IN (:status)) " +
+            "AND ((:especialidades) IS NULL OR i.especialidade IN (:especialidades)) " +
+            "AND ((:convenioIds) IS NULL OR g.convenio.id IN (:convenioIds)) " +
+            "AND ((:unidades) IS NULL OR CAST(p.unidade as string) IN (:unidades))")
+    List<Guia> findGuiasForRelatorioByPeriodo(
+            @Param("usuarioAlvo") UUID usuarioAlvo,
+            @Param("startPeriod") Integer startPeriod,
+            @Param("endPeriod") Integer endPeriod,
+            @Param("status") List<String> status,
+            @Param("especialidades") List<String> especialidades,
+            @Param("convenioIds") List<UUID> convenioIds,
+            @Param("unidades") List<String> unidades
+    );
 }

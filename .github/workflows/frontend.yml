@@ -54,10 +54,6 @@ jobs:
              echo "Nenhum script de teste encontrado no package.json. Pulando etapa de testes."
           fi
 
-      - name: Construir o Frontend
-        run: |
-          npx turbo run build --filter=my-app
-
       - name: Autenticar no GitHub Container Registry (GHCR)
         if: github.event_name != 'pull_request'
         run: |
