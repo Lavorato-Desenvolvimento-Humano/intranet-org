@@ -18,6 +18,8 @@ import {
   Undo,
   Redo,
   Quote,
+  Type,
+  AlignLeft,
 } from "lucide-react";
 import { cn } from "@/utils/cn";
 
@@ -25,7 +27,7 @@ interface SimpleRichEditorProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
-  height?: string;
+  minHeight?: string; // Alterei de height fixo para minHeight para crescer com o conteúdo
   error?: string;
   disabled?: boolean;
   onImageUpload?: (file: File) => Promise<string>;
@@ -35,8 +37,8 @@ interface SimpleRichEditorProps {
 const SimpleRichEditor: React.FC<SimpleRichEditorProps> = ({
   value,
   onChange,
-  placeholder = "Digite o conteúdo aqui...",
-  height = "400px",
+  placeholder = "Comece a escrever...",
+  minHeight = "250px",
   error,
   disabled = false,
   onImageUpload,
@@ -49,13 +51,15 @@ const SimpleRichEditor: React.FC<SimpleRichEditorProps> = ({
         inline: true,
         allowBase64: true,
         HTMLAttributes: {
-          class: "rounded-md max-w-full h-auto my-4 border border-gray-200",
+          class:
+            "rounded-lg max-w-full h-auto my-6 border border-gray-100 shadow-sm",
         },
       }),
       LinkExtension.configure({
         openOnClick: false,
         HTMLAttributes: {
-          class: "text-blue-500 underline cursor-pointer",
+          class:
+            "text-blue-600 underline decoration-blue-300 underline-offset-4 hover:text-blue-800 cursor-pointer transition-colors",
         },
       }),
       Placeholder.configure({
@@ -68,8 +72,14 @@ const SimpleRichEditor: React.FC<SimpleRichEditorProps> = ({
     editable: !disabled,
     editorProps: {
       attributes: {
-        class:
-          "prose prose-sm sm:prose max-w-none focus:outline-none min-h-[150px] px-3 py-2",
+        class: cn(
+          "prose prose-zinc prose-sm sm:prose max-w-none focus:outline-none px-6 py-4",
+          "prose-headings:font-semibold prose-headings:text-zinc-800",
+          "prose-p:text-zinc-600 prose-p:leading-relaxed",
+          "prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline",
+          "prose-blockquote:border-l-blue-500 prose-blockquote:bg-blue-50/30 prose-blockquote:py-1 prose-blockquote:px-4 prose-blockquote:rounded-r-sm",
+          "prose-li:text-zinc-600"
+        ),
       },
     },
     onUpdate: ({ editor }) => {
@@ -77,19 +87,17 @@ const SimpleRichEditor: React.FC<SimpleRichEditorProps> = ({
     },
   });
 
-  // Sincronizar valor externo se mudar drasticamente (ex: reset de form)
+  // Sincronizar valor externo
   useEffect(() => {
     if (editor && value !== editor.getHTML()) {
-      // Apenas atualiza se o conteúdo for realmente diferente para evitar loops e perda de cursor
       if (editor.getText() === "" && value === "") return;
-      // Comparação simples, idealmente seria um deep compare ou controle de versão
       if (Math.abs(value.length - editor.getHTML().length) > 10) {
         editor.commands.setContent(value);
       }
     }
   }, [value, editor]);
 
-  // Atualizar estado de disabled
+  // Atualizar estado disabled
   useEffect(() => {
     if (editor) {
       editor.setEditable(!disabled);
@@ -98,7 +106,6 @@ const SimpleRichEditor: React.FC<SimpleRichEditorProps> = ({
 
   const addImage = useCallback(async () => {
     if (!onImageUpload) return;
-
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/*";
@@ -111,7 +118,7 @@ const SimpleRichEditor: React.FC<SimpleRichEditorProps> = ({
             editor?.chain().focus().setImage({ src: url }).run();
           }
         } catch (error) {
-          console.error("Erro ao fazer upload da imagem", error);
+          console.error("Erro no upload", error);
         }
       }
     };
@@ -120,7 +127,6 @@ const SimpleRichEditor: React.FC<SimpleRichEditorProps> = ({
 
   const addFile = useCallback(async () => {
     if (!onFileUpload) return;
-
     const input = document.createElement("input");
     input.type = "file";
     input.onchange = async (e) => {
@@ -133,12 +139,12 @@ const SimpleRichEditor: React.FC<SimpleRichEditorProps> = ({
               ?.chain()
               .focus()
               .insertContent(
-                `<a href="${url}" target="_blank" class="text-blue-600 hover:underline flex items-center gap-1">📎 ${file.name}</a>`
+                `<a href="${url}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors no-underline text-sm font-medium border border-gray-200"><span class="text-lg">📎</span> ${file.name}</a>`
               )
               .run();
           }
         } catch (error) {
-          console.error("Erro ao fazer upload do arquivo", error);
+          console.error("Erro no upload", error);
         }
       }
     };
@@ -148,26 +154,17 @@ const SimpleRichEditor: React.FC<SimpleRichEditorProps> = ({
   const setLink = useCallback(() => {
     if (!editor) return;
     const previousUrl = editor.getAttributes("link").href;
-    const url = window.prompt("URL:", previousUrl);
+    const url = window.prompt("URL do link:", previousUrl);
 
-    // cancelled
-    if (url === null) {
-      return;
-    }
-
-    // empty
+    if (url === null) return;
     if (url === "") {
       editor.chain().focus().extendMarkRange("link").unsetLink().run();
       return;
     }
-
-    // update
     editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
   }, [editor]);
 
-  if (!editor) {
-    return null;
-  }
+  if (!editor) return null;
 
   const ToolbarButton = ({
     onClick,
@@ -188,143 +185,166 @@ const SimpleRichEditor: React.FC<SimpleRichEditorProps> = ({
       disabled={disabled}
       title={title}
       className={cn(
-        "p-1.5 rounded transition-colors",
+        "p-2 rounded-md transition-all duration-200 flex items-center justify-center",
         isActive
-          ? "bg-gray-200 text-gray-900"
-          : "text-gray-500 hover:bg-gray-100 hover:text-gray-700",
-        disabled && "opacity-50 cursor-not-allowed"
+          ? "bg-blue-100 text-blue-700 shadow-sm"
+          : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900",
+        disabled && "opacity-40 cursor-not-allowed"
       )}>
       {children}
     </button>
   );
 
+  const Divider = () => <div className="w-[1px] h-5 bg-zinc-200 mx-1" />;
+
   return (
-    <div className="w-full flex flex-col gap-1">
+    <div className="w-full flex flex-col gap-1.5">
       <div
         className={cn(
-          "border rounded-md overflow-hidden bg-white transition-colors",
+          "group border rounded-xl overflow-hidden bg-white transition-all duration-200 shadow-sm",
           error
-            ? "border-red-500"
-            : "border-gray-300 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500",
+            ? "border-red-500 ring-1 ring-red-100"
+            : "border-zinc-200 hover:border-zinc-300 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100",
           disabled && "bg-gray-50 opacity-80"
         )}>
-        {/* Toolbar */}
-        <div className="flex items-center p-2 border-b bg-gray-50 flex-wrap gap-1">
-          <ToolbarButton
-            onClick={() => editor.chain().focus().toggleBold().run()}
-            isActive={editor.isActive("bold")}
-            disabled={disabled}
-            title="Negrito">
-            <Bold size={16} />
-          </ToolbarButton>
+        {/* Sticky Toolbar */}
+        <div className="sticky top-0 z-10 flex items-center p-2 border-b border-zinc-100 bg-white/95 backdrop-blur-sm flex-wrap gap-1">
+          {/* Histórico */}
+          <div className="flex items-center gap-0.5">
+            <ToolbarButton
+              onClick={() => editor.chain().focus().undo().run()}
+              disabled={disabled || !editor.can().undo()}
+              title="Desfazer">
+              <Undo size={15} strokeWidth={2.5} />
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor.chain().focus().redo().run()}
+              disabled={disabled || !editor.can().redo()}
+              title="Refazer">
+              <Redo size={15} strokeWidth={2.5} />
+            </ToolbarButton>
+          </div>
 
-          <ToolbarButton
-            onClick={() => editor.chain().focus().toggleItalic().run()}
-            isActive={editor.isActive("italic")}
-            disabled={disabled}
-            title="Itálico">
-            <Italic size={16} />
-          </ToolbarButton>
+          <Divider />
 
-          <ToolbarButton
-            onClick={() => editor.chain().focus().toggleBlockquote().run()}
-            isActive={editor.isActive("blockquote")}
-            disabled={disabled}
-            title="Citação">
-            <Quote size={16} />
-          </ToolbarButton>
+          {/* Formatação Básica */}
+          <div className="flex items-center gap-0.5">
+            <ToolbarButton
+              onClick={() => editor.chain().focus().toggleBold().run()}
+              isActive={editor.isActive("bold")}
+              disabled={disabled}
+              title="Negrito">
+              <Bold size={16} />
+            </ToolbarButton>
 
-          <div className="w-px h-6 bg-gray-300 mx-1"></div>
+            <ToolbarButton
+              onClick={() => editor.chain().focus().toggleItalic().run()}
+              isActive={editor.isActive("italic")}
+              disabled={disabled}
+              title="Itálico">
+              <Italic size={16} />
+            </ToolbarButton>
 
-          <ToolbarButton
-            onClick={() =>
-              editor.chain().focus().toggleHeading({ level: 1 }).run()
-            }
-            isActive={editor.isActive("heading", { level: 1 })}
-            disabled={disabled}
-            title="Título 1">
-            <Heading1 size={16} />
-          </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor.chain().focus().toggleBlockquote().run()}
+              isActive={editor.isActive("blockquote")}
+              disabled={disabled}
+              title="Citação">
+              <Quote size={16} />
+            </ToolbarButton>
+          </div>
 
-          <ToolbarButton
-            onClick={() =>
-              editor.chain().focus().toggleHeading({ level: 2 }).run()
-            }
-            isActive={editor.isActive("heading", { level: 2 })}
-            disabled={disabled}
-            title="Título 2">
-            <Heading2 size={16} />
-          </ToolbarButton>
+          <Divider />
 
-          <div className="w-px h-6 bg-gray-300 mx-1"></div>
+          {/* Títulos */}
+          <div className="flex items-center gap-0.5">
+            <ToolbarButton
+              onClick={() =>
+                editor.chain().focus().toggleHeading({ level: 1 }).run()
+              }
+              isActive={editor.isActive("heading", { level: 1 })}
+              disabled={disabled}
+              title="Título Principal">
+              <Heading1 size={17} />
+            </ToolbarButton>
 
-          <ToolbarButton
-            onClick={() => editor.chain().focus().toggleBulletList().run()}
-            isActive={editor.isActive("bulletList")}
-            disabled={disabled}
-            title="Lista">
-            <List size={16} />
-          </ToolbarButton>
+            <ToolbarButton
+              onClick={() =>
+                editor.chain().focus().toggleHeading({ level: 2 }).run()
+              }
+              isActive={editor.isActive("heading", { level: 2 })}
+              disabled={disabled}
+              title="Subtítulo">
+              <Heading2 size={17} />
+            </ToolbarButton>
+          </div>
 
-          <ToolbarButton
-            onClick={() => editor.chain().focus().toggleOrderedList().run()}
-            isActive={editor.isActive("orderedList")}
-            disabled={disabled}
-            title="Lista Numerada">
-            <ListOrdered size={16} />
-          </ToolbarButton>
+          <Divider />
 
-          <div className="w-px h-6 bg-gray-300 mx-1"></div>
+          {/* Listas */}
+          <div className="flex items-center gap-0.5">
+            <ToolbarButton
+              onClick={() => editor.chain().focus().toggleBulletList().run()}
+              isActive={editor.isActive("bulletList")}
+              disabled={disabled}
+              title="Lista">
+              <List size={17} />
+            </ToolbarButton>
 
-          <ToolbarButton
-            onClick={setLink}
-            isActive={editor.isActive("link")}
-            disabled={disabled}
-            title="Link">
-            <LinkIcon size={16} />
-          </ToolbarButton>
+            <ToolbarButton
+              onClick={() => editor.chain().focus().toggleOrderedList().run()}
+              isActive={editor.isActive("orderedList")}
+              disabled={disabled}
+              title="Lista Numerada">
+              <ListOrdered size={17} />
+            </ToolbarButton>
+          </div>
 
-          <ToolbarButton
-            onClick={addImage}
-            disabled={disabled || !onImageUpload}
-            title="Imagem">
-            <ImageIcon size={16} />
-          </ToolbarButton>
+          <Divider />
 
-          <ToolbarButton
-            onClick={addFile}
-            disabled={disabled || !onFileUpload}
-            title="Anexo">
-            <Paperclip size={16} />
-          </ToolbarButton>
+          {/* Inserções */}
+          <div className="flex items-center gap-0.5">
+            <ToolbarButton
+              onClick={setLink}
+              isActive={editor.isActive("link")}
+              disabled={disabled}
+              title="Inserir Link">
+              <LinkIcon size={16} />
+            </ToolbarButton>
 
-          <div className="flex-1"></div>
+            <ToolbarButton
+              onClick={addImage}
+              disabled={disabled || !onImageUpload}
+              title="Inserir Imagem">
+              <ImageIcon size={16} />
+            </ToolbarButton>
 
-          <ToolbarButton
-            onClick={() => editor.chain().focus().undo().run()}
-            disabled={disabled || !editor.can().undo()}
-            title="Desfazer">
-            <Undo size={16} />
-          </ToolbarButton>
-
-          <ToolbarButton
-            onClick={() => editor.chain().focus().redo().run()}
-            disabled={disabled || !editor.can().redo()}
-            title="Refazer">
-            <Redo size={16} />
-          </ToolbarButton>
+            <ToolbarButton
+              onClick={addFile}
+              disabled={disabled || !onFileUpload}
+              title="Anexar Arquivo">
+              <Paperclip size={16} />
+            </ToolbarButton>
+          </div>
         </div>
 
-        {/* Editor Content */}
+        {/* Editor Content Area */}
         <div
-          className="relative cursor-text"
-          onClick={() => editor.chain().focus().run()}
-          style={{ height }}>
-          <EditorContent editor={editor} className="h-full overflow-y-auto" />
+          className="relative cursor-text bg-white"
+          onClick={() => editor.chain().focus().run()}>
+          <EditorContent
+            editor={editor}
+            className="w-full"
+            style={{ minHeight }}
+          />
         </div>
       </div>
 
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {error && (
+        <p className="text-xs text-red-500 font-medium ml-1 animate-in fade-in slide-in-from-top-1">
+          {error}
+        </p>
+      )}
     </div>
   );
 };
