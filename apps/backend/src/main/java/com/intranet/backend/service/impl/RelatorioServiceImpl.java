@@ -69,9 +69,8 @@ public class RelatorioServiceImpl implements RelatorioService {
             if (!isUserAdminOrSupervisor(currentUser)) {
                 throw new IllegalArgumentException("Apenas administradores e supervisores podem gerar o Relatório Geral.");
             }
-            // Para o relatório geral, permitimos que usuarioAlvo seja NULL (indicando "todos")
-            // ou um ID específico vindo do filtro do request
-            usuarioAlvo = request.getUsuarioResponsavelId();
+            
+            usuarioAlvo = null;
 
         } else {
             // Lógica original para os outros tipos de relatório
