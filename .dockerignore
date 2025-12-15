@@ -1,0 +1,7 @@
+# Ignora dependências locais para o contexto ficar leve
+**/node_modules
+**/.git
+
+!apps/frontend/.next/standalone
+!apps/frontend/.next/static
+!apps/frontend/public
