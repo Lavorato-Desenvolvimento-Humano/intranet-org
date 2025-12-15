@@ -10,6 +10,11 @@
     "check-types": "turbo run check-types"
   },
   "devDependencies": {
+    "@tiptap/extension-image": "3.13.0",
+    "@tiptap/extension-link": "3.13.0",
+    "@tiptap/extension-placeholder": "3.13.0",
+    "@tiptap/react": "3.13.0",
+    "@tiptap/starter-kit": "3.13.0",
     "@types/sockjs-client": "1.5.4",
     "@typescript-eslint/eslint-plugin": "^8.25.0",
     "@typescript-eslint/parser": "^8.25.0",
@@ -47,11 +52,6 @@
     "@ckeditor/ckeditor5-react": "9.5.0",
     "@stomp/stompjs": "7.2.1",
     "@tinymce/tinymce-react": "6.0.0",
-    "@tiptap/extension-image": "3.13.0",
-    "@tiptap/extension-link": "3.13.0",
-    "@tiptap/extension-placeholder": "3.13.0",
-    "@tiptap/react": "3.13.0",
-    "@tiptap/starter-kit": "3.13.0",
     "autoprefixer": "10.4.20",
     "axios": "1.8.2",
     "chart.js": "4.5.0",
