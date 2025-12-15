@@ -153,7 +153,6 @@ export default function NovoConvenioPage() {
                   placeholder="Digite a descrição do convênio"
                   disabled={loading}
                   error={errors.description}
-                  height="200px"
                 />
                 {errors.description && (
                   <p className="mt-1 text-sm text-red-500">

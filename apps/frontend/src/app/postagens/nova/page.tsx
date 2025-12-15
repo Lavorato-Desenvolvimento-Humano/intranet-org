@@ -403,7 +403,6 @@ export default function NovaPostagemPage() {
                   value={formData.text}
                   onChange={handleEditorChange}
                   placeholder="Digite o conteúdo da postagem..."
-                  height="400px"
                   error={errors.text}
                   disabled={submitting}
                   onImageUpload={async (file: File) => {

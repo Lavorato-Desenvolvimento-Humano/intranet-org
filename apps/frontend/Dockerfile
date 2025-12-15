@@ -1,25 +1,3 @@
-FROM node:18-alpine AS builder
-WORKDIR /app
-
-# 1. Copiar APENAS arquivos de dependência primeiro
-# Ajuste os caminhos conforme a estrutura da raiz do seu monorepo se necessário
-COPY apps/frontend/package.json ./
-
-# 2. Instalar dependências (Isso agora será cacheado se package.json não mudar)
-RUN npm install
-
-# 3. Copiar o restante do código fonte
-COPY apps/frontend ./
-
-# Ajuste do next.config.js (mantido do seu original)
-RUN grep -q '"output": *"standalone"' next.config.js || \
-    sed -i 's/const nextConfig = {/const nextConfig = {\n  output: "standalone",/' next.config.js
-
-# 4. Build da aplicação
-ENV NODE_ENV=production
-RUN npm run build
-
-# --- Estágio Runner (mantido similar ao seu) ---
 FROM node:18-alpine AS runner
 WORKDIR /app
 
@@ -29,15 +7,17 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# Copia os artefatos do estágio builder
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+# Copia a pasta public
+COPY --chown=nextjs:nodejs apps/frontend/public ./public
+
+# Copia os arquivos estáticos e o servidor standalone gerado pelo Next.js
+# Nota: O modo standalone gera uma pasta com as dependências necessárias (node_modules) minimizadas
+COPY --from=context --chown=nextjs:nodejs apps/frontend/.next/standalone ./
+COPY --from=context --chown=nextjs:nodejs apps/frontend/.next/static ./.next/static
 
 USER nextjs
 
 EXPOSE 3000
 ENV PORT 3000
-ENV HOSTNAME "0.0.0.0"
 
 CMD ["node", "server.js"]
