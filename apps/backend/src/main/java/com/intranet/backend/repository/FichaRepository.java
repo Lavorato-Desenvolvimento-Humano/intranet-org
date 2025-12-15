@@ -298,10 +298,65 @@ public interface FichaRepository extends JpaRepository<Ficha, UUID> {
             @Param("fichaId") UUID fichaId
     );
 
+    @Query("SELECT DISTINCT f FROM Ficha f " +
+            "LEFT JOIN FETCH f.paciente p " +
+            "LEFT JOIN FETCH f.guia g " +
+            "LEFT JOIN FETCH g.paciente gp " +
+            "LEFT JOIN FETCH f.convenio c " +
+            "LEFT JOIN FETCH f.usuarioResponsavel u " +
+            "WHERE (:usuarioResponsavel IS NULL OR f.usuarioResponsavel.id = :usuarioResponsavel) " +
+            "AND ((f.ano * 12 + f.mes) >= :startPeriod) " +
+            "AND ((f.ano * 12 + f.mes) <= :endPeriod) " +
+            "AND (:status IS NULL OR f.status IN :status) " +
+            "AND (:especialidades IS NULL OR f.especialidade IN :especialidades) " +
+            "AND (:convenioIds IS NULL OR f.convenio.id IN :convenioIds) " +
+            "ORDER BY f.mes DESC, f.ano DESC")
+    List<Ficha> findFichasForRelatorioByPeriodoBase(
+            @Param("usuarioResponsavel") UUID usuarioResponsavel,
+            @Param("startPeriod") Integer startPeriod,
+            @Param("endPeriod") Integer endPeriod,
+            @Param("status") List<String> status,
+            @Param("especialidades") List<String> especialidades,
+            @Param("convenioIds") List<UUID> convenioIds
+    );
+
     List<Ficha> findByPacienteIdAndMesAndAnoAndTipoFicha(
             UUID pacienteId,
             Integer mes,
             Integer ano,
             Ficha.TipoFicha tipoFicha
     );
+
+    default List<Ficha> findFichasForRelatorioByPeriodo(UUID usuarioResponsavel,
+                                                        Integer startPeriod,
+                                                        Integer endPeriod,
+                                                        List<String> status,
+                                                        List<String> especialidades,
+                                                        List<UUID> convenioIds,
+                                                        List<String> unidades) {
+
+        List<Ficha> fichas = findFichasForRelatorioByPeriodoBase(
+                usuarioResponsavel, startPeriod, endPeriod, status, especialidades, convenioIds
+        );
+
+        // Reutiliza a lógica de filtro de unidade em memória se necessário
+        if (unidades != null && !unidades.isEmpty()) {
+            fichas = fichas.stream()
+                    .filter(ficha -> {
+                        var paciente = ficha.getPaciente();
+                        if (paciente == null && ficha.getGuia() != null) {
+                            paciente = ficha.getGuia().getPaciente();
+                        }
+                        if (paciente == null) return false;
+                        try {
+                            String unidadePaciente = paciente.getUnidade().name();
+                            return unidades.contains(unidadePaciente);
+                        } catch (Exception e) {
+                            return false;
+                        }
+                    })
+                    .collect(Collectors.toList());
+        }
+        return fichas;
+    }
 }
