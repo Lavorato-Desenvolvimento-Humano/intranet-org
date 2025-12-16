@@ -1,555 +1,383 @@
+// apps/frontend/src/app/dashboard/page.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
+  LayoutDashboard,
+  MessageSquare,
   FileText,
+  HardDrive,
   Users,
-  Calendar,
+  Activity,
+  CalendarDays,
   Clock,
-  ArrowRight,
-  TrendingUp,
-  Bookmark,
-  BarChart2,
-  PieChart,
-  Building,
-  Globe,
-  Shield,
+  ExternalLink,
+  ChevronRight,
+  AlertCircle,
+  CheckCircle2,
 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
-import { Loading } from "@/components/ui/loading";
+import { PostCard } from "@/components/postagem/PostCard";
+import ProfileAvatar from "@/components/profile/profile-avatar";
 import { useAuth } from "@/context/AuthContext";
 import postagemService, { PostagemSummaryDto } from "@/services/postagem";
-import convenioService, { ConvenioDto } from "@/services/convenio";
-import toastUtil from "@/utils/toast";
-import { CustomButton } from "@/components/ui/custom-button";
-import ProfileAvatar from "@/components/profile/profile-avatar";
-import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
+import { cn } from "@/utils/cn";
+
+// Componente simples para Card de Estatística/Atalho
+const QuickAccessCard = ({
+  icon: Icon,
+  label,
+  href,
+  colorClass = "text-gray-600 bg-gray-50",
+  onClick,
+}: {
+  icon: any;
+  label: string;
+  href?: string;
+  colorClass?: string;
+  onClick?: () => void;
+}) => (
+  <button
+    onClick={onClick}
+    className="flex flex-col items-center justify-center p-4 rounded-xl border border-gray-100 bg-white shadow-sm hover:shadow-md hover:border-primary/20 transition-all group w-full">
+    <div
+      className={cn(
+        "p-3 rounded-full mb-3 group-hover:scale-110 transition-transform",
+        colorClass
+      )}>
+      <Icon size={24} />
+    </div>
+    <span className="text-xs font-semibold text-gray-700 group-hover:text-primary">
+      {label}
+    </span>
+  </button>
+);
+
+// Componente para Item de Lista Lateral
+const SideListItem = ({ icon: Icon, title, subtitle, time, status }: any) => (
+  <div className="flex items-start gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer border-b border-gray-50 last:border-0">
+    <div className="mt-1 text-gray-400">
+      <Icon size={16} />
+    </div>
+    <div className="flex-grow">
+      <h5 className="text-sm font-medium text-gray-800 line-clamp-1">
+        {title}
+      </h5>
+      {subtitle && (
+        <p className="text-xs text-gray-500 line-clamp-1">{subtitle}</p>
+      )}
+    </div>
+    <div className="flex flex-col items-end gap-1">
+      {time && <span className="text-[10px] text-gray-400">{time}</span>}
+      {status === "active" && (
+        <div className="h-2 w-2 rounded-full bg-green-500" />
+      )}
+      {status === "warning" && (
+        <div className="h-2 w-2 rounded-full bg-amber-500" />
+      )}
+    </div>
+  </div>
+);
 
 export default function DashboardPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const [recentPostagens, setRecentPostagens] = useState<PostagemSummaryDto[]>(
-    []
-  );
-  const [convenios, setConvenios] = useState<ConvenioDto[]>([]);
-  const [minhasPostagens, setMinhasPostagens] = useState<PostagemSummaryDto[]>(
-    []
-  );
+
+  const [recentPosts, setRecentPosts] = useState<PostagemSummaryDto[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [stats, setStats] = useState({
-    totalPostagens: 0,
-    totalConvenios: 0,
-    postagemThisMonth: 0,
-    convenioMaisAtivo: { name: "", count: 0 },
-    postagensByType: { geral: 0, equipe: 0, convenio: 0 },
-  });
+  const [greeting, setGreeting] = useState("");
 
-  // Verificar permissões
-  const isAdmin =
-    user?.roles?.includes("ROLE_ADMIN") || user?.roles?.includes("ADMIN");
-  const isEditor =
-    user?.roles?.includes("ROLE_EDITOR") || user?.roles?.includes("EDITOR");
-  const isUser =
-    user?.roles?.includes("ROLE_USER") || user?.roles?.includes("USER");
-  const canCreatePostagem = isAdmin || isEditor;
-
-  // Carregar dados
   useEffect(() => {
+    // Definir saudação baseada na hora
+    const hour = new Date().getHours();
+    if (hour < 12) setGreeting("Bom dia");
+    else if (hour < 18) setGreeting("Boa tarde");
+    else setGreeting("Boa noite");
+
     const fetchData = async () => {
-      setLoading(true);
       try {
-        // Determinar qual endpoint usar baseado nas permissões do usuário
-        const postagensPromise = isAdmin
-          ? postagemService.getAllPostagensForAdmin() // Admin vê todas as postagens
-          : postagemService.getPostagensVisiveis(); // Usuários comuns veem apenas as visíveis
+        setLoading(true);
+        // Busca as postagens visíveis
+        const posts = await postagemService.getPostagensVisiveis();
+        // Pega apenas as 5 mais recentes para o dashboard
+        const sorted = posts
+          .sort(
+            (a, b) =>
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          )
+          .slice(0, 5);
 
-        // Carregar dados em paralelo
-        const [postagensData, conveniosData, minhasPostagensData] =
-          await Promise.all([
-            postagensPromise,
-            convenioService.getAllConvenios(),
-            user ? postagemService.getMinhasPostagens() : Promise.resolve([]),
-          ]);
-
-        const postagensByType = {
-          geral: postagensData.filter((p) => p.tipoDestino === "geral").length,
-          equipe: postagensData.filter((p) => p.tipoDestino === "equipe")
-            .length,
-          convenio: postagensData.filter((p) => p.tipoDestino === "convenio")
-            .length,
-        };
-
-        // Definir dados básicos - pegar apenas as 10 mais recentes para o dashboard
-        setRecentPostagens(postagensData.slice(0, 10) || []);
-        setConvenios(conveniosData);
-        setMinhasPostagens(minhasPostagensData);
-
-        // Calcular estatísticas
-        const thisMonth = new Date().getMonth();
-        const thisYear = new Date().getFullYear();
-
-        // Contar postagens deste mês
-        const postagemThisMonth = postagensData.filter((postagem) => {
-          const date = new Date(postagem.createdAt);
-          return (
-            date.getMonth() === thisMonth && date.getFullYear() === thisYear
-          );
-        }).length;
-
-        // Encontrar convênio mais ativo (com mais postagens)
-        const convenioCount: {
-          [key: string]: { name: string; count: number };
-        } = {};
-        postagensData.forEach((postagem: PostagemSummaryDto) => {
-          if (postagem.tipoDestino === "convenio" && postagem.convenioId) {
-            const convenioKey = postagem.convenioId;
-            if (!convenioCount[convenioKey]) {
-              convenioCount[convenioKey] = {
-                name: postagem.convenioName ?? "Convênio Desconhecido",
-                count: 0,
-              };
-            }
-            convenioCount[convenioKey].count += 1;
-          }
-        });
-
-        let convenioMaisAtivo = { name: "Nenhum", count: 0 };
-        Object.values(convenioCount).forEach((convenio) => {
-          if (convenio.count > convenioMaisAtivo.count) {
-            convenioMaisAtivo = convenio;
-          }
-        });
-
-        // Atualizar estatísticas
-        setStats({
-          totalPostagens: postagensData.length,
-          totalConvenios: conveniosData.length,
-          postagemThisMonth,
-          convenioMaisAtivo,
-          postagensByType,
-        });
-
-        // Log para depuração
-        console.log(
-          `Dashboard carregado: ${postagensData.length} postagens ${isAdmin ? "(admin - todas)" : "(usuário - visíveis)"}`
-        );
-      } catch (err) {
-        console.error("Erro ao carregar dados do dashboard:", err);
-        setError(
-          "Não foi possível carregar os dados do dashboard. Tente novamente mais tarde."
-        );
+        setRecentPosts(sorted);
+      } catch (error) {
+        console.error("Erro ao carregar dashboard:", error);
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [user, isAdmin]);
-
-  // Função para formatar data
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("pt-BR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-  };
-
-  // Função para formatar hora
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString("pt-BR", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-        <Navbar />
-        <main className="flex-grow container mx-auto p-6">
-          <Loading message="Carregando dashboard..." />
-        </main>
-      </div>
-    );
-  }
+  }, []);
 
   return (
-    <ProtectedRoute>
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-        <Navbar />
+    <div className="min-h-screen bg-[#F3F4F6] flex flex-col font-sans">
+      <Navbar />
 
-        <main className="flex-grow container mx-auto p-6">
-          {(isAdmin || isEditor) && (
-            <div className="flex justify-between items-center mb-8">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
-                {isAdmin && (
-                  <div className="flex items-center mt-2">
-                    <Shield size={16} className="text-primary mr-2" />
-                    <p className="text-sm text-primary">
-                      <strong>Modo Administrador:</strong> Visualizando todas as
-                      postagens do sistema
-                    </p>
-                  </div>
-                )}
+      <main className="flex-grow container mx-auto p-4 md:py-8 md:px-6 max-w-7xl">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* === COLUNA ESQUERDA: Navegação e Perfil === */}
+          <div className="hidden lg:block lg:col-span-3 sticky top-24 space-y-6">
+            {/* Card de Perfil */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="h-24 bg-gradient-to-r from-primary/80 to-primary/40 relative">
+                {/* Capa do Perfil (Opcional) */}
               </div>
-              {canCreatePostagem && (
-                <CustomButton
-                  variant="primary"
-                  onClick={() => router.push("/postagens/nova")}>
-                  Nova Postagem
-                </CustomButton>
-              )}
-            </div>
-          )}
-
-          {error && (
-            <div className="bg-red-50 text-red-700 p-4 rounded-md mb-6">
-              {error}
-            </div>
-          )}
-
-          {/* Cards de estatísticas */}
-          {/* <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-lg shadow-md p-6 flex items-start">
-              <div className="rounded-full p-3 bg-blue-100 mr-4">
-                <FileText className="h-6 w-6 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">
-                  {isAdmin
-                    ? "Total de Postagens (Sistema)"
-                    : "Postagens Visíveis"}
-                </p>
-                <p className="text-2xl font-semibold">{stats.totalPostagens}</p>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-md p-6 flex items-start">
-              <div className="rounded-full p-3 bg-green-100 mr-4">
-                <Bookmark className="h-6 w-6 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Total de Convênios</p>
-                <p className="text-2xl font-semibold">{stats.totalConvenios}</p>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-md p-6 flex items-start">
-              <div className="rounded-full p-3 bg-purple-100 mr-4">
-                <TrendingUp className="h-6 w-6 text-purple-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Postagens neste mês</p>
-                <p className="text-2xl font-semibold">
-                  {stats.postagemThisMonth}
-                </p>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-md p-6 flex items-start">
-              <div className="rounded-full p-3 bg-amber-100 mr-4">
-                <BarChart2 className="h-6 w-6 text-amber-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Convênio mais ativo</p>
-                <p
-                  className="text-lg font-semibold truncate max-w-[180px]"
-                  title={stats.convenioMaisAtivo.name}>
-                  {stats.convenioMaisAtivo.name || "Nenhum"}
-                </p>
-              </div>
-            </div>
-          </div> */}
-
-          {/* Card adicional para mostrar distribuição por tipo (apenas para admin) */}
-          {/* {isAdmin && (
-            <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                <PieChart className="h-5 w-5 mr-2" />
-                Distribuição de Postagens por Tipo
-              </h3>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-purple-600">
-                    {stats.postagensByType.geral}
-                  </div>
-                  <div className="text-sm text-gray-500 flex items-center justify-center">
-                    <Globe size={14} className="mr-1" />
-                    Gerais
+              <div className="px-6 pb-6 text-center relative">
+                <div className="relative -mt-10 mb-3 inline-block">
+                  <div className="p-1 bg-white rounded-full">
+                    <ProfileAvatar
+                      profileImage={user?.profileImage}
+                      userName={user?.fullName || "U"}
+                      size={80}
+                    />
                   </div>
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">
-                    {stats.postagensByType.equipe}
-                  </div>
-                  <div className="text-sm text-gray-500 flex items-center justify-center">
-                    <Users size={14} className="mr-1" />
-                    Equipes
-                  </div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">
-                    {stats.postagensByType.convenio}
-                  </div>
-                  <div className="text-sm text-gray-500 flex items-center justify-center">
-                    <Building size={14} className="mr-1" />
-                    Convênios
-                  </div>
-                </div>
-              </div>
-            </div>
-          )} */}
-
-          {/* Layout principal de dois painéis */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Painel de postagens recentes */}
-            <div className="lg:col-span-2">
-              <div className="bg-white rounded-lg shadow-md">
-                <div className="p-6 border-b border-gray-200">
-                  <div className="flex justify-between items-center">
-                    <h2 className="text-lg font-semibold text-gray-800">
-                      Postagens Recentes {isAdmin && "(Todas)"}
-                    </h2>
-                    <button
-                      onClick={() => router.push("/postagens")}
-                      className="text-primary hover:text-primary-dark text-sm font-medium flex items-center">
-                      Ver todas
-                      <ArrowRight className="ml-1 h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="divide-y divide-gray-200">
-                  {recentPostagens.length === 0 ? (
-                    <div className="p-6 text-center text-gray-500">
-                      Nenhuma postagem encontrada.
-                    </div>
-                  ) : (
-                    recentPostagens.map((postagem) => (
-                      <div
-                        key={postagem.id}
-                        className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
-                        onClick={() =>
-                          router.push(`/postagens/${postagem.id}`)
-                        }>
-                        <div className="mb-1">
-                          <div className="flex items-center justify-between">
-                            <h3 className="font-medium text-primary">
-                              {postagem.title}
-                            </h3>
-
-                            {/* Indicador do tipo de postagem */}
-                            {postagem.tipoDestino === "convenio" &&
-                              postagem.convenioName && (
-                                <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full flex items-center">
-                                  <Building size={12} className="mr-1" />
-                                  {postagem.convenioName}
-                                </span>
-                              )}
-                            {postagem.tipoDestino === "equipe" &&
-                              postagem.equipeName && (
-                                <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full flex items-center">
-                                  <Users size={12} className="mr-1" />
-                                  {postagem.equipeName}
-                                </span>
-                              )}
-                            {postagem.tipoDestino === "geral" && (
-                              <span className="text-xs px-2 py-1 bg-purple-100 text-purple-800 rounded-full flex items-center">
-                                <Globe size={12} className="mr-1" />
-                                Geral
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="text-sm text-gray-600 mt-0.5 flex items-center">
-                            <ProfileAvatar
-                              profileImage={postagem.createdByProfileImage}
-                              userName={postagem.createdByName}
-                              size={20}
-                              className="mr-2"
-                            />
-                            <span>por {postagem.createdByName}</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center text-xs text-gray-500 mt-2">
-                          <Calendar className="h-3 w-3 mr-1" />
-                          {formatDate(postagem.createdAt)}
-                          <Clock className="h-3 w-3 ml-3 mr-1" />
-                          {formatTime(postagem.createdAt)}
-                          <div className="ml-4 flex space-x-1">
-                            {postagem.hasImagens && (
-                              <span
-                                title="Possui imagens"
-                                className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                            )}
-                            {postagem.hasAnexos && (
-                              <span
-                                title="Possui anexos"
-                                className="w-2 h-2 bg-green-500 rounded-full"></span>
-                            )}
-                            {postagem.hasTabelas && (
-                              <span
-                                title="Possui tabelas"
-                                className="w-2 h-2 bg-purple-500 rounded-full"></span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Painel lateral */}
-            <div className="space-y-6">
-              {/* Minhas Postagens */}
-              {canCreatePostagem && (
-                <div className="bg-white rounded-lg shadow-md">
-                  <div className="p-4 border-b border-gray-200">
-                    <h2 className="text-lg font-semibold text-gray-800">
-                      Minhas Postagens
-                    </h2>
-                  </div>
-                  <div className="divide-y divide-gray-200">
-                    {minhasPostagens.length === 0 ? (
-                      <div className="p-4 text-center text-gray-500">
-                        Você ainda não criou nenhuma postagem.
-                      </div>
-                    ) : (
-                      minhasPostagens.slice(0, 3).map((postagem) => (
-                        <div
-                          key={postagem.id}
-                          className="p-3 hover:bg-gray-50 cursor-pointer transition-colors"
-                          onClick={() =>
-                            router.push(`/postagens/${postagem.id}`)
-                          }>
-                          <h3 className="font-medium text-primary text-sm">
-                            {postagem.title}
-                          </h3>
-                          <div className="text-xs text-gray-600 mt-1 flex items-center">
-                            {postagem.tipoDestino === "convenio" &&
-                              postagem.convenioName && (
-                                <>
-                                  <Building size={10} className="mr-1" />
-                                  {postagem.convenioName}
-                                </>
-                              )}
-                            {postagem.tipoDestino === "equipe" &&
-                              postagem.equipeName && (
-                                <>
-                                  <Users size={10} className="mr-1" />
-                                  {postagem.equipeName}
-                                </>
-                              )}
-                            {postagem.tipoDestino === "geral" && (
-                              <>
-                                <Globe size={10} className="mr-1" />
-                                Geral
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      ))
-                    )}
-                    {minhasPostagens.length > 0 && (
-                      <div className="p-3 text-center">
-                        <button
-                          onClick={() => router.push("/postagens?minhas=true")}
-                          className="text-primary hover:text-primary-dark text-sm font-medium">
-                          Ver todas minhas postagens
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Convênios */}
-              <div className="bg-white rounded-lg shadow-md">
-                <div className="p-4 border-b border-gray-200">
-                  <h2 className="text-lg font-semibold text-gray-800">
-                    Convênios Ativos
-                  </h2>
-                </div>
-                <div className="divide-y divide-gray-200">
-                  {convenios.length === 0 ? (
-                    <div className="p-4 text-center text-gray-500">
-                      Nenhum convênio cadastrado.
-                    </div>
-                  ) : (
-                    convenios.slice(0, 5).map((convenio) => (
-                      <div
-                        key={convenio.id}
-                        className="p-3 hover:bg-gray-50 cursor-pointer transition-colors flex justify-between items-center"
-                        onClick={() =>
-                          router.push(`/convenios/${convenio.id}`)
-                        }>
-                        <div>
-                          <h3 className="font-medium text-gray-800 text-sm">
-                            {convenio.name}
-                          </h3>
-                        </div>
-                        <div className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
-                          {convenio.postagemCount} postagens
-                        </div>
-                      </div>
-                    ))
-                  )}
-                  <div className="p-3 text-center">
-                    <button
-                      onClick={() => router.push("/convenios")}
-                      className="text-primary hover:text-primary-dark text-sm font-medium">
-                      Ver todos os convênios
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Links rápidos */}
-              <div className="bg-white rounded-lg shadow-md p-4">
-                <h2 className="text-lg font-semibold text-gray-800 mb-3">
-                  Links Rápidos
+                <h2 className="text-lg font-bold text-gray-800">
+                  {user?.fullName}
                 </h2>
-                <div className="space-y-2">
-                  {canCreatePostagem && (
-                    <button
-                      onClick={() => router.push("/postagens/nova")}
-                      className="w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 rounded-md text-left text-sm font-medium text-gray-800 transition-colors">
-                      Criar nova postagem
-                    </button>
-                  )}
-                  <button
-                    onClick={() => router.push("/postagens")}
-                    className="w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 rounded-md text-left text-sm font-medium text-gray-800 transition-colors">
-                    Ver todas as postagens
-                  </button>
-                  {(isEditor || isAdmin) && (
-                    <button
-                      onClick={() => router.push("/convenios")}
-                      className="w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 rounded-md text-left text-sm font-medium text-gray-800 transition-colors">
-                      Gerenciar convênios
-                    </button>
-                  )}
-                  {isAdmin && (
-                    <button
-                      onClick={() => router.push("/admin")}
-                      className="w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 rounded-md text-left text-sm font-medium text-gray-800 transition-colors">
-                      Painel administrativo
-                    </button>
-                  )}
+                <p className="text-xs text-gray-500 uppercase tracking-wide font-medium mt-1">
+                  {user?.roles?.[0]?.replace("ROLE_", "") || "Colaborador"}
+                </p>
+
+                <div className="grid grid-cols-2 gap-2 mt-6 pt-6 border-t border-gray-50">
+                  <div className="text-center">
+                    <span className="block text-lg font-bold text-gray-800">
+                      12
+                    </span>
+                    <span className="text-[10px] text-gray-400 uppercase">
+                      Tarefas
+                    </span>
+                  </div>
+                  <div className="text-center border-l border-gray-50">
+                    <span className="block text-lg font-bold text-gray-800">
+                      5
+                    </span>
+                    <span className="text-[10px] text-gray-400 uppercase">
+                      Tickets
+                    </span>
+                  </div>
                 </div>
               </div>
+            </div>
+
+            {/* Menu de Navegação Rápida */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-2">
+              <nav className="space-y-1">
+                <button
+                  onClick={() => router.push("/dashboard")}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg bg-primary/5 text-primary">
+                  <LayoutDashboard size={18} /> Dashboard
+                </button>
+                <button
+                  onClick={() => router.push("/postagens")}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-gray-600 hover:bg-gray-50 transition-colors">
+                  <MessageSquare size={18} /> Mural de Avisos
+                </button>
+                <button
+                  onClick={() => router.push("/tickets")}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-gray-600 hover:bg-gray-50 transition-colors">
+                  <Activity size={18} /> Meus Chamados
+                </button>
+                <button
+                  onClick={() => router.push("/drive")}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-gray-600 hover:bg-gray-50 transition-colors">
+                  <HardDrive size={18} /> Drive Corporativo
+                </button>
+                <button
+                  onClick={() => router.push("/equipes")}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-gray-600 hover:bg-gray-50 transition-colors">
+                  <Users size={18} /> Minhas Equipes
+                </button>
+              </nav>
             </div>
           </div>
-        </main>
-      </div>
-    </ProtectedRoute>
+
+          {/* === COLUNA CENTRAL: Feed e Ações === */}
+          <div className="col-span-1 lg:col-span-6 space-y-6">
+            {/* Header Mobile (Só aparece em telas pequenas) */}
+            <div className="lg:hidden bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center gap-3 mb-2">
+              <ProfileAvatar
+                profileImage={user?.profileImage}
+                userName={user?.fullName || "U"}
+                size={48}
+              />
+              <div>
+                <h1 className="font-bold text-gray-800">
+                  {greeting}, {user?.fullName?.split(" ")[0]}!
+                </h1>
+                <p className="text-xs text-gray-500">Bem-vindo à Intranet.</p>
+              </div>
+            </div>
+
+            {/* Acesso Rápido (Grid de ícones) */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <QuickAccessCard
+                icon={FileText}
+                label="Novo Relatório"
+                colorClass="text-blue-600 bg-blue-50"
+                onClick={() => router.push("/relatorios/novo")}
+              />
+              <QuickAccessCard
+                icon={Activity}
+                label="Abrir Chamado"
+                colorClass="text-orange-600 bg-orange-50"
+                onClick={() => router.push("/tickets/novo")}
+              />
+              <QuickAccessCard
+                icon={HardDrive}
+                label="Upload Drive"
+                colorClass="text-green-600 bg-green-50"
+                onClick={() => router.push("/drive")}
+              />
+              <QuickAccessCard
+                icon={CalendarDays}
+                label="Agenda"
+                colorClass="text-purple-600 bg-purple-50"
+                onClick={() => {}}
+              />
+            </div>
+
+            {/* Seção de Feed */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between px-1">
+                <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                  <Activity size={18} className="text-primary" />
+                  Últimas Atualizações
+                </h3>
+                <button
+                  onClick={() => router.push("/postagens")}
+                  className="text-xs font-medium text-primary hover:underline flex items-center">
+                  Ver tudo <ChevronRight size={14} />
+                </button>
+              </div>
+
+              {loading ? (
+                <div className="space-y-4">
+                  {[1, 2].map((i) => (
+                    <div
+                      key={i}
+                      className="h-64 bg-white rounded-xl animate-pulse"
+                    />
+                  ))}
+                </div>
+              ) : recentPosts.length > 0 ? (
+                <div className="space-y-5">
+                  {recentPosts.map((post) => (
+                    <PostCard
+                      key={post.id}
+                      postagem={post}
+                      onClick={() => router.push(`/postagens/${post.id}`)}
+                      showEditButton={false} // No dashboard não editamos direto
+                    />
+                  ))}
+
+                  <button
+                    onClick={() => router.push("/postagens")}
+                    className="w-full py-3 text-sm font-medium text-gray-500 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
+                    Carregar mais avisos...
+                  </button>
+                </div>
+              ) : (
+                <div className="bg-white rounded-xl p-8 text-center border border-gray-100 shadow-sm">
+                  <p className="text-gray-500">Nenhuma publicação recente.</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* === COLUNA DIREITA: Widgets e Status === */}
+          <div className="col-span-1 lg:col-span-3 space-y-6">
+            {/* Widget: Status do Sistema */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+              <h4 className="font-semibold text-gray-800 text-sm mb-4 flex items-center gap-2">
+                <Activity size={16} className="text-green-500" /> Status dos
+                Serviços
+              </h4>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]"></div>
+                    Intranet
+                  </span>
+                  <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded">
+                    Online
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                    Drive
+                  </span>
+                  <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded">
+                    Online
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-amber-500"></div>
+                    E-mail
+                  </span>
+                  <span className="text-xs font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded">
+                    Lento
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Widget: Aniversariantes do Mês (Simulado) */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+              <h4 className="font-semibold text-gray-800 text-sm mb-4 flex items-center gap-2">
+                <CalendarDays size={16} className="text-primary" />{" "}
+                Aniversariantes
+              </h4>
+              <div className="space-y-1">
+                <SideListItem
+                  icon={Users}
+                  title="Maria Silva"
+                  subtitle="RH - Dia 15"
+                  status="active"
+                />
+                <SideListItem
+                  icon={Users}
+                  title="João Costa"
+                  subtitle="TI - Dia 22"
+                />
+              </div>
+              <button className="w-full mt-3 text-xs text-primary font-medium hover:underline text-center">
+                Ver calendário completo
+              </button>
+            </div>
+
+            {/* Widget: Pendências / Avisos Importantes */}
+            <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl shadow-lg p-5 text-white">
+              <div className="flex items-start gap-3 mb-3">
+                <div className="p-2 bg-white/10 rounded-lg">
+                  <Clock size={20} className="text-orange-300" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm">Fechamento de Ponto</h4>
+                  <p className="text-xs text-gray-300 mt-1">
+                    Envie seus registros até o dia 25/12.
+                  </p>
+                </div>
+              </div>
+              <button className="w-full py-2 text-xs font-medium bg-white/10 hover:bg-white/20 rounded-lg transition-colors border border-white/10">
+                Verificar Pendências
+              </button>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
   );
 }
