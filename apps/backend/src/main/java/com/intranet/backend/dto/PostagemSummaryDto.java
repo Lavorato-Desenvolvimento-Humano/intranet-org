@@ -13,6 +13,8 @@ import java.util.UUID;
 public class PostagemSummaryDto {
     private UUID id;
     private String title;
+    private String previewText;
+    private String coverImageUrl;
     private String tipoDestino; // "geral", "equipe", "convenio"
     private UUID convenioId; // Pode ser null dependendo do tipoDestino
     private String convenioName; // Pode ser null dependendo do tipoDestino

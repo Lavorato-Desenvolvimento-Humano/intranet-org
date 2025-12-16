@@ -25,6 +25,8 @@ export interface PostagemDto {
 export interface PostagemSummaryDto {
   id: string;
   title: string;
+  previewText?: string;
+  coverImageUrl?: string;
   tipoDestino: "geral" | "equipe" | "convenio";
   convenioId?: string;
   convenioName?: string;

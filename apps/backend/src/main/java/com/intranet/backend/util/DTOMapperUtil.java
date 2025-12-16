@@ -5,6 +5,7 @@ import com.intranet.backend.model.*;
 import org.springframework.data.domain.Page;
 
 import java.util.List;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -12,6 +13,8 @@ import java.util.stream.Collectors;
  * Reduz a duplicação de código e centraliza a lógica de mapeamento
  */
 public class DTOMapperUtil {
+
+    private static final Pattern HTML_TAG_PATTERN = Pattern.compile("<[^>]*>");
 
     /**
      * Mapeia um usuário para um DTO de usuário
@@ -52,6 +55,19 @@ public class DTOMapperUtil {
         PostagemSummaryDto dto = new PostagemSummaryDto();
         dto.setId(postagem.getId());
         dto.setTitle(postagem.getTitle());
+        
+        String rawText = postagem.getText() != null ? postagem.getText() : "";
+        String plainText = HTML_TAG_PATTERN.matcher(rawText).replaceAll("");
+        if (plainText.length() > 200) {
+            dto.setPreviewText(plainText.substring(0, 200) + "...");
+        } else {
+            dto.setPreviewText(plainText);
+        }
+
+        if (!postagem.getImagens().isEmpty()) {
+            dto.setCoverImageUrl(postagem.getImagens().get(0).getUrl());
+        }
+
         dto.setTipoDestino(postagem.getTipoDestino());
 
         // Definir IDs e nomes baseados no tipo de destino

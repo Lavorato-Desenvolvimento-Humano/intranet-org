@@ -1,41 +1,30 @@
-// Modificações em src/app/postagens/page.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
-import {
-  Plus,
-  Search,
-  Calendar,
-  Clock,
-  Filter,
-  FileText,
-  Users,
-  Building,
-  Globe,
-  UserIcon,
-} from "lucide-react";
+import { Plus, Search, Filter, FileText } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Breadcrumb from "@/components/ui/breadcrumb";
-import { Loading } from "@/components/ui/loading";
-import DataTable from "@/components/ui/data-table";
+import { CustomButton } from "@/components/ui/custom-button";
+import { PostCard } from "@/components/postagem/PostCard"; // Importando o novo componente
 import { useAuth } from "@/context/AuthContext";
 import postagemService, { PostagemSummaryDto } from "@/services/postagem";
 import convenioService, { ConvenioDto } from "@/services/convenio";
 import equipeService, { EquipeDto } from "@/services/equipe";
-import toastUtil from "@/utils/toast";
-import ProfileAvatar from "@/components/profile/profile-avatar";
-import { CustomButton } from "@/components/ui/custom-button";
+import { cn } from "@/utils/cn";
 
 export default function PostagensPage() {
   const router = useRouter();
   const { user } = useAuth();
+
+  // Estados de Dados
   const [postagens, setPostagens] = useState<PostagemSummaryDto[]>([]);
   const [convenios, setConvenios] = useState<ConvenioDto[]>([]);
   const [equipes, setEquipes] = useState<EquipeDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Estados de Filtro
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTipoDestino, setSelectedTipoDestino] =
     useState<string>("todos");
@@ -43,386 +32,246 @@ export default function PostagensPage() {
   const [selectedEquipe, setSelectedEquipe] = useState<string>("todos");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
-  // Verificar permissões
-  const isAdmin =
-    user?.roles?.includes("ROLE_ADMIN") || user?.roles?.includes("ADMIN");
-  const isEditor =
-    user?.roles?.includes("ROLE_EDITOR") || user?.roles?.includes("EDITOR");
-  const isUser =
-    user?.roles?.includes("ROLE_USER") || user?.roles?.includes("USER");
+  // Permissões
+  const isAdmin = user?.roles?.some((role) =>
+    ["ROLE_ADMIN", "ADMIN"].includes(role)
+  );
+  const isEditor = user?.roles?.some((role) =>
+    ["ROLE_EDITOR", "EDITOR"].includes(role)
+  );
   const canCreatePostagem = isAdmin || isEditor;
 
-  // Carregar dados das postagens, convênios e equipes
+  // Carregamento de Dados
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Determinar qual endpoint usar baseado nas permissões do usuário
         const postagensPromise = isAdmin
-          ? postagemService.getAllPostagensForAdmin() // Admin vê todas as postagens
-          : postagemService.getPostagensVisiveis(); // Usuários comuns veem apenas as visíveis
+          ? postagemService.getAllPostagensForAdmin()
+          : postagemService.getPostagensVisiveis();
 
-        // Carregar dados em paralelo
         const [postagensData, conveniosData, equipesData] = await Promise.all([
           postagensPromise,
           convenioService.getAllConvenios(),
           equipeService.getAllEquipes(),
         ]);
 
-        setPostagens(postagensData);
+        // Ordenação: Mais recentes primeiro
+        const sorted = postagensData.sort(
+          (a, b) =>
+            new Date(b.createdAt.toString()).getTime() -
+            new Date(a.createdAt.toString()).getTime()
+        );
+
+        setPostagens(sorted);
         setConvenios(conveniosData);
         setEquipes(equipesData);
-
-        // Log para depuração
-        console.log(
-          `Carregadas ${postagensData.length} postagens ${isAdmin ? "(admin - todas)" : "(usuário - visíveis)"}`
-        );
       } catch (err) {
-        console.error("Erro ao carregar dados:", err);
-        setError(
-          "Não foi possível carregar as postagens. Tente novamente mais tarde."
-        );
+        console.error("Erro ao carregar feed:", err);
+        setError("Não foi possível carregar as postagens.");
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [isAdmin]); // Adicionar isAdmin como dependência
+  }, [isAdmin]);
 
-  // Função para formatar data
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("pt-BR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-  };
-
-  // Função para formatar hora
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString("pt-BR", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  // Filtrar postagens com base na pesquisa e nos filtros
+  // Lógica de Filtragem
   const filteredPostagens = postagens.filter((postagem) => {
-    // Filtrar por termo de pesquisa
+    const term = searchTerm.toLowerCase();
     const matchesSearch =
-      postagem.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      postagem.createdByName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (postagem.convenioName &&
-        postagem.convenioName
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase())) ||
-      (postagem.equipeName &&
-        postagem.equipeName.toLowerCase().includes(searchTerm.toLowerCase()));
+      postagem.title.toLowerCase().includes(term) ||
+      postagem.createdByName.toLowerCase().includes(term) ||
+      postagem.convenioName?.toLowerCase().includes(term) ||
+      postagem.equipeName?.toLowerCase().includes(term);
 
-    // Filtrar por tipo de destino
-    const matchesTipoDestino =
+    const matchesTipo =
       selectedTipoDestino === "todos" ||
       postagem.tipoDestino === selectedTipoDestino;
-
-    // Filtrar por convênio
     const matchesConvenio =
       selectedConvenio === "todos" || postagem.convenioId === selectedConvenio;
-
-    // Filtrar por equipe
     const matchesEquipe =
       selectedEquipe === "todos" || postagem.equipeId === selectedEquipe;
 
-    return (
-      matchesSearch && matchesTipoDestino && matchesConvenio && matchesEquipe
-    );
+    return matchesSearch && matchesTipo && matchesConvenio && matchesEquipe;
   });
 
-  // Renderizar ícone baseado no tipo de destino
-  const renderTipoDestinoIcon = (tipoDestino: string) => {
-    switch (tipoDestino) {
-      case "geral":
-        return <Globe size={16} className="mr-1 text-blue-500" />;
-      case "equipe":
-        return <Users size={16} className="mr-1 text-green-500" />;
-      case "convenio":
-        return <Building size={16} className="mr-1 text-purple-500" />;
-      default:
-        return null;
-    }
-  };
-
-  // Função para formatar o nome do destino
-  const formatDestino = (postagem: PostagemSummaryDto) => {
-    switch (postagem.tipoDestino) {
-      case "geral":
-        return "Todos os usuários";
-      case "equipe":
-        return postagem.equipeName || "Equipe";
-      case "convenio":
-        return postagem.convenioName || "Convênio";
-      default:
-        return "";
-    }
-  };
-
-  // Definição das colunas da tabela
-  const columns = [
-    {
-      key: "title",
-      header: "Título",
-      width: "35%",
-      render: (value: string, record: PostagemSummaryDto) => (
-        <div className="font-medium text-primary hover:text-primary-dark">
-          {value}
-        </div>
-      ),
-    },
-    {
-      key: "tipoDestino",
-      header: "Visibilidade",
-      width: "20%",
-      render: (_: string, record: PostagemSummaryDto) => (
-        <div className="flex items-center text-gray-700">
-          {renderTipoDestinoIcon(record.tipoDestino)}
-          {formatDestino(record)}
-        </div>
-      ),
-    },
-    {
-      key: "createdByName",
-      header: "Autor",
-      width: "15%",
-      render: (value: string, record: PostagemSummaryDto) => (
-        <div className="flex items-center text-gray-700">
-          <ProfileAvatar
-            profileImage={record.createdByProfileImage}
-            userName={value}
-            size={24}
-            className="mr-2"
-          />
-          <div className="text-gray-700">{value}</div>
-        </div>
-      ),
-    },
-    {
-      key: "features",
-      header: "Recursos",
-      width: "10%",
-      render: (_: any, record: PostagemSummaryDto) => (
-        <div className="flex space-x-1">
-          {record.hasImagens && (
-            <span
-              title="Possui imagens"
-              className="w-2 h-2 bg-blue-500 rounded-full"></span>
-          )}
-          {record.hasAnexos && (
-            <span
-              title="Possui anexos"
-              className="w-2 h-2 bg-green-500 rounded-full"></span>
-          )}
-          {record.hasTabelas && (
-            <span
-              title="Possui tabelas"
-              className="w-2 h-2 bg-purple-500 rounded-full"></span>
-          )}
-        </div>
-      ),
-    },
-  ];
-
-  // Tipo de botão baseado no tipo de destino selecionado
-  const getAddButtonText = () => {
-    switch (selectedTipoDestino) {
-      case "geral":
-        return "Nova Postagem Geral";
-      case "equipe":
-        return "Nova Postagem para Equipe";
-      case "convenio":
-        return "Nova Postagem para Convênio";
-      default:
-        return "Nova Postagem";
-    }
-  };
-
-  // URL para criar nova postagem baseada nos filtros
-  const getNewPostagemUrl = () => {
+  const handleCreateClick = () => {
     let url = "/postagens/nova";
     const params = new URLSearchParams();
-
-    if (selectedTipoDestino !== "todos") {
+    if (selectedTipoDestino !== "todos")
       params.append("tipoDestino", selectedTipoDestino);
+    if (selectedTipoDestino === "convenio" && selectedConvenio !== "todos")
+      params.append("convenioId", selectedConvenio);
+    if (selectedTipoDestino === "equipe" && selectedEquipe !== "todos")
+      params.append("equipeId", selectedEquipe);
 
-      if (selectedTipoDestino === "convenio" && selectedConvenio !== "todos") {
-        params.append("convenioId", selectedConvenio);
-      }
-
-      if (selectedTipoDestino === "equipe" && selectedEquipe !== "todos") {
-        params.append("equipeId", selectedEquipe);
-      }
-    }
-
-    const queryString = params.toString();
-    return queryString ? `${url}?${queryString}` : url;
+    const qs = params.toString();
+    router.push(qs ? `${url}?${qs}` : url);
   };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Navbar />
 
-      <main className="flex-grow container mx-auto p-6">
+      <main className="flex-grow container mx-auto p-4 md:p-6 max-w-7xl">
         <Breadcrumb
           items={[
             { label: "Dashboard", href: "/dashboard" },
-            { label: "Postagens" },
+            { label: "Mural de Avisos" },
           ]}
         />
 
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">Postagens</h1>
+        {/* --- Header da Página --- */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800 tracking-tight">
+              Mural de Avisos
+            </h1>
+            <p className="text-gray-500 mt-1">
+              Acompanhe as últimas atualizações da organização.
+            </p>
+          </div>
           {canCreatePostagem && (
             <CustomButton
               variant="primary"
               icon={Plus}
-              onClick={() => router.push(getNewPostagemUrl())}>
-              {getAddButtonText()}
+              onClick={handleCreateClick}
+              className="shadow-sm">
+              Criar Publicação
             </CustomButton>
           )}
         </div>
 
-        {/* Barra de pesquisa e filtros */}
-        <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-          <div className="flex flex-col md:flex-row md:items-center space-y-3 md:space-y-0 md:space-x-4">
+        {/* --- Área de Busca e Filtros --- */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-8 sticky top-4 z-20">
+          <div className="flex flex-col md:flex-row gap-3">
             <div className="relative flex-grow">
               <input
                 type="text"
-                placeholder="Pesquisar postagens..."
+                placeholder="Buscar por título, autor ou conteúdo..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
               />
               <Search
                 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
                 size={18}
               />
             </div>
-            <div>
-              <button
-                onClick={() => setIsFilterOpen(!isFilterOpen)}
-                className="flex items-center px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">
-                <Filter size={18} className="mr-2 text-gray-500" />
-                <span>Filtros</span>
-              </button>
-            </div>
+
+            <button
+              onClick={() => setIsFilterOpen(!isFilterOpen)}
+              className={cn(
+                "flex items-center justify-center px-4 py-2.5 border rounded-lg transition-colors font-medium text-sm whitespace-nowrap",
+                isFilterOpen
+                  ? "bg-primary/5 border-primary text-primary"
+                  : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+              )}>
+              <Filter size={18} className="mr-2" />
+              Filtros
+              {selectedTipoDestino !== "todos" && (
+                <span className="ml-2 flex h-2 w-2 rounded-full bg-primary" />
+              )}
+            </button>
           </div>
 
+          {/* Filtros Expansíveis */}
           {isFilterOpen && (
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-1 md:grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2 duration-200">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1.5">
+                  Visibilidade
+                </label>
+                <select
+                  value={selectedTipoDestino}
+                  onChange={(e) => {
+                    setSelectedTipoDestino(e.target.value);
+                    if (e.target.value !== "convenio")
+                      setSelectedConvenio("todos");
+                    if (e.target.value !== "equipe") setSelectedEquipe("todos");
+                  }}
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-primary text-sm">
+                  <option value="todos">Todas</option>
+                  <option value="geral">Geral (Todos)</option>
+                  <option value="equipe">Equipes</option>
+                  <option value="convenio">Convênios</option>
+                </select>
+              </div>
+
+              {(selectedTipoDestino === "convenio" ||
+                selectedTipoDestino === "todos") && (
                 <div>
-                  <label
-                    htmlFor="tipo-filter"
-                    className="block text-sm font-medium text-gray-700 mb-1">
-                    Tipo de Visibilidade
+                  <label className="block text-xs font-semibold text-gray-500 uppercase mb-1.5">
+                    Convênio
                   </label>
                   <select
-                    id="tipo-filter"
-                    value={selectedTipoDestino}
-                    onChange={(e) => {
-                      setSelectedTipoDestino(e.target.value);
-                      // Resetar filtros relacionados quando mudar o tipo
-                      if (e.target.value !== "convenio")
-                        setSelectedConvenio("todos");
-                      if (e.target.value !== "equipe")
-                        setSelectedEquipe("todos");
-                    }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
-                    <option value="todos">Todos os tipos</option>
-                    <option value="geral">Geral (todos os usuários)</option>
-                    <option value="equipe">Equipes</option>
-                    <option value="convenio">Convênios</option>
+                    value={selectedConvenio}
+                    onChange={(e) => setSelectedConvenio(e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-primary text-sm">
+                    <option value="todos">Todos</option>
+                    {convenios.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
+              )}
 
-                {(selectedTipoDestino === "convenio" ||
-                  selectedTipoDestino === "todos") && (
-                  <div>
-                    <label
-                      htmlFor="convenio-filter"
-                      className="block text-sm font-medium text-gray-700 mb-1">
-                      Filtrar por Convênio
-                    </label>
-                    <select
-                      id="convenio-filter"
-                      value={selectedConvenio}
-                      onChange={(e) => setSelectedConvenio(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
-                      <option value="todos">Todos os Convênios</option>
-                      {convenios.map((convenio) => (
-                        <option key={convenio.id} value={convenio.id}>
-                          {convenio.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                {(selectedTipoDestino === "equipe" ||
-                  selectedTipoDestino === "todos") && (
-                  <div>
-                    <label
-                      htmlFor="equipe-filter"
-                      className="block text-sm font-medium text-gray-700 mb-1">
-                      Filtrar por Equipe
-                    </label>
-                    <select
-                      id="equipe-filter"
-                      value={selectedEquipe}
-                      onChange={(e) => setSelectedEquipe(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
-                      <option value="todos">Todas as Equipes</option>
-                      {equipes.map((equipe) => (
-                        <option key={equipe.id} value={equipe.id}>
-                          {equipe.nome}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-              </div>
+              {(selectedTipoDestino === "equipe" ||
+                selectedTipoDestino === "todos") && (
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase mb-1.5">
+                    Equipe
+                  </label>
+                  <select
+                    value={selectedEquipe}
+                    onChange={(e) => setSelectedEquipe(e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-primary text-sm">
+                    <option value="todos">Todas</option>
+                    {equipes.map((e) => (
+                      <option key={e.id} value={e.id}>
+                        {e.nome}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
           )}
         </div>
 
+        {/* --- Grid de Posts (Feed) --- */}
         {loading ? (
-          <Loading message="Carregando postagens..." />
-        ) : error ? (
-          <div className="bg-red-50 text-red-700 p-4 rounded-md mb-4">
-            {error}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div
+                key={i}
+                className="bg-white rounded-xl h-72 animate-pulse shadow-sm border border-gray-100"></div>
+            ))}
           </div>
-        ) : (
-          <DataTable
-            data={filteredPostagens}
-            columns={columns}
-            keyExtractor={(item) => item.id}
-            searchable={false} // Já temos nossa própria pesquisa
-            onRowClick={(postagem) => router.push(`/postagens/${postagem.id}`)}
-            emptyMessage={
-              searchTerm ||
-              selectedTipoDestino !== "todos" ||
-              selectedConvenio !== "todos" ||
-              selectedEquipe !== "todos"
-                ? "Nenhuma postagem encontrada com os filtros aplicados."
-                : "Nenhuma postagem encontrada."
-            }
-            title="Lista de Postagens"
-          />
-        )}
-
-        {!loading && filteredPostagens.length === 0 && postagens.length > 0 && (
-          <div className="mt-4">
+        ) : error ? (
+          <div className="bg-red-50 border border-red-100 text-red-700 p-8 rounded-xl flex flex-col items-center justify-center text-center">
+            <p className="font-medium mb-3">{error}</p>
+            <CustomButton
+              variant="secondary"
+              onClick={() => window.location.reload()}>
+              Tentar Novamente
+            </CustomButton>
+          </div>
+        ) : filteredPostagens.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border border-dashed border-gray-300">
+            <div className="bg-gray-50 p-4 rounded-full mb-4">
+              <FileText size={32} className="text-gray-400" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-1">
+              Nenhuma publicação encontrada
+            </h3>
+            <p className="text-gray-500 max-w-md text-center mb-6">
+              Não encontramos postagens com os filtros selecionados.
+            </p>
             <CustomButton
               variant="secondary"
               onClick={() => {
@@ -434,22 +283,20 @@ export default function PostagensPage() {
               Limpar Filtros
             </CustomButton>
           </div>
-        )}
-
-        {!loading && postagens.length === 0 && (
-          <div className="bg-white rounded-lg shadow-md p-8 text-center">
-            <FileText size={48} className="mx-auto text-gray-400 mb-2" />
-            <p className="text-gray-600 mb-6">
-              Nenhuma postagem foi encontrada no sistema.
-            </p>
-            {canCreatePostagem && (
-              <CustomButton
-                variant="primary"
-                icon={Plus}
-                onClick={() => router.push("/postagens/nova")}>
-                Criar Primeira Postagem
-              </CustomButton>
-            )}
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-10">
+            {filteredPostagens.map((postagem) => (
+              <PostCard
+                key={postagem.id}
+                postagem={postagem}
+                onClick={() => router.push(`/postagens/${postagem.id}`)}
+                showEditButton={canCreatePostagem ?? false}
+                onEdit={(e) => {
+                  e.stopPropagation();
+                  router.push(`/postagens/${postagem.id}/editar`);
+                }}
+              />
+            ))}
           </div>
         )}
       </main>
