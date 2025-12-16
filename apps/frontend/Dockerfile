@@ -7,16 +7,15 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# Copia a pasta public 
-COPY --chown=nextjs:nodejs apps/frontend/public ./public
+COPY --chown=nextjs:nodejs apps/frontend/public ./apps/frontend/public
 
-# Copia os artefatos do build que foi feito no GitHub Actions
 COPY --chown=nextjs:nodejs apps/frontend/.next/standalone ./
-COPY --chown=nextjs:nodejs apps/frontend/.next/static ./.next/static
+
+COPY --chown=nextjs:nodejs apps/frontend/.next/static ./apps/frontend/.next/static
 
 USER nextjs
 
 EXPOSE 3000
 ENV PORT 3000
 
-CMD ["node", "server.js"]
+CMD ["node", "apps/frontend/server.js"]
