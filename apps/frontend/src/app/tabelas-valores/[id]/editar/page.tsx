@@ -288,7 +288,6 @@ export default function EditarTabelaValoresPage() {
                   placeholder="Digite uma descrição para a tabela (opcional)"
                   disabled={submitting}
                   error={errors.descricao}
-                  height="200px"
                 />
                 {errors.descricao && (
                   <p className="mt-1 text-sm text-red-500">
