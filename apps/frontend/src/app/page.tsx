@@ -100,7 +100,7 @@ export default function Home() {
             <div className="relative h-8 w-32">
               {/* Substitua por sua logo oficial */}
               <Image
-                src="/logo.png"
+                src="/icon.png"
                 alt="Lavorato"
                 fill
                 className="object-contain object-left"
