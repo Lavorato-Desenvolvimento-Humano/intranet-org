@@ -1,16 +1,27 @@
+// apps/frontend/src/app/postagens/page.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Search, Filter, FileText } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Filter,
+  FileText,
+  Users,
+  Building,
+  Globe,
+  PenSquare,
+  TrendingUp,
+} from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
-import Breadcrumb from "@/components/ui/breadcrumb";
 import { CustomButton } from "@/components/ui/custom-button";
-import { PostCard } from "@/components/postagem/PostCard"; // Importando o novo componente
+import { PostCard } from "@/components/postagem/PostCard";
 import { useAuth } from "@/context/AuthContext";
 import postagemService, { PostagemSummaryDto } from "@/services/postagem";
 import convenioService, { ConvenioDto } from "@/services/convenio";
 import equipeService, { EquipeDto } from "@/services/equipe";
+import ProfileAvatar from "@/components/profile/profile-avatar";
 import { cn } from "@/utils/cn";
 
 export default function PostagensPage() {
@@ -30,7 +41,6 @@ export default function PostagensPage() {
     useState<string>("todos");
   const [selectedConvenio, setSelectedConvenio] = useState<string>("todos");
   const [selectedEquipe, setSelectedEquipe] = useState<string>("todos");
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   // Permissões
   const isAdmin = user?.roles?.some((role) =>
@@ -112,193 +122,273 @@ export default function PostagensPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-[#F3F4F6] flex flex-col font-sans">
       <Navbar />
 
-      <main className="flex-grow container mx-auto p-4 md:p-6 max-w-7xl">
-        <Breadcrumb
-          items={[
-            { label: "Dashboard", href: "/dashboard" },
-            { label: "Mural de Avisos" },
-          ]}
-        />
-
-        {/* --- Header da Página --- */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-800 tracking-tight">
-              Mural de Avisos
-            </h1>
-            <p className="text-gray-500 mt-1">
-              Acompanhe as últimas atualizações da organização.
-            </p>
-          </div>
-          {canCreatePostagem && (
-            <CustomButton
-              variant="primary"
-              icon={Plus}
-              onClick={handleCreateClick}
-              className="shadow-sm">
-              Criar Publicação
-            </CustomButton>
-          )}
-        </div>
-
-        {/* --- Área de Busca e Filtros --- */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-8 sticky top-4 z-20">
-          <div className="flex flex-col md:flex-row gap-3">
-            <div className="relative flex-grow">
-              <input
-                type="text"
-                placeholder="Buscar por título, autor ou conteúdo..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+      <main className="flex-grow container mx-auto p-4 md:py-8 md:px-6 max-w-7xl">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* --- SIDEBAR ESQUERDA (Menu de Navegação/Filtros) --- */}
+          <div className="hidden lg:block lg:col-span-3 sticky top-24 space-y-4">
+            {/* Card do Perfil Resumido */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col items-center text-center">
+              <ProfileAvatar
+                profileImage={user?.profileImage}
+                userName={user?.fullName || "Usuário"}
+                size={64}
+                className="mb-3"
               />
-              <Search
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                size={18}
-              />
-            </div>
-
-            <button
-              onClick={() => setIsFilterOpen(!isFilterOpen)}
-              className={cn(
-                "flex items-center justify-center px-4 py-2.5 border rounded-lg transition-colors font-medium text-sm whitespace-nowrap",
-                isFilterOpen
-                  ? "bg-primary/5 border-primary text-primary"
-                  : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
-              )}>
-              <Filter size={18} className="mr-2" />
-              Filtros
-              {selectedTipoDestino !== "todos" && (
-                <span className="ml-2 flex h-2 w-2 rounded-full bg-primary" />
-              )}
-            </button>
-          </div>
-
-          {/* Filtros Expansíveis */}
-          {isFilterOpen && (
-            <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-1 md:grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2 duration-200">
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1.5">
-                  Visibilidade
-                </label>
-                <select
-                  value={selectedTipoDestino}
-                  onChange={(e) => {
-                    setSelectedTipoDestino(e.target.value);
-                    if (e.target.value !== "convenio")
-                      setSelectedConvenio("todos");
-                    if (e.target.value !== "equipe") setSelectedEquipe("todos");
-                  }}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-primary text-sm">
-                  <option value="todos">Todas</option>
-                  <option value="geral">Geral (Todos)</option>
-                  <option value="equipe">Equipes</option>
-                  <option value="convenio">Convênios</option>
-                </select>
+              <h3 className="font-bold text-gray-800">{user?.fullName}</h3>
+              <p className="text-xs text-gray-500 mb-4">{user?.email}</p>
+              <div className="w-full border-t border-gray-100 pt-3 flex justify-around text-sm">
+                <div className="flex flex-col">
+                  <span className="font-bold text-gray-800">
+                    {postagens.filter((p) => p.createdById === user?.id).length}
+                  </span>
+                  <span className="text-gray-500 text-xs">Posts</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-bold text-gray-800">0</span>
+                  <span className="text-gray-500 text-xs">Views</span>
+                </div>
               </div>
-
-              {(selectedTipoDestino === "convenio" ||
-                selectedTipoDestino === "todos") && (
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase mb-1.5">
-                    Convênio
-                  </label>
-                  <select
-                    value={selectedConvenio}
-                    onChange={(e) => setSelectedConvenio(e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-primary text-sm">
-                    <option value="todos">Todos</option>
-                    {convenios.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {(selectedTipoDestino === "equipe" ||
-                selectedTipoDestino === "todos") && (
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase mb-1.5">
-                    Equipe
-                  </label>
-                  <select
-                    value={selectedEquipe}
-                    onChange={(e) => setSelectedEquipe(e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-primary text-sm">
-                    <option value="todos">Todas</option>
-                    {equipes.map((e) => (
-                      <option key={e.id} value={e.id}>
-                        {e.nome}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
             </div>
-          )}
+
+            {/* Menu de Filtros Rápidos */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="p-4 border-b border-gray-50">
+                <h4 className="font-semibold text-gray-700 flex items-center gap-2">
+                  <Filter size={18} /> Filtrar Feed
+                </h4>
+              </div>
+              <div className="p-2 space-y-1">
+                <button
+                  onClick={() => setSelectedTipoDestino("todos")}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors",
+                    selectedTipoDestino === "todos"
+                      ? "bg-primary/10 text-primary"
+                      : "text-gray-600 hover:bg-gray-50"
+                  )}>
+                  <Globe size={18} /> Todos os Avisos
+                </button>
+                <button
+                  onClick={() => setSelectedTipoDestino("equipe")}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors",
+                    selectedTipoDestino === "equipe"
+                      ? "bg-primary/10 text-primary"
+                      : "text-gray-600 hover:bg-gray-50"
+                  )}>
+                  <Users size={18} /> Minhas Equipes
+                </button>
+                <button
+                  onClick={() => setSelectedTipoDestino("convenio")}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors",
+                    selectedTipoDestino === "convenio"
+                      ? "bg-primary/10 text-primary"
+                      : "text-gray-600 hover:bg-gray-50"
+                  )}>
+                  <Building size={18} /> Convênios
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* --- FEED CENTRAL (Conteúdo Principal) --- */}
+          <div className="col-span-1 lg:col-span-6 space-y-5">
+            {/* Caixa de Criação Rápida (Estilo "No que você está pensando?") */}
+            {canCreatePostagem && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-2">
+                <div className="flex gap-3">
+                  <ProfileAvatar
+                    profileImage={user?.profileImage}
+                    userName={user?.fullName || "U"}
+                    size={40}
+                  />
+                  <button
+                    onClick={handleCreateClick}
+                    className="flex-grow text-left bg-gray-100 hover:bg-gray-200 text-gray-500 rounded-full px-5 py-2.5 text-sm transition-colors font-medium cursor-text">
+                    Escreva um novo aviso ou comunicado...
+                  </button>
+                </div>
+                <div className="flex justify-between items-center mt-3 pt-3 border-t border-gray-50">
+                  <div className="flex gap-4">
+                    <button
+                      onClick={handleCreateClick}
+                      className="flex items-center gap-1.5 text-gray-500 hover:text-blue-600 text-sm font-medium transition-colors">
+                      <PenSquare size={16} /> Texto
+                    </button>
+                    <button
+                      onClick={handleCreateClick}
+                      className="flex items-center gap-1.5 text-gray-500 hover:text-green-600 text-sm font-medium transition-colors">
+                      <FileText size={16} /> Anexo
+                    </button>
+                  </div>
+                  <CustomButton
+                    size="small"
+                    onClick={handleCreateClick}
+                    icon={Plus}>
+                    Publicar
+                  </CustomButton>
+                </div>
+              </div>
+            )}
+
+            {/* Barra de Busca Mobile/Tablet (se Sidebar escondida) ou Busca Geral */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 px-4 py-3 sticky top-20 z-10 lg:static">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Pesquisar publicações..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 bg-gray-50 border-none rounded-full focus:bg-gray-100 focus:ring-1 focus:ring-primary/20 text-sm"
+                />
+                <Search
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                  size={16}
+                />
+              </div>
+            </div>
+
+            {/* Loading Skeleton */}
+            {loading && (
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="bg-white rounded-xl p-4 h-64 animate-pulse border border-gray-100 shadow-sm"
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Feed Vazio */}
+            {!loading && filteredPostagens.length === 0 && !error && (
+              <div className="bg-white rounded-xl p-10 text-center border border-gray-100 shadow-sm">
+                <div className="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <FileText size={24} className="text-gray-400" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-800">
+                  Nenhuma publicação
+                </h3>
+                <p className="text-gray-500 text-sm mt-1">
+                  Não há atualizações para exibir com os filtros atuais.
+                </p>
+                <button
+                  onClick={() => {
+                    setSearchTerm("");
+                    setSelectedTipoDestino("todos");
+                    setSelectedConvenio("todos");
+                    setSelectedEquipe("todos");
+                  }}
+                  className="mt-4 text-primary font-medium text-sm hover:underline">
+                  Limpar filtros
+                </button>
+              </div>
+            )}
+
+            {/* Mensagem de Erro */}
+            {error && (
+              <div className="bg-red-50 text-red-700 p-4 rounded-xl text-center border border-red-100">
+                {error}
+              </div>
+            )}
+
+            {/* Lista de Posts */}
+            <div className="space-y-5 pb-10">
+              {filteredPostagens.map((postagem) => (
+                <PostCard
+                  key={postagem.id}
+                  postagem={postagem}
+                  onClick={() => router.push(`/postagens/${postagem.id}`)}
+                  showEditButton={canCreatePostagem ?? false}
+                  onEdit={(e) => {
+                    e.stopPropagation();
+                    router.push(`/postagens/${postagem.id}/editar`);
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* --- SIDEBAR DIREITA (Informações Extras) --- */}
+          <div className="hidden lg:block lg:col-span-3 sticky top-24 space-y-4">
+            {/* Filtros Detalhados (Contexto) */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+              <h4 className="font-semibold text-gray-800 text-sm mb-3">
+                Contextos
+              </h4>
+              <div className="space-y-3">
+                {selectedTipoDestino === "convenio" ||
+                selectedTipoDestino === "todos" ? (
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 uppercase block mb-1">
+                      Convênios
+                    </label>
+                    <select
+                      value={selectedConvenio}
+                      onChange={(e) => {
+                        setSelectedConvenio(e.target.value);
+                        if (selectedTipoDestino !== "convenio")
+                          setSelectedTipoDestino("convenio");
+                      }}
+                      className="w-full text-sm bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 focus:ring-1 focus:ring-primary">
+                      <option value="todos">Todos</option>
+                      {convenios.slice(0, 10).map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : null}
+
+                {selectedTipoDestino === "equipe" ||
+                selectedTipoDestino === "todos" ? (
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 uppercase block mb-1">
+                      Equipes
+                    </label>
+                    <select
+                      value={selectedEquipe}
+                      onChange={(e) => {
+                        setSelectedEquipe(e.target.value);
+                        if (selectedTipoDestino !== "equipe")
+                          setSelectedTipoDestino("equipe");
+                      }}
+                      className="w-full text-sm bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 focus:ring-1 focus:ring-primary">
+                      <option value="todos">Todas</option>
+                      {equipes.slice(0, 10).map((e) => (
+                        <option key={e.id} value={e.id}>
+                          {e.nome}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
+            {/* Widget de Trending ou Informações - Opcional */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+              <h4 className="font-semibold text-gray-800 text-sm mb-3 flex items-center gap-2">
+                <TrendingUp size={16} className="text-primary" /> Em Destaque
+              </h4>
+              <p className="text-xs text-gray-500 leading-relaxed">
+                Mantenha-se atualizado com os comunicados oficiais e
+                atualizações das suas equipes.
+              </p>
+            </div>
+
+            <div className="text-center">
+              <p className="text-xs text-gray-400">
+                Intranet Corporativa &copy; {new Date().getFullYear()}
+              </p>
+            </div>
+          </div>
         </div>
-
-        {/* --- Grid de Posts (Feed) --- */}
-        {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div
-                key={i}
-                className="bg-white rounded-xl h-72 animate-pulse shadow-sm border border-gray-100"></div>
-            ))}
-          </div>
-        ) : error ? (
-          <div className="bg-red-50 border border-red-100 text-red-700 p-8 rounded-xl flex flex-col items-center justify-center text-center">
-            <p className="font-medium mb-3">{error}</p>
-            <CustomButton
-              variant="secondary"
-              onClick={() => window.location.reload()}>
-              Tentar Novamente
-            </CustomButton>
-          </div>
-        ) : filteredPostagens.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border border-dashed border-gray-300">
-            <div className="bg-gray-50 p-4 rounded-full mb-4">
-              <FileText size={32} className="text-gray-400" />
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-1">
-              Nenhuma publicação encontrada
-            </h3>
-            <p className="text-gray-500 max-w-md text-center mb-6">
-              Não encontramos postagens com os filtros selecionados.
-            </p>
-            <CustomButton
-              variant="secondary"
-              onClick={() => {
-                setSearchTerm("");
-                setSelectedTipoDestino("todos");
-                setSelectedConvenio("todos");
-                setSelectedEquipe("todos");
-              }}>
-              Limpar Filtros
-            </CustomButton>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-10">
-            {filteredPostagens.map((postagem) => (
-              <PostCard
-                key={postagem.id}
-                postagem={postagem}
-                onClick={() => router.push(`/postagens/${postagem.id}`)}
-                showEditButton={canCreatePostagem ?? false}
-                onEdit={(e) => {
-                  e.stopPropagation();
-                  router.push(`/postagens/${postagem.id}/editar`);
-                }}
-              />
-            ))}
-          </div>
-        )}
       </main>
     </div>
   );
