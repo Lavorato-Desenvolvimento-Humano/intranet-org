@@ -365,7 +365,7 @@ export default function TicketDashboard() {
                       ))
                     ))}
 
-                  {/* 3. FECHADOS */}
+                  {/* 3.FECHADOS */}
                   {activeTab === "closed" &&
                     (recentlyClosed.length === 0 ? (
                       <tr>

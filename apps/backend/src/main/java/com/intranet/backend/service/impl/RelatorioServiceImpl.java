@@ -69,7 +69,7 @@ public class RelatorioServiceImpl implements RelatorioService {
             if (!isUserAdminOrSupervisor(currentUser)) {
                 throw new IllegalArgumentException("Apenas administradores e supervisores podem gerar o Relatório Geral.");
             }
-            
+
             usuarioAlvo = null;
 
         } else {

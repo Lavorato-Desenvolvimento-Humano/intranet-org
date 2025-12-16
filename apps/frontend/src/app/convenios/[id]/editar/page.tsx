@@ -231,7 +231,6 @@ export default function EditarConvenioPage() {
                   placeholder="Digite a descrição do convênio"
                   disabled={submitting}
                   error={errors.description}
-                  height="200px"
                 />
 
                 {errors.description && (

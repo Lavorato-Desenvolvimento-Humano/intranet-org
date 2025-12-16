@@ -17,14 +17,10 @@ import { Loading } from "@/components/ui/loading";
 import { CustomButton } from "@/components/ui/custom-button";
 import relatorioService from "@/services/relatorio";
 import convenioService, { ConvenioDto } from "@/services/convenio";
-import { pacienteService, especialidadeService } from "@/services/clinical";
+import { especialidadeService } from "@/services/clinical";
 import { useAuth } from "@/context/AuthContext";
 import { useStatus } from "@/hooks/useStatus";
-import {
-  RelatorioCreateRequest,
-  RelatorioDto,
-  RelatorioTipo,
-} from "@/types/relatorio";
+import { RelatorioCreateRequest, RelatorioTipo } from "@/types/relatorio";
 import { PacienteSummaryDto, EspecialidadeDto } from "@/types/clinical";
 import toastUtil from "@/utils/toast";
 

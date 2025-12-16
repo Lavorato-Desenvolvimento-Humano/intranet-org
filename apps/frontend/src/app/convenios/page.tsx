@@ -38,7 +38,6 @@ export default function ConveniosPage() {
   const canCreate = isAdmin || isEditor;
   const canDelete = isAdmin;
 
-  // Buscar convênios ao carregar a página
   useEffect(() => {
     const fetchConvenios = async () => {
       setLoading(true);
