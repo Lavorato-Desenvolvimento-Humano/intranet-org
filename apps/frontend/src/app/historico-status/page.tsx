@@ -73,7 +73,6 @@ function HistoricoContent() {
       let historicoData: PageResponse<StatusHistorySummaryDto>;
 
       if (filters.startDate && filters.endDate) {
-        // Buscar por período
         historicoData = await statusHistoryService.getHistoricoByPeriodo(
           filters.startDate,
           filters.endDate,
