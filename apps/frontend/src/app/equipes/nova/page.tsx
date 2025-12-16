@@ -206,7 +206,6 @@ export default function EquipeFormPage() {
                   }
                   placeholder="Descrição da equipe (opcional)"
                   disabled={submitting}
-                  height="200px"
                 />
               </div>
 
