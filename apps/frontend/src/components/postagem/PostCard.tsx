@@ -116,9 +116,13 @@ export function PostCard({
         <h2 className="text-base font-bold text-gray-900 mb-2 leading-tight">
           {postagem.title}
         </h2>
-        <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed line-clamp-4">
-          {postagem.previewText || "Ver detalhes da publicação..."}
-        </p>
+        {/* CORREÇÃO AQUI: Uso de dangerouslySetInnerHTML para renderizar o HTML */}
+        <div
+          className="text-sm text-gray-700 leading-relaxed line-clamp-4 prose prose-sm max-w-none [&>p]:mb-0 [&>p]:inline"
+          dangerouslySetInnerHTML={{
+            __html: postagem.previewText || "Ver detalhes da publicação...",
+          }}
+        />
       </div>
 
       {/* ÁREA DE MÍDIA (Imagem Grande) */}
