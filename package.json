@@ -10,11 +10,6 @@
     "check-types": "turbo run check-types"
   },
   "devDependencies": {
-    "@tiptap/extension-image": "3.13.0",
-    "@tiptap/extension-link": "3.13.0",
-    "@tiptap/extension-placeholder": "3.13.0",
-    "@tiptap/react": "3.13.0",
-    "@tiptap/starter-kit": "3.13.0",
     "@types/sockjs-client": "1.5.4",
     "@typescript-eslint/eslint-plugin": "^8.25.0",
     "@typescript-eslint/parser": "^8.25.0",
@@ -46,24 +41,5 @@
   },
   "lint-staged": {
     "**/*.{js,jsx,ts,tsx,json,css,scss,md}": "prettier --write"
-  },
-  "dependencies": {
-    "@ckeditor/ckeditor5-build-classic": "44.3.0",
-    "@ckeditor/ckeditor5-react": "9.5.0",
-    "@stomp/stompjs": "7.2.1",
-    "@tinymce/tinymce-react": "6.0.0",
-    "autoprefixer": "10.4.20",
-    "axios": "1.8.2",
-    "chart.js": "4.5.0",
-    "lodash": "4.17.21",
-    "lucide-react": "0.477.0",
-    "next": "14.2.24",
-    "postcss": "8.5.3",
-    "react-chartjs-2": "5.3.0",
-    "react-hot-toast": "2.5.2",
-    "react-markdown": "8.0.7",
-    "remark-gfm": "3.0.1",
-    "sockjs-client": "1.6.1",
-    "tailwindcss": "4.0.9"
   }
 }
