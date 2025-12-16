@@ -10,12 +10,7 @@ import {
   HardDrive,
   Users,
   Activity,
-  CalendarDays,
-  Clock,
-  ExternalLink,
   ChevronRight,
-  AlertCircle,
-  CheckCircle2,
 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import { PostCard } from "@/components/postagem/PostCard";
@@ -28,56 +23,33 @@ import { cn } from "@/utils/cn";
 const QuickAccessCard = ({
   icon: Icon,
   label,
-  href,
+  description,
   colorClass = "text-gray-600 bg-gray-50",
   onClick,
 }: {
   icon: any;
   label: string;
-  href?: string;
+  description?: string;
   colorClass?: string;
   onClick?: () => void;
 }) => (
   <button
     onClick={onClick}
-    className="flex flex-col items-center justify-center p-4 rounded-xl border border-gray-100 bg-white shadow-sm hover:shadow-md hover:border-primary/20 transition-all group w-full">
+    className="flex flex-col items-start p-5 rounded-xl border border-gray-100 bg-white shadow-sm hover:shadow-md hover:border-primary/20 transition-all group w-full text-left">
     <div
       className={cn(
-        "p-3 rounded-full mb-3 group-hover:scale-110 transition-transform",
+        "p-3 rounded-lg mb-3 group-hover:scale-105 transition-transform",
         colorClass
       )}>
       <Icon size={24} />
     </div>
-    <span className="text-xs font-semibold text-gray-700 group-hover:text-primary">
+    <span className="text-sm font-bold text-gray-800 group-hover:text-primary mb-1">
       {label}
     </span>
+    {description && (
+      <span className="text-xs text-gray-500 line-clamp-1">{description}</span>
+    )}
   </button>
-);
-
-// Componente para Item de Lista Lateral
-const SideListItem = ({ icon: Icon, title, subtitle, time, status }: any) => (
-  <div className="flex items-start gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer border-b border-gray-50 last:border-0">
-    <div className="mt-1 text-gray-400">
-      <Icon size={16} />
-    </div>
-    <div className="flex-grow">
-      <h5 className="text-sm font-medium text-gray-800 line-clamp-1">
-        {title}
-      </h5>
-      {subtitle && (
-        <p className="text-xs text-gray-500 line-clamp-1">{subtitle}</p>
-      )}
-    </div>
-    <div className="flex flex-col items-end gap-1">
-      {time && <span className="text-[10px] text-gray-400">{time}</span>}
-      {status === "active" && (
-        <div className="h-2 w-2 rounded-full bg-green-500" />
-      )}
-      {status === "warning" && (
-        <div className="h-2 w-2 rounded-full bg-amber-500" />
-      )}
-    </div>
-  </div>
 );
 
 export default function DashboardPage() {
@@ -130,7 +102,7 @@ export default function DashboardPage() {
             {/* Card de Perfil */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="h-24 bg-gradient-to-r from-primary/80 to-primary/40 relative">
-                {/* Capa do Perfil (Opcional) */}
+                {/* Capa do Perfil */}
               </div>
               <div className="px-6 pb-6 text-center relative">
                 <div className="relative -mt-10 mb-3 inline-block">
@@ -149,24 +121,9 @@ export default function DashboardPage() {
                   {user?.roles?.[0]?.replace("ROLE_", "") || "Colaborador"}
                 </p>
 
-                <div className="grid grid-cols-2 gap-2 mt-6 pt-6 border-t border-gray-50">
-                  <div className="text-center">
-                    <span className="block text-lg font-bold text-gray-800">
-                      12
-                    </span>
-                    <span className="text-[10px] text-gray-400 uppercase">
-                      Tarefas
-                    </span>
-                  </div>
-                  <div className="text-center border-l border-gray-50">
-                    <span className="block text-lg font-bold text-gray-800">
-                      5
-                    </span>
-                    <span className="text-[10px] text-gray-400 uppercase">
-                      Tickets
-                    </span>
-                  </div>
-                </div>
+                {/* Removido estatísticas estáticas (Tarefas/Tickets) 
+                  pois não há endpoint conectado neste componente ainda.
+                */}
               </div>
             </div>
 
@@ -202,48 +159,48 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* === COLUNA CENTRAL: Feed e Ações === */}
-          <div className="col-span-1 lg:col-span-6 space-y-6">
-            {/* Header Mobile (Só aparece em telas pequenas) */}
-            <div className="lg:hidden bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center gap-3 mb-2">
-              <ProfileAvatar
-                profileImage={user?.profileImage}
-                userName={user?.fullName || "U"}
-                size={48}
-              />
+          {/* === COLUNA DIREITA: Feed e Ações (Expandida) === */}
+          <div className="col-span-1 lg:col-span-9 space-y-6">
+            {/* Header Mobile / Saudação */}
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
+              <div className="hidden md:block">
+                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                  <LayoutDashboard size={24} />
+                </div>
+              </div>
               <div>
-                <h1 className="font-bold text-gray-800">
+                <h1 className="text-xl md:text-2xl font-bold text-gray-800">
                   {greeting}, {user?.fullName?.split(" ")[0]}!
                 </h1>
-                <p className="text-xs text-gray-500">Bem-vindo à Intranet.</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  Bem-vindo à Intranet. Selecione uma ação abaixo ou veja os
+                  avisos recentes.
+                </p>
               </div>
             </div>
 
-            {/* Acesso Rápido (Grid de ícones) */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {/* Acesso Rápido - Grid ajustado para 3 colunas pois removemos Agenda */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <QuickAccessCard
                 icon={FileText}
                 label="Novo Relatório"
+                description="Criar relatório médico ou administrativo"
                 colorClass="text-blue-600 bg-blue-50"
                 onClick={() => router.push("/relatorios/novo")}
               />
               <QuickAccessCard
                 icon={Activity}
                 label="Abrir Chamado"
+                description="Relatar problema ou solicitar serviço"
                 colorClass="text-orange-600 bg-orange-50"
                 onClick={() => router.push("/tickets/novo")}
               />
               <QuickAccessCard
                 icon={HardDrive}
                 label="Upload Drive"
+                description="Enviar arquivos para nuvem"
                 colorClass="text-green-600 bg-green-50"
                 onClick={() => router.push("/drive")}
-              />
-              <QuickAccessCard
-                icon={CalendarDays}
-                label="Agenda"
-                colorClass="text-purple-600 bg-purple-50"
-                onClick={() => {}}
               />
             </div>
 
@@ -257,16 +214,16 @@ export default function DashboardPage() {
                 <button
                   onClick={() => router.push("/postagens")}
                   className="text-xs font-medium text-primary hover:underline flex items-center">
-                  Ver tudo <ChevronRight size={14} />
+                  Ver mural completo <ChevronRight size={14} />
                 </button>
               </div>
 
               {loading ? (
                 <div className="space-y-4">
-                  {[1, 2].map((i) => (
+                  {[1, 2, 3].map((i) => (
                     <div
                       key={i}
-                      className="h-64 bg-white rounded-xl animate-pulse"
+                      className="h-48 bg-white rounded-xl animate-pulse border border-gray-100"
                     />
                   ))}
                 </div>
@@ -277,103 +234,29 @@ export default function DashboardPage() {
                       key={post.id}
                       postagem={post}
                       onClick={() => router.push(`/postagens/${post.id}`)}
-                      showEditButton={false} // No dashboard não editamos direto
+                      showEditButton={false}
                     />
                   ))}
 
                   <button
                     onClick={() => router.push("/postagens")}
-                    className="w-full py-3 text-sm font-medium text-gray-500 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
+                    className="w-full py-4 text-sm font-medium text-gray-500 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 hover:text-primary hover:border-primary/30 transition-all shadow-sm">
                     Carregar mais avisos...
                   </button>
                 </div>
               ) : (
-                <div className="bg-white rounded-xl p-8 text-center border border-gray-100 shadow-sm">
-                  <p className="text-gray-500">Nenhuma publicação recente.</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* === COLUNA DIREITA: Widgets e Status === */}
-          <div className="col-span-1 lg:col-span-3 space-y-6">
-            {/* Widget: Status do Sistema */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-              <h4 className="font-semibold text-gray-800 text-sm mb-4 flex items-center gap-2">
-                <Activity size={16} className="text-green-500" /> Status dos
-                Serviços
-              </h4>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600 flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]"></div>
-                    Intranet
-                  </span>
-                  <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded">
-                    Online
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600 flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                    Drive
-                  </span>
-                  <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded">
-                    Online
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600 flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-amber-500"></div>
-                    E-mail
-                  </span>
-                  <span className="text-xs font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded">
-                    Lento
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Widget: Aniversariantes do Mês (Simulado) */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-              <h4 className="font-semibold text-gray-800 text-sm mb-4 flex items-center gap-2">
-                <CalendarDays size={16} className="text-primary" />{" "}
-                Aniversariantes
-              </h4>
-              <div className="space-y-1">
-                <SideListItem
-                  icon={Users}
-                  title="Maria Silva"
-                  subtitle="RH - Dia 15"
-                  status="active"
-                />
-                <SideListItem
-                  icon={Users}
-                  title="João Costa"
-                  subtitle="TI - Dia 22"
-                />
-              </div>
-              <button className="w-full mt-3 text-xs text-primary font-medium hover:underline text-center">
-                Ver calendário completo
-              </button>
-            </div>
-
-            {/* Widget: Pendências / Avisos Importantes */}
-            <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl shadow-lg p-5 text-white">
-              <div className="flex items-start gap-3 mb-3">
-                <div className="p-2 bg-white/10 rounded-lg">
-                  <Clock size={20} className="text-orange-300" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-sm">Fechamento de Ponto</h4>
-                  <p className="text-xs text-gray-300 mt-1">
-                    Envie seus registros até o dia 25/12.
+                <div className="bg-white rounded-xl p-12 text-center border border-gray-100 shadow-sm">
+                  <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
+                    <MessageSquare size={32} />
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-800 mb-2">
+                    Nenhum aviso recente
+                  </h3>
+                  <p className="text-gray-500">
+                    Não há publicações recentes no mural de avisos.
                   </p>
                 </div>
-              </div>
-              <button className="w-full py-2 text-xs font-medium bg-white/10 hover:bg-white/20 rounded-lg transition-colors border border-white/10">
-                Verificar Pendências
-              </button>
+              )}
             </div>
           </div>
         </div>
