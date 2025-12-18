@@ -14,10 +14,17 @@ import {
   Share2,
   ChevronDown,
   ChevronUp,
+  Pin,
+  Eye,
+  Send,
 } from "lucide-react";
 import ProfileAvatar from "@/components/profile/profile-avatar";
-import { PostagemSummaryDto } from "@/services/postagem";
+import postagemService, {
+  PostagemSummaryDto,
+  PostagemCategoria,
+} from "@/services/postagem";
 import { cn } from "@/utils/cn";
+import toastUtil from "@/utils/toast";
 
 interface PostCardProps {
   postagem: PostagemSummaryDto;
@@ -33,30 +40,78 @@ export function PostCard({
   showEditButton,
 }: PostCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [liked, setLiked] = useState(postagem.likedByCurrentUser);
+  const [likesCount, setLikesCount] = useState(postagem.likesCount);
+  const [showComments, setShowComments] = useState(false);
+  const [commentText, setCommentText] = useState("");
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+
+  // Mapeamento de Cores por Categoria
+  const getCategoryStyle = (categoria: PostagemCategoria) => {
+    switch (categoria) {
+      case "AVISO":
+        return "bg-red-100 text-red-700 border-red-200";
+      case "MANUAL":
+        return "bg-orange-100 text-orange-700 border-orange-200";
+      case "CONQUISTA":
+        return "bg-yellow-100 text-yellow-700 border-yellow-200";
+      case "ANUNCIO":
+        return "bg-blue-100 text-blue-700 border-blue-200";
+      default:
+        return "bg-gray-100 text-gray-700 border-gray-200";
+    }
+  };
+
+  const handleLike = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const previousLiked = liked;
+    const previousCount = likesCount;
+
+    // Otimisticamente atualiza a UI
+    setLiked(!liked);
+    setLikesCount(liked ? likesCount - 1 : likesCount + 1);
+
+    try {
+      await postagemService.toggleLike(postagem.id);
+    } catch (error) {
+      // Reverte em caso de erro
+      setLiked(previousLiked);
+      setLikesCount(previousCount);
+      toastUtil.error("Erro ao curtir a publicação.");
+    }
+  };
+
+  const handleQuickComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!commentText.trim()) return;
+
+    setIsSubmittingComment(true);
+    try {
+      await postagemService.addComment(postagem.id, commentText);
+      toastUtil.success("Comentário enviado!");
+      setCommentText("");
+      setShowComments(false);
+      // Idealmente, redirecionaria para o detalhe ou recarregaria os comentários
+      onClick(); // Abre a postagem completa para ver o novo comentário
+    } catch (error) {
+      toastUtil.error("Erro ao enviar comentário.");
+    } finally {
+      setIsSubmittingComment(false);
+    }
+  };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
     const diffTime = Math.abs(now.getTime() - date.getTime());
     const diffHours = diffTime / (1000 * 60 * 60);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-    if (diffHours < 1) return "Agora mesmo";
     if (diffHours < 24) return `${Math.floor(diffHours)}h`;
-    if (diffDays <= 7) return `${diffDays}d`;
-
-    return date
-      .toLocaleDateString("pt-BR", {
-        day: "2-digit",
-        month: "short",
-      })
-      .replace(".", "");
+    return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
   };
 
   const getDestinoInfo = () => {
     switch (postagem.tipoDestino) {
-      case "geral":
-        return { icon: Globe, label: "Geral", color: "text-blue-500" };
       case "equipe":
         return {
           icon: Users,
@@ -70,19 +125,23 @@ export function PostCard({
           color: "text-purple-600",
         };
       default:
-        return { icon: Globe, label: "Público", color: "text-gray-500" };
+        return { icon: Globe, label: "Geral", color: "text-blue-500" };
     }
   };
 
   const destino = getDestinoInfo();
   const DestinoIcon = destino.icon;
-
-  // Verifica se o texto é longo o suficiente para precisar do "Ver mais"
   const isLongText = (postagem.previewText?.length || 0) > 280;
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all duration-200 flex flex-col mb-4">
-      {/* HEADER: Informações do Autor e Contexto */}
+    <div
+      className={cn(
+        "bg-white rounded-xl shadow-sm border overflow-hidden hover:shadow-md transition-all duration-200 flex flex-col mb-4",
+        postagem.pinned
+          ? "border-l-4 border-l-yellow-400 border-gray-100"
+          : "border-gray-100"
+      )}>
+      {/* HEADER */}
       <div className="p-4 flex justify-between items-start">
         <div className="flex items-center gap-3">
           <ProfileAvatar
@@ -91,10 +150,10 @@ export function PostCard({
             size={48}
           />
           <div className="flex flex-col">
-            <span className="text-sm font-bold text-gray-900 hover:text-primary hover:underline cursor-pointer">
+            <span className="text-sm font-bold text-gray-900 hover:text-primary cursor-pointer">
               {postagem.createdByName}
             </span>
-            <div className="flex items-center gap-1.5 text-xs text-gray-500">
+            <div className="flex items-center gap-2 text-xs text-gray-500">
               <span
                 className={cn(
                   "font-medium flex items-center gap-1",
@@ -104,126 +163,162 @@ export function PostCard({
               </span>
               <span>•</span>
               <span>{formatDate(postagem.createdAt)}</span>
+              {postagem.pinned && (
+                <span
+                  className="flex items-center text-yellow-600 font-semibold ml-1"
+                  title="Fixado">
+                  <Pin size={12} className="mr-0.5 fill-yellow-600" /> Fixado
+                </span>
+              )}
             </div>
           </div>
         </div>
 
-        {showEditButton && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit?.(e);
-            }}
-            className="text-gray-400 hover:text-gray-700 p-2 rounded-full hover:bg-gray-50 transition-colors">
-            <MoreHorizontal size={20} />
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          <span
+            className={cn(
+              "px-2 py-0.5 rounded text-[10px] font-bold border uppercase",
+              getCategoryStyle(postagem.categoria)
+            )}>
+            {postagem.categoria}
+          </span>
+          {showEditButton && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit?.(e);
+              }}
+              className="text-gray-400 hover:text-gray-700 p-1">
+              <MoreHorizontal size={20} />
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* TÍTULO E CONTEÚDO */}
+      {/* CONTENT */}
       <div className="px-4 pb-3">
         <h2
           onClick={onClick}
-          className="text-base font-bold text-gray-900 mb-2 leading-tight cursor-pointer hover:text-primary transition-colors">
+          className="text-base font-bold text-gray-900 mb-2 cursor-pointer hover:text-primary">
           {postagem.title}
         </h2>
 
         <div className="relative">
           <div
             className={cn(
-              "text-sm text-gray-700 leading-relaxed prose prose-sm max-w-none transition-all duration-300",
-              !isExpanded && "line-clamp-4 overflow-hidden"
+              "text-sm text-gray-700 prose prose-sm max-w-none",
+              !isExpanded && "line-clamp-4"
             )}
             dangerouslySetInnerHTML={{
-              __html: postagem.previewText || "Sem conteúdo disponível.",
+              __html: postagem.previewText || "Sem conteúdo.",
             }}
           />
-
           {isLongText && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 setIsExpanded(!isExpanded);
               }}
-              className="text-primary text-sm font-semibold mt-2 flex items-center gap-1 hover:underline">
-              {isExpanded ? (
-                <>
-                  Ocultar <ChevronUp size={14} />
-                </>
-              ) : (
-                <>
-                  ... ver mais <ChevronDown size={14} />
-                </>
-              )}
+              className="text-primary text-xs font-semibold mt-1 flex items-center hover:underline">
+              {isExpanded ? "Ocultar" : "Ver mais"}
             </button>
           )}
         </div>
       </div>
 
-      {/* ÁREA DE MÍDIA: Imagem de Capa */}
+      {/* COVER IMAGE */}
       {postagem.coverImageUrl && (
         <div
           onClick={onClick}
-          className="w-full bg-gray-50 border-y border-gray-100 cursor-pointer overflow-hidden">
+          className="w-full bg-gray-50 cursor-pointer overflow-hidden border-y border-gray-100 max-h-[400px]">
           <img
             src={
               postagem.coverImageUrl.startsWith("http")
                 ? postagem.coverImageUrl
-                : `${process.env.NEXT_PUBLIC_API_URL || ""}${postagem.coverImageUrl}`
+                : `/api${postagem.coverImageUrl}`
             }
-            alt="Capa da publicação"
-            className="w-full h-auto max-h-[500px] object-cover hover:scale-[1.01] transition-transform duration-500"
-            loading="lazy"
+            alt="Capa"
+            className="w-full h-full object-cover object-center hover:scale-105 transition-transform duration-700"
           />
         </div>
       )}
 
-      {/* RODAPÉ: Tags e Ações Sociais */}
-      <div className="p-3">
-        {/* Indicadores de Anexo */}
-        {(postagem.hasAnexos || postagem.hasTabelas) && (
-          <div className="flex gap-2 mb-3 px-1">
-            {postagem.hasAnexos && (
-              <span className="inline-flex items-center text-[10px] uppercase tracking-wider font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
-                <Paperclip size={10} className="mr-1" /> Anexos
-              </span>
-            )}
-            {postagem.hasTabelas && (
-              <span className="inline-flex items-center text-[10px] uppercase tracking-wider font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
-                <TableIcon size={10} className="mr-1" /> Tabelas
-              </span>
-            )}
-          </div>
-        )}
+      {/* STATS BAR */}
+      <div className="px-4 py-2 flex justify-between items-center text-xs text-gray-500 border-b border-gray-50 bg-gray-50/30">
+        <div className="flex items-center gap-3">
+          {likesCount > 0 && (
+            <span className="flex items-center gap-1 hover:text-blue-600 cursor-pointer">
+              <div className="bg-blue-500 rounded-full p-0.5">
+                <ThumbsUp size={8} className="text-white fill-white" />
+              </div>
+              {likesCount}
+            </span>
+          )}
+          {postagem.viewsCount > 0 && (
+            <span className="flex items-center gap-1">
+              <Eye size={12} /> {postagem.viewsCount}
+            </span>
+          )}
+        </div>
+        <div className="flex gap-2">
+          {postagem.comentariosCount > 0 && (
+            <span>{postagem.comentariosCount} comentários</span>
+          )}
+        </div>
+      </div>
 
-        {/* Barra de Ações (Feel de Rede Social) */}
-        <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-          <button className="flex-1 flex items-center justify-center gap-2 text-gray-500 hover:bg-gray-100 hover:text-blue-600 text-sm font-semibold transition-all py-2 rounded-lg group">
-            <ThumbsUp
-              size={18}
-              className="group-hover:scale-110 transition-transform"
-            />
+      {/* ACTIONS FOOTER */}
+      <div className="p-2">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={handleLike}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-2 text-sm font-semibold py-2 rounded-lg transition-colors",
+              liked
+                ? "text-blue-600 bg-blue-50"
+                : "text-gray-500 hover:bg-gray-100"
+            )}>
+            <ThumbsUp size={18} className={cn(liked && "fill-blue-600")} />
             <span>Gostei</span>
           </button>
 
           <button
-            onClick={onClick}
-            className="flex-1 flex items-center justify-center gap-2 text-gray-500 hover:bg-gray-100 hover:text-blue-600 text-sm font-semibold transition-all py-2 rounded-lg group">
-            <MessageSquare
-              size={18}
-              className="group-hover:scale-110 transition-transform"
-            />
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowComments(!showComments);
+            }}
+            className="flex-1 flex items-center justify-center gap-2 text-gray-500 hover:bg-gray-100 text-sm font-semibold py-2 rounded-lg">
+            <MessageSquare size={18} />
             <span>Comentar</span>
           </button>
 
-          <button className="flex-1 flex items-center justify-center gap-2 text-gray-500 hover:bg-gray-100 hover:text-blue-600 text-sm font-semibold transition-all py-2 rounded-lg group">
-            <Share2
-              size={18}
-              className="group-hover:scale-110 transition-transform"
-            />
+          <button className="flex-1 flex items-center justify-center gap-2 text-gray-500 hover:bg-gray-100 text-sm font-semibold py-2 rounded-lg">
+            <Share2 size={18} />
             <span>Partilhar</span>
           </button>
         </div>
+
+        {/* QUICK COMMENT AREA */}
+        {showComments && (
+          <form
+            onSubmit={handleQuickComment}
+            className="mt-2 flex gap-2 px-2 pb-2 animate-in slide-in-from-top-2 fade-in duration-200">
+            <input
+              type="text"
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+              placeholder="Escreva um comentário..."
+              className="flex-1 text-sm border border-gray-300 rounded-full px-4 py-2 focus:ring-1 focus:ring-primary focus:border-primary outline-none"
+              autoFocus
+            />
+            <button
+              type="submit"
+              disabled={isSubmittingComment || !commentText.trim()}
+              className="bg-primary text-white p-2 rounded-full hover:bg-primary-dark disabled:opacity-50 transition-colors">
+              <Send size={16} />
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );

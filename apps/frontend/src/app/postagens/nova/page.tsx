@@ -45,6 +45,8 @@ export default function NovaPostagemPage() {
     tipoDestino: "convenio", // Valor padrão
     convenioId: "",
     equipeId: "",
+    categoria: "GERAL",
+    pinned: false,
   });
   const [equipes, setEquipes] = useState<EquipeDto[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -327,6 +329,55 @@ export default function NovaPostagemPage() {
                   <option value="equipe">Equipe específica</option>
                   <option value="convenio">Convênio específico</option>
                 </select>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label
+                    htmlFor="categoria"
+                    className="block text-sm font-medium text-gray-700 mb-1">
+                    Categoria *
+                  </label>
+                  <select
+                    id="categoria"
+                    name="categoria"
+                    value={formData.categoria}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary"
+                    disabled={submitting}>
+                    <option value="GERAL">Geral</option>
+                    <option value="AVISO">Aviso Importante</option>
+                    <option value="MANUAL">Manual / Tutorial</option>
+                    <option value="CONQUISTA">
+                      Conquista / Reconhecimento
+                    </option>
+                    <option value="ANUNCIO">Anúncio</option>
+                  </select>
+                </div>
+
+                {/* Checkbox para fixar (apenas admin/editor) */}
+                {canCreatePostagem && (
+                  <div className="flex items-center mt-6">
+                    <input
+                      id="pinned"
+                      name="pinned"
+                      type="checkbox"
+                      checked={formData.pinned}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          pinned: e.target.checked,
+                        }))
+                      }
+                      className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                    />
+                    <label
+                      htmlFor="pinned"
+                      className="ml-2 block text-sm text-gray-900">
+                      Fixar no topo do feed (Destaque)
+                    </label>
+                  </div>
+                )}
               </div>
 
               {/* Campo de seleção de convênio (mostrar apenas se tipoDestino for "convenio") */}

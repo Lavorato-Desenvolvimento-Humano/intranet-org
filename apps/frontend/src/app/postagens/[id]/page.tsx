@@ -17,6 +17,8 @@ import {
   Users,
   Building,
   UserIcon,
+  Send,
+  MessageSquare,
 } from "lucide-react";
 import Image from "next/image";
 import Navbar from "@/components/layout/Navbar";
@@ -50,6 +52,7 @@ export default function PostagemViewPage() {
   const [activeTab, setActiveTab] = useState<
     "conteudo" | "anexos" | "imagens" | "tabelas"
   >("conteudo");
+  const [commentText, setCommentText] = useState("");
 
   const postagemId = params?.id as string;
 
@@ -114,6 +117,30 @@ export default function PostagemViewPage() {
   // Verificar se o usuário pode excluir a postagem
   const canDelete = () => {
     return isAdmin || isAuthor();
+  };
+
+  const handlePostComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!commentText.trim()) return;
+    try {
+      const newComment = await postagemService.addComment(
+        postagemId,
+        commentText
+      );
+      // Atualiza estado local
+      setPostagem((prev) =>
+        prev
+          ? {
+              ...prev,
+              comentarios: [newComment, ...(prev.comentarios || [])],
+            }
+          : null
+      );
+      setCommentText("");
+      toastUtil.success("Comentário enviado.");
+    } catch (err) {
+      toastUtil.error("Erro ao enviar comentário.");
+    }
   };
 
   // Função para excluir postagem
@@ -519,6 +546,79 @@ export default function PostagemViewPage() {
                   ))}
                 </div>
               )}
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm mt-6 p-6">
+              <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <MessageSquare size={20} /> Comentários (
+                {postagem.comentarios?.length || 0})
+              </h3>
+
+              {/* Input de Comentário */}
+              <div className="flex gap-3 mb-6">
+                <ProfileAvatar
+                  profileImage={user?.profileImage}
+                  userName={user?.fullName || "User"}
+                  size={40}
+                />
+                <form
+                  onSubmit={handlePostComment}
+                  className="flex-grow relative">
+                  <textarea
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    placeholder="Escreva um comentário ou dúvida..."
+                    className="w-full border border-gray-300 rounded-lg p-3 pr-12 text-sm focus:ring-primary focus:border-primary resize-none h-24"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!commentText.trim()}
+                    className="absolute bottom-3 right-3 text-primary hover:bg-blue-50 p-2 rounded-full disabled:opacity-50">
+                    <Send size={18} />
+                  </button>
+                </form>
+              </div>
+
+              {/* Lista de Comentários */}
+              <div className="space-y-6">
+                {postagem.comentarios?.map((comment) => (
+                  <div key={comment.id} className="flex gap-3">
+                    <ProfileAvatar
+                      profileImage={comment.userProfileImage}
+                      userName={comment.userName}
+                      size={36}
+                    />
+                    <div className="flex-grow bg-gray-50 rounded-lg p-3">
+                      <div className="flex justify-between items-start mb-1">
+                        <span className="font-semibold text-sm text-gray-900">
+                          {comment.userName}
+                        </span>
+                        <span className="text-xs text-gray-400">
+                          {formatDate(comment.createdAt)}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                        {comment.text}
+                      </p>
+                    </div>
+                    {(isAdmin || user?.id === comment.userId) && (
+                      <button
+                        onClick={() => {
+                          /* Lógica para deletar comentário */
+                        }}
+                        className="text-gray-400 hover:text-red-500 h-fit mt-2">
+                        <Trash size={14} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {(!postagem.comentarios ||
+                  postagem.comentarios.length === 0) && (
+                  <p className="text-gray-500 text-center py-4 text-sm">
+                    Seja o primeiro a comentar!
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </main>

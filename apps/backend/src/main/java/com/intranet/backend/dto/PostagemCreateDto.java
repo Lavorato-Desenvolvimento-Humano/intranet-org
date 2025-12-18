@@ -28,4 +28,6 @@ public class PostagemCreateDto {
     private UUID convenioId;
 
     private UUID equipeId;
+
+    private boolean pinned;
 }

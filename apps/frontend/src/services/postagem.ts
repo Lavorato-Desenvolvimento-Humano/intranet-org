@@ -26,6 +26,7 @@ export interface PostagemDto {
   likesCount: number;
   likedByCurrentUser: boolean;
   comentarios?: ComentarioDto[];
+  comentariosCount?: number;
 }
 
 export type PostagemCategoria =
@@ -38,6 +39,7 @@ export type PostagemCategoria =
 export interface ComentarioDto {
   id: string;
   text: string;
+  userId: string;
   userName: string;
   userProfileImage?: string;
   createdAt: string;
@@ -49,17 +51,20 @@ export interface PostagemSummaryDto {
   previewText?: string;
   coverImageUrl?: string;
   tipoDestino: "geral" | "equipe" | "convenio";
-  convenioId?: string;
   convenioName?: string;
-  equipeId?: string;
   equipeName?: string;
-  createdById: string;
   createdByName: string;
   createdByProfileImage?: string;
   createdAt: string;
   hasImagens: boolean;
   hasAnexos: boolean;
   hasTabelas: boolean;
+  categoria: PostagemCategoria;
+  pinned: boolean;
+  viewsCount: number;
+  likesCount: number;
+  likedByCurrentUser: boolean;
+  comentariosCount: number;
 }
 
 export interface PostagemCreateDto {
@@ -68,6 +73,8 @@ export interface PostagemCreateDto {
   tipoDestino: "geral" | "equipe" | "convenio";
   convenioId?: string;
   equipeId?: string;
+  categoria: PostagemCategoria;
+  pinned?: boolean; // Novo campo (apenas admin)
 }
 
 export interface ImagemDto {
@@ -95,6 +102,46 @@ export interface TabelaPostagemDto {
  * Serviço para operações com postagens
  */
 const postagemService = {
+  toggleLike: async (id: string): Promise<void> => {
+    try {
+      await api.post(`/api/postagens/${id}/like`);
+    } catch (error) {
+      console.error(`Erro ao curtir postagem ${id}:`, error);
+      throw error;
+    }
+  },
+
+  addComment: async (id: string, text: string): Promise<ComentarioDto> => {
+    try {
+      const response = await api.post<ComentarioDto>(
+        `/api/postagens/${id}/comentarios`,
+        { text }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Erro ao comentar na postagem ${id}:`, error);
+      throw error;
+    }
+  },
+
+  deleteComment: async (postId: string, commentId: string): Promise<void> => {
+    try {
+      await api.delete(`/api/postagens/${postId}/comentarios/${commentId}`);
+    } catch (error) {
+      console.error(`Erro ao excluir comentário ${commentId}:`, error);
+      throw error;
+    }
+  },
+
+  incrementViewCount: async (id: string): Promise<void> => {
+    try {
+      await api.post(`/api/postagens/${id}/view`);
+    } catch (error) {
+      // Falhas aqui não devem bloquear o usuário
+      console.warn(`Erro ao incrementar views da postagem ${id}`, error);
+    }
+  },
+
   /**
    * Obtém todas as postagens paginadas
    */
