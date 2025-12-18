@@ -231,6 +231,7 @@ export default function EditarPostagemPage() {
           formData.tipoDestino === "convenio" ? formData.convenioId : undefined,
         equipeId:
           formData.tipoDestino === "equipe" ? formData.equipeId : undefined,
+        categoria: "AVISO",
       };
 
       const updatedPostagem = await postagemService.updatePostagem(
