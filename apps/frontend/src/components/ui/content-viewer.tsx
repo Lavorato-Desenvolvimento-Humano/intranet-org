@@ -1,4 +1,5 @@
 // src/components/ui/content-viewer.tsx
+import { cn } from "@/utils/cn";
 import React from "react";
 
 interface ContentViewerProps {
@@ -16,7 +17,12 @@ const ContentViewer: React.FC<ContentViewerProps> = ({
 }) => {
   return (
     <div
-      className={`prose max-w-none text-gray-800 whitespace-pre-wrap break-words ${className}`}
+      className={cn(
+        "prose max-w-none text-gray-800 break-words",
+        "prose-img:rounded-xl prose-img:shadow-sm prose-img:mx-auto prose-img:max-h-[500px]", // Estilo automático para imagens no HTML
+        "prose-p:leading-relaxed prose-a:text-primary hover:prose-a:underline",
+        className
+      )}
       dangerouslySetInnerHTML={{ __html: content }}
     />
   );

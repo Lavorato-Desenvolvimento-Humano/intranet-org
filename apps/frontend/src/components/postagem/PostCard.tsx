@@ -1,5 +1,7 @@
 // apps/frontend/src/components/postagem/PostCard.tsx
-import React from "react";
+"use client";
+
+import React, { useState } from "react";
 import {
   Globe,
   Users,
@@ -10,6 +12,8 @@ import {
   MessageSquare,
   ThumbsUp,
   Share2,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import ProfileAvatar from "@/components/profile/profile-avatar";
 import { PostagemSummaryDto } from "@/services/postagem";
@@ -28,6 +32,8 @@ export function PostCard({
   onEdit,
   showEditButton,
 }: PostCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -50,7 +56,7 @@ export function PostCard({
   const getDestinoInfo = () => {
     switch (postagem.tipoDestino) {
       case "geral":
-        return { icon: Globe, label: "Geral", color: "text-gray-500" };
+        return { icon: Globe, label: "Geral", color: "text-blue-500" };
       case "equipe":
         return {
           icon: Users,
@@ -71,24 +77,24 @@ export function PostCard({
   const destino = getDestinoInfo();
   const DestinoIcon = destino.icon;
 
+  // Verifica se o texto é longo o suficiente para precisar do "Ver mais"
+  const isLongText = (postagem.previewText?.length || 0) > 280;
+
   return (
-    <div
-      onClick={onClick}
-      className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow duration-200 cursor-pointer flex flex-col">
-      {/* HEADER: Autor, Data e Contexto */}
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all duration-200 flex flex-col mb-4">
+      {/* HEADER: Informações do Autor e Contexto */}
       <div className="p-4 flex justify-between items-start">
         <div className="flex items-center gap-3">
           <ProfileAvatar
             profileImage={postagem.createdByProfileImage}
             userName={postagem.createdByName}
-            size={42}
+            size={48}
           />
           <div className="flex flex-col">
-            <span className="text-sm font-bold text-gray-900 leading-none">
+            <span className="text-sm font-bold text-gray-900 hover:text-primary hover:underline cursor-pointer">
               {postagem.createdByName}
             </span>
-            <div className="flex items-center gap-1.5 mt-1 text-xs text-gray-500">
-              <span>{postagem.createdByName.split(" ")[0]} publicou em</span>
+            <div className="flex items-center gap-1.5 text-xs text-gray-500">
               <span
                 className={cn(
                   "font-medium flex items-center gap-1",
@@ -96,82 +102,126 @@ export function PostCard({
                 )}>
                 <DestinoIcon size={12} /> {destino.label}
               </span>
-              <span className="text-gray-300">•</span>
-              <span>{formatDate(postagem.createdAt.toString())}</span>
+              <span>•</span>
+              <span>{formatDate(postagem.createdAt)}</span>
             </div>
           </div>
         </div>
 
         {showEditButton && (
           <button
-            onClick={onEdit}
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit?.(e);
+            }}
             className="text-gray-400 hover:text-gray-700 p-2 rounded-full hover:bg-gray-50 transition-colors">
             <MoreHorizontal size={20} />
           </button>
         )}
       </div>
 
-      {/* CONTEÚDO DE TEXTO */}
-      <div className="px-4 pb-2">
-        <h2 className="text-base font-bold text-gray-900 mb-2 leading-tight">
+      {/* TÍTULO E CONTEÚDO */}
+      <div className="px-4 pb-3">
+        <h2
+          onClick={onClick}
+          className="text-base font-bold text-gray-900 mb-2 leading-tight cursor-pointer hover:text-primary transition-colors">
           {postagem.title}
         </h2>
-        {/* CORREÇÃO AQUI: Uso de dangerouslySetInnerHTML para renderizar o HTML */}
-        <div
-          className="text-sm text-gray-700 leading-relaxed line-clamp-4 prose prose-sm max-w-none [&>p]:mb-0 [&>p]:inline"
-          dangerouslySetInnerHTML={{
-            __html: postagem.previewText || "Ver detalhes da publicação...",
-          }}
-        />
+
+        <div className="relative">
+          <div
+            className={cn(
+              "text-sm text-gray-700 leading-relaxed prose prose-sm max-w-none transition-all duration-300",
+              !isExpanded && "line-clamp-4 overflow-hidden"
+            )}
+            dangerouslySetInnerHTML={{
+              __html: postagem.previewText || "Sem conteúdo disponível.",
+            }}
+          />
+
+          {isLongText && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsExpanded(!isExpanded);
+              }}
+              className="text-primary text-sm font-semibold mt-2 flex items-center gap-1 hover:underline">
+              {isExpanded ? (
+                <>
+                  Ocultar <ChevronUp size={14} />
+                </>
+              ) : (
+                <>
+                  ... ver mais <ChevronDown size={14} />
+                </>
+              )}
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* ÁREA DE MÍDIA (Imagem Grande) */}
+      {/* ÁREA DE MÍDIA: Imagem de Capa */}
       {postagem.coverImageUrl && (
-        <div className="mt-3 w-full bg-gray-50 border-t border-b border-gray-50 relative">
+        <div
+          onClick={onClick}
+          className="w-full bg-gray-50 border-y border-gray-100 cursor-pointer overflow-hidden">
           <img
             src={
               postagem.coverImageUrl.startsWith("http")
                 ? postagem.coverImageUrl
                 : `${process.env.NEXT_PUBLIC_API_URL || ""}${postagem.coverImageUrl}`
             }
-            alt="Anexo da publicação"
-            className="w-full h-auto max-h-[500px] object-cover object-center"
+            alt="Capa da publicação"
+            className="w-full h-auto max-h-[500px] object-cover hover:scale-[1.01] transition-transform duration-500"
             loading="lazy"
           />
         </div>
       )}
 
-      {/* RODAPÉ: Tags e Ações Simuladas */}
-      <div className="p-4">
-        {/* Tags de Anexos */}
+      {/* RODAPÉ: Tags e Ações Sociais */}
+      <div className="p-3">
+        {/* Indicadores de Anexo */}
         {(postagem.hasAnexos || postagem.hasTabelas) && (
-          <div className="flex gap-2 mb-4">
+          <div className="flex gap-2 mb-3 px-1">
             {postagem.hasAnexos && (
-              <span className="inline-flex items-center text-xs font-medium text-blue-700 bg-blue-50 px-2.5 py-1 rounded-md border border-blue-100">
-                <Paperclip size={12} className="mr-1.5" /> Material Anexo
+              <span className="inline-flex items-center text-[10px] uppercase tracking-wider font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+                <Paperclip size={10} className="mr-1" /> Anexos
               </span>
             )}
             {postagem.hasTabelas && (
-              <span className="inline-flex items-center text-xs font-medium text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-100">
-                <TableIcon size={12} className="mr-1.5" /> Dados Tabulares
+              <span className="inline-flex items-center text-[10px] uppercase tracking-wider font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
+                <TableIcon size={10} className="mr-1" /> Tabelas
               </span>
             )}
           </div>
         )}
 
-        {/* Botões de Ação (Visual Only - para dar feel de rede social) */}
-        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-          <button className="flex items-center gap-2 text-gray-500 hover:text-blue-600 text-sm font-medium transition-colors py-1 px-2 rounded hover:bg-gray-50">
-            <ThumbsUp size={18} />{" "}
-            <span className="hidden sm:inline">Curtir</span>
+        {/* Barra de Ações (Feel de Rede Social) */}
+        <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+          <button className="flex-1 flex items-center justify-center gap-2 text-gray-500 hover:bg-gray-100 hover:text-blue-600 text-sm font-semibold transition-all py-2 rounded-lg group">
+            <ThumbsUp
+              size={18}
+              className="group-hover:scale-110 transition-transform"
+            />
+            <span>Gostei</span>
           </button>
-          <button className="flex items-center gap-2 text-gray-500 hover:text-blue-600 text-sm font-medium transition-colors py-1 px-2 rounded hover:bg-gray-50">
-            <MessageSquare size={18} />{" "}
-            <span className="hidden sm:inline">Comentar</span>
+
+          <button
+            onClick={onClick}
+            className="flex-1 flex items-center justify-center gap-2 text-gray-500 hover:bg-gray-100 hover:text-blue-600 text-sm font-semibold transition-all py-2 rounded-lg group">
+            <MessageSquare
+              size={18}
+              className="group-hover:scale-110 transition-transform"
+            />
+            <span>Comentar</span>
           </button>
-          <button className="flex items-center gap-2 text-gray-500 hover:text-blue-600 text-sm font-medium transition-colors py-1 px-2 rounded hover:bg-gray-50">
-            <Share2 size={18} />{" "}
-            <span className="hidden sm:inline">Compartilhar</span>
+
+          <button className="flex-1 flex items-center justify-center gap-2 text-gray-500 hover:bg-gray-100 hover:text-blue-600 text-sm font-semibold transition-all py-2 rounded-lg group">
+            <Share2
+              size={18}
+              className="group-hover:scale-110 transition-transform"
+            />
+            <span>Partilhar</span>
           </button>
         </div>
       </div>

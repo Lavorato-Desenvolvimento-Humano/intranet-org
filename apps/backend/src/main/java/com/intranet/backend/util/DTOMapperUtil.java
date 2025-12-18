@@ -55,7 +55,7 @@ public class DTOMapperUtil {
         PostagemSummaryDto dto = new PostagemSummaryDto();
         dto.setId(postagem.getId());
         dto.setTitle(postagem.getTitle());
-        
+
         String rawText = postagem.getText() != null ? postagem.getText() : "";
         String plainText = HTML_TAG_PATTERN.matcher(rawText).replaceAll("");
         if (plainText.length() > 200) {
