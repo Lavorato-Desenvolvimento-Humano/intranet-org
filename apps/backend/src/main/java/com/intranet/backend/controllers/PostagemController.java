@@ -33,6 +33,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -88,6 +89,35 @@ public class PostagemController {
         logger.info("Requisição para atualizar postagem com ID: {}", id);
         PostagemDto updatedPostagem = postagemService.updatePostagem(id, postagemUpdateDto);
         return ResponseUtil.success(updatedPostagem);
+    }
+
+    @PostMapping("/{id}/like")
+    public ResponseEntity<Void> toggleLike(@PathVariable UUID id) {
+        logger.info("Requisição para curtir/descurtir postagem com ID: {}", id);
+        postagemService.toggleLike(id);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{id}/comentarios")
+    public ResponseEntity<PostagemComentarioDto> addComment(
+            @PathVariable UUID id,
+            @RequestBody Map<String, String> body) {
+        logger.info("Requisição para comentar na postagem com ID: {}", id);
+
+        String text = body.get("text");
+        if (text == null || text.trim().isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        PostagemComentarioDto comentario = postagemService.addComment(id, text);
+        return ResponseUtil.created(comentario);
+    }
+
+    @PostMapping("/{id}/view")
+    public ResponseEntity<Void> incrementViewCount(@PathVariable UUID id) {
+        logger.debug("Incrementando visualizações da postagem: {}", id);
+        postagemService.incrementViewCount(id);
+        return ResponseEntity.ok().build();
     }
 
     @DeleteMapping("/{id}")
