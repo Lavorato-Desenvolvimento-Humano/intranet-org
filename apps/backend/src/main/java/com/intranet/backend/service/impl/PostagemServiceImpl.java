@@ -48,9 +48,10 @@ public class PostagemServiceImpl implements PostagemService {
 
     @Override
     public Page<PostagemSummaryDto> getAllPostagens(Pageable pageable) {
+        User currentUser = getCurrentUser();
         logger.info("Buscando todas as postagens paginadas");
         Page<Postagem> postagensPage = postagemRepository.findAllWithConvenioAndCreatedBy(pageable);
-        return DTOMapperUtil.mapToPostagemSummaryDtoPage(postagensPage);
+        return DTOMapperUtil.mapToPostagemSummaryDtoPage(postagensPage, currentUser);
     }
 
     @Override
@@ -64,8 +65,12 @@ public class PostagemServiceImpl implements PostagemService {
 
         List<Postagem> postagens = postagemRepository.findByTipoDestinoOrderByCreatedAtDesc(tipoDestino);
 
+        // Pega o usuário UMA vez antes do loop
+        User currentUser = getCurrentUser();
+
         return postagens.stream()
-                .map(DTOMapperUtil::mapToPostagemSummaryDto)
+                // AQUI ESTAVA O ERRO: Use lambda, não passe a lista 'postagens' inteira
+                .map(postagem -> DTOMapperUtil.mapToPostagemSummaryDto(postagem, currentUser))
                 .collect(Collectors.toList());
     }
 
@@ -78,9 +83,10 @@ public class PostagemServiceImpl implements PostagemService {
         }
 
         List<Postagem> postagens = postagemRepository.findByTipoDestinoAndEquipeIdOrderByCreatedAtDesc("equipe", equipeId);
+        User currentUser = getCurrentUser();
 
         return postagens.stream()
-                .map(DTOMapperUtil::mapToPostagemSummaryDto)
+                .map(postagem -> DTOMapperUtil.mapToPostagemSummaryDto(postagem, currentUser))
                 .collect(Collectors.toList());
     }
 
@@ -93,7 +99,7 @@ public class PostagemServiceImpl implements PostagemService {
         List<Postagem> postagens = postagemRepository.findByCreatedByIdOrderByCreatedAtDesc(currentUser.getId());
 
         return postagens.stream()
-                .map(DTOMapperUtil::mapToPostagemSummaryDto)
+                .map(postagem -> DTOMapperUtil.mapToPostagemSummaryDto(postagem, currentUser))
                 .collect(Collectors.toList());
     }
 
@@ -248,12 +254,10 @@ public class PostagemServiceImpl implements PostagemService {
 
         // Log para depuração
         logger.debug("Total de postagens visíveis: {}", postagens.size());
-        for (Postagem p : postagens) {
-            logger.debug("Postagem: id={}, título={}, tipo={}", p.getId(), p.getTitle(), p.getTipoDestino());
-        }
 
         return postagens.stream()
-                .map(DTOMapperUtil::mapToPostagemSummaryDto)
+                // CORRIGIDO: passar 'p' (o item) e não 'postagens' (a lista)
+                .map(p -> DTOMapperUtil.mapToPostagemSummaryDto(p, currentUser))
                 .collect(Collectors.toList());
     }
 
@@ -342,11 +346,12 @@ public class PostagemServiceImpl implements PostagemService {
         logger.info("Buscando todas as postagens para administrador");
 
         List<Postagem> postagens = postagemRepository.findAllPostagensForAdmin();
+        User currentUser = getCurrentUser();
 
         logger.debug("Total de postagens encontradas: {}", postagens.size());
 
         return postagens.stream()
-                .map(DTOMapperUtil::mapToPostagemSummaryDto)
+                .map(postagem -> DTOMapperUtil.mapToPostagemSummaryDto(postagem, currentUser))
                 .collect(Collectors.toList());
     }
 

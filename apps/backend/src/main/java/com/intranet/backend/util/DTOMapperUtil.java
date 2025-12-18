@@ -51,49 +51,63 @@ public class DTOMapperUtil {
     /**
      * Mapeia uma postagem para um DTO de resumo de postagem
      */
-    public static PostagemSummaryDto mapToPostagemSummaryDto(Postagem postagem) {
+    public static PostagemSummaryDto mapToPostagemSummaryDto(Postagem postagem, User currentUser) {
         PostagemSummaryDto dto = new PostagemSummaryDto();
+
         dto.setId(postagem.getId());
         dto.setTitle(postagem.getTitle());
 
-        String rawText = postagem.getText() != null ? postagem.getText() : "";
-        String plainText = HTML_TAG_PATTERN.matcher(rawText).replaceAll("");
-        if (plainText.length() > 200) {
-            dto.setPreviewText(plainText.substring(0, 200) + "...");
+        // 1. Lógica do Preview Text (Remove HTML tags básicas e limita caracteres)
+        String cleanText = postagem.getText().replaceAll("<[^>]*>", "");
+        dto.setPreviewText(cleanText.length() > 200
+                ? cleanText.substring(0, 200) + "..."
+                : cleanText);
+
+        // 2. Lógica da Capa (Pega a primeira imagem se existir)
+        if (postagem.getImagens() != null && !postagem.getImagens().isEmpty()) {
+            dto.setCoverImageUrl(postagem.getImagens().get(0).getUrl());
+            dto.setHasImagens(true);
         } else {
-            dto.setPreviewText(plainText);
+            dto.setHasImagens(false);
         }
 
-        if (!postagem.getImagens().isEmpty()) {
-            dto.setCoverImageUrl(postagem.getImagens().get(0).getUrl());
-        }
+        dto.setHasAnexos(postagem.getAnexos() != null && !postagem.getAnexos().isEmpty());
+        dto.setHasTabelas(postagem.getTabelas() != null && !postagem.getTabelas().isEmpty());
 
         dto.setTipoDestino(postagem.getTipoDestino());
+        if (postagem.getConvenio() != null) dto.setConvenioName(postagem.getConvenio().getName());
+        if (postagem.getEquipe() != null) dto.setEquipeName(postagem.getEquipe().getNome());
 
-        // Definir IDs e nomes baseados no tipo de destino
-        if ("convenio".equals(postagem.getTipoDestino()) && postagem.getConvenio() != null) {
-            dto.setConvenioId(postagem.getConvenio().getId());
-            dto.setConvenioName(postagem.getConvenio().getName());
-        } else if ("equipe".equals(postagem.getTipoDestino()) && postagem.getEquipe() != null) {
-            dto.setEquipeId(postagem.getEquipe().getId());
-            dto.setEquipeName(postagem.getEquipe().getNome());
+        if (postagem.getCreatedBy() != null) {
+            dto.setCreatedByName(postagem.getCreatedBy().getFullName());
+            dto.setCreatedByProfileImage(postagem.getCreatedBy().getProfileImage());
         }
 
-        dto.setCreatedById(postagem.getCreatedBy().getId());
-        dto.setCreatedByName(postagem.getCreatedBy().getFullName());
-        dto.setCreatedByProfileImage(postagem.getCreatedBy().getProfileImage());
         dto.setCreatedAt(postagem.getCreatedAt());
-        dto.setHasImagens(!postagem.getImagens().isEmpty());
-        dto.setHasAnexos(!postagem.getAnexos().isEmpty());
-        dto.setHasTabelas(!postagem.getTabelas().isEmpty());
+        dto.setCategoria(postagem.getCategoria().name());
+        dto.setPinned(postagem.isPinned());
+        dto.setViewsCount(postagem.getViewsCount());
+
+        // 3. Contadores
+        dto.setLikesCount(postagem.getReacoes() != null ? postagem.getReacoes().size() : 0);
+        dto.setComentariosCount(postagem.getComentarios() != null ? postagem.getComentarios().size() : 0);
+
+        // 4. Verificar se usuário curtiu
+        boolean liked = false;
+        if (postagem.getReacoes() != null && currentUser != null) {
+            liked = postagem.getReacoes().stream()
+                    .anyMatch(r -> r.getUser().getId().equals(currentUser.getId()));
+        }
+        dto.setLikedByCurrentUser(liked);
+
         return dto;
     }
 
     /**
      * Mapeia uma página de postagens para uma página de DTOs de resumo de postagem
      */
-    public static Page<PostagemSummaryDto> mapToPostagemSummaryDtoPage(Page<Postagem> page) {
-        return page.map(DTOMapperUtil::mapToPostagemSummaryDto);
+    public static Page<PostagemSummaryDto> mapToPostagemSummaryDtoPage(Page<Postagem> page, User currentUser) {
+        return page.map(postagem -> mapToPostagemSummaryDto(postagem, currentUser));
     }
 
     /**
