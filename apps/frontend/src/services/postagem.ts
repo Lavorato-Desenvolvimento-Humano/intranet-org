@@ -20,6 +20,27 @@ export interface PostagemDto {
   imagens: ImagemDto[];
   anexos: AnexoDto[];
   tabelas: TabelaPostagemDto[];
+  categoria: PostagemCategoria;
+  pinned: boolean;
+  viewsCount: number;
+  likesCount: number;
+  likedByCurrentUser: boolean;
+  comentarios?: ComentarioDto[];
+}
+
+export type PostagemCategoria =
+  | "AVISO"
+  | "MANUAL"
+  | "ANUNCIO"
+  | "CONQUISTA"
+  | "GERAL";
+
+export interface ComentarioDto {
+  id: string;
+  text: string;
+  userName: string;
+  userProfileImage?: string;
+  createdAt: string;
 }
 
 export interface PostagemSummaryDto {

@@ -4,6 +4,7 @@ import com.intranet.backend.model.Postagem;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -47,6 +48,13 @@ public interface PostagemRepository extends JpaRepository<Postagem, UUID> {
 
     List<Postagem> findByTipoDestinoOrderByCreatedAtDesc(String tipoDestino);
 
+    @Query("SELECT p FROM Postagem p WHERE " +
+            "(p.tipoDestino IN ('geral', 'convenio') OR " +
+            "(p.tipoDestino = 'equipe' AND p.equipe.id IN " +
+            "(SELECT ue.equipe.id FROM UserEquipe ue WHERE ue.user.id = :userId))) " +
+            "ORDER BY p.isPinned DESC, p.createdAt DESC")
+    List<Postagem> findVisibleToUserOrderByPinnedAndDate(@Param("userId") UUID userId);
+
     /**
      * Busca TODAS as postagens para administradores (sem restrições de visibilidade)
      * Inclui postagens de equipes, convênios e gerais
@@ -57,6 +65,10 @@ public interface PostagemRepository extends JpaRepository<Postagem, UUID> {
             "LEFT JOIN FETCH p.createdBy " +
             "ORDER BY p.createdAt DESC")
     List<Postagem> findAllPostagensForAdmin();
+
+    @Modifying
+    @Query("UPDATE Postagem p SET p.viewsCount = p.viewsCount + 1 WHERE p.id = :id")
+    void incrementViews(@Param("id") UUID id);
 }
 
 

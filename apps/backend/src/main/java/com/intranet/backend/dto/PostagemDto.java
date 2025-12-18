@@ -20,6 +20,12 @@ public class PostagemDto {
     private String convenioName; // Pode ser null dependendo do tipoDestino
     private UUID equipeId; // Pode ser null dependendo do tipoDestino
     private String equipeName; // Pode ser null dependendo do tipoDestino
+    private String categoria; // Enum como String
+    private boolean pinned;
+    private long viewsCount;
+    private long likesCount;
+    private boolean likedByCurrentUser;
+    private List<PostagemComentarioDto> comentarios;
     private UUID createdById;
     private String createdByName;
     private LocalDateTime createdAt;

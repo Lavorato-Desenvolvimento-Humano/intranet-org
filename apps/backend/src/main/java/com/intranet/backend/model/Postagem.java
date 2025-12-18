@@ -34,6 +34,22 @@ public class Postagem {
     @Column(name = "tipo_destino", nullable = false)
     private String tipoDestino = "convenio"; // Valores: geral, equipe, convenio
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "categoria", length = 20)
+    private PostagemCategoria categoria = PostagemCategoria.GERAL;
+
+    @Column(name = "is_pinned", nullable = false)
+    private boolean isPinned = false;
+
+    @Column(name = "views_count", nullable = false)
+    private long viewsCount = 0;
+
+    @OneToMany(mappedBy = "postagem", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PostagemComentario> comentarios = new ArrayList<>();
+
+    @OneToMany(mappedBy = "postagem", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<PostagemReacao> reacoes = new HashSet<>();
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "equipe_id")
     private Equipe equipe;

@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -19,12 +20,15 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Arrays;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
+import static com.intranet.backend.util.DTOMapperUtil.mapToComentarioDto;
 
 @Service
 @RequiredArgsConstructor
@@ -37,9 +41,10 @@ public class PostagemServiceImpl implements PostagemService {
     private final UserRepository userRepository;
     private final ImagemRepository imagemRepository;
     private final AnexoRepository anexoRepository;
-    private final TabelaPostagemRepository tabelaPostagemRepository;
     private final FileStorageService fileStorageService;
     private final EquipeRepository equipeRepository;
+    private final PostagemReacaoRepository reacaoRepository;
+    private final PostagemComentarioRepository comentarioRepository;
 
     @Override
     public Page<PostagemSummaryDto> getAllPostagens(Pageable pageable) {
@@ -280,6 +285,51 @@ public class PostagemServiceImpl implements PostagemService {
         // A exclusão da postagem vai cascatear para imagens, anexos e tabelas
         postagemRepository.delete(postagem);
         logger.info("Postagem excluída com sucesso. ID: {}", id);
+    }
+
+    @Transactional
+    @Override
+    public void toggleLike(UUID postagemId) {
+        User currentUser = getCurrentUser();
+        Postagem postagem = postagemRepository.findById(postagemId)
+                .orElseThrow(() -> new ResourceNotFoundException("Postagem não encontrada"));
+
+        Optional<PostagemReacao> existingReaction = reacaoRepository.findByPostagemAndUser(postagem, currentUser);
+
+        if (existingReaction.isPresent()) {
+            reacaoRepository.delete(existingReaction.get());
+        } else {
+            PostagemReacao reacao = new PostagemReacao();
+            reacao.setPostagem(postagem);
+            reacao.setUser(currentUser);
+            reacaoRepository.save(reacao);
+        }
+    }
+
+    @Transactional
+    @Override
+    public PostagemComentarioDto addComment(UUID postagemId, String text) {
+        User currentUser = getCurrentUser();
+        Postagem postagem = postagemRepository.findById(postagemId)
+                .orElseThrow(() -> new ResourceNotFoundException("Postagem não encontrada"));
+
+        PostagemComentario comentario = new PostagemComentario();
+        comentario.setPostagem(postagem);
+        comentario.setUser(currentUser);
+        comentario.setText(text);
+
+        PostagemComentario saved = comentarioRepository.save(comentario);
+
+        // Notificar autor e participantes
+        // ... lógica de notificação
+
+        return mapToComentarioDto(saved);
+    }
+
+    @Transactional
+    @Override
+    public void incrementViewCount(UUID postagemId) {
+        postagemRepository.incrementViews(postagemId); // Idealmente feito via Query nativa/JPQL para performance
     }
 
     /**

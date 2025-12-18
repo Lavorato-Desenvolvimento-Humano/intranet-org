@@ -212,4 +212,16 @@ public class DTOMapperUtil {
 
         return url;
     }
+
+    public static PostagemComentarioDto mapToComentarioDto(PostagemComentario postagemComentario) {
+        PostagemComentarioDto dto = new PostagemComentarioDto();
+        dto.setId(postagemComentario.getId());
+        dto.setText(postagemComentario.getText());
+        dto.setUserId(postagemComentario.getUser().getId());
+        dto.setUserName(postagemComentario.getUser().getFullName());
+        dto.setUserProfileImage(postagemComentario.getUser().getProfileImage());
+        dto.setCreatedAt(postagemComentario.getCreatedAt());
+
+        return dto;
+    }
 }

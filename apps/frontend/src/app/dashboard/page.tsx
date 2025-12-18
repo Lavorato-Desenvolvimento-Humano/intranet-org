@@ -120,10 +120,6 @@ export default function DashboardPage() {
                 <p className="text-xs text-gray-500 uppercase tracking-wide font-medium mt-1">
                   {user?.roles?.[0]?.replace("ROLE_", "") || "Colaborador"}
                 </p>
-
-                {/* Removido estatísticas estáticas (Tarefas/Tickets) 
-                  pois não há endpoint conectado neste componente ainda.
-                */}
               </div>
             </div>
 
@@ -184,7 +180,7 @@ export default function DashboardPage() {
               <QuickAccessCard
                 icon={FileText}
                 label="Novo Relatório"
-                description="Criar relatório médico ou administrativo"
+                description="Criar relatório administrativo"
                 colorClass="text-blue-600 bg-blue-50"
                 onClick={() => router.push("/relatorios/novo")}
               />
