@@ -2,7 +2,10 @@ package com.intranet.backend.util;
 
 import com.intranet.backend.dto.*;
 import com.intranet.backend.model.*;
+import com.intranet.backend.repository.UserRepository;
 import org.springframework.data.domain.Page;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.List;
 import java.util.regex.Pattern;
@@ -13,6 +16,8 @@ import java.util.stream.Collectors;
  * Reduz a duplicação de código e centraliza a lógica de mapeamento
  */
 public class DTOMapperUtil {
+
+    private static UserRepository userRepository;
 
     private static final Pattern HTML_TAG_PATTERN = Pattern.compile("<[^>]*>");
 
@@ -113,7 +118,8 @@ public class DTOMapperUtil {
     /**
      * Mapeia uma postagem para um DTO de postagem completo
      */
-    public static PostagemDto mapToPostagemDto(Postagem postagem) {
+    public static PostagemDto mapToPostagemDto(Postagem postagem, User currentUser) {
+        currentUser = getCurrentUser();
         PostagemDto dto = new PostagemDto();
         dto.setId(postagem.getId());
         dto.setTitle(postagem.getTitle());
@@ -135,6 +141,30 @@ public class DTOMapperUtil {
         dto.setCreatedAt(postagem.getCreatedAt());
         dto.setUpdatedAt(postagem.getUpdatedAt());
 
+        // 1. Mapear Comentários
+        if (postagem.getComentarios() != null) {
+            List<PostagemComentarioDto> comentariosDto = postagem.getComentarios().stream()
+                    .map(DTOMapperUtil::mapToComentarioDto)
+                    .collect(Collectors.toList());
+            dto.setComentarios(comentariosDto);
+        } else {
+            dto.setComentarios(List.of());
+        }
+
+        // 2. Mapear Contagem de Likes
+        dto.setLikesCount(postagem.getReacoes() != null ? postagem.getReacoes().size() : 0);
+        dto.setViewsCount(postagem.getViewsCount());
+        dto.setPinned(postagem.isPinned());
+        dto.setCategoria(postagem.getCategoria() != null ? postagem.getCategoria().name() : null);
+
+        // 3. Verificar se usuário atual curtiu
+        boolean liked = false;
+        if (postagem.getReacoes() != null && currentUser != null) {
+            liked = postagem.getReacoes().stream()
+                    .anyMatch(r -> r.getUser().getId().equals(currentUser.getId()));
+        }
+        dto.setLikedByCurrentUser(liked);
+
         // Mapear imagens, anexos e tabelas como antes
         List<ImagemDto> imagemDtos = postagem.getImagens().stream()
                 .map(DTOMapperUtil::mapToImagemDto)
@@ -154,6 +184,13 @@ public class DTOMapperUtil {
         return dto;
     }
 
+    private static User getCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUserEmail = authentication.getName();
+
+        return userRepository.findByEmail(currentUserEmail)
+                .orElseThrow(() -> new IllegalStateException("Usuário autenticado não encontrado no sistema"));
+    }
 
     /**
      * Mapeia uma imagem para um DTO de imagem

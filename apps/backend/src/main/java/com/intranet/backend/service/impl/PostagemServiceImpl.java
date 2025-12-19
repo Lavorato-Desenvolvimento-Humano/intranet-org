@@ -113,7 +113,9 @@ public class PostagemServiceImpl implements PostagemService {
             throw new ResourceNotFoundException("Postagem não encontrada com ID: " + id);
         }
 
-        return DTOMapperUtil.mapToPostagemDto(postagem);
+        User currentUser = getCurrentUser();
+
+        return DTOMapperUtil.mapToPostagemDto(postagem, currentUser);
     }
 
     @Override
@@ -168,7 +170,7 @@ public class PostagemServiceImpl implements PostagemService {
 
         associarImagensTemporarias(savedPostagem, postagemCreateDto.getText());
 
-        return DTOMapperUtil.mapToPostagemDto(savedPostagem);
+        return DTOMapperUtil.mapToPostagemDto(savedPostagem, currentUser);
     }
 
     @Override
@@ -232,7 +234,7 @@ public class PostagemServiceImpl implements PostagemService {
 
         associarImagensTemporarias(updatedPostagem, postagemUpdateDto.getText());
 
-        return DTOMapperUtil.mapToPostagemDto(updatedPostagem);
+        return DTOMapperUtil.mapToPostagemDto(updatedPostagem, currentUser);
     }
 
     /**
