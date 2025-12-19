@@ -7,16 +7,12 @@ import {
   Users,
   Building,
   MoreHorizontal,
-  Paperclip,
-  Table as TableIcon,
-  MessageSquare,
   ThumbsUp,
   Share2,
-  ChevronDown,
-  ChevronUp,
   Pin,
   Eye,
   Send,
+  MessageSquare,
 } from "lucide-react";
 import ProfileAvatar from "@/components/profile/profile-avatar";
 import postagemService, {
@@ -45,6 +41,11 @@ export function PostCard({
   const [showComments, setShowComments] = useState(false);
   const [commentText, setCommentText] = useState("");
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+
+  // Estado para controlar a orientação da imagem
+  const [imageOrientation, setImageOrientation] = useState<
+    "landscape" | "portrait"
+  >("landscape");
 
   // Mapeamento de Cores por Categoria
   const getCategoryStyle = (categoria: PostagemCategoria) => {
@@ -91,12 +92,21 @@ export function PostCard({
       toastUtil.success("Comentário enviado!");
       setCommentText("");
       setShowComments(false);
-      // Idealmente, redirecionaria para o detalhe ou recarregaria os comentários
-      onClick(); // Abre a postagem completa para ver o novo comentário
+      onClick(); // Abre a postagem completa
     } catch (error) {
       toastUtil.error("Erro ao enviar comentário.");
     } finally {
       setIsSubmittingComment(false);
+    }
+  };
+
+  // Função para detectar orientação da imagem
+  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const { naturalWidth, naturalHeight } = e.currentTarget;
+    if (naturalHeight > naturalWidth) {
+      setImageOrientation("portrait");
+    } else {
+      setImageOrientation("landscape");
     }
   };
 
@@ -206,7 +216,8 @@ export function PostCard({
         <div className="relative">
           <div
             className={cn(
-              "text-sm text-gray-700 prose prose-sm max-w-none",
+              // Adicionado whitespace-pre-wrap para respeitar quebras de linha
+              "text-sm text-gray-700 prose prose-sm max-w-none whitespace-pre-wrap",
               !isExpanded && "line-clamp-4"
             )}
             dangerouslySetInnerHTML={{
@@ -230,7 +241,11 @@ export function PostCard({
       {postagem.coverImageUrl && (
         <div
           onClick={onClick}
-          className="w-full bg-gray-50 cursor-pointer overflow-hidden border-y border-gray-100 max-h-[400px]">
+          className={cn(
+            "w-full bg-gray-50 cursor-pointer overflow-hidden border-y border-gray-100 flex items-center justify-center transition-all duration-300",
+            // Ajuste dinâmico de altura baseado na orientação
+            imageOrientation === "portrait" ? "h-[400px]" : "h-[250px]"
+          )}>
           <img
             src={
               postagem.coverImageUrl.startsWith("http")
@@ -238,7 +253,14 @@ export function PostCard({
                 : `/api${postagem.coverImageUrl}`
             }
             alt="Capa"
-            className="w-full h-full object-cover object-center hover:scale-105 transition-transform duration-700"
+            onLoad={handleImageLoad}
+            className={cn(
+              "w-full h-full object-center hover:scale-105 transition-transform duration-700",
+              // Object-fit dinâmico: contain para retrato (vê tudo), cover para paisagem (preenche)
+              imageOrientation === "portrait"
+                ? "object-contain"
+                : "object-cover"
+            )}
           />
         </div>
       )}
