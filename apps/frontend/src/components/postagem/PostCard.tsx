@@ -232,11 +232,10 @@ export function PostCard({
           onClick={onClick}
           className="w-full bg-gray-50 cursor-pointer overflow-hidden border-y border-gray-100 max-h-[400px]">
           <img
-            src={
-              postagem.coverImageUrl.startsWith("http")
-                ? postagem.coverImageUrl
-                : `/api${postagem.coverImageUrl}`
-            }
+            // Se sua URL no backend já vier completa (ex: bucket S3) ou relativa (/uploads/...),
+            // garanta que o componente Image do Next ou a tag img lidem bem.
+            // Sugestão: Deixe o backend enviar a URL relativa e o frontend prefixar se necessário.
+            src={postagem.coverImageUrl}
             alt="Capa"
             className="w-full h-full object-cover object-center hover:scale-105 transition-transform duration-700"
           />

@@ -12,21 +12,25 @@ export interface PostagemDto {
   convenioName?: string;
   equipeId?: string;
   equipeName?: string;
+
+  categoria: PostagemCategoria;
+  pinned: boolean;
+
+  viewsCount: number;
+  likesCount: number;
+  likedByCurrentUser: boolean;
+
+  comentarios: ComentarioDto[];
+
   createdById: string;
   createdByName: string;
   createdByProfileImage?: string;
   createdAt: string;
   updatedAt: string;
+
   imagens: ImagemDto[];
   anexos: AnexoDto[];
   tabelas: TabelaPostagemDto[];
-  categoria: PostagemCategoria;
-  pinned: boolean;
-  viewsCount: number;
-  likesCount: number;
-  likedByCurrentUser: boolean;
-  comentarios?: ComentarioDto[];
-  comentariosCount?: number;
 }
 
 export type PostagemCategoria =
