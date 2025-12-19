@@ -223,11 +223,15 @@ export function PostCard({
         <div className="relative">
           <div
             className={cn(
-              "text-sm text-gray-700 prose prose-sm max-w-none",
+              "text-sm text-gray-700 prose prose-sm max-w-none break-words",
+              // Estilos para imagens inline - igual ao ContentViewer
+              "prose-img:rounded-lg prose-img:shadow-sm prose-img:my-3 prose-img:max-w-full prose-img:h-auto",
+              // Estilos para parágrafos e links
+              "prose-p:my-2 prose-p:leading-relaxed prose-a:text-primary hover:prose-a:underline",
+              // Preservar quebras de linha e espaços
+              "[&_p]:whitespace-pre-wrap [&_br]:block",
               !isExpanded && "line-clamp-4"
             )}
-            // APLICAÇÃO EXPLÍCITA DE PRE-WRAP PARA RESPEITAR QUEBRAS DE LINHA
-            style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}
             dangerouslySetInnerHTML={{
               __html: postagem.previewText || "Sem conteúdo.",
             }}
