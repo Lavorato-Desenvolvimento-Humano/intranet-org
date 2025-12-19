@@ -138,9 +138,7 @@ public class ConvenioServiceImpl implements ConvenioService {
             PostagemSummaryDto dto = new PostagemSummaryDto();
             dto.setId(postagem.getId());
             dto.setTitle(postagem.getTitle());
-            dto.setConvenioId(postagem.getConvenio().getId());
             dto.setConvenioName(postagem.getConvenio().getName());
-            dto.setCreatedById(postagem.getCreatedBy().getId());
             dto.setCreatedByName(postagem.getCreatedBy().getFullName());
             dto.setCreatedAt(postagem.getCreatedAt());
             dto.setHasImagens(!postagem.getImagens().isEmpty());
