@@ -157,11 +157,12 @@ public class DTOMapperUtil {
         dto.setPinned(postagem.isPinned());
         dto.setCategoria(postagem.getCategoria() != null ? postagem.getCategoria().name() : null);
 
-        // 3. Verificar se usuário atual curtiu
+        final User userForCheck = currentUser;
+
         boolean liked = false;
-        if (postagem.getReacoes() != null && currentUser != null) {
+        if (postagem.getReacoes() != null && userForCheck != null) {
             liked = postagem.getReacoes().stream()
-                    .anyMatch(r -> r.getUser().getId().equals(currentUser.getId()));
+                    .anyMatch(r -> r.getUser().getId().equals(userForCheck.getId()));
         }
         dto.setLikedByCurrentUser(liked);
 
