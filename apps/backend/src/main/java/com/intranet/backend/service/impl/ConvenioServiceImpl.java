@@ -7,13 +7,18 @@ import com.intranet.backend.exception.ResourceNotFoundException;
 import com.intranet.backend.model.Convenio;
 import com.intranet.backend.model.ConvenioFichaPdfConfig;
 import com.intranet.backend.model.Postagem;
+import com.intranet.backend.model.User;
 import com.intranet.backend.repository.ConvenioFichaPdfConfigRepository;
 import com.intranet.backend.repository.ConvenioRepository;
 import com.intranet.backend.repository.PostagemRepository;
+import com.intranet.backend.repository.UserRepository;
 import com.intranet.backend.service.ConvenioService;
+import com.intranet.backend.util.DTOMapperUtil;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +36,7 @@ public class ConvenioServiceImpl implements ConvenioService {
     private final ConvenioRepository convenioRepository;
     private final PostagemRepository postagemRepository;
     private final ConvenioFichaPdfConfigRepository fichaPdfConfigRepository;
+    private final UserRepository userRepository;
 
     @Override
     public List<ConvenioDto> getAllConvenios() {
@@ -134,18 +140,11 @@ public class ConvenioServiceImpl implements ConvenioService {
 
         List<Postagem> postagens = postagemRepository.findByConvenioIdOrderByCreatedAtDesc(convenioId);
 
-        return postagens.stream().map(postagem -> {
-            PostagemSummaryDto dto = new PostagemSummaryDto();
-            dto.setId(postagem.getId());
-            dto.setTitle(postagem.getTitle());
-            dto.setConvenioName(postagem.getConvenio().getName());
-            dto.setCreatedByName(postagem.getCreatedBy().getFullName());
-            dto.setCreatedAt(postagem.getCreatedAt());
-            dto.setHasImagens(!postagem.getImagens().isEmpty());
-            dto.setHasAnexos(!postagem.getAnexos().isEmpty());
-            dto.setHasTabelas(!postagem.getTabelas().isEmpty());
-            return dto;
-        }).collect(Collectors.toList());
+        User currentUser = getCurrentUser();
+
+        return postagens.stream()
+                .map(postagem -> DTOMapperUtil.mapToPostagemSummaryDto(postagem, currentUser))
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -176,5 +175,13 @@ public class ConvenioServiceImpl implements ConvenioService {
         dto.setPdfHabilitado(pdfHabilitado);
 
         return dto;
+    }
+
+    private User getCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUserEmail = authentication.getName();
+
+        return userRepository.findByEmail(currentUserEmail)
+                .orElseThrow(() -> new IllegalStateException("Usuário autenticado não encontrado no sistema"));
     }
 }
