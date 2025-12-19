@@ -1,7 +1,7 @@
 // apps/frontend/src/components/postagem/PostCard.tsx
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Globe,
   Users,
@@ -42,10 +42,12 @@ export function PostCard({
   const [commentText, setCommentText] = useState("");
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
 
-  // Estado para controlar a orientação da imagem
+  // Estado para controlar o carregamento e orientação da imagem
+  const [imageLoaded, setImageLoaded] = useState(false);
   const [imageOrientation, setImageOrientation] = useState<
     "landscape" | "portrait"
   >("landscape");
+  const imageRef = useRef<HTMLImageElement>(null);
 
   // Mapeamento de Cores por Categoria
   const getCategoryStyle = (categoria: PostagemCategoria) => {
@@ -68,14 +70,12 @@ export function PostCard({
     const previousLiked = liked;
     const previousCount = likesCount;
 
-    // Otimisticamente atualiza a UI
     setLiked(!liked);
     setLikesCount(liked ? likesCount - 1 : likesCount + 1);
 
     try {
       await postagemService.toggleLike(postagem.id);
     } catch (error) {
-      // Reverte em caso de erro
       setLiked(previousLiked);
       setLikesCount(previousCount);
       toastUtil.error("Erro ao curtir a publicação.");
@@ -92,7 +92,7 @@ export function PostCard({
       toastUtil.success("Comentário enviado!");
       setCommentText("");
       setShowComments(false);
-      onClick(); // Abre a postagem completa
+      onClick();
     } catch (error) {
       toastUtil.error("Erro ao enviar comentário.");
     } finally {
@@ -101,14 +101,21 @@ export function PostCard({
   };
 
   // Função para detectar orientação da imagem
-  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    const { naturalWidth, naturalHeight } = e.currentTarget;
-    if (naturalHeight > naturalWidth) {
+  const checkImageOrientation = (img: HTMLImageElement) => {
+    if (img.naturalHeight > img.naturalWidth) {
       setImageOrientation("portrait");
     } else {
       setImageOrientation("landscape");
     }
+    setImageLoaded(true);
   };
+
+  // Efeito para verificar imagens em cache que não disparam onLoad
+  useEffect(() => {
+    if (imageRef.current && imageRef.current.complete) {
+      checkImageOrientation(imageRef.current);
+    }
+  }, []);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -216,10 +223,11 @@ export function PostCard({
         <div className="relative">
           <div
             className={cn(
-              // Adicionado whitespace-pre-wrap para respeitar quebras de linha
-              "text-sm text-gray-700 prose prose-sm max-w-none whitespace-pre-wrap",
+              "text-sm text-gray-700 prose prose-sm max-w-none",
               !isExpanded && "line-clamp-4"
             )}
+            // APLICAÇÃO EXPLÍCITA DE PRE-WRAP PARA RESPEITAR QUEBRAS DE LINHA
+            style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}
             dangerouslySetInnerHTML={{
               __html: postagem.previewText || "Sem conteúdo.",
             }}
@@ -242,21 +250,27 @@ export function PostCard({
         <div
           onClick={onClick}
           className={cn(
-            "w-full bg-gray-50 cursor-pointer overflow-hidden border-y border-gray-100 flex items-center justify-center transition-all duration-300",
-            // Ajuste dinâmico de altura baseado na orientação
+            "w-full bg-gray-50 cursor-pointer overflow-hidden border-y border-gray-100 flex items-center justify-center transition-all duration-500 ease-in-out relative",
+            // Altura dinâmica baseada na orientação
             imageOrientation === "portrait" ? "h-[400px]" : "h-[250px]"
           )}>
           <img
+            ref={imageRef}
             src={
               postagem.coverImageUrl.startsWith("http")
                 ? postagem.coverImageUrl
                 : `/api${postagem.coverImageUrl}`
             }
             alt="Capa"
-            onLoad={handleImageLoad}
+            loading="lazy"
+            onLoad={(e) => checkImageOrientation(e.currentTarget)}
             className={cn(
-              "w-full h-full object-center hover:scale-105 transition-transform duration-700",
-              // Object-fit dinâmico: contain para retrato (vê tudo), cover para paisagem (preenche)
+              "w-full h-full object-center transition-all duration-700",
+              // Opacidade para evitar "pulo" visual enquanto carrega
+              imageLoaded ? "opacity-100" : "opacity-0",
+              // Hover scale apenas quando carregado
+              imageLoaded && "hover:scale-105",
+              // Object-fit dinâmico
               imageOrientation === "portrait"
                 ? "object-contain"
                 : "object-cover"
