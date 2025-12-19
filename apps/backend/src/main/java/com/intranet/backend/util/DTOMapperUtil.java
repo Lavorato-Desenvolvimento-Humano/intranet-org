@@ -17,8 +17,6 @@ import java.util.stream.Collectors;
  */
 public class DTOMapperUtil {
 
-    private static UserRepository userRepository;
-
     private static final Pattern HTML_TAG_PATTERN = Pattern.compile("<[^>]*>");
 
     /**
@@ -119,7 +117,6 @@ public class DTOMapperUtil {
      * Mapeia uma postagem para um DTO de postagem completo
      */
     public static PostagemDto mapToPostagemDto(Postagem postagem, User currentUser) {
-        currentUser = getCurrentUser();
         PostagemDto dto = new PostagemDto();
         dto.setId(postagem.getId());
         dto.setTitle(postagem.getTitle());
@@ -183,14 +180,6 @@ public class DTOMapperUtil {
         dto.setTabelas(tabelaDtos);
 
         return dto;
-    }
-
-    private static User getCurrentUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String currentUserEmail = authentication.getName();
-
-        return userRepository.findByEmail(currentUserEmail)
-                .orElseThrow(() -> new IllegalStateException("Usuário autenticado não encontrado no sistema"));
     }
 
     /**
