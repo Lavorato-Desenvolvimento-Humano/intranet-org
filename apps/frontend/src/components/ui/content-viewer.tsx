@@ -8,6 +8,26 @@ interface ContentViewerProps {
 }
 
 /**
+ * Processa o HTML para corrigir URLs de imagens que precisam do prefixo /api
+ */
+const processContentHtml = (html: string): string => {
+  if (!html) return "";
+
+  return html.replace(
+    /<img([^>]*?)src=["']([^"']+)["']/gi,
+    (match, attrs, src) => {
+      if (src.startsWith("http") || src.startsWith("/api")) {
+        return match;
+      }
+      if (src.startsWith("/")) {
+        return `<img${attrs}src="/api${src}"`;
+      }
+      return `<img${attrs}src="/api/${src}"`;
+    }
+  );
+};
+
+/**
  * ContentViewer component para renderizar conteúdo HTML de forma segura com estilização adequada
  * Preserva quebras de linha e espaçamento
  */
@@ -25,7 +45,7 @@ const ContentViewer: React.FC<ContentViewerProps> = ({
         "[&_p]:whitespace-pre-wrap [&_br]:block",
         className
       )}
-      dangerouslySetInnerHTML={{ __html: content }}
+      dangerouslySetInnerHTML={{ __html: processContentHtml(content) }}
     />
   );
 };

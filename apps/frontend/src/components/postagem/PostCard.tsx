@@ -150,6 +150,28 @@ export function PostCard({
   const DestinoIcon = destino.icon;
   const isLongText = (postagem.previewText?.length || 0) > 280;
 
+  // Função para processar o HTML e corrigir URLs de imagens
+  const processContentHtml = (html: string | undefined): string => {
+    if (!html) return "Sem conteúdo.";
+
+    // Corrigir URLs de imagens que não começam com http ou /api
+    return html.replace(
+      /<img([^>]*?)src=["']([^"']+)["']/gi,
+      (match, attrs, src) => {
+        // Se já é URL absoluta ou já tem /api, mantém
+        if (src.startsWith("http") || src.startsWith("/api")) {
+          return match;
+        }
+        // Se começa com /, adiciona /api
+        if (src.startsWith("/")) {
+          return `<img${attrs}src="/api${src}"`;
+        }
+        // Caso contrário, adiciona /api/
+        return `<img${attrs}src="/api/${src}"`;
+      }
+    );
+  };
+
   return (
     <div
       className={cn(
@@ -233,7 +255,7 @@ export function PostCard({
               !isExpanded && "line-clamp-4"
             )}
             dangerouslySetInnerHTML={{
-              __html: postagem.previewText || "Sem conteúdo.",
+              __html: processContentHtml(postagem.previewText),
             }}
           />
           {isLongText && (
