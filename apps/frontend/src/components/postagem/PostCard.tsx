@@ -7,12 +7,16 @@ import {
   Users,
   Building,
   MoreHorizontal,
+  Paperclip,
+  Table as TableIcon,
+  MessageSquare,
   ThumbsUp,
   Share2,
+  ChevronDown,
+  ChevronUp,
   Pin,
   Eye,
   Send,
-  MessageSquare,
 } from "lucide-react";
 import ProfileAvatar from "@/components/profile/profile-avatar";
 import postagemService, {
@@ -42,31 +46,7 @@ export function PostCard({
   const [commentText, setCommentText] = useState("");
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
 
-  // Função auxiliar para resolver a URL da imagem
-  const getImageUrl = (url?: string) => {
-    if (!url) return undefined;
-    if (url.startsWith("http") || url.startsWith("data:")) return url;
-
-    // Detecta ambiente de desenvolvimento
-    const isDevelopment =
-      typeof window !== "undefined" && window.location.hostname === "localhost";
-
-    // Define a base da API
-    const apiBase = isDevelopment
-      ? process.env.NEXT_PUBLIC_API_URL || "http://localhost:8443"
-      : "";
-
-    // Se a URL começar com /uploads, precisamos adicionar /api antes
-    // Backend salva: /uploads/images/nome.jpg
-    // Endpoint acessível: /api/uploads/images/nome.jpg
-    if (url.startsWith("/uploads")) {
-      return `${apiBase}/api${url}`;
-    }
-
-    // Fallback genérico
-    return `${apiBase}/api/uploads/images/${url}`;
-  };
-
+  // Mapeamento de Cores por Categoria
   const getCategoryStyle = (categoria: PostagemCategoria) => {
     switch (categoria) {
       case "AVISO":
@@ -87,12 +67,14 @@ export function PostCard({
     const previousLiked = liked;
     const previousCount = likesCount;
 
+    // Otimisticamente atualiza a UI
     setLiked(!liked);
     setLikesCount(liked ? likesCount - 1 : likesCount + 1);
 
     try {
       await postagemService.toggleLike(postagem.id);
     } catch (error) {
+      // Reverte em caso de erro
       setLiked(previousLiked);
       setLikesCount(previousCount);
       toastUtil.error("Erro ao curtir a publicação.");
@@ -109,7 +91,8 @@ export function PostCard({
       toastUtil.success("Comentário enviado!");
       setCommentText("");
       setShowComments(false);
-      onClick();
+      // Idealmente, redirecionaria para o detalhe ou recarregaria os comentários
+      onClick(); // Abre a postagem completa para ver o novo comentário
     } catch (error) {
       toastUtil.error("Erro ao enviar comentário.");
     } finally {
@@ -153,7 +136,7 @@ export function PostCard({
   return (
     <div
       className={cn(
-        "bg-white rounded-xl shadow-sm border overflow-hidden hover:shadow-md transition-all duration-200 flex flex-col mb-6", // Alterado mb-4 para mb-6 para mais espaço entre cards
+        "bg-white rounded-xl shadow-sm border overflow-hidden hover:shadow-md transition-all duration-200 flex flex-col mb-4",
         postagem.pinned
           ? "border-l-4 border-l-yellow-400 border-gray-100"
           : "border-gray-100"
@@ -223,7 +206,7 @@ export function PostCard({
         <div className="relative">
           <div
             className={cn(
-              "text-sm text-gray-700 prose prose-sm max-w-none whitespace-pre-wrap", // Adicionado whitespace-pre-wrap para preservar quebras de linha se existirem
+              "text-sm text-gray-700 prose prose-sm max-w-none",
               !isExpanded && "line-clamp-4"
             )}
             dangerouslySetInnerHTML={{
@@ -249,7 +232,11 @@ export function PostCard({
           onClick={onClick}
           className="w-full bg-gray-50 cursor-pointer overflow-hidden border-y border-gray-100 max-h-[400px]">
           <img
-            src={getImageUrl(postagem.coverImageUrl)}
+            src={
+              postagem.coverImageUrl.startsWith("http")
+                ? postagem.coverImageUrl
+                : `/api${postagem.coverImageUrl}`
+            }
             alt="Capa"
             className="w-full h-full object-cover object-center hover:scale-105 transition-transform duration-700"
           />
@@ -282,8 +269,7 @@ export function PostCard({
 
       {/* ACTIONS FOOTER */}
       <div className="p-2">
-        {/* Adicionado gap-2 para separar os botões */}
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between">
           <button
             onClick={handleLike}
             className={cn(
