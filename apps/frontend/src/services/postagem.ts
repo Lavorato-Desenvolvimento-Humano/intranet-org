@@ -4,6 +4,7 @@ import logger from "@/utils/logger";
 import { isApiErrorResponse, getErrorMessage } from "@/types/errors";
 
 export interface PostagemDto {
+  coverImageUrl: string | null;
   id: string;
   title: string;
   text: string;

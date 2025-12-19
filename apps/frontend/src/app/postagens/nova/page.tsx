@@ -1,9 +1,8 @@
-// apps/frontend/src/app/postagens/nova/page.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Save, X } from "lucide-react";
+import { Save, X, LayoutTemplate, Eye } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Breadcrumb from "@/components/ui/breadcrumb";
 import { Loading } from "@/components/ui/loading";
@@ -13,13 +12,14 @@ import postagemService, {
   AnexoDto,
   ImagemDto,
   PostagemCreateDto,
+  PostagemSummaryDto,
 } from "@/services/postagem";
 import toastUtil from "@/utils/toast";
 import { CustomButton } from "@/components/ui/custom-button";
 import dynamic from "next/dynamic";
-import RichTextPreview from "@/components/ui/rich-text-preview";
 import ProtectedRoute from "@/components/layout/auth/ProtectedRoute";
 import equipeService, { EquipeDto } from "@/services/equipe";
+import { PostCard } from "@/components/postagem/PostCard"; // Importando o PostCard para o preview
 
 // Importando o editor melhorado com carregamento dinâmico
 const SimpleRichEditor = dynamic(
@@ -63,8 +63,6 @@ export default function NovaPostagemPage() {
     user?.roles?.includes("ROLE_ADMIN") || user?.roles?.includes("ADMIN");
   const isEditor =
     user?.roles?.includes("ROLE_EDITOR") || user?.roles?.includes("EDITOR");
-  const isUser =
-    user?.roles?.includes("ROLE_USER") || user?.roles?.includes("USER");
   const canCreatePostagem = isAdmin || isEditor;
 
   useEffect(() => {
@@ -99,7 +97,6 @@ export default function NovaPostagemPage() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Carregar dados em paralelo
         const [conveniosData, equipesData] = await Promise.all([
           convenioService.getAllConvenios(),
           equipeService.getAllEquipes(),
@@ -126,7 +123,55 @@ export default function NovaPostagemPage() {
     }
   }, [loading, canCreatePostagem, router]);
 
-  // Validar formulário
+  // Função auxiliar para extrair a primeira imagem do conteúdo HTML para o preview
+  const extractCoverImageFromContent = (htmlContent: string): string | null => {
+    if (!htmlContent) return null;
+    const imgRegex = /<img[^>]+src="([^">]+)"/;
+    const match = htmlContent.match(imgRegex);
+    return match ? match[1] : null;
+  };
+
+  // Gerar o objeto mock para o preview do PostCard
+  const getPreviewPostagem = (): PostagemSummaryDto => {
+    const coverImage = extractCoverImageFromContent(formData.text);
+
+    // Encontrar nomes para exibição
+    let convenioName = "";
+    let equipeName = "";
+
+    if (formData.tipoDestino === "convenio" && formData.convenioId) {
+      convenioName =
+        convenios.find((c) => c.id === formData.convenioId)?.name || "";
+    }
+
+    if (formData.tipoDestino === "equipe" && formData.equipeId) {
+      equipeName = equipes.find((e) => e.id === formData.equipeId)?.nome || "";
+    }
+
+    return {
+      id: "preview-id",
+      title: formData.title || "Título da Postagem",
+      previewText:
+        formData.text || "O conteúdo da sua postagem aparecerá aqui...",
+      coverImageUrl: coverImage || undefined,
+      createdByName: user?.fullName || "Seu Nome",
+      createdByProfileImage: user?.profileImage || undefined,
+      categoria: formData.categoria,
+      tipoDestino: formData.tipoDestino,
+      convenioName: convenioName,
+      equipeName: equipeName,
+      viewsCount: 0,
+      likesCount: 0,
+      comentariosCount: 0,
+      likedByCurrentUser: false,
+      pinned: formData.pinned ?? false,
+      createdAt: "",
+      hasImagens: formData.text.includes("<img"),
+      hasAnexos: formData.text.includes("<a"),
+      hasTabelas: formData.text.includes("<table"),
+    };
+  };
+
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
@@ -134,15 +179,12 @@ export default function NovaPostagemPage() {
       newErrors.title = "O título é obrigatório";
     } else if (formData.title.length < 3) {
       newErrors.title = "O título deve ter pelo menos 3 caracteres";
-    } else if (formData.title.length > 255) {
-      newErrors.title = "O título deve ter no máximo 255 caracteres";
     }
 
     if (!formData.text.trim()) {
       newErrors.text = "O conteúdo da postagem é obrigatório";
     }
 
-    // Validar campos específicos com base no tipo de destino selecionado
     switch (formData.tipoDestino) {
       case "convenio":
         if (!formData.convenioId) {
@@ -154,18 +196,12 @@ export default function NovaPostagemPage() {
           newErrors.equipeId = "Selecione uma equipe";
         }
         break;
-      case "geral":
-        // Tipo "geral" não precisa de validação adicional
-        break;
-      default:
-        newErrors.tipoDestino = "Tipo de destino inválido";
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  // Lidar com mudanças nos campos
   const handleChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
@@ -175,9 +211,7 @@ export default function NovaPostagemPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Lidar com mudanças no editor rico
   const handleEditorChange = (content: string) => {
-    // Garantir que as quebras de linha HTML sejam preservadas
     const processedContent = content
       .replace(/<p>\s*<\/p>/g, "<br />")
       .replace(/\n/g, "<br />");
@@ -185,69 +219,45 @@ export default function NovaPostagemPage() {
     setFormData((prev) => ({ ...prev, text: processedContent }));
   };
 
-  // Submeter formulário
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateForm()) {
+      toastUtil.error("Por favor, preencha todos os campos obrigatórios.");
       return;
     }
 
     setSubmitting(true);
     try {
-      // Criar a postagem
       const createdPostagem = await postagemService.createPostagem(formData);
 
-      // Arrays para armazenar as promessas de associação
       const associationPromises = [];
 
-      // Adicionar promessas para associar anexos temporários
       for (const anexo of tempUploads.attachments) {
         associationPromises.push(
           postagemService
             .associarAnexo(createdPostagem.id, anexo.id)
-            .catch((err) => {
-              console.error(`Erro ao associar anexo ${anexo.id}:`, err);
-              return null; // Continuar mesmo se um anexo falhar
-            })
+            .catch((err) => null)
         );
       }
 
-      // Adicionar promessas para associar imagens temporárias
       for (const imagem of tempUploads.images) {
         associationPromises.push(
           postagemService
             .associarImagem(createdPostagem.id, imagem.id)
-            .catch((err) => {
-              console.error(`Erro ao associar imagem ${imagem.id}:`, err);
-              return null; // Continuar mesmo se uma imagem falhar
-            })
+            .catch((err) => null)
         );
       }
 
-      // Aguardar todas as associações
       if (associationPromises.length > 0) {
         await Promise.allSettled(associationPromises);
       }
 
-      // Verificar e relatar quaisquer problemas
-      const totalAttachments =
-        tempUploads.attachments.length + tempUploads.images.length;
-      const successMessage =
-        totalAttachments > 0
-          ? `Postagem criada com sucesso! ${totalAttachments} arquivos associados.`
-          : "Postagem criada com sucesso!";
-
-      toastUtil.success(successMessage);
+      toastUtil.success("Postagem criada com sucesso!");
       router.push(`/postagens/${createdPostagem.id}`);
     } catch (err: any) {
       console.error("Erro ao criar postagem:", err);
-
-      if (err.response?.data?.message) {
-        toastUtil.error(err.response.data.message);
-      } else {
-        toastUtil.error("Erro ao criar postagem. Tente novamente mais tarde.");
-      }
+      toastUtil.error(err.response?.data?.message || "Erro ao criar postagem.");
     } finally {
       setSubmitting(false);
     }
@@ -269,7 +279,7 @@ export default function NovaPostagemPage() {
       <div className="min-h-screen bg-gray-50 flex flex-col">
         <Navbar />
 
-        <main className="flex-grow container mx-auto p-6">
+        <main className="flex-grow container mx-auto p-4 lg:p-8">
           <Breadcrumb
             items={[
               { label: "Convênios", href: "/convenios" },
@@ -278,272 +288,274 @@ export default function NovaPostagemPage() {
           />
 
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold text-gray-800">Nova Postagem</h1>
+            <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+              <LayoutTemplate className="text-primary" />
+              Nova Postagem
+            </h1>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md p-6">
-            {error && (
-              <div className="bg-red-50 text-red-700 p-4 rounded-md mb-4">
-                {error}
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit}>
-              <div className="mb-4">
-                <label
-                  htmlFor="title"
-                  className="block text-sm font-medium text-gray-700 mb-1">
-                  Título *
-                </label>
-                <input
-                  type="text"
-                  id="title"
-                  name="title"
-                  value={formData.title}
-                  onChange={handleChange}
-                  className={`w-full px-3 py-2 border rounded-md ${
-                    errors.title ? "border-red-500" : "border-gray-300"
-                  } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
-                  placeholder="Digite o título da postagem"
-                  disabled={submitting}
-                />
-                {errors.title && (
-                  <p className="mt-1 text-sm text-red-500">{errors.title}</p>
-                )}
-              </div>
-
-              <div className="mb-4">
-                <label
-                  htmlFor="tipoDestino"
-                  className="block text-sm font-medium text-gray-700 mb-1">
-                  Visibilidade da Postagem *
-                </label>
-                <select
-                  id="tipoDestino"
-                  name="tipoDestino"
-                  value={formData.tipoDestino}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                  disabled={submitting}>
-                  <option value="geral">Geral</option>
-                  <option value="equipe">Equipe específica</option>
-                  <option value="convenio">Convênio específico</option>
-                </select>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label
-                    htmlFor="categoria"
-                    className="block text-sm font-medium text-gray-700 mb-1">
-                    Categoria *
-                  </label>
-                  <select
-                    id="categoria"
-                    name="categoria"
-                    value={formData.categoria}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary"
-                    disabled={submitting}>
-                    <option value="GERAL">Geral</option>
-                    <option value="AVISO">Aviso Importante</option>
-                    <option value="MANUAL">Manual / Tutorial</option>
-                    <option value="CONQUISTA">
-                      Conquista / Reconhecimento
-                    </option>
-                    <option value="ANUNCIO">Anúncio</option>
-                  </select>
-                </div>
-
-                {/* Checkbox para fixar (apenas admin/editor) */}
-                {canCreatePostagem && (
-                  <div className="flex items-center mt-6">
-                    <input
-                      id="pinned"
-                      name="pinned"
-                      type="checkbox"
-                      checked={formData.pinned}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          pinned: e.target.checked,
-                        }))
-                      }
-                      className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                    />
-                    <label
-                      htmlFor="pinned"
-                      className="ml-2 block text-sm text-gray-900">
-                      Fixar no topo do feed (Destaque)
-                    </label>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* COLUNA DO FORMULÁRIO (2/3 da tela) */}
+            <div className="lg:col-span-2 space-y-6">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                {error && (
+                  <div className="bg-red-50 text-red-700 p-4 rounded-md mb-4 border border-red-100">
+                    {error}
                   </div>
                 )}
-              </div>
 
-              {/* Campo de seleção de convênio (mostrar apenas se tipoDestino for "convenio") */}
-              {formData.tipoDestino === "convenio" && (
-                <div className="mb-4">
-                  <label
-                    htmlFor="convenioId"
-                    className="block text-sm font-medium text-gray-700 mb-1">
-                    Convênio *
-                  </label>
-                  <select
-                    id="convenioId"
-                    name="convenioId"
-                    value={formData.convenioId}
-                    onChange={handleChange}
-                    className={`w-full px-3 py-2 border rounded-md ${
-                      errors.convenioId ? "border-red-500" : "border-gray-300"
-                    } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
-                    disabled={submitting}>
-                    <option value="">Selecione um convênio</option>
-                    {convenios.map((convenio) => (
-                      <option key={convenio.id} value={convenio.id}>
-                        {convenio.name}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.convenioId && (
-                    <p className="mt-1 text-sm text-red-500">
-                      {errors.convenioId}
-                    </p>
+                <form onSubmit={handleSubmit}>
+                  {/* Título */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Título da Postagem *
+                    </label>
+                    <input
+                      type="text"
+                      name="title"
+                      value={formData.title}
+                      onChange={handleChange}
+                      className={`w-full px-4 py-2.5 border rounded-lg transition-all ${
+                        errors.title
+                          ? "border-red-300 focus:ring-red-200"
+                          : "border-gray-300 focus:border-primary focus:ring-4 focus:ring-blue-50"
+                      } outline-none`}
+                      placeholder="Ex: Novo Protocolo de Atendimento..."
+                      disabled={submitting}
+                    />
+                    {errors.title && (
+                      <p className="mt-1 text-xs text-red-500 font-medium">
+                        {errors.title}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Configurações de Destino e Categoria em Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Visibilidade *
+                      </label>
+                      <select
+                        name="tipoDestino"
+                        value={formData.tipoDestino}
+                        onChange={handleChange}
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-primary focus:ring-4 focus:ring-blue-50 outline-none bg-white"
+                        disabled={submitting}>
+                        <option value="geral">Geral (Todos)</option>
+                        <option value="equipe">Equipe Específica</option>
+                        <option value="convenio">Convênio Específico</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Categoria *
+                      </label>
+                      <select
+                        name="categoria"
+                        value={formData.categoria}
+                        onChange={handleChange}
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-primary focus:ring-4 focus:ring-blue-50 outline-none bg-white"
+                        disabled={submitting}>
+                        <option value="GERAL">Geral</option>
+                        <option value="AVISO">Aviso Importante</option>
+                        <option value="MANUAL">Manual / Tutorial</option>
+                        <option value="CONQUISTA">Conquista</option>
+                        <option value="ANUNCIO">Anúncio</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Seleção Condicional de Convênio/Equipe */}
+                  {formData.tipoDestino === "convenio" && (
+                    <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
+                      <label className="block text-sm font-semibold text-blue-800 mb-2">
+                        Selecione o Convênio *
+                      </label>
+                      <select
+                        name="convenioId"
+                        value={formData.convenioId}
+                        onChange={handleChange}
+                        className={`w-full px-4 py-2.5 border rounded-lg bg-white ${
+                          errors.convenioId
+                            ? "border-red-300"
+                            : "border-blue-200"
+                        }`}
+                        disabled={submitting}>
+                        <option value="">Selecione...</option>
+                        {convenios.map((convenio) => (
+                          <option key={convenio.id} value={convenio.id}>
+                            {convenio.name}
+                          </option>
+                        ))}
+                      </select>
+                      {errors.convenioId && (
+                        <p className="mt-1 text-xs text-red-500">
+                          {errors.convenioId}
+                        </p>
+                      )}
+                    </div>
                   )}
-                </div>
-              )}
 
-              {/* Campo de seleção de equipe (mostrar apenas se tipoDestino for "equipe") */}
-              {formData.tipoDestino === "equipe" && (
-                <div className="mb-4">
-                  <label
-                    htmlFor="equipeId"
-                    className="block text-sm font-medium text-gray-700 mb-1">
-                    Equipe *
-                  </label>
-                  <select
-                    id="equipeId"
-                    name="equipeId"
-                    value={formData.equipeId}
-                    onChange={handleChange}
-                    className={`w-full px-3 py-2 border rounded-md ${
-                      errors.equipeId ? "border-red-500" : "border-gray-300"
-                    } focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent`}
-                    disabled={submitting}>
-                    <option value="">Selecione uma equipe</option>
-                    {equipes.map((equipe) => (
-                      <option key={equipe.id} value={equipe.id}>
-                        {equipe.nome}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.equipeId && (
-                    <p className="mt-1 text-sm text-red-500">
-                      {errors.equipeId}
-                    </p>
+                  {formData.tipoDestino === "equipe" && (
+                    <div className="mb-6 p-4 bg-green-50 rounded-lg border border-green-100">
+                      <label className="block text-sm font-semibold text-green-800 mb-2">
+                        Selecione a Equipe *
+                      </label>
+                      <select
+                        name="equipeId"
+                        value={formData.equipeId}
+                        onChange={handleChange}
+                        className={`w-full px-4 py-2.5 border rounded-lg bg-white ${
+                          errors.equipeId
+                            ? "border-red-300"
+                            : "border-green-200"
+                        }`}
+                        disabled={submitting}>
+                        <option value="">Selecione...</option>
+                        {equipes.map((equipe) => (
+                          <option key={equipe.id} value={equipe.id}>
+                            {equipe.nome}
+                          </option>
+                        ))}
+                      </select>
+                      {errors.equipeId && (
+                        <p className="mt-1 text-xs text-red-500">
+                          {errors.equipeId}
+                        </p>
+                      )}
+                    </div>
                   )}
+
+                  {/* Checkbox Destaque */}
+                  {canCreatePostagem && (
+                    <div className="mb-6">
+                      <label className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={formData.pinned}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              pinned: e.target.checked,
+                            }))
+                          }
+                          className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary"
+                        />
+                        <span className="ml-3 text-sm font-medium text-gray-700">
+                          Fixar esta postagem no topo do feed (Destaque)
+                        </span>
+                      </label>
+                    </div>
+                  )}
+
+                  {/* Editor */}
+                  <div className="mb-8">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Conteúdo *
+                    </label>
+                    <div className="prose-editor-wrapper border rounded-lg overflow-hidden focus-within:ring-4 focus-within:ring-blue-50 focus-within:border-primary transition-all">
+                      <SimpleRichEditor
+                        value={formData.text}
+                        onChange={handleEditorChange}
+                        placeholder="Escreva sua postagem aqui... Use a barra de ferramentas para formatar."
+                        error={errors.text}
+                        disabled={submitting}
+                        onImageUpload={async (file: File) => {
+                          const imagem =
+                            await postagemService.addTempImagem(file);
+                          setTempUploads((prev) => ({
+                            ...prev,
+                            images: [...prev.images, imagem],
+                          }));
+                          let url = imagem.url;
+                          if (!url.startsWith("http") && !url.startsWith("/"))
+                            url = "/" + url;
+                          return url;
+                        }}
+                        onFileUpload={async (file: File) => {
+                          const anexo =
+                            await postagemService.addTempAnexo(file);
+                          setTempUploads((prev) => ({
+                            ...prev,
+                            attachments: [...prev.attachments, anexo],
+                          }));
+                          return anexo.url;
+                        }}
+                      />
+                    </div>
+                    {errors.text && (
+                      <p className="mt-1 text-xs text-red-500">{errors.text}</p>
+                    )}
+                    <p className="mt-2 text-xs text-gray-500 flex items-center gap-1">
+                      <Eye size={12} /> A primeira imagem inserida será usada
+                      automaticamente como capa.
+                    </p>
+                  </div>
+
+                  {/* Botões de Ação */}
+                  <div className="flex justify-end gap-3 pt-6 border-t border-gray-100">
+                    <CustomButton
+                      type="button"
+                      variant="primary"
+                      icon={X}
+                      onClick={() => router.back()}
+                      disabled={submitting}>
+                      Cancelar
+                    </CustomButton>
+                    <CustomButton
+                      type="submit"
+                      variant="primary"
+                      icon={Save}
+                      disabled={submitting}
+                      className="px-8">
+                      {submitting ? "Publicando..." : "Publicar Postagem"}
+                    </CustomButton>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            {/* COLUNA DE PREVIEW (1/3 da tela) */}
+            <div className="lg:col-span-1">
+              <div className="sticky top-6 space-y-4">
+                <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+                  <Eye size={16} /> Pré-visualização do Card
+                </h3>
+                <div className="bg-gray-100 rounded-xl p-4 border border-gray-200">
+                  <p className="text-xs text-gray-500 mb-3 text-center">
+                    É assim que sua postagem aparecerá no feed de notícias. A
+                    orientação da imagem (Horizontal/Vertical) é ajustada
+                    automaticamente.
+                  </p>
+                  {/* Utilizando o PostCard real para preview */}
+                  <div className="pointer-events-none select-none">
+                    <PostCard
+                      postagem={getPreviewPostagem()}
+                      onClick={() => {}}
+                      showEditButton={false}
+                    />
+                  </div>
                 </div>
-              )}
 
-              <div className="mb-6">
-                <label
-                  htmlFor="text"
-                  className="block text-sm font-medium text-gray-700 mb-1">
-                  Conteúdo *
-                </label>
-                <SimpleRichEditor
-                  value={formData.text}
-                  onChange={handleEditorChange}
-                  placeholder="Digite o conteúdo da postagem..."
-                  error={errors.text}
-                  disabled={submitting}
-                  onImageUpload={async (file: File) => {
-                    try {
-                      // Usar o endpoint temporário com tratamento de erros aprimorado
-                      const imagem = await postagemService.addTempImagem(file);
-
-                      // Rastrear o upload para associação posterior quando a postagem for criada
-                      setTempUploads((prev) => ({
-                        ...prev,
-                        images: [...prev.images, imagem],
-                      }));
-
-                      // Se a URL não começar com http ou /, adicionar / no início
-                      let url = imagem.url;
-                      if (!url.startsWith("http") && !url.startsWith("/")) {
-                        url = "/" + url;
-                      }
-
-                      // Verificar se a URL existe e é acessível
-                      try {
-                        const response = await fetch(url, { method: "HEAD" });
-                        if (!response.ok) {
-                          console.warn(
-                            `A URL da imagem ${url} não está acessível diretamente. Tentando URL alternativa.`
-                          );
-                          // Tentar URL alternativa
-                          url = `/api${url}`;
-                        }
-                      } catch (err) {
-                        console.warn(
-                          `Erro ao verificar URL da imagem: ${err}. Tentando URL alternativa.`
-                        );
-                        url = `/api${url}`;
-                      }
-
-                      return url;
-                    } catch (err: any) {
-                      console.error("Erro ao fazer upload da imagem:", err);
-                      toastUtil.error(
-                        err.message || "Erro ao fazer upload da imagem"
-                      );
-                      throw err;
-                    }
-                  }}
-                  onFileUpload={async (file: File) => {
-                    try {
-                      // Usar o endpoint temporário
-                      const anexo = await postagemService.addTempAnexo(file);
-
-                      // Rastrear o upload
-                      setTempUploads((prev) => ({
-                        ...prev,
-                        attachments: [...prev.attachments, anexo],
-                      }));
-
-                      return anexo.url;
-                    } catch (err) {
-                      console.error("Erro ao fazer upload do arquivo:", err);
-                      throw err;
-                    }
-                  }}
-                />
-                {errors.text && (
-                  <p className="mt-1 text-sm text-red-500">{errors.text}</p>
-                )}
-
-                {/* Adicionar componente de pré-visualização */}
-                <RichTextPreview content={formData.text} />
+                {/* Dicas Rápidas */}
+                <div className="bg-blue-50 rounded-xl p-5 border border-blue-100">
+                  <h4 className="font-semibold text-blue-800 text-sm mb-2">
+                    Dicas para uma boa postagem:
+                  </h4>
+                  <ul className="text-xs text-blue-700 space-y-2 list-disc pl-4">
+                    <li>Use títulos claros e objetivos.</li>
+                    <li>A primeira imagem define o visual do card.</li>
+                    <li>
+                      Use <strong>negrito</strong> para destacar informações
+                      chave.
+                    </li>
+                    <li>Anexos são ótimos para documentos oficiais (PDF).</li>
+                  </ul>
+                </div>
               </div>
-
-              <div className="flex justify-end space-x-3">
-                <CustomButton
-                  type="button"
-                  variant="primary"
-                  className="bg-red-600 hover:bg-red-700 text-white border-none"
-                  icon={X}
-                  onClick={() => router.push("/convenios")}
-                  disabled={submitting}>
-                  Cancelar
-                </CustomButton>
-                <CustomButton
-                  type="submit"
-                  variant="primary"
-                  icon={Save}
-                  disabled={submitting}>
-                  {submitting ? "Salvando..." : "Salvar"}
-                </CustomButton>
-              </div>
-            </form>
+            </div>
           </div>
         </main>
       </div>
