@@ -610,7 +610,7 @@ export default function NovaGeracaoPage() {
             className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
             {Array.from(
               { length: 5 },
-              (_, i) => new Date().getFullYear() - i
+              (_, i) => new Date().getFullYear() + 1 - i
             ).map((ano) => (
               <option key={ano} value={ano}>
                 {ano}
