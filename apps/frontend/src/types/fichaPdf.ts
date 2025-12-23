@@ -481,6 +481,7 @@ export const fichaPdfHelpers = {
     const anoAtual = agora.getFullYear();
     const mesAtual = agora.getMonth() + 1;
 
+    // Mantém a verificação de limites de ano
     if (ano < 2020 || ano > anoAtual + 1) {
       return {
         valido: false,
@@ -492,8 +493,14 @@ export const fichaPdfHelpers = {
       return { valido: false, erro: "Mês deve estar entre 1 e 12" };
     }
 
-    // Verificar se não é futuro demais
-    if (ano > anoAtual || (ano === anoAtual && mes > mesAtual + 1)) {
+    // CORREÇÃO: Cálculo absoluto de meses para permitir virada de ano
+    const mesesTotalAtual = anoAtual * 12 + mesAtual;
+    const mesesTotalAlvo = ano * 12 + mes;
+    const diferenca = mesesTotalAlvo - mesesTotalAtual;
+
+    // Permite gerar para meses passados ou até 2 meses no futuro
+    // (Ex: Em Dezembro/2025, permite até Fevereiro/2026)
+    if (diferenca > 2) {
       return {
         valido: false,
         erro: "Não é possível gerar fichas para períodos muito futuros",
